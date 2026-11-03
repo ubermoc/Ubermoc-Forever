@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.1
+- The options window's dark marble background was too dark. It now defaults to a lighter setting, and the Other page has a new "Window background" row to switch between Dark, Medium and Light.
+
 ## 0.4.0
 - New options window, opened with `/ubf options`. Controller only: d-pad moves and changes values, A selects, B or Start closes, L1 and R1 change page.
 - Buttons page: turn the layout on or off, press A on a slot and then the button you want for it, reset to defaults.

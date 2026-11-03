@@ -175,6 +175,11 @@ assert(cfg.bars[1] == 2, "bar cycles")
 press(win, "PADRSHOULDER")        -- page 3
 press(win, "PADDRIGHT")
 assert(cfg.extras.PADFORWARD == "TOGGLEWORLDMAP", "extra command cycles")
+for _ = 1, 5 do press(win, "PADDDOWN") end   -- window background row
+press(win, "PADDRIGHT")
+assert(ns.db.optionsShade == 3, "background shade cycles")
+press(win, "PADDRIGHT")
+assert(ns.db.optionsShade == 1, "background shade wraps")
 press(win, "PAD2")
 assert(not win.shown, "B closes the window")
 ns.Layout.ResetDefaults()

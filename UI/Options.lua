@@ -11,6 +11,10 @@ local ROW_HEIGHT = 24
 local ROW_COUNT = 14
 local FIRST_ROW_Y = -64
 
+-- How opaque the dark marble behind the rows is: 1 dark, 2 medium, 3 light.
+local SHADE_ALPHA = { 1, 0.45, 0 }
+local DEFAULT_SHADE = 2
+
 local frame
 local rowFrames = {}
 local header, hint, status
@@ -26,6 +30,16 @@ local function cycle(list, current, step)
         end
     end
     return list[(position - 1 + step) % #list + 1]
+end
+
+local function shade()
+    return ns.db.optionsShade or DEFAULT_SHADE
+end
+
+local function applyShade()
+    if frame then
+        frame.InsetBg:SetAlpha(SHADE_ALPHA[shade()])
+    end
 end
 
 local function buildRows()
@@ -80,6 +94,14 @@ local function buildRows()
             rows[#rows + 1] = { label = Layout.Friendly(key), value = c.extras[key],
                 onLeft = step(-1), onRight = step(1) }
         end
+        local function stepShade(delta)
+            return function()
+                ns.db.optionsShade = (shade() - 1 + delta) % #SHADE_ALPHA + 1
+                applyShade()
+            end
+        end
+        rows[#rows + 1] = { label = L.OPT_SHADE, value = L.OPT_SHADES[shade()],
+            onLeft = stepShade(-1), onRight = stepShade(1) }
         rows[#rows + 1] = { label = L.OPT_SELFTEST, value = "", onActivate = ns.RunSelfTest }
         rows[#rows + 1] = { label = L.OPT_CLOSE, value = "", onActivate = function() Options.Hide() end }
     end
@@ -170,6 +192,7 @@ local function create()
     frame:SetFrameStrata("DIALOG")
     frame:EnableMouse(true)
     frame.TitleText:SetText(L.OPT_TITLE)
+    applyShade()
     table.insert(UISpecialFrames, "UbermocForeverOptions")
 
     header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
