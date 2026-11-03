@@ -21,3 +21,4 @@ Input\Cursor.lua
 Input\Binds.lua
 Core\Report.lua
 UI\Options.lua
+UI\GameMenu.lua

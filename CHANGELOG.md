@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.3
+- The game menu (Esc, or Start with the controller) now has an "Ubermoc Forever" button at the very top, in the menu's own button style, that opens the options window. It is added each time the menu opens, so it stays in place when the menu rebuilds, and the game's own buttons keep their order below it with a gap between. On Forever it is also put first in the menu's controller navigation list.
+
 ## 0.8.2
 - New `/ubf test`: one command that runs the self test, saves a snapshot (controller, labels, cursor state, the game settings that matter, other loaded addons and the recent log), then records every button you press for 30 seconds. For each press it notes whether the addon took it, whether it fired an ability instead, or whether nothing happened, and how far the cursor moved. Open a bag, press the D-pad, A, X and B, then `/reload` and the full report is saved in the addon's saved variables. `/ubf test stop` ends it early, and it stops by itself when combat starts.
 

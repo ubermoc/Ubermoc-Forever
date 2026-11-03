@@ -47,7 +47,12 @@ WorldFrame = {}
 local windowsClosed = 0
 function CloseAllWindows() windowsClosed = windowsClosed + 1 return windowsClosed % 2 == 1 end
 function GetUIPanel() return nil end
-function hooksecurefunc() end
+local hooked = {}
+function hooksecurefunc(t, name, fn) if type(t) == "table" then hooked[name] = fn end end
+SOUNDKIT = { IG_MAINMENU_OPTION = 1 }
+function PlaySound() end
+local menuHidden = 0
+function HideUIPanel() menuHidden = menuHidden + 1 end
 local saved = {}
 function SetBinding(key, action) saved[key] = action end
 function SaveBindings() end
@@ -104,7 +109,7 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "UI/Options.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "UI/Options.lua", "UI/GameMenu.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -449,6 +454,34 @@ assert(ns.db.report and ns.db.report.environment and ns.db.report.time, "report 
 assert(ns.Cursor.trace, "trace hook installed while recording")
 ns.Report.Stop()
 assert(ns.Cursor.trace == nil and ns.db.report.summary, "report finished")
+
+-- Game menu: our button goes first, and the old first button gets a section gap.
+local menuButtons = {}
+GameMenuFrame = {
+    InitButtons = function() end,
+    buttons = {},
+    buttonPool = { EnumerateActive = function() local i = 0 return function() i = i + 1 return menuButtons[i] end end },
+    MarkDirty = function(self) self.dirty = true end,
+    AddButton = function(self, text, callback)
+        local b = { text = text, callback = callback, layoutIndex = #menuButtons + 1 }
+        menuButtons[#menuButtons + 1] = b
+        self.buttons[#self.buttons + 1] = b
+        return b
+    end,
+}
+menuButtons[1] = { text = "Options", layoutIndex = 1 }
+GameMenuFrame.buttons[1] = menuButtons[1]
+menuButtons[2] = { text = "Support", layoutIndex = 2 }
+GameMenuFrame.buttons[2] = menuButtons[2]
+ns.GameMenu.Hook()
+assert(hooked.InitButtons, "game menu rebuild hooked")
+hooked.InitButtons(GameMenuFrame)
+local added = menuButtons[3]
+assert(added.text == "Ubermoc Forever" and added.layoutIndex == 0, "menu button is first in layout")
+assert(menuButtons[1].topPadding == 20, "old first button gets a gap")
+assert(GameMenuFrame.buttons[1] == added and GameMenuFrame.dirty, "list order and relayout")
+added.callback()
+assert(menuHidden == 1, "menu closes when the button is used")
 
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")
