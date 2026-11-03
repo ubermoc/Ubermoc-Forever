@@ -2,9 +2,8 @@ local _, ns = ...
 
 -- Live readout of the active controller, for learning what a given pad and
 -- Steam Input layout really reports. The name lookups are 0-based while the
--- state tables are 1-based (confirmed on a Steam Input pad for buttons, and
--- stated in Blizzard's own code for sticks); the axis lookup base is not yet
--- confirmed, so axes show both.
+-- state tables are 1-based (confirmed on a Steam Input pad for buttons, axes
+-- and sticks).
 local UPDATE_INTERVAL = 0.05
 
 local frame
@@ -34,10 +33,8 @@ local function build()
     local moved = {}
     for index, value in ipairs(state.axes) do
         if math.abs(value) > 0.05 then
-            moved[#moved + 1] = ("a%d=%.2f (%s / %s)"):format(
-                index, value,
-                name(C_GamePad.AxisIndexToConfigName, index - 1),
-                name(C_GamePad.AxisIndexToConfigName, index))
+            moved[#moved + 1] = ("a%d=%.2f (%s)"):format(
+                index, value, name(C_GamePad.AxisIndexToConfigName, index - 1))
         end
     end
     lines[#lines + 1] = ns.L.PADTEST_AXES .. (#moved > 0 and table.concat(moved, ", ") or "-")

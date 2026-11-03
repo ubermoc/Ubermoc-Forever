@@ -41,12 +41,15 @@ frame:RegisterEvent("PLAYER_LOGIN")
 
 SLASH_UBERMOCFOREVER1 = "/ubf"
 SlashCmdList["UBERMOCFOREVER"] = function(msg)
-    local cmd = (msg or ""):lower():match("^%s*(%S*)")
+    local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
+    cmd = cmd:lower()
     if cmd == "debug" then
         ns.db.debug = not ns.db.debug
         print(ns.db.debug and ns.L.DEBUG_ON or ns.L.DEBUG_OFF)
     elseif cmd == "pad" then
         ns.Pad.PrintReport()
+    elseif cmd == "layout" then
+        ns.Layout.Command(rest)
     elseif cmd == "padmap" then
         ns.PrintPadMap()
     elseif cmd == "padtest" then

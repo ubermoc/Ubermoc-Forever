@@ -10,4 +10,6 @@ Download the latest zip from Releases and extract `UbermocForever` into the `Int
 ## Commands
 - `/ubf debug`: toggle debug logging
 - `/ubf log`: show recent log lines
+- `/ubf pad`, `/ubf padtest`, `/ubf padmap`: controller report, live readout and full button list
+- `/ubf layout on|off|status|reset|bind|bar`: action bar layout for the controller
 - `/ubf version`: show version and game type
