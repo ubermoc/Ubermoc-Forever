@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.2
+- Fixed: releases now also publish a GitHub Release with the zip attached, not just the CurseForge file.
+
 ## 0.0.1
 - First scaffold: addon loads on World of Warcraft: Forever (TOC 16001) and Midnight (TOC 120105).
 - `/ubf` command with `debug`, `log` and `version`.
