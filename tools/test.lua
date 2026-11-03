@@ -2,10 +2,12 @@
 local printed = {}
 function print(...) printed[#printed + 1] = table.concat({ ... }, " ") end
 local handlers = {}
+local noop = function() end
+UIParent = {}
 function CreateFrame()
-    local f = { events = {} }
+    local f = setmetatable({ events = {} }, { __index = function() return function() return setmetatable({}, { __index = function() return noop end }) end end })
     function f:RegisterEvent(e) self.events[e] = true end
-    function f:SetScript(_, fn) self.fn = fn end
+    function f:SetScript(kind, fn) if kind == "OnUpdate" then self.onUpdate = fn else self.fn = fn end end
     handlers[#handlers + 1] = f
     return f
 end
@@ -21,13 +23,17 @@ C_GamePad = {
     GetCombinedDeviceID = function() return 99 end,
     GetAllDeviceIDs = function() return { 2, 99 } end,
     GetDeviceMappedState = function(id)
-        return { name = "Pad" .. id, labelStyle = "Generic", buttonCount = 15, axisCount = 6, stickCount = 2 }
+        return { name = "Pad" .. (id or "active"), labelStyle = "Generic", buttonCount = 3, axisCount = 2, stickCount = 1,
+            buttons = { false, true, false }, axes = { 0, 0.5 }, sticks = { { x = 0.5, y = 0, len = 0.5 } } }
     end,
+    ButtonIndexToBinding = function(i) return "PAD" .. i end,
+    AxisIndexToConfigName = function(i) return "Axis" .. i end,
+    StickIndexToConfigName = function(i) return "Stick" .. i end,
     GetDeviceRawState = function() return { name = "raw", vendorID = 1118, productID = 654 } end,
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Input/GamePad.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Input/GamePad.lua", "Input/PadTest.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -41,6 +47,10 @@ fire("GAME_PAD_CONNECTED")
 SlashCmdList["UBERMOCFOREVER"]("pad")
 SlashCmdList["UBERMOCFOREVER"]("debug")
 SlashCmdList["UBERMOCFOREVER"]("log")
+SlashCmdList["UBERMOCFOREVER"]("padtest")
+for _, h in ipairs(handlers) do
+    if h.onUpdate then h.onUpdate(h, 1) end
+end
 
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")

@@ -13,3 +13,4 @@ Core\Init.lua
 Core\Compat.lua
 Core\Debug.lua
 Input\GamePad.lua
+Input\PadTest.lua

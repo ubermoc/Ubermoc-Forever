@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+- New command `/ubf padtest` shows a live readout of the active controller: which buttons are held, which axes move, and the sticks. Press `/ubf padtest` again to hide it.
+- Button and axis names are shown for both index bases, because Blizzard's docs don't say which one the lookups use. This will settle it from your real hardware.
+- `/ubf pad` now puts a space before "(active)" and "(combined)".
+
 ## 0.1.0
 - Added controller detection. The addon now lists every controller the game sees, which one is active, its button-label style and its button, axis and stick counts.
 - New command `/ubf pad` prints that report. Please send me its output from your Steam Deck and from your Steam Controller setup, so the layouts are built from what the game really reports.
