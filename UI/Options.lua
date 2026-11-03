@@ -191,8 +191,8 @@ local function buildRows()
         local labelChoices = { ns.Labels.AUTO, ns.Labels.DEFAULT, "Generic", "Letters", "Shapes", "Reverse" }
         local function stepLabels(delta)
             return function()
-                ns.Labels.SetChoice(cycle(labelChoices, ns.Labels.Choice(), delta))
-                message = L.OPT_LABELS_CHANGED
+                local result = ns.Labels.SetChoice(cycle(labelChoices, ns.Labels.Choice(), delta))
+                message = L.OPT_LABELS_CHANGED:format(ns.Labels.Describe(result))
             end
         end
         rows[#rows + 1] = { label = L.OPT_LABELS, value = L.OPT_LABEL_NAMES[ns.Labels.Choice()],

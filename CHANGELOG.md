@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.1
+- Fixed: pressing the D-pad quickly fired abilities instead of moving the cursor. The game switches its cursor off and on again by itself, and each time the buttons were let go until the next check. They now stay taken for as long as a window is open, and the cursor is re-enabled within a tenth of a second.
+- Button labels: changing the row now tells you exactly what happened (how many controller configs were changed, already right, missing or refused by the game) and which style the active controller reports afterwards, so a change that has no effect can be told apart from one that is refused. Every attempt is written to the log, the action bars redraw their button text right after a change, and in Auto the all-devices setting follows too while a Steam pad is connected, because the combined controller takes its style from there.
+
 ## 0.8.0
 - The D-pad now moves the game's cursor from button to button while a window is open and the cursor is on. It jumps to the nearest button in the direction you press, so bag slots, vendor items, tabs and close buttons are all reachable without the stick. The right stick still moves the cursor freely.
 - A and X now send real mouse clicks (left and right) at the cursor, so they work on anything the cursor points at, not only plain buttons. If the game refuses a simulated click, it falls back to clicking the button under the cursor.

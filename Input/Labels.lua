@@ -24,13 +24,32 @@ function Labels.SetChoice(choice)
     return Labels.Apply()
 end
 
--- The style wanted for one controller's config, or nil to leave it alone.
-local function wanted(id)
+-- One line saying what happened, for the options window and the slash command.
+function Labels.Describe(result)
+    return ns.L.LABELS_RESULT:format(result.changed, result.same, result.missing, result.failed, Labels.ActiveStyle())
+end
+
+local function valvePadPresent(ids)
+    for _, id in ipairs(ids) do
+        if id.vendorID == VALVE then
+            return true
+        end
+    end
+    return false
+end
+
+-- The style wanted for one controller's config, or nil to leave it alone. In Auto the
+-- all-devices config follows too whenever a Valve pad is connected, because the
+-- combined controller the game reports takes its style from there.
+local function wanted(id, ids)
     local choice = Labels.Choice()
     if choice == DEFAULT then
         return nil
     elseif choice == AUTO then
-        return id.vendorID == VALVE and "Letters" or nil
+        if id.vendorID == VALVE or (not id.vendorID and valvePadPresent(ids)) then
+            return "Letters"
+        end
+        return nil
     end
     return choice
 end
@@ -46,33 +65,64 @@ local function configIDs()
     return ids
 end
 
--- Returns how many configs were changed.
+-- Names of the buttons that show key text, so they can be told to redraw it.
+local BAR_PREFIXES = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton",
+    "MultiBarRightButton", "MultiBarLeftButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button" }
+
+function Labels.RefreshBars()
+    for _, prefix in ipairs(BAR_PREFIXES) do
+        for i = 1, 12 do
+            local button = _G[prefix .. i]
+            if button and button.UpdateHotkeys then
+                pcall(button.UpdateHotkeys, button, button.buttonType)
+            end
+        end
+    end
+end
+
+-- Returns a table: changed, same (already the wanted style), missing (no config to change), failed.
 function Labels.Apply()
+    local result = { changed = 0, same = 0, missing = 0, failed = 0 }
     if applying or InCombatLockdown() then
-        return 0
+        return result
     end
     applying = true
-    local changed = 0
-    for _, id in ipairs(configIDs()) do
-        local style = wanted(id)
+    local ids = configIDs()
+    for _, id in ipairs(ids) do
+        local style = wanted(id, ids)
         if style then
+            local name = tostring(id.vendorID or "all") .. "/" .. tostring(id.productID or "all")
             local ok, config = pcall(C_GamePad.GetConfig, id)
-            if ok and config and config.labelStyle ~= style then
+            if not ok or not config then
+                result.missing = result.missing + 1
+                ns.Log("labels " .. name .. ": no config to change")
+            elseif config.labelStyle == style then
+                result.same = result.same + 1
+            else
                 config.labelStyle = style
                 local saved, err = pcall(C_GamePad.SetConfig, config)
-                ns.Log(("labels %s/%s -> %s: %s"):format(tostring(id.vendorID or "all"), tostring(id.productID or "all"),
-                    style, saved and "ok" or tostring(err)))
+                ns.Log(("labels %s -> %s: %s"):format(name, style, saved and "ok" or tostring(err)))
                 if saved then
-                    changed = changed + 1
+                    result.changed = result.changed + 1
+                else
+                    result.failed = result.failed + 1
                 end
             end
         end
     end
-    if changed > 0 then
-        pcall(C_GamePad.ApplyConfigs)
+    if result.changed > 0 then
+        local ok, err = pcall(C_GamePad.ApplyConfigs)
+        ns.Log("labels apply configs: " .. (ok and "ok" or tostring(err)))
+        Labels.RefreshBars()
     end
     applying = false
-    return changed
+    return result
+end
+
+-- What the active controller says its labels are now.
+function Labels.ActiveStyle()
+    local active = ns.Pad.GetActive()
+    return active and active.labelStyle or "?"
 end
 
 function Labels.PrintStatus()
@@ -110,8 +160,8 @@ function Labels.Command(args)
         print(ns.L.LABELS_HELP)
         return
     end
-    local changed = Labels.SetChoice(choice)
-    print(ns.L.LABELS_SET:format(choice, changed))
+    local result = Labels.SetChoice(choice)
+    print(ns.L.LABELS_SET:format(choice, Labels.Describe(result)))
 end
 
 Labels.AUTO, Labels.DEFAULT = AUTO, DEFAULT

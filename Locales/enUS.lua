@@ -93,10 +93,11 @@ ns.L = {
     LABELS_CHOICE = "Button labels: %s",
     LABELS_LINE = "Config %s/%s uses label style %s.",
     LABELS_DEVICE = "[%d] %s shows %s labels.",
-    LABELS_SET = "Button labels set to %s (%d changed). Open a window or type /reload to see them.",
+    LABELS_RESULT = "changed %d, already right %d, no config %d, refused %d. The active controller reports %s labels.",
+    LABELS_SET = "Button labels set to %s: %s",
     LABELS_HELP = "Label commands: /ubf labels status, auto, default, generic, letters, shapes, reverse",
     OPT_LABELS = "Button labels",
     OPT_LABEL_NAMES = { AUTO = "Auto", DEFAULT = "Game default", Generic = "Numbers", Letters = "A B X Y", Shapes = "Shapes", Reverse = "Reverse" },
-    OPT_LABELS_CHANGED = "Open a window or /reload to see the new labels.",
+    OPT_LABELS_CHANGED = "Labels: %s",
     HELP = "Commands: /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf layout (action bar layout), /ubf selftest (check this game build), /ubf options (settings window), /ubf cursor, /ubf binds, /ubf labels, /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
 }

@@ -8,7 +8,7 @@ local _, ns = ...
 local Cursor = {}
 ns.Cursor = Cursor
 
-local POLL = 0.25
+local POLL = 0.1
 local CLOSE_DELAY = 0.3
 local OWN_WINDOW = "UbermocForeverOptions"
 local FIXED_FRAMES = { "GameMenuFrame", "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4",
@@ -67,7 +67,9 @@ function Cursor.Update(step)
         lastState = now
     end
     local ownWindow = _G[OWN_WINDOW]
-    syncInput(now and not InCombatLockdown() and Cursor.ActionsOn() and not shown(ownWindow) and Cursor.WindowOpen())
+    -- The game switches its cursor off and on again by itself, so the buttons stay taken for as
+    -- long as a window is open; letting go for even a moment would fire abilities.
+    syncInput(not InCombatLockdown() and Cursor.ActionsOn() and not shown(ownWindow) and Cursor.WindowOpen())
     if InCombatLockdown() or not Cursor.Auto() then
         closedFor = 0
         return
@@ -91,8 +93,8 @@ function Cursor.Update(step)
     end
 end
 
--- While the game's cursor is on, a window is open and you are not in combat, this takes
--- the face buttons the way a console menu does: A clicks what the cursor points at, X right-clicks it,
+-- While a window is open and you are not in combat, this takes the face buttons
+-- the way a console menu does: A clicks what the cursor points at, X right-clicks it,
 -- B or Start goes back, and Y is held back for later. A frame that listens for
 -- controller buttons keeps them from firing abilities underneath.
 local input = CreateFrame("Frame", "UbermocForeverCursorInput", UIParent)
