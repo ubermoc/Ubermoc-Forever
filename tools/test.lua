@@ -27,9 +27,21 @@ function date() return "2026-01-01 00:00:00" end
 C_Texture = { GetAtlasInfo = function(a) if a:find("xbox") then return {} end end }
 function geterrorhandler() return function() end end
 function seterrorhandler() end
-C_AddOns = { GetAddOnMetadata = function() return "test" end, IsAddOnLoaded = function() return false end }
+local nativeLoaded = false
+C_AddOns = { GetAddOnMetadata = function() return "test" end, IsAddOnLoaded = function(name) return name == "Blizzard_Gamepad" and nativeLoaded end }
 SlashCmdList = {}
 local cursorOn = false
+local mouseFoci = {}
+function GetMouseFoci() return mouseFoci end
+WorldFrame = {}
+local windowsClosed = 0
+function CloseAllWindows() windowsClosed = windowsClosed + 1 return windowsClosed % 2 == 1 end
+function GetUIPanel() return nil end
+function hooksecurefunc() end
+local saved = {}
+function SetBinding(key, action) saved[key] = action end
+function SaveBindings() end
+function GetCurrentBindingSet() return 1 end
 function IsGamePadCursorControlEnabled() return cursorOn end
 function SetGamePadCursorControl(on) cursorOn = on end
 local cvars = { GamePadEmulateShift = "PADLTRIGGER", GamePadEmulateCtrl = "PADLSHOULDER",
@@ -43,7 +55,10 @@ function InCombatLockdown() return inCombat end
 local bindings = {}
 function SetOverrideBinding(_, _, key, command) bindings[key] = command end
 function ClearOverrideBindings() bindings = {} end
-function GetBindingAction(key) return bindings[key] or "" end
+function GetBindingAction(key, checkOverride)
+    if checkOverride then return bindings[key] or saved[key] or "" end
+    return saved[key] or ""
+end
 C_GamePad = {
     IsEnabled = function() return true end,
     GetActiveDeviceID = function() return 2 end,
@@ -67,7 +82,7 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/PadTest.lua", "Input/Layout.lua", "UI/Options.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "UI/Options.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -202,7 +217,26 @@ assert(ns.db.optionsTint == 80 and ns.db.optionsOpacity == 95, "0.4.2 tint carri
 ns.db.optionsTint, ns.db.optionsOpacity, ns.db.optionsShade = nil, nil, 1
 press(win, "PADDLEFT")
 assert(ns.db.optionsTint == 100 and ns.db.optionsShade == nil and ns.db.optionsOpacity == 95, "0.4.1 dark step carried over")
+saved["PAD4"] = "ACTIONBUTTON4"
+press(win, "PADDDOWN")                       -- clear old saved binds row
+press(win, "PAD1")
+assert(saved["PAD4"] == "ACTIONBUTTON4", "clearing needs a second press")
+press(win, "PAD1")
+assert(saved["PAD4"] == nil and ns.db.bindBackup, "second press backs up and clears")
+press(win, "PADDDOWN")                       -- restore row
+press(win, "PAD1")
+assert(saved["PAD4"] == "ACTIONBUTTON4" and ns.db.bindBackup == nil, "restore puts the bind back")
+saved["PAD4"] = nil
 press(win, "PADRSHOULDER")                   -- cursor page
+press(win, "PADDRIGHT")                      -- cursor opens with windows
+assert(ns.db.cursorAuto == false, "cursor auto toggles off (on by default on Midnight)")
+press(win, "PADDDOWN")
+press(win, "PADDRIGHT")
+assert(ns.db.cursorActions == false, "cursor actions toggle off")
+press(win, "PADDDOWN")
+press(win, "PADDRIGHT")
+assert(ns.db.closeOnCombat == false, "close in combat toggles off")
+press(win, "PADDDOWN")                       -- left click row
 press(win, "PADDRIGHT")
 assert(cvars.GamePadCursorLeftClick == "PADRSHOULDER", "left click button cycles")
 press(win, "PADDLEFT")
@@ -225,11 +259,80 @@ press(win, "PADRSHOULDER")                   -- back around to the first page
 press(win, "PAD2")
 assert(not win.shown, "B closes the window")
 ns.Layout.ResetDefaults()
+ns.db.cursorAuto, ns.db.cursorActions, ns.db.closeOnCombat = nil, nil, nil
+
+-- game cursor manager
+local menu = { shown = false }
+GameMenuFrame = { IsShown = function() return menu.shown end }
+cursorOn, inCombat = false, false
+menu.shown = true
+ns.Cursor.Update(0.3)
+assert(cursorOn, "cursor opens with a window")
+menu.shown = false
+ns.Cursor.Update(0.1)
+assert(cursorOn, "cursor waits a moment before closing")
+ns.Cursor.Update(0.3)
+assert(not cursorOn, "cursor closes once the windows are gone")
+cursorOn = true
+ns.Cursor.Update(0.6)
+assert(cursorOn, "a cursor the player started is left alone")
+cursorOn, inCombat, menu.shown = false, true, true
+ns.Cursor.Update(0.3)
+assert(not cursorOn, "no cursor changes in combat")
+inCombat = false
+
+-- the cursor's buttons
+local clicked
+mouseFoci[1] = { Click = function(_, b) clicked = b end, IsEnabled = function() return true end,
+    GetName = function() return "TestButton" end, GetParent = function() return nil end }
+local pad
+for _, h in ipairs(handlers) do if h.name == "UbermocForeverCursorInput" then pad = h end end
+cursorOn, menu.shown = true, true
+ns.Cursor.Update(0.1)
+local onButton = pad.scripts.OnGamePadButtonDown
+assert(onButton, "buttons are taken while the cursor is on")
+onButton(pad, "PAD1")
+assert(clicked == "LeftButton", "A left-clicks")
+onButton(pad, "PAD3")
+assert(clicked == "RightButton", "X right-clicks")
+windowsClosed = 0
+onButton(pad, "PAD2")
+assert(cursorOn, "B closes a window first")
+onButton(pad, "PAD2")
+assert(not cursorOn, "B with no window open gives the stick back")
+cursorOn = true
+menu.shown = false
+cursorOn = true
+ns.Cursor.Update(0.05)
+assert(pad.scripts.OnGamePadButtonDown == nil, "buttons are not taken when no window is open")
+menu.shown = true
+ns.Cursor.Update(0.05)
+assert(pad.scripts.OnGamePadButtonDown, "buttons are taken again when a window opens")
+ns.Cursor.OnCombatStart()
+assert(not cursorOn and pad.scripts.OnGamePadButtonDown == nil, "combat start closes windows and frees the buttons")
+nativeLoaded = true
+assert(not ns.Cursor.Auto() and not ns.Cursor.ActionsOn(), "cursor takeovers start off where the game has its own gamepad menus")
+nativeLoaded = false
+
+-- saved binds left by another addon
+saved["PAD1"], saved["SHIFT-PADDUP"] = "ACTIONBUTTON2", "MULTIACTIONBAR1BUTTON1"
+local found = 0
+for _ in pairs(ns.Binds.Scan()) do found = found + 1 end
+assert(found == 2, "scan finds saved controller binds")
+inCombat = true
+ns.Binds.Command("clear")
+assert(saved["PAD1"] == "ACTIONBUTTON2", "no clearing in combat")
+inCombat = false
+ns.Binds.Command("clear")
+assert(saved["PAD1"] == nil and saved["SHIFT-PADDUP"] == nil, "saved binds cleared")
+ns.Binds.Command("restore")
+assert(saved["PAD1"] == "ACTIONBUTTON2" and saved["SHIFT-PADDUP"] == "MULTIACTIONBAR1BUTTON1", "saved binds restored")
+saved["PAD1"], saved["SHIFT-PADDUP"] = nil, nil
 
 ns.RunSelfTest()
-local saved = ns.db.selftest
-assert(saved and #saved.results >= 10, "self test stored results")
-assert(saved.failed >= 1, "missing atlas reported as failure")
+local report = ns.db.selftest
+assert(report and #report.results >= 10, "self test stored results")
+assert(report.failed >= 1, "missing atlas reported as failure")
 assert(#ns.db.log > 0, "log persisted to saved variables")
 
 local out = table.concat(printed, "\n")

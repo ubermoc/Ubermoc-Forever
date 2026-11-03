@@ -241,6 +241,17 @@ Layout.Config = config
 Layout.Friendly = friendly
 Layout.ValidKeys = validKeys
 
+-- True when the key is already used by the layout (a bar slot, an other button, or a modifier paddle).
+function Layout.UsesKey(key)
+    local c = config()
+    for slot = 1, SLOT_COUNT do
+        if c.slots[slot] == key then
+            return true
+        end
+    end
+    return c.extras[key] ~= nil or key == c.shiftButton or key == c.ctrlButton
+end
+
 function Layout.SetEnabled(on)
     local c = config()
     c.enabled = on and true or false

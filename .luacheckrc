@@ -11,6 +11,15 @@ globals = {
 
 read_globals = {
     "UIParent",
+    "Enum",
+    "WorldFrame",
+    "GetMouseFoci",
+    "CloseAllWindows",
+    "hooksecurefunc",
+    "SetBinding",
+    "SaveBindings",
+    "GetCurrentBindingSet",
+    "GetUIPanel",
     "IsGamePadCursorControlEnabled",
     "SetGamePadCursorControl",
     "CanAutoSetGamePadCursorControl",

@@ -31,6 +31,7 @@ local rowFrames = {}
 local header, hint, status
 local page, index = 1, 1
 local captureSlot
+local confirmClear = false
 local message = ""
 
 local function cycle(list, current, step)
@@ -122,12 +123,29 @@ local function buildRows()
         local function clickRow(label, name)
             local function step(delta)
                 return function()
-                    setCursorCVar(name, cycle(CLICK_BUTTONS, C_CVar.GetCVar(name), delta))
+                    local key = cycle(CLICK_BUTTONS, C_CVar.GetCVar(name), delta)
+                    setCursorCVar(name, key)
+                    if Layout.UsesKey(key) then
+                        message = L.OPT_CLICK_SHARED
+                    end
                 end
             end
-            return { label = label, value = Layout.Friendly(C_CVar.GetCVar(name) or "?"),
+            local current = C_CVar.GetCVar(name) or "?"
+            return { label = label, value = Layout.Friendly(current) .. (Layout.UsesKey(current) and " *" or ""),
                 onLeft = step(-1), onRight = step(1) }
         end
+        local function boolRow(label, read, write)
+            local function toggle()
+                write(not read())
+            end
+            return { label = label, value = read() and L.YES or L.NO, onLeft = toggle, onRight = toggle, onActivate = toggle }
+        end
+        if ns.HasNativeGamepad() then
+            rows[#rows + 1] = { label = L.OPT_NATIVE_NOTE, value = "" }
+        end
+        rows[#rows + 1] = boolRow(L.OPT_CURSOR_AUTO, ns.Cursor.Auto, ns.Cursor.SetAuto)
+        rows[#rows + 1] = boolRow(L.OPT_CURSOR_ACTIONS, ns.Cursor.ActionsOn, ns.Cursor.SetActions)
+        rows[#rows + 1] = boolRow(L.OPT_CLOSE_COMBAT, ns.Cursor.CloseOnCombat, ns.Cursor.SetCloseOnCombat)
         rows[#rows + 1] = clickRow(L.OPT_CURSOR_LEFT, "GamePadCursorLeftClick")
         rows[#rows + 1] = clickRow(L.OPT_CURSOR_RIGHT, "GamePadCursorRightClick")
         local function toggleCentering()
@@ -170,6 +188,21 @@ local function buildRows()
         rows[#rows + 1] = { label = L.OPT_OPACITY, value = L.OPT_PERCENT:format(opacity()),
             onLeft = stepSetting("optionsOpacity", opacity, -5), onRight = stepSetting("optionsOpacity", opacity, 5),
             onFineLeft = stepSetting("optionsOpacity", opacity, -1), onFineRight = stepSetting("optionsOpacity", opacity, 1) }
+        rows[#rows + 1] = { label = L.OPT_CLEAR_BINDS, value = confirmClear and L.OPT_CLEAR_CONFIRM or "",
+            onActivate = function()
+                if not confirmClear then
+                    confirmClear = true
+                    return
+                end
+                confirmClear = false
+                local ok, count = ns.Binds.Clear()
+                message = ok and L.OPT_BINDS_DONE:format(count) or L.BINDS_COMBAT
+            end }
+        rows[#rows + 1] = { label = L.OPT_RESTORE_BINDS, value = ns.Binds.BackupCount() > 0 and tostring(ns.Binds.BackupCount()) or "",
+            onActivate = function()
+                local ok, count = ns.Binds.Restore()
+                message = ok and L.OPT_BINDS_RESTORED:format(count) or L.OPT_BINDS_NONE
+            end }
         rows[#rows + 1] = { label = L.OPT_SELFTEST, value = "", onActivate = ns.RunSelfTest }
         rows[#rows + 1] = { label = L.OPT_CLOSE, value = "", onActivate = function() Options.Hide() end }
     end
@@ -205,6 +238,9 @@ end
 local function handleKey(key)
     key = key:match("([^-]+)$") or key
     ns.Log("options key " .. key)
+    if key ~= "PAD1" then
+        confirmClear = false
+    end
     message = L.OPT_LAST_KEY:format(key)
 
     if captureSlot then

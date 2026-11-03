@@ -16,4 +16,6 @@ Core\SelfTest.lua
 Input\GamePad.lua
 Input\PadTest.lua
 Input\Layout.lua
+Input\Cursor.lua
+Input\Binds.lua
 UI\Options.lua

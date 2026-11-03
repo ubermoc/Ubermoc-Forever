@@ -44,6 +44,13 @@ function ns.RunSelfTest()
         add(results, "cvar " .. name .. " exists", value ~= nil, value)
     end
 
+    -- Forever has its own gamepad interface; these show which game build this is.
+    add(results, "info: Blizzard_Gamepad loaded", true, tostring(ns.HasNativeGamepad()))
+    local contexts = Enum and Enum.BindingContext
+    add(results, "info: GamepadModeInGameCore binding context", true, tostring(contexts and contexts.GamepadModeInGameCore ~= nil))
+    add(results, "info: GamePadCursorAutoEnable", true, tostring(C_CVar.GetCVar("GamePadCursorAutoEnable")))
+    add(results, "info: GamePadCursorAutoDisableSticks", true, tostring(C_CVar.GetCVar("GamePadCursorAutoDisableSticks")))
+
     local atlasApi = C_Texture and C_Texture.GetAtlasInfo
     for _, atlas in ipairs(ATLASES) do
         add(results, "atlas " .. atlas, atlasApi and atlasApi(atlas) ~= nil)

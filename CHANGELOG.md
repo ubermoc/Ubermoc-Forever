@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+- The game's own gamepad cursor now works with this layout. When any window opens (bags from the backpack key, map, game menu, vendors and so on) the cursor turns on so the right stick moves it, and it goes away when the windows close. A cursor you start yourself is left alone.
+- While the cursor is on and a window is open, A clicks what the cursor points at, X right-clicks it, and B or Start closes windows (and with none open, gives the stick back). These buttons no longer fire abilities underneath. Y is held back for now.
+- When combat starts, every window closes, the cursor turns off and the buttons are your abilities again. This includes the options window and can be switched off.
+- On Forever, where the game has its own gamepad menus, these cursor features start switched off so they never fight them. You can turn them on.
+- New commands `/ubf cursor` (status, on, off, auto on|off, actions on|off) and `/ubf binds` (status, clear, restore).
+- Another controller addon leaves its binds saved in the game's key bindings even after you turn it off, so they keep firing under this layout. `/ubf binds clear` backs them up and clears them, and `/ubf binds restore` puts them back. The options window has the same two rows on the Other page, and clearing needs a second press of A to confirm.
+- The Cursor page has new rows for opening the cursor with windows, A/X/B working the cursor, and closing windows in combat. A star marks a click button that is also used by the layout.
+- `/ubf selftest` now also shows whether Forever's own gamepad interface is running and two more cursor settings.
+
 ## 0.5.0
 - New Cursor page in the options window, for the game's own gamepad cursor (the right stick moves it, and it turns on when you open bags, loot, the map or the game menu). It sets which button left-clicks and which right-clicks (the game's defaults are R2 and R1), turns cursor centering on or off, switches the cursor on or off right now, and resets all of this to the game's defaults.
 - L1 and R1 now cycle through four pages.
