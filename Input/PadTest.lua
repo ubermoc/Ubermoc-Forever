@@ -1,8 +1,10 @@
 local _, ns = ...
 
 -- Live readout of the active controller, for learning what a given pad and
--- Steam Input layout really reports. Button and axis names are shown for both
--- index bases because the docs do not say which one the lookup functions use.
+-- Steam Input layout really reports. The name lookups are 0-based while the
+-- state tables are 1-based (confirmed on a Steam Input pad for buttons, and
+-- stated in Blizzard's own code for sticks); the axis lookup base is not yet
+-- confirmed, so axes show both.
 local UPDATE_INTERVAL = 0.05
 
 local frame
@@ -23,10 +25,8 @@ local function build()
     local pressed = {}
     for index, down in ipairs(state.buttons) do
         if down then
-            pressed[#pressed + 1] = ("b%d (%s / %s)"):format(
-                index,
-                name(C_GamePad.ButtonIndexToBinding, index - 1),
-                name(C_GamePad.ButtonIndexToBinding, index))
+            pressed[#pressed + 1] = ("b%d (%s)"):format(
+                index, name(C_GamePad.ButtonIndexToBinding, index - 1))
         end
     end
     lines[#lines + 1] = ns.L.PADTEST_BUTTONS .. (#pressed > 0 and table.concat(pressed, ", ") or "-")
@@ -79,4 +79,23 @@ function ns.TogglePadTest()
         return
     end
     frame:SetShown(not frame:IsShown())
+end
+
+-- Prints every button, axis and stick name the game defines for the active pad.
+function ns.PrintPadMap()
+    local state = C_GamePad.GetDeviceMappedState()
+    if not state then
+        print(ns.L.PADTEST_NONE)
+        return
+    end
+    local function dump(label, count, lookup)
+        local parts = {}
+        for index = 0, count - 1 do
+            parts[#parts + 1] = ("%d=%s"):format(index, name(lookup, index))
+        end
+        print(label .. table.concat(parts, ", "))
+    end
+    dump(ns.L.PADMAP_BUTTONS, state.buttonCount, C_GamePad.ButtonIndexToBinding)
+    dump(ns.L.PADMAP_AXES, state.axisCount, C_GamePad.AxisIndexToConfigName)
+    dump(ns.L.PADMAP_STICKS, state.stickCount, C_GamePad.StickIndexToConfigName)
 end

@@ -48,6 +48,7 @@ SlashCmdList["UBERMOCFOREVER"]("pad")
 SlashCmdList["UBERMOCFOREVER"]("debug")
 SlashCmdList["UBERMOCFOREVER"]("log")
 SlashCmdList["UBERMOCFOREVER"]("padtest")
+SlashCmdList["UBERMOCFOREVER"]("padmap")
 for _, h in ipairs(handlers) do
     if h.onUpdate then h.onUpdate(h, 1) end
 end
@@ -55,6 +56,7 @@ end
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")
 assert(ns.Pad.GetActive().id == 2, "active device")
+assert(out:find("0=PAD0"), "padmap lists buttons")
 assert(out:find("%(active%)") and out:find("%(combined%)"), "pad report flags")
 print = nil
 io.write("smoke test passed\n")

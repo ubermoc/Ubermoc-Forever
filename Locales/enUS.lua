@@ -16,5 +16,8 @@ ns.L = {
     PADTEST_NONE = "No controller state.",
     PADTEST_BUTTONS = "Buttons: ",
     PADTEST_AXES = "Axes: ",
-    HELP = "Commands: /ubf pad (list controllers), /ubf padtest (live button readout), /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
+    PADMAP_BUTTONS = "Buttons (index=binding, 0-based): ",
+    PADMAP_AXES = "Axes (index=name, 0-based): ",
+    PADMAP_STICKS = "Sticks (index=name, 0-based): ",
+    HELP = "Commands: /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
 }

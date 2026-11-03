@@ -47,6 +47,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         print(ns.db.debug and ns.L.DEBUG_ON or ns.L.DEBUG_OFF)
     elseif cmd == "pad" then
         ns.Pad.PrintReport()
+    elseif cmd == "padmap" then
+        ns.PrintPadMap()
     elseif cmd == "padtest" then
         ns.TogglePadTest()
     elseif cmd == "log" then
