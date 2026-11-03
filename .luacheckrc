@@ -11,6 +11,8 @@ globals = {
 
 read_globals = {
     "UIParent",
+    "C_Texture",
+    "date",
     "C_CVar",
     "InCombatLockdown",
     "SetOverrideBinding",

@@ -33,5 +33,6 @@ ns.L = {
     LAYOUT_BAR_USAGE = "Usage: /ubf layout bar <set 1-%d> <action bar 1-%d>. Sets are: 1 none, 2 Shift, 3 Ctrl, 4 Ctrl+Shift.",
     LAYOUT_BAR_SET = "Set %d (%s) now uses action bar %d.",
     LAYOUT_HELP = "Layout commands: /ubf layout on, off, status, reset, bind <slot> <button>, bar <set> <bar>",
-    HELP = "Commands: /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf layout (action bar layout), /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
+    SELFTEST_DONE = "Self test: %d passed, %d failed. Type /reload to save the results to disk.",
+    HELP = "Commands: /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf layout (action bar layout), /ubf selftest (check this game build), /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
 }

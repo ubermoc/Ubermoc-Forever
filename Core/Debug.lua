@@ -8,6 +8,18 @@ function ns.Log(text)
     if #buffer > MAX_LINES then
         table.remove(buffer, 1)
     end
+    -- Keep a copy in the saved variables so it can be read from disk after /reload.
+    if ns.db then
+        local saved = ns.db.log
+        if not saved then
+            saved = {}
+            ns.db.log = saved
+        end
+        saved[#saved + 1] = date("%Y-%m-%d %H:%M:%S") .. " " .. tostring(text)
+        if #saved > MAX_LINES then
+            table.remove(saved, 1)
+        end
+    end
     if ns.db and ns.db.debug then
         print("|cff66ccffUBF|r " .. tostring(text))
     end

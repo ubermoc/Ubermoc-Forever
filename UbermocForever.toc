@@ -12,6 +12,7 @@ Locales\enUS.lua
 Core\Init.lua
 Core\Compat.lua
 Core\Debug.lua
+Core\SelfTest.lua
 Input\GamePad.lua
 Input\PadTest.lua
 Input\Layout.lua

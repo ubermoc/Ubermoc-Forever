@@ -13,6 +13,8 @@ function CreateFrame()
 end
 function GetBuildInfo() return "1.60.1", "70707", "x", 16001 end
 function GetTime() return 1 end
+function date() return "2026-01-01 00:00:00" end
+C_Texture = { GetAtlasInfo = function(a) if a:find("xbox") then return {} end end }
 function geterrorhandler() return function() end end
 function seterrorhandler() end
 C_AddOns = { GetAddOnMetadata = function() return "test" end, IsAddOnLoaded = function() return false end }
@@ -47,7 +49,7 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Input/GamePad.lua", "Input/PadTest.lua", "Input/Layout.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/PadTest.lua", "Input/Layout.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -114,6 +116,12 @@ assert(bindings["SHIFT-PAD5"] == nil, "custom binding gone after reset")
 layout.Command("off")
 assert(count(bindings) == 0, "off clears bindings")
 assert(cvars.GamePadEmulateShift == "PADLTRIGGER" and cvars.GamePadEmulateCtrl == "PADLSHOULDER", "off restores cvars")
+
+ns.RunSelfTest()
+local saved = ns.db.selftest
+assert(saved and #saved.results >= 10, "self test stored results")
+assert(saved.failed >= 1, "missing atlas reported as failure")
+assert(#ns.db.log > 0, "log persisted to saved variables")
 
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")
