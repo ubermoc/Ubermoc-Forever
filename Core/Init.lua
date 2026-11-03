@@ -48,6 +48,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         print(ns.db.debug and ns.L.DEBUG_ON or ns.L.DEBUG_OFF)
     elseif cmd == "pad" then
         ns.Pad.PrintReport()
+    elseif cmd == "options" then
+        ns.Options.Toggle()
     elseif cmd == "selftest" then
         ns.RunSelfTest()
     elseif cmd == "layout" then

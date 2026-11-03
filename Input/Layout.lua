@@ -229,6 +229,90 @@ local function reapplyIfOn()
     end
 end
 
+-- Editing API, used by the slash command and the options window. Each change
+-- is applied at once when the layout is on.
+Layout.SLOT_COUNT = SLOT_COUNT
+Layout.MAX_BAR = MAX_BAR
+Layout.SETS = SETS
+Layout.EXTRA_ORDER = EXTRA_ORDER
+Layout.EXTRA_COMMAND_LIST = { "NONE", "TOGGLEGAMEMENU", "TOGGLEWORLDMAP", "TOGGLEAUTORUN", "INTERACTTARGET", "JUMP" }
+Layout.PADDLES = { "PADPADDLE1", "PADPADDLE2", "PADPADDLE3", "PADPADDLE4" }
+Layout.Config = config
+Layout.Friendly = friendly
+Layout.ValidKeys = validKeys
+
+function Layout.SetEnabled(on)
+    local c = config()
+    c.enabled = on and true or false
+    if c.enabled then
+        return Layout.Apply()
+    end
+    return Layout.Remove()
+end
+
+-- Returns true, or false and a reason: "invalid", "extra". Binding a key that
+-- another slot already uses swaps the two slots.
+function Layout.SetSlot(slot, key)
+    local c = config()
+    if not slot or slot < 1 or slot > SLOT_COUNT or not validKeys()[key] then
+        return false, "invalid"
+    end
+    if c.extras[key] then
+        return false, "extra"
+    end
+    if key == c.shiftButton or key == c.ctrlButton then
+        return false, "modifier"
+    end
+    for other = 1, SLOT_COUNT do
+        if other ~= slot and c.slots[other] == key then
+            c.slots[other] = c.slots[slot]
+        end
+    end
+    c.slots[slot] = key
+    reapplyIfOn()
+    return true
+end
+
+function Layout.SetBar(set, bar)
+    local c = config()
+    if not set or set < 1 or set > #SETS or not bar or bar < 1 or bar > MAX_BAR then
+        return false
+    end
+    c.bars[set] = bar
+    reapplyIfOn()
+    return true
+end
+
+function Layout.SetExtra(key, command)
+    local c = config()
+    if not c.extras[key] or not EXTRA_COMMANDS[command] then
+        return false
+    end
+    c.extras[key] = command
+    reapplyIfOn()
+    return true
+end
+
+-- which is "shift" or "ctrl"; key is one of PADDLES and must differ from the other modifier.
+function Layout.SetModifier(which, key)
+    local c = config()
+    local field = which == "shift" and "shiftButton" or "ctrlButton"
+    local otherField = which == "shift" and "ctrlButton" or "shiftButton"
+    if not key or c[otherField] == key or not key:match("^PADPADDLE%d$") then
+        return false
+    end
+    c[field] = key
+    reapplyIfOn()
+    return true
+end
+
+function Layout.ResetDefaults()
+    local c = config()
+    ns.db.layout = { enabled = c.enabled, backup = c.backup }
+    config()
+    reapplyIfOn()
+end
+
 -- /ubf layout <args>
 function Layout.Command(args)
     local c = config()
@@ -254,33 +338,22 @@ function Layout.Command(args)
         local slot, key = rest:match("^(%d+)%s+(%S+)$")
         slot = tonumber(slot)
         key = key and key:upper()
-        if not slot or slot < 1 or slot > SLOT_COUNT or not validKeys()[key] then
-            say("LAYOUT_BIND_USAGE", SLOT_COUNT)
-            return
-        end
-        for other = 1, SLOT_COUNT do
-            if other ~= slot and c.slots[other] == key then
-                say("LAYOUT_BIND_TAKEN", key, other)
-                return
-            end
-        end
-        if c.extras[key] then
+        local ok, reason = Layout.SetSlot(slot, key)
+        if ok then
+            say("LAYOUT_BIND_SET", slot, friendly(key))
+        elseif reason == "extra" then
             say("LAYOUT_KEY_EXTRA", friendly(key))
-            return
+        else
+            say("LAYOUT_BIND_USAGE", SLOT_COUNT)
         end
-        c.slots[slot] = key
-        say("LAYOUT_BIND_SET", slot, friendly(key))
-        reapplyIfOn()
     elseif word == "bar" then
         local set, bar = rest:match("^(%d+)%s+(%d+)$")
         set, bar = tonumber(set), tonumber(bar)
-        if not set or set < 1 or set > #SETS or not bar or bar < 1 or bar > MAX_BAR then
+        if Layout.SetBar(set, bar) then
+            say("LAYOUT_BAR_SET", set, SETS[set].label, bar)
+        else
             say("LAYOUT_BAR_USAGE", #SETS, MAX_BAR)
-            return
         end
-        c.bars[set] = bar
-        say("LAYOUT_BAR_SET", set, SETS[set].label, bar)
-        reapplyIfOn()
     elseif word == "extra" then
         local key, command = rest:match("^(%S+)%s+(%S+)$")
         if not key then
@@ -291,18 +364,14 @@ function Layout.Command(args)
             return
         end
         key, command = key:upper(), command:upper()
-        if not c.extras[key] or not EXTRA_COMMANDS[command] then
+        if Layout.SetExtra(key, command) then
+            say("LAYOUT_EXTRA_SET", friendly(key), command)
+        else
             say("LAYOUT_EXTRA_USAGE")
-            return
         end
-        c.extras[key] = command
-        say("LAYOUT_EXTRA_SET", friendly(key), command)
-        reapplyIfOn()
     elseif word == "reset" then
-        local wasOn = c.enabled
-        ns.db.layout = { enabled = wasOn, backup = c.backup }
+        Layout.ResetDefaults()
         say("LAYOUT_RESET")
-        reapplyIfOn()
     else
         say("LAYOUT_HELP")
     end

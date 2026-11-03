@@ -7,7 +7,7 @@ echo "== TOC / file list"
 python3 -I tools/check.py
 
 echo "== Lua syntax"
-for f in $(find Core Input Locales -name '*.lua'); do
+for f in $(find Core Input Locales UI -name '*.lua'); do
     lua -e "assert(loadfile('$f'))"
     echo "ok $f"
 done

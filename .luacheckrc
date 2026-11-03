@@ -11,6 +11,7 @@ globals = {
 
 read_globals = {
     "UIParent",
+    "UISpecialFrames",
     "C_Texture",
     "date",
     "C_CVar",

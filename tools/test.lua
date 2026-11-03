@@ -2,12 +2,22 @@
 local printed = {}
 function print(...) printed[#printed + 1] = table.concat({ ... }, " ") end
 local handlers = {}
-local noop = function() end
+local function proxy()
+    return setmetatable({}, { __index = function(t) return t end, __call = function(t) return t end })
+end
 UIParent = {}
-function CreateFrame()
-    local f = setmetatable({ events = {} }, { __index = function() return function() return setmetatable({}, { __index = function() return noop end }) end end })
+UISpecialFrames = {}
+function CreateFrame(_, name)
+    local f = setmetatable({ events = {}, scripts = {}, name = name, shown = false },
+        { __index = function() return proxy() end })
     function f:RegisterEvent(e) self.events[e] = true end
-    function f:SetScript(kind, fn) if kind == "OnUpdate" then self.onUpdate = fn else self.fn = fn end end
+    function f:SetScript(kind, fn)
+        self.scripts[kind] = fn
+        if kind == "OnEvent" then self.fn = fn elseif kind == "OnUpdate" then self.onUpdate = fn end
+    end
+    function f:Show() self.shown = true end
+    function f:Hide() self.shown = false end
+    function f:IsShown() return self.shown end
     handlers[#handlers + 1] = f
     return f
 end
@@ -53,7 +63,7 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/PadTest.lua", "Input/Layout.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/PadTest.lua", "Input/Layout.lua", "UI/Options.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -115,8 +125,10 @@ layout.Command("on")
 layout.Command("bind 1 PAD5")
 assert(bindings["PAD5"] == "ACTIONBUTTON1", "free key can be bound")
 assert(bindings["PAD3"] == nil, "old key released")
-layout.Command("bind 1 PAD4")  -- taken by slot 4
-assert(bindings["PAD5"] == "ACTIONBUTTON1", "duplicate rejected")
+layout.Command("bind 1 PAD4")  -- used by slot 4, so the two swap
+assert(bindings["PAD4"] == "ACTIONBUTTON1" and bindings["PAD5"] == "ACTIONBUTTON4", "duplicate swaps slots")
+layout.Command("bind 1 PAD5")
+assert(bindings["PAD5"] == "ACTIONBUTTON1" and bindings["PAD4"] == "ACTIONBUTTON4", "swap back")
 layout.Command("bind 1 NOPE")  -- unknown
 layout.Command("bar 2 5")
 assert(bindings["SHIFT-PAD5"] == "MULTIACTIONBAR4BUTTON1", "custom slot and bar")
@@ -132,6 +144,40 @@ assert(bindings["SHIFT-PAD5"] == nil, "custom binding gone after reset")
 layout.Command("off")
 assert(count(bindings) == 0, "off clears bindings")
 assert(cvars.GamePadEmulateShift == "PADLTRIGGER" and cvars.GamePadEmulateCtrl == "PADLSHOULDER", "off restores cvars")
+
+-- options window
+inCombat = true
+ns.Options.Toggle()
+local win
+for _, h in ipairs(handlers) do if h.name == "UbermocForeverOptions" then win = h end end
+assert(win == nil, "options window does not open in combat")
+inCombat = false
+ns.Options.Toggle()
+for _, h in ipairs(handlers) do if h.name == "UbermocForeverOptions" then win = h end end
+assert(win and win.shown, "options window opens")
+local press = win.scripts.OnGamePadButtonDown
+local cfg = ns.Layout.Config()
+press(win, "PADDDOWN")            -- slot 1 row
+press(win, "PAD1")                -- start capture
+press(win, "PADPADDLE1")          -- a modifier paddle is refused
+assert(cfg.slots[1] ~= "PADPADDLE1", "modifier paddle refused")
+press(win, "PADLSTICKUP")         -- stick direction is a valid slot button
+assert(cfg.slots[1] == "PADLSTICKUP", "capture assigns slot 1")
+press(win, "PADRSHOULDER")        -- page 2
+press(win, "PADDRIGHT")
+assert(cfg.shiftButton == "PADPADDLE2", "shift paddle cycles")
+press(win, "PADDDOWN")
+press(win, "PADDRIGHT")
+assert(cfg.ctrlButton == "PADPADDLE4", "ctrl paddle cycles")
+press(win, "PADDDOWN")
+press(win, "PADDRIGHT")
+assert(cfg.bars[1] == 2, "bar cycles")
+press(win, "PADRSHOULDER")        -- page 3
+press(win, "PADDRIGHT")
+assert(cfg.extras.PADFORWARD == "TOGGLEWORLDMAP", "extra command cycles")
+press(win, "PAD2")
+assert(not win.shown, "B closes the window")
+ns.Layout.ResetDefaults()
 
 ns.RunSelfTest()
 local saved = ns.db.selftest
