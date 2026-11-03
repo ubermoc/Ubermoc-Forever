@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased (0.4.0, not yet tested in the game)
+## 0.4.0
 - New options window, opened with `/ubf options`. Controller only: d-pad moves and changes values, A selects, B or Start closes, L1 and R1 change page.
 - Buttons page: turn the layout on or off, press A on a slot and then the button you want for it, reset to defaults.
 - Modifiers page: choose which paddles act as Shift and Ctrl, and which action bar each modifier set uses.
 - Other page: choose what Start, Select, L3, L4 and L5 do, run the self test, close.
 - Binding a button that another slot already uses now swaps the two slots instead of refusing.
 - The window closes by itself when combat starts and won't open during combat.
+- Checked in the game: while the window is open, button presses go only to the window and don't fire abilities underneath.
 
 ## 0.3.0
 - The layout now sets the other buttons itself, using the same choices your Ubermoc UI saved: Start opens the game menu, Select opens the world map, left stick click toggles auto-run, L4 (paddle 2) interacts with your target and L5 (paddle 4) jumps.
