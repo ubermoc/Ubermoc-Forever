@@ -11,9 +11,10 @@ local ROW_HEIGHT = 24
 local ROW_COUNT = 14
 local FIRST_ROW_Y = -64
 
--- How opaque the dark marble behind the rows is: 1 dark, 2 medium, 3 light.
-local SHADE_ALPHA = { 1, 0.45, 0 }
-local DEFAULT_SHADE = 2
+-- How opaque the dark marble behind the rows is, 0 to 100 percent. The older
+-- three-step setting maps to 100 (dark), 45 (medium) and 0 (light).
+local DEFAULT_OPACITY = 45
+local OLD_SHADES = { 100, 45, 0 }
 
 local frame
 local rowFrames = {}
@@ -32,13 +33,17 @@ local function cycle(list, current, step)
     return list[(position - 1 + step) % #list + 1]
 end
 
-local function shade()
-    return ns.db.optionsShade or DEFAULT_SHADE
+local function opacity()
+    if ns.db.optionsOpacity == nil then
+        ns.db.optionsOpacity = OLD_SHADES[ns.db.optionsShade or 0] or DEFAULT_OPACITY
+        ns.db.optionsShade = nil
+    end
+    return ns.db.optionsOpacity
 end
 
-local function applyShade()
+local function applyOpacity()
     if frame then
-        frame.InsetBg:SetAlpha(SHADE_ALPHA[shade()])
+        frame.InsetBg:SetAlpha(opacity() / 100)
     end
 end
 
@@ -94,14 +99,15 @@ local function buildRows()
             rows[#rows + 1] = { label = Layout.Friendly(key), value = c.extras[key],
                 onLeft = step(-1), onRight = step(1) }
         end
-        local function stepShade(delta)
+        local function stepOpacity(delta)
             return function()
-                ns.db.optionsShade = (shade() - 1 + delta) % #SHADE_ALPHA + 1
-                applyShade()
+                ns.db.optionsOpacity = math.max(0, math.min(100, opacity() + delta))
+                applyOpacity()
             end
         end
-        rows[#rows + 1] = { label = L.OPT_SHADE, value = L.OPT_SHADES[shade()],
-            onLeft = stepShade(-1), onRight = stepShade(1) }
+        rows[#rows + 1] = { label = L.OPT_OPACITY, value = L.OPT_PERCENT:format(opacity()),
+            onLeft = stepOpacity(-5), onRight = stepOpacity(5),
+            onFineLeft = stepOpacity(-1), onFineRight = stepOpacity(1) }
         rows[#rows + 1] = { label = L.OPT_SELFTEST, value = "", onActivate = ns.RunSelfTest }
         rows[#rows + 1] = { label = L.OPT_CLOSE, value = "", onActivate = function() Options.Hide() end }
     end
@@ -168,6 +174,10 @@ local function handleKey(key)
         if row.onLeft then row.onLeft() end
     elseif key == "PADDRIGHT" or key == "PADLSTICKRIGHT" then
         if row.onRight then row.onRight() end
+    elseif key == "PADLTRIGGER" then
+        if row.onFineLeft then row.onFineLeft() end
+    elseif key == "PADRTRIGGER" then
+        if row.onFineRight then row.onFineRight() end
     elseif key == "PAD1" then
         local action = row.onActivate or row.onRight
         if action then action() end
@@ -192,7 +202,7 @@ local function create()
     frame:SetFrameStrata("DIALOG")
     frame:EnableMouse(true)
     frame.TitleText:SetText(L.OPT_TITLE)
-    applyShade()
+    applyOpacity()
     table.insert(UISpecialFrames, "UbermocForeverOptions")
 
     header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+- The options window background is now an opacity setting from 0 to 100 percent, so you can pick anything between the old Medium and Dark. It starts at 45, the Medium you liked. Left and right change it by 5, and L2 and R2 by 1.
+- Your earlier Dark, Medium or Light choice is carried over (100, 45 or 0).
+
 ## 0.4.1
 - The options window's dark marble background was too dark. It now defaults to a lighter setting, and the Other page has a new "Window background" row to switch between Dark, Medium and Light.
 
