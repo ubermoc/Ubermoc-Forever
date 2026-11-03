@@ -5,6 +5,7 @@
 ## Version: @project-version@
 ## X-Copyright: Copyright (c) 2026 Marcos. All rights reserved.
 ## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1781086
 ## SavedVariables: UbermocForeverDB
 
 Locales\enUS.lua
