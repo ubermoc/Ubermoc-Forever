@@ -11,6 +11,10 @@ globals = {
 
 read_globals = {
     "UIParent",
+    "IsGamePadCursorControlEnabled",
+    "SetGamePadCursorControl",
+    "CanAutoSetGamePadCursorControl",
+    "_G",
     "UISpecialFrames",
     "C_Texture",
     "date",

@@ -31,6 +31,19 @@ function ns.RunSelfTest()
         add(results, "cvar " .. name .. " exists", value ~= nil, value)
     end
 
+    -- The game's own gamepad cursor: the right stick moves it, and it turns on when windows open.
+    for _, fn in ipairs({ "IsGamePadCursorControlEnabled", "SetGamePadCursorControl", "CanAutoSetGamePadCursorControl" }) do
+        add(results, fn, type(_G[fn]) == "function")
+    end
+    if type(IsGamePadCursorControlEnabled) == "function" then
+        add(results, "cursor control is on right now", true, IsGamePadCursorControlEnabled())
+    end
+    for _, name in ipairs({ "GamePadCursorLeftClick", "GamePadCursorRightClick", "GamePadCursorCentering",
+        "GamePadCursorForTargeting", "GamePadEmulateEsc" }) do
+        local value = C_CVar.GetCVar(name)
+        add(results, "cvar " .. name .. " exists", value ~= nil, value)
+    end
+
     local atlasApi = C_Texture and C_Texture.GetAtlasInfo
     for _, atlas in ipairs(ATLASES) do
         add(results, "atlas " .. atlas, atlasApi and atlasApi(atlas) ~= nil)

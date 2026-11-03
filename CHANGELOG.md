@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.4
+- `/ubf selftest` now also reads the game's own gamepad cursor: whether its on/off functions exist, whether it is on right now, and the current values of its click-button and centering settings. This is for planning how the layout should share R1 and R2 with the cursor's clicks.
+
 ## 0.4.3
 - The window background setting is now called "Window background tint" and still sets how dark the marble behind the rows is, 0 to 100.
 - New "Window background opacity" row right below it. It fades the whole window background from 0, completely see-through, to 100, fully showing. The text and border stay readable. It starts at 100.
