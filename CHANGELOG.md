@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+- The layout now sets the other buttons itself, using the same choices your Ubermoc UI saved: Start opens the game menu, Select opens the world map, left stick click toggles auto-run, L4 (paddle 2) interacts with your target and L5 (paddle 4) jumps.
+- These buttons work in every modifier set, so jump and interact still work while R4 or R5 is held.
+- `/ubf layout extra` lists them and `/ubf layout extra <button> <command>` changes one. Commands: TOGGLEGAMEMENU, TOGGLEWORLDMAP, TOGGLEAUTORUN, INTERACTTARGET, JUMP, NONE.
+- `/ubf layout status` and `/ubf selftest` check these buttons too.
+- Note: binds your other addon saved to the game stay in effect after it is turned off. This layout overrides the buttons it uses, so those leftovers no longer matter for them.
+
 ## 0.2.2
 - New command `/ubf selftest` checks the controller functions, the paddle Shift/Ctrl settings, a few Blizzard button icons and your layout on whatever game build you run it on. It prints the failures and saves every result.
 - The debug log is now also saved with your settings, so it survives `/reload`. After a `/reload` the results can be read straight from the saved-variables file without a screenshot.

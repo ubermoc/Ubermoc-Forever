@@ -28,6 +28,24 @@ local SETS = {
 local DEFAULT_BARS = { 1, 2, 3, 4 }
 local MAX_BAR = 8
 
+-- Buttons outside the 12 bar slots, with the game command each one runs. They
+-- are bound in every modifier set, so they work while a paddle is held too.
+-- Order is the order they are listed in.
+local EXTRA_ORDER = { "PADFORWARD", "PADBACK", "PADLSTICK", "PADPADDLE2", "PADPADDLE4" }
+local DEFAULT_EXTRAS = {
+    PADFORWARD = "TOGGLEGAMEMENU",
+    PADBACK = "TOGGLEWORLDMAP",
+    PADLSTICK = "TOGGLEAUTORUN",
+    PADPADDLE2 = "INTERACTTARGET",
+    PADPADDLE4 = "JUMP",
+}
+-- Commands that can be chosen for an extra button, checked against the game's
+-- own binding list. NONE leaves the button unbound.
+local EXTRA_COMMANDS = {
+    NONE = true, TOGGLEGAMEMENU = true, TOGGLEWORLDMAP = true,
+    TOGGLEAUTORUN = true, INTERACTTARGET = true, JUMP = true,
+}
+
 local DEFAULT_SHIFT_BUTTON = "PADPADDLE1"
 local DEFAULT_CTRL_BUTTON = "PADPADDLE3"
 
@@ -35,7 +53,8 @@ local FRIENDLY = {
     PAD1 = "A", PAD2 = "B", PAD3 = "X", PAD4 = "Y",
     PADDUP = "D-pad up", PADDRIGHT = "D-pad right", PADDDOWN = "D-pad down", PADDLEFT = "D-pad left",
     PADLSHOULDER = "L1", PADRSHOULDER = "R1", PADLTRIGGER = "L2", PADRTRIGGER = "R2",
-    PADPADDLE1 = "R4", PADPADDLE3 = "R5",
+    PADPADDLE1 = "R4", PADPADDLE2 = "L4", PADPADDLE3 = "R5", PADPADDLE4 = "L5",
+    PADFORWARD = "Start", PADBACK = "Select", PADLSTICK = "L3", PADRSTICK = "R3",
 }
 
 local owner = CreateFrame("Frame")
@@ -79,6 +98,10 @@ local function config()
     for set = 1, #SETS do
         c.bars[set] = c.bars[set] or DEFAULT_BARS[set]
     end
+    c.extras = c.extras or {}
+    for _, key in ipairs(EXTRA_ORDER) do
+        c.extras[key] = c.extras[key] or DEFAULT_EXTRAS[key]
+    end
     c.shiftButton = c.shiftButton or DEFAULT_SHIFT_BUTTON
     c.ctrlButton = c.ctrlButton or DEFAULT_CTRL_BUTTON
     return c
@@ -108,6 +131,12 @@ local function bindAll(c)
         for slot = 1, SLOT_COUNT do
             SetOverrideBinding(owner, true, def.prefix .. c.slots[slot], command .. slot)
             count = count + 1
+        end
+        for _, key in ipairs(EXTRA_ORDER) do
+            if c.extras[key] ~= "NONE" then
+                SetOverrideBinding(owner, true, def.prefix .. key, c.extras[key])
+                count = count + 1
+            end
         end
     end
     return count
@@ -173,6 +202,22 @@ function Layout.PrintStatus()
         parts[#parts + 1] = slot .. "=" .. (FRIENDLY[c.slots[slot]] or c.slots[slot])
     end
     print(table.concat(parts, ", "))
+
+    local extraOk, extraTotal, names = 0, 0, {}
+    for _, key in ipairs(EXTRA_ORDER) do
+        local command = c.extras[key]
+        names[#names + 1] = (FRIENDLY[key] or key) .. "=" .. command
+        if command ~= "NONE" then
+            for _, def in ipairs(SETS) do
+                extraTotal = extraTotal + 1
+                if GetBindingAction(def.prefix .. key, true) == command then
+                    extraOk = extraOk + 1
+                end
+            end
+        end
+    end
+    say("LAYOUT_EXTRAS", extraOk, extraTotal)
+    print(table.concat(names, ", "))
 end
 
 local function reapplyIfOn()
@@ -219,6 +264,10 @@ function Layout.Command(args)
                 return
             end
         end
+        if c.extras[key] then
+            say("LAYOUT_KEY_EXTRA", friendly(key))
+            return
+        end
         c.slots[slot] = key
         say("LAYOUT_BIND_SET", slot, friendly(key))
         reapplyIfOn()
@@ -231,6 +280,23 @@ function Layout.Command(args)
         end
         c.bars[set] = bar
         say("LAYOUT_BAR_SET", set, SETS[set].label, bar)
+        reapplyIfOn()
+    elseif word == "extra" then
+        local key, command = rest:match("^(%S+)%s+(%S+)$")
+        if not key then
+            for _, extraKey in ipairs(EXTRA_ORDER) do
+                print(("%s = %s"):format(friendly(extraKey), c.extras[extraKey]))
+            end
+            say("LAYOUT_EXTRA_USAGE")
+            return
+        end
+        key, command = key:upper(), command:upper()
+        if not c.extras[key] or not EXTRA_COMMANDS[command] then
+            say("LAYOUT_EXTRA_USAGE")
+            return
+        end
+        c.extras[key] = command
+        say("LAYOUT_EXTRA_SET", friendly(key), command)
         reapplyIfOn()
     elseif word == "reset" then
         local wasOn = c.enabled

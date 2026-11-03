@@ -45,6 +45,16 @@ function ns.RunSelfTest()
             end
         end
         add(results, "layout main bar bound", ok == 12, ok .. " of 12")
+        local extraOk, extraTotal = 0, 0
+        for key, command in pairs(c.extras or {}) do
+            if command ~= "NONE" then
+                extraTotal = extraTotal + 1
+                if GetBindingAction(key, true) == command then
+                    extraOk = extraOk + 1
+                end
+            end
+        end
+        add(results, "layout other buttons bound", extraOk == extraTotal, extraOk .. " of " .. extraTotal)
     end
 
     local failed = 0

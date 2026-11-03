@@ -40,7 +40,11 @@ C_GamePad = {
             buttons = { false, true, false }, axes = { 0, 0.5 }, sticks = { { x = 0.5, y = 0, len = 0.5 } } }
     end,
     ButtonIndexToBinding = function(i)
-        local names = { [0] = "PADDUP", "PADDRIGHT", "PADDDOWN", "PADDLEFT", "PAD1", "PAD2", "PAD3", "PAD4", "PAD5", "PAD6" }
+        local names = { [0] = "PADDUP", "PADDRIGHT", "PADDDOWN", "PADDLEFT", "PAD1", "PAD2", "PAD3", "PAD4", "PAD5", "PAD6",
+            "PADLSTICK", "PADRSTICK", "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER",
+            "PADLSTICKUP", "PADLSTICKRIGHT", "PADLSTICKDOWN", "PADLSTICKLEFT",
+            "PADRSTICKUP", "PADRSTICKRIGHT", "PADRSTICKDOWN", "PADRSTICKLEFT",
+            "PADPADDLE1", "PADPADDLE2", "PADPADDLE3", "PADPADDLE4", "PADFORWARD", "PADBACK", "PADSYSTEM", "PADSOCIAL" }
         return names[i] or ("PADX" .. i)
     end,
     AxisIndexToConfigName = function(i) return "Axis" .. i end,
@@ -75,7 +79,7 @@ local layout = ns.Layout
 -- layout is off until enabled
 assert(count(bindings) == 0, "layout starts off")
 layout.Command("on")
-assert(count(bindings) == 48, "48 bindings, got " .. count(bindings))
+assert(count(bindings) == 68, "68 bindings, got " .. count(bindings))
 assert(bindings["PAD3"] == "ACTIONBUTTON1", "X is slot 1")
 assert(bindings["PAD1"] == "ACTIONBUTTON2", "A is slot 2")
 assert(bindings["PADLTRIGGER"] == "ACTIONBUTTON12", "L2 is slot 12")
@@ -84,6 +88,18 @@ assert(bindings["CTRL-PAD3"] == "MULTIACTIONBAR2BUTTON1", "ctrl set is bar 3")
 assert(bindings["CTRL-SHIFT-PADDUP"] == "MULTIACTIONBAR3BUTTON8", "both set is bar 4")
 assert(cvars.GamePadEmulateShift == "PADPADDLE1" and cvars.GamePadEmulateCtrl == "PADPADDLE3", "paddles emulate modifiers")
 
+assert(bindings["PADFORWARD"] == "TOGGLEGAMEMENU", "Start opens the game menu")
+assert(bindings["PADBACK"] == "TOGGLEWORLDMAP", "Select opens the map")
+assert(bindings["PADLSTICK"] == "TOGGLEAUTORUN", "L3 auto-runs")
+assert(bindings["PADPADDLE2"] == "INTERACTTARGET", "L4 interacts")
+assert(bindings["PADPADDLE4"] == "JUMP", "L5 jumps")
+assert(bindings["CTRL-SHIFT-PADPADDLE4"] == "JUMP", "L5 jumps with both modifiers held")
+layout.Command("extra PADPADDLE4 NONE")
+assert(bindings["PADPADDLE4"] == nil and count(bindings) == 64, "extra can be unbound")
+layout.Command("extra PADPADDLE4 JUMP")
+layout.Command("extra PAD1 JUMP")
+layout.Command("bind 2 PADFORWARD")
+assert(bindings["PAD1"] == "ACTIONBUTTON2", "extra keys are protected from slot binds")
 layout.Command("status")
 layout.Command("off")
 cvars.GamePadEmulateShift = nil
@@ -91,7 +107,7 @@ cvars.GamePadEmulateCtrl = nil
 local mark = #printed
 layout.Command("on")
 assert(table.concat(printed, "\n", mark + 1):find("did not accept"), "missing cvars reported")
-assert(count(bindings) == 48, "bindings still applied without cvars")
+assert(count(bindings) == 68, "bindings still applied without cvars")
 layout.Command("off")
 cvars.GamePadEmulateShift = "PADLTRIGGER"
 cvars.GamePadEmulateCtrl = "PADLSHOULDER"
