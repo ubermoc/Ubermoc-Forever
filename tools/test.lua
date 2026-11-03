@@ -29,7 +29,11 @@ function geterrorhandler() return function() end end
 function seterrorhandler() end
 C_AddOns = { GetAddOnMetadata = function() return "test" end, IsAddOnLoaded = function() return false end }
 SlashCmdList = {}
-local cvars = { GamePadEmulateShift = "PADLTRIGGER", GamePadEmulateCtrl = "PADLSHOULDER" }
+local cursorOn = false
+function IsGamePadCursorControlEnabled() return cursorOn end
+function SetGamePadCursorControl(on) cursorOn = on end
+local cvars = { GamePadEmulateShift = "PADLTRIGGER", GamePadEmulateCtrl = "PADLSHOULDER",
+    GamePadCursorLeftClick = "PADRTRIGGER", GamePadCursorRightClick = "PADRSHOULDER", GamePadCursorCentering = "0" }
 C_CVar = {
     GetCVar = function(n) return cvars[n] end,
     SetCVar = function(n, v) assert(cvars[n] ~= nil, "unknown cvar") cvars[n] = v end,
@@ -198,6 +202,26 @@ assert(ns.db.optionsTint == 80 and ns.db.optionsOpacity == 95, "0.4.2 tint carri
 ns.db.optionsTint, ns.db.optionsOpacity, ns.db.optionsShade = nil, nil, 1
 press(win, "PADDLEFT")
 assert(ns.db.optionsTint == 100 and ns.db.optionsShade == nil and ns.db.optionsOpacity == 95, "0.4.1 dark step carried over")
+press(win, "PADRSHOULDER")                   -- cursor page
+press(win, "PADDRIGHT")
+assert(cvars.GamePadCursorLeftClick == "PADRSHOULDER", "left click button cycles")
+press(win, "PADDLEFT")
+press(win, "PADDLEFT")
+assert(cvars.GamePadCursorLeftClick == "PADFORWARD", "left click button wraps")
+press(win, "PADDDOWN")
+press(win, "PADDRIGHT")
+assert(cvars.GamePadCursorRightClick == "PADLTRIGGER", "right click button cycles")
+press(win, "PADDDOWN")
+press(win, "PADDRIGHT")
+assert(cvars.GamePadCursorCentering == "1", "centering toggles on")
+press(win, "PADDDOWN")
+press(win, "PAD1")
+assert(cursorOn == true, "cursor can be turned on from the window")
+press(win, "PADDDOWN")
+press(win, "PAD1")
+assert(cvars.GamePadCursorLeftClick == "PADRTRIGGER" and cvars.GamePadCursorRightClick == "PADRSHOULDER"
+    and cvars.GamePadCursorCentering == "0", "cursor settings reset")
+press(win, "PADRSHOULDER")                   -- back around to the first page
 press(win, "PAD2")
 assert(not win.shown, "B closes the window")
 ns.Layout.ResetDefaults()

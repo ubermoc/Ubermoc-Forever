@@ -19,6 +19,13 @@ local DEFAULT_TINT = 45
 local DEFAULT_OPACITY = 100
 local OLD_SHADES = { 100, 45, 0 }
 
+-- The game's own gamepad cursor: the right stick moves it, and two buttons click.
+-- Click buttons the community guide lists as accepted; defaults are R2 and R1.
+local CLICK_BUTTONS = { "PADRTRIGGER", "PADRSHOULDER", "PADLTRIGGER", "PADLSHOULDER", "PADBACK", "PADFORWARD" }
+local CURSOR_DEFAULTS = { GamePadCursorLeftClick = "PADRTRIGGER", GamePadCursorRightClick = "PADRSHOULDER",
+    GamePadCursorCentering = "0" }
+local PAGE_COUNT = 4
+
 local frame
 local rowFrames = {}
 local header, hint, status
@@ -59,6 +66,13 @@ local function applyBackground()
     if frame then
         frame.Bg:SetAlpha(opacity() / 100)
         frame.InsetBg:SetAlpha(tint() / 100 * opacity() / 100)
+    end
+end
+
+local function setCursorCVar(name, value)
+    local ok = pcall(C_CVar.SetCVar, name, value)
+    if not ok or C_CVar.GetCVar(name) ~= value then
+        message = L.OPT_CVAR_REFUSED:format(name)
     end
 end
 
@@ -103,6 +117,35 @@ local function buildRows()
             rows[#rows + 1] = { label = L.OPT_SET:format(def.label), value = L.OPT_BAR:format(c.bars[set]),
                 onLeft = step(-1), onRight = step(1) }
         end
+
+    elseif page == 4 then
+        local function clickRow(label, name)
+            local function step(delta)
+                return function()
+                    setCursorCVar(name, cycle(CLICK_BUTTONS, C_CVar.GetCVar(name), delta))
+                end
+            end
+            return { label = label, value = Layout.Friendly(C_CVar.GetCVar(name) or "?"),
+                onLeft = step(-1), onRight = step(1) }
+        end
+        rows[#rows + 1] = clickRow(L.OPT_CURSOR_LEFT, "GamePadCursorLeftClick")
+        rows[#rows + 1] = clickRow(L.OPT_CURSOR_RIGHT, "GamePadCursorRightClick")
+        local function toggleCentering()
+            setCursorCVar("GamePadCursorCentering", C_CVar.GetCVar("GamePadCursorCentering") == "1" and "0" or "1")
+        end
+        rows[#rows + 1] = { label = L.OPT_CURSOR_CENTER,
+            value = C_CVar.GetCVar("GamePadCursorCentering") == "1" and L.YES or L.NO,
+            onLeft = toggleCentering, onRight = toggleCentering, onActivate = toggleCentering }
+        local function toggleCursor()
+            SetGamePadCursorControl(not IsGamePadCursorControlEnabled())
+        end
+        rows[#rows + 1] = { label = L.OPT_CURSOR_NOW, value = IsGamePadCursorControlEnabled() and L.YES or L.NO,
+            onLeft = toggleCursor, onRight = toggleCursor, onActivate = toggleCursor }
+        rows[#rows + 1] = { label = L.OPT_CURSOR_RESET, value = "", onActivate = function()
+            for name, value in pairs(CURSOR_DEFAULTS) do
+                setCursorCVar(name, value)
+            end
+        end }
 
     else
         for _, key in ipairs(Layout.EXTRA_ORDER) do
@@ -152,7 +195,7 @@ local function render()
             row:Hide()
         end
     end
-    local names = { L.OPT_PAGE_BUTTONS, L.OPT_PAGE_MODIFIERS, L.OPT_PAGE_OTHER }
+    local names = { L.OPT_PAGE_BUTTONS, L.OPT_PAGE_MODIFIERS, L.OPT_PAGE_OTHER, L.OPT_PAGE_CURSOR }
     names[page] = "[" .. names[page] .. "]"
     header:SetText("L1  " .. table.concat(names, "   ") .. "  R1")
     hint:SetText(captureSlot and L.OPT_CAPTURE:format(captureSlot) or L.OPT_HINT)
@@ -201,10 +244,10 @@ local function handleKey(key)
         local action = row.onActivate or row.onRight
         if action then action() end
     elseif key == "PADLSHOULDER" then
-        page = (page - 2) % 3 + 1
+        page = (page - 2) % PAGE_COUNT + 1
         index = 1
     elseif key == "PADRSHOULDER" then
-        page = page % 3 + 1
+        page = page % PAGE_COUNT + 1
         index = 1
     elseif key == "PAD2" or key == "PADBACK" or key == "PADFORWARD" then
         Options.Hide()

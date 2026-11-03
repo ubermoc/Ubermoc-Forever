@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+- New Cursor page in the options window, for the game's own gamepad cursor (the right stick moves it, and it turns on when you open bags, loot, the map or the game menu). It sets which button left-clicks and which right-clicks (the game's defaults are R2 and R1), turns cursor centering on or off, switches the cursor on or off right now, and resets all of this to the game's defaults.
+- L1 and R1 now cycle through four pages.
+- The self test now records whether the cursor is on at the moment you run it.
+
 ## 0.4.4
 - `/ubf selftest` now also reads the game's own gamepad cursor: whether its on/off functions exist, whether it is on right now, and the current values of its click-button and centering settings. This is for planning how the layout should share R1 and R2 with the cursor's clicks.
 

@@ -36,7 +36,7 @@ function ns.RunSelfTest()
         add(results, fn, type(_G[fn]) == "function")
     end
     if type(IsGamePadCursorControlEnabled) == "function" then
-        add(results, "cursor control is on right now", true, IsGamePadCursorControlEnabled())
+        add(results, "cursor control is on right now", true, tostring(IsGamePadCursorControlEnabled()))
     end
     for _, name in ipairs({ "GamePadCursorLeftClick", "GamePadCursorRightClick", "GamePadCursorCentering",
         "GamePadCursorForTargeting", "GamePadEmulateEsc" }) do
