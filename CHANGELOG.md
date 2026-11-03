@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.3
+- The window background setting is now called "Window background tint" and still sets how dark the marble behind the rows is, 0 to 100.
+- New "Window background opacity" row right below it. It fades the whole window background from 0, completely see-through, to 100, fully showing. The text and border stay readable. It starts at 100.
+- Both rows change by 5 with left and right and by 1 with L2 and R2. Your earlier setting is kept as the tint.
+
 ## 0.4.2
 - The options window background is now an opacity setting from 0 to 100 percent, so you can pick anything between the old Medium and Dark. It starts at 45, the Medium you liked. Left and right change it by 5, and L2 and R2 by 1.
 - Your earlier Dark, Medium or Light choice is carried over (100, 45 or 0).

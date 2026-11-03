@@ -11,9 +11,12 @@ local ROW_HEIGHT = 24
 local ROW_COUNT = 14
 local FIRST_ROW_Y = -64
 
--- How opaque the dark marble behind the rows is, 0 to 100 percent. The older
--- three-step setting maps to 100 (dark), 45 (medium) and 0 (light).
-local DEFAULT_OPACITY = 45
+-- Tint is how dark the marble behind the rows is, 0 to 100. Opacity fades the
+-- whole window background, 0 fully see-through to 100 fully showing. Version
+-- 0.4.2 stored the tint as optionsOpacity and 0.4.1 stored a 1 to 3 step as
+-- optionsShade, so both are carried over.
+local DEFAULT_TINT = 45
+local DEFAULT_OPACITY = 100
 local OLD_SHADES = { 100, 45, 0 }
 
 local frame
@@ -33,17 +36,29 @@ local function cycle(list, current, step)
     return list[(position - 1 + step) % #list + 1]
 end
 
-local function opacity()
-    if ns.db.optionsOpacity == nil then
-        ns.db.optionsOpacity = OLD_SHADES[ns.db.optionsShade or 0] or DEFAULT_OPACITY
-        ns.db.optionsShade = nil
+local function migrate()
+    local db = ns.db
+    if db.optionsTint == nil then
+        db.optionsTint = db.optionsOpacity or OLD_SHADES[db.optionsShade or 0] or DEFAULT_TINT
+        db.optionsOpacity = nil
+        db.optionsShade = nil
     end
-    return ns.db.optionsOpacity
 end
 
-local function applyOpacity()
+local function tint()
+    migrate()
+    return ns.db.optionsTint
+end
+
+local function opacity()
+    migrate()
+    return ns.db.optionsOpacity or DEFAULT_OPACITY
+end
+
+local function applyBackground()
     if frame then
-        frame.InsetBg:SetAlpha(opacity() / 100)
+        frame.Bg:SetAlpha(opacity() / 100)
+        frame.InsetBg:SetAlpha(tint() / 100 * opacity() / 100)
     end
 end
 
@@ -99,15 +114,19 @@ local function buildRows()
             rows[#rows + 1] = { label = Layout.Friendly(key), value = c.extras[key],
                 onLeft = step(-1), onRight = step(1) }
         end
-        local function stepOpacity(delta)
+        local function stepSetting(field, read, delta)
             return function()
-                ns.db.optionsOpacity = math.max(0, math.min(100, opacity() + delta))
-                applyOpacity()
+                migrate()
+                ns.db[field] = math.max(0, math.min(100, read() + delta))
+                applyBackground()
             end
         end
+        rows[#rows + 1] = { label = L.OPT_TINT, value = L.OPT_PERCENT:format(tint()),
+            onLeft = stepSetting("optionsTint", tint, -5), onRight = stepSetting("optionsTint", tint, 5),
+            onFineLeft = stepSetting("optionsTint", tint, -1), onFineRight = stepSetting("optionsTint", tint, 1) }
         rows[#rows + 1] = { label = L.OPT_OPACITY, value = L.OPT_PERCENT:format(opacity()),
-            onLeft = stepOpacity(-5), onRight = stepOpacity(5),
-            onFineLeft = stepOpacity(-1), onFineRight = stepOpacity(1) }
+            onLeft = stepSetting("optionsOpacity", opacity, -5), onRight = stepSetting("optionsOpacity", opacity, 5),
+            onFineLeft = stepSetting("optionsOpacity", opacity, -1), onFineRight = stepSetting("optionsOpacity", opacity, 1) }
         rows[#rows + 1] = { label = L.OPT_SELFTEST, value = "", onActivate = ns.RunSelfTest }
         rows[#rows + 1] = { label = L.OPT_CLOSE, value = "", onActivate = function() Options.Hide() end }
     end
@@ -202,7 +221,7 @@ local function create()
     frame:SetFrameStrata("DIALOG")
     frame:EnableMouse(true)
     frame.TitleText:SetText(L.OPT_TITLE)
-    applyOpacity()
+    applyBackground()
     table.insert(UISpecialFrames, "UbermocForeverOptions")
 
     header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")

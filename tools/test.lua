@@ -175,23 +175,29 @@ assert(cfg.bars[1] == 2, "bar cycles")
 press(win, "PADRSHOULDER")        -- page 3
 press(win, "PADDRIGHT")
 assert(cfg.extras.PADFORWARD == "TOGGLEWORLDMAP", "extra command cycles")
-for _ = 1, 5 do press(win, "PADDDOWN") end   -- window background opacity row
-assert(ns.db.optionsOpacity == nil or ns.db.optionsOpacity == 45, "opacity defaults to 45")
+for _ = 1, 5 do press(win, "PADDDOWN") end   -- window background tint row
 press(win, "PADDRIGHT")
-assert(ns.db.optionsOpacity == 50, "opacity steps by 5")
+assert(ns.db.optionsTint == 50, "tint steps by 5 from 45")
 press(win, "PADRTRIGGER")
-assert(ns.db.optionsOpacity == 51, "trigger steps by 1")
-press(win, "PADLTRIGGER")
+assert(ns.db.optionsTint == 51, "trigger steps tint by 1")
+for _ = 1, 30 do press(win, "PADDLEFT") end
+assert(ns.db.optionsTint == 0, "tint stops at 0")
+press(win, "PADDDOWN")                       -- window background opacity row
 press(win, "PADDLEFT")
-assert(ns.db.optionsOpacity == 45, "opacity steps back")
+assert(ns.db.optionsOpacity == 95, "opacity starts at 100 and steps by 5")
+press(win, "PADRTRIGGER")
+assert(ns.db.optionsOpacity == 96, "trigger steps opacity by 1")
 for _ = 1, 30 do press(win, "PADDRIGHT") end
 assert(ns.db.optionsOpacity == 100, "opacity stops at 100")
 for _ = 1, 30 do press(win, "PADDLEFT") end
 assert(ns.db.optionsOpacity == 0, "opacity stops at 0")
-ns.db.optionsOpacity = nil               -- the old three-step setting is carried over
-ns.db.optionsShade = 1
+-- a 0.4.2 save stored the tint as optionsOpacity
+ns.db.optionsTint, ns.db.optionsOpacity = nil, 80
 press(win, "PADDLEFT")
-assert(ns.db.optionsOpacity == 95 and ns.db.optionsShade == nil, "old dark setting becomes 100, then steps")
+assert(ns.db.optionsTint == 80 and ns.db.optionsOpacity == 95, "0.4.2 tint carried over, opacity restarts at 100 then steps")
+ns.db.optionsTint, ns.db.optionsOpacity, ns.db.optionsShade = nil, nil, 1
+press(win, "PADDLEFT")
+assert(ns.db.optionsTint == 100 and ns.db.optionsShade == nil and ns.db.optionsOpacity == 95, "0.4.1 dark step carried over")
 press(win, "PAD2")
 assert(not win.shown, "B closes the window")
 ns.Layout.ResetDefaults()

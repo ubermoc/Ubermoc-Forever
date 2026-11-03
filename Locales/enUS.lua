@@ -48,6 +48,7 @@ ns.L = {
     OPT_CTRL_PADDLE = "Ctrl paddle",
     OPT_SET = "Hold %s: action bar",
     OPT_BAR = "Bar %d",
+    OPT_TINT = "Window background tint",
     OPT_OPACITY = "Window background opacity",
     OPT_PERCENT = "%d%%",
     OPT_SELFTEST = "Run self test",
