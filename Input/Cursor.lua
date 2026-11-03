@@ -140,9 +140,11 @@ local function visit(child, out, depth)
     end
     if NODE_TYPES[child:GetObjectType()] and child:IsMouseEnabled() and child:IsVisible() then
         local cx, cy = child:GetCenter()
-        if cx and cy then
+        local left, bottom, width, height = child:GetRect()
+        if cx and cy and left then
             local scale = child:GetEffectiveScale()
-            out[#out + 1] = { frame = child, x = cx * scale, y = cy * scale }
+            out[#out + 1] = { frame = child, x = cx * scale, y = cy * scale,
+                l = left * scale, b = bottom * scale, r = (left + width) * scale, t = (bottom + height) * scale }
         end
     end
     if depth < MAX_DEPTH then
@@ -191,6 +193,32 @@ function Cursor.Pick(candidates, ox, oy, direction)
     return best
 end
 
+-- The node the cursor is on (the smallest one when they overlap), or nil.
+function Cursor.Containing(candidates, ox, oy)
+    local best, bestArea
+    for _, c in ipairs(candidates) do
+        if c.l and ox >= c.l and ox <= c.r and oy >= c.b and oy <= c.t then
+            local area = (c.r - c.l) * (c.t - c.b)
+            if not bestArea or area < bestArea then
+                best, bestArea = c, area
+            end
+        end
+    end
+    return best
+end
+
+-- The closest node in any direction, for when the cursor is not on anything yet.
+function Cursor.Nearest(candidates, ox, oy)
+    local best, bestDistance
+    for _, c in ipairs(candidates) do
+        local distance = (c.x - ox) ^ 2 + (c.y - oy) ^ 2
+        if not bestDistance or distance < bestDistance then
+            best, bestDistance = c, distance
+        end
+    end
+    return best
+end
+
 -- SetCursorPosition's units are not written down: a first guess is checked on the
 -- next frame against where the cursor really landed, and corrected from then on.
 local calibration = { factor = nil }
@@ -231,7 +259,15 @@ end
 
 function Cursor.Snap(direction)
     local ox, oy = GetCursorPosition()
-    local target = Cursor.Pick(Cursor.Nodes(), ox, oy, direction)
+    local nodes = Cursor.Nodes()
+    local target
+    if Cursor.Containing(nodes, ox, oy) then
+        target = Cursor.Pick(nodes, ox, oy, direction)
+    else
+        -- Not on a button yet (a menu just opened): the first press goes to the nearest one.
+        target = Cursor.Nearest(nodes, ox, oy)
+        ns.Log("snap " .. direction .. ": cursor was not on a button, going to the nearest")
+    end
     if not target then
         ns.Log("snap " .. direction .. ": nothing that way")
         return false
@@ -256,11 +292,22 @@ function Cursor.Scroll(delta)
     end
 end
 
--- Back: close windows, and if none were open give the stick back to the camera.
+-- Back does what Esc does. The game's Esc path closes dialogs, menus, the settings panel,
+-- windows and bags in order, which closing the windows alone does not. If nothing claims
+-- it, Esc would open the game menu, so a menu that was not open before is put away again.
 function Cursor.Back()
-    local closed = CloseAllWindows()
-    if not closed and enabled() then
-        SetGamePadCursorControl(false)
+    local menuWasShown = shown(_G.GameMenuFrame)
+    local ok = type(ToggleGameMenu) == "function" and pcall(ToggleGameMenu)
+    if ok then
+        if not menuWasShown and shown(_G.GameMenuFrame) then
+            pcall(HideUIPanel, _G.GameMenuFrame)
+            ns.Log("back: nothing claimed it, game menu put away")
+        end
+    else
+        local closed = CloseAllWindows()
+        if not closed and enabled() then
+            SetGamePadCursorControl(false)
+        end
     end
     weEnabledIt = false
 end

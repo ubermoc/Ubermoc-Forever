@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.4
+- B and Start now do what Esc does. They go through the game's own Esc path (`ToggleGameMenu`), which closes pop-up dialogs, the settings panel, menus, windows and bags in the right order, and in the same order on Midnight and Forever (both builds' code checked). Before, they only closed windows, so a pop-up dialog or the settings panel could not be backed out of. If nothing claims the press and Esc would open the game menu, the menu is put away again.
+- The first D-pad press in a menu goes to the nearest button when the cursor is not on one yet (a freshly opened game menu, a pop-up), instead of doing nothing. After that the D-pad moves from button to button as before. The game only allows the cursor to be placed in answer to a controller press, so it cannot jump there by itself when a menu opens.
+- Checked against the game's code on both builds: the game menu is a normal window panel, so the cursor, A (click) and B (back) work in it, and A on the new Ubermoc Forever button opens the options.
+
 ## 0.8.3
 - The game menu (Esc, or Start with the controller) now has an "Ubermoc Forever" button at the very top, in the menu's own button style, that opens the options window. It is added each time the menu opens, so it stays in place when the menu rebuilds, and the game's own buttons keep their order below it with a gap between. On Forever it is also put first in the menu's controller navigation list.
 

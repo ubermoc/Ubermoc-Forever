@@ -23,6 +23,7 @@ read_globals = {
     "PlaySound",
     "SOUNDKIT",
     "HideUIPanel",
+    "ToggleGameMenu",
     "GameMenuFrame",
     "SetBinding",
     "SaveBindings",

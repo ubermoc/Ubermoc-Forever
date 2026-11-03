@@ -355,6 +355,7 @@ local function node(x, y)
     function f:IsMouseEnabled() return true end
     function f:GetObjectType() return "Button" end
     function f:GetCenter() return x, y end
+    function f:GetRect() return x - 20, y - 10, 40, 20 end
     function f:GetEffectiveScale() return 1 end
     function f:GetChildren() end
     return f
@@ -370,8 +371,9 @@ GameMenuFrame = { IsShown = function() return true end, GetChildren = function()
 cursorPos, setCalls = { x = 100, y = 100 }, 0
 onButton(pad, "PADDRIGHT")
 assert(setCalls == 1, "one cursor move per press")
+assert(cursorPos.y ~= 100, "off every button, the first press goes to the nearest one")
 ns.Cursor.CheckLanding()                      -- the guess (UI units) was wrong, the stub takes screen units
-cursorPos = { x = 400, y = 100 / 0.75 }       -- where the first, miscalibrated, move landed
+cursorPos = { x = 100, y = 40 }               -- where the first, miscalibrated, move really landed
 onButton(pad, "PADDUP")
 assert(cursorPos.x == 100 and cursorPos.y == 300, "calibrated moves land on the button")
 onButton(pad, "PADDDOWN")
@@ -379,6 +381,10 @@ assert(cursorPos.x == 100 and cursorPos.y == 40, "down snaps to the lower button
 local before = setCalls
 onButton(pad, "PADDDOWN")
 assert(setCalls == before, "no move when nothing is that way")
+local grid = { { x = 100, y = 40, l = 80, r = 120, b = 30, t = 50 }, { x = 100, y = 40, l = 0, r = 500, b = 0, t = 500 } }
+assert(ns.Cursor.Containing(grid, 100, 40) == grid[1], "the smallest button under the cursor wins")
+assert(ns.Cursor.Containing(grid, 900, 900) == nil, "nothing under the cursor")
+assert(ns.Cursor.Nearest({ { x = 0, y = 0 }, { x = 5, y = 5 } }, 6, 6).x == 5, "nearest button in any direction")
 GameMenuFrame = realMenu
 
 -- real mouse clicks and the wheel
@@ -402,6 +408,18 @@ onButton(pad, "PAD2")
 assert(cursorOn, "B closes a window first")
 onButton(pad, "PAD2")
 assert(not cursorOn, "B with no window open gives the stick back")
+-- Back uses the game's Esc path once it exists, and puts away a menu that Esc opened by itself
+local escCalls, escOpensMenu, menuUp = 0, false, false
+function ToggleGameMenu() escCalls = escCalls + 1 if escOpensMenu then menuUp = true end end
+local menuStub = GameMenuFrame
+GameMenuFrame = { IsShown = function() return menuUp end }
+onButton(pad, "PAD2")
+assert(escCalls == 1, "B takes the Esc path")
+escOpensMenu = true
+onButton(pad, "PAD2")
+assert(escCalls == 2 and menuUp, "the menu Esc opened is noticed")
+GameMenuFrame = menuStub
+ToggleGameMenu = nil
 cursorOn = true
 menu.shown = false
 cursorOn = true
@@ -480,8 +498,9 @@ local added = menuButtons[3]
 assert(added.text == "Ubermoc Forever" and added.layoutIndex == 0, "menu button is first in layout")
 assert(menuButtons[1].topPadding == 20, "old first button gets a gap")
 assert(GameMenuFrame.buttons[1] == added and GameMenuFrame.dirty, "list order and relayout")
+local hiddenBefore = menuHidden
 added.callback()
-assert(menuHidden == 1, "menu closes when the button is used")
+assert(menuHidden == hiddenBefore + 1, "menu closes when the button is used")
 
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")
