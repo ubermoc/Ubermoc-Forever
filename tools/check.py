@@ -27,7 +27,7 @@ def check():
             errors.append(f"TOC lists missing file: {f}")
     on_disk = {
         p.relative_to(ROOT).as_posix()
-        for d in ("Core", "Locales")
+        for d in ("Core", "Input", "Locales")
         for p in (ROOT / d).rglob("*.lua")
     }
     for f in sorted(on_disk - set(listed)):

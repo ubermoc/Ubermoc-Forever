@@ -1,6 +1,7 @@
 std = "lua51"
 max_line_length = false
 exclude_files = { "tools/bin" }
+files["tools/test.lua"] = { globals = { "print", "CreateFrame", "GetBuildInfo", "GetTime", "geterrorhandler", "seterrorhandler", "C_AddOns", "C_GamePad", "SlashCmdList" } }
 
 globals = {
     "UbermocForeverDB",
@@ -10,6 +11,7 @@ globals = {
 
 read_globals = {
     "C_AddOns",
+    "C_GamePad",
     "GetAddOnMetadata",
     "IsAddOnLoaded",
     "CreateFrame",

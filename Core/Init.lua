@@ -28,6 +28,8 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         initDB()
     elseif event == "PLAYER_LOGIN" then
         ns.Log("login, game type " .. ns.gameType .. ", toc " .. ns.toc)
+        local active = ns.Pad.GetActive()
+        ns.Log("active controller: " .. (active and active.name or "none"))
         print(ns.L.LOADED:format(getVersion(), ns.gameType))
         if isLoaded("UbermocUI") then
             print(ns.L.CONFLICT)
@@ -43,6 +45,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     if cmd == "debug" then
         ns.db.debug = not ns.db.debug
         print(ns.db.debug and ns.L.DEBUG_ON or ns.L.DEBUG_OFF)
+    elseif cmd == "pad" then
+        ns.Pad.PrintReport()
     elseif cmd == "log" then
         ns.PrintLog()
     elseif cmd == "version" then
