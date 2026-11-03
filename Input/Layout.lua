@@ -94,10 +94,11 @@ local function setModifierCVar(name, button, backup, key)
         backup[key] = current
     end
     local ok = pcall(C_CVar.SetCVar, name, button)
-    if not ok then
-        ns.Log("cvar rejected: " .. name)
+    if not ok or C_CVar.GetCVar(name) ~= button then
+        ns.Log("cvar not accepted: " .. name)
+        return false
     end
-    return ok
+    return true
 end
 
 local function bindAll(c)
@@ -190,8 +191,14 @@ function Layout.Command(args)
     word = word:lower()
     if word == "on" then
         c.enabled = true
-        local ok, reason = Layout.Apply()
-        say(ok and "LAYOUT_ON" or "LAYOUT_PENDING", reason)
+        local ok, _, shiftOk, ctrlOk = Layout.Apply()
+        if not ok then
+            say("LAYOUT_PENDING")
+        elseif shiftOk and ctrlOk then
+            say("LAYOUT_ON")
+        else
+            say("LAYOUT_ON_NO_MOD")
+        end
     elseif word == "off" then
         c.enabled = false
         local ok = Layout.Remove()

@@ -23,6 +23,7 @@ ns.L = {
     LAYOUT_MOD = "Shift = %s (game: %s), Ctrl = %s (game: %s)",
     LAYOUT_SET = "Modifier %s -> action bar %d: %d of %d buttons bound",
     LAYOUT_ON = "Layout applied. Make sure Action Bars 2, 3 and 4 are turned on in the game's settings.",
+    LAYOUT_ON_NO_MOD = "Layout applied, but the game did not accept the paddle Shift/Ctrl settings. The bindings only work if Shift and Ctrl come from elsewhere, such as Steam Input keyboard keys. Run /ubf layout status for details.",
     LAYOUT_OFF = "Layout removed and modifier settings restored.",
     LAYOUT_PENDING = "In combat. The layout will change as soon as combat ends.",
     LAYOUT_RESET = "Layout reset to the defaults.",

@@ -83,6 +83,17 @@ assert(bindings["CTRL-SHIFT-PADDUP"] == "MULTIACTIONBAR3BUTTON8", "both set is b
 assert(cvars.GamePadEmulateShift == "PADPADDLE1" and cvars.GamePadEmulateCtrl == "PADPADDLE3", "paddles emulate modifiers")
 
 layout.Command("status")
+layout.Command("off")
+cvars.GamePadEmulateShift = nil
+cvars.GamePadEmulateCtrl = nil
+local mark = #printed
+layout.Command("on")
+assert(table.concat(printed, "\n", mark + 1):find("did not accept"), "missing cvars reported")
+assert(count(bindings) == 48, "bindings still applied without cvars")
+layout.Command("off")
+cvars.GamePadEmulateShift = "PADLTRIGGER"
+cvars.GamePadEmulateCtrl = "PADLSHOULDER"
+layout.Command("on")
 layout.Command("bind 1 PAD5")
 assert(bindings["PAD5"] == "ACTIONBUTTON1", "free key can be bound")
 assert(bindings["PAD3"] == nil, "old key released")
