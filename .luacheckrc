@@ -1,7 +1,7 @@
 std = "lua51"
 max_line_length = false
 exclude_files = { "tools/bin" }
-files["tools/test.lua"] = { ignore = { "1" } }
+files["tools/test.lua"] = { ignore = { "1", "21" } }
 
 globals = {
     "UbermocForeverDB",
@@ -11,6 +11,10 @@ globals = {
 
 read_globals = {
     "UIParent",
+    "SetCursorPosition",
+    "GetCursorPosition",
+    "SimulateMouseClick",
+    "SimulateMouseWheel",
     "Enum",
     "WorldFrame",
     "GetMouseFoci",

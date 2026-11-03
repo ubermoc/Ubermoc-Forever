@@ -5,7 +5,7 @@ local handlers = {}
 local function proxy()
     return setmetatable({}, { __index = function(t) return t end, __call = function(t) return t end })
 end
-UIParent = {}
+UIParent = { GetEffectiveScale = function() return 0.75 end }
 UISpecialFrames = {}
 function CreateFrame(_, name)
     local f = setmetatable({ events = {}, scripts = {}, name = name, shown = false },
@@ -36,6 +36,10 @@ local configs = {
 }
 local applied = 0
 local function configKey(id) return id.vendorID and (id.vendorID .. "/" .. id.productID) or "all" end
+local cursorPos = { x = 100, y = 100 }
+local setCalls = 0
+function GetCursorPosition() return cursorPos.x, cursorPos.y end
+function SetCursorPosition(x, y) setCalls = setCalls + 1 cursorPos = { x = x, y = y } end
 local cursorOn = false
 local mouseFoci = {}
 function GetMouseFoci() return mouseFoci end
@@ -335,6 +339,58 @@ onButton(pad, "PAD1")
 assert(clicked == "LeftButton", "A left-clicks")
 onButton(pad, "PAD3")
 assert(clicked == "RightButton", "X right-clicks")
+
+-- the D-pad moves the cursor between buttons
+local function node(x, y)
+    local f = {}
+    function f:IsForbidden() return false end
+    function f:IsShown() return true end
+    function f:IsVisible() return true end
+    function f:IsMouseEnabled() return true end
+    function f:GetObjectType() return "Button" end
+    function f:GetCenter() return x, y end
+    function f:GetEffectiveScale() return 1 end
+    function f:GetChildren() end
+    return f
+end
+local rightNode, upNode, downNode = node(300, 100), node(100, 300), node(100, 40)
+local pickable = { { x = 10, y = 100 }, { x = 100, y = 15 }, { x = 90, y = 200 } }
+assert(ns.Cursor.Pick(pickable, 0, 0, "UP") == pickable[1], "nearly straight ahead beats far off to the side")
+assert(ns.Cursor.Pick(pickable, 0, 0, "RIGHT") == pickable[2], "the one level with the origin wins going right")
+assert(ns.Cursor.Pick(pickable, 0, 0, "DOWN") == nil, "nothing below the origin")
+assert(ns.Cursor.Pick({ { x = 3, y = 0 } }, 0, 0, "RIGHT") == nil, "a button under the cursor is skipped")
+local realMenu = GameMenuFrame
+GameMenuFrame = { IsShown = function() return true end, GetChildren = function() return rightNode, upNode, downNode end }
+cursorPos, setCalls = { x = 100, y = 100 }, 0
+onButton(pad, "PADDRIGHT")
+assert(setCalls == 1, "one cursor move per press")
+ns.Cursor.CheckLanding()                      -- the guess (UI units) was wrong, the stub takes screen units
+cursorPos = { x = 400, y = 100 / 0.75 }       -- where the first, miscalibrated, move landed
+onButton(pad, "PADDUP")
+assert(cursorPos.x == 100 and cursorPos.y == 300, "calibrated moves land on the button")
+onButton(pad, "PADDDOWN")
+assert(cursorPos.x == 100 and cursorPos.y == 40, "down snaps to the lower button")
+local before = setCalls
+onButton(pad, "PADDDOWN")
+assert(setCalls == before, "no move when nothing is that way")
+GameMenuFrame = realMenu
+
+-- real mouse clicks and the wheel
+local sim, wheel, simulateFails = {}, nil, false
+function SimulateMouseClick(b) if simulateFails then error("focus not valid") end sim[#sim + 1] = b end
+function SimulateMouseWheel(d) wheel = d end
+onButton(pad, "PAD1")
+onButton(pad, "PAD3")
+assert(sim[1] == "LeftButton" and sim[2] == "RightButton", "A and X send real mouse clicks")
+clicked = nil
+simulateFails = true
+onButton(pad, "PAD1")
+assert(clicked == "LeftButton", "a refused click falls back to clicking the button")
+simulateFails = false
+onButton(pad, "PADRTRIGGER")
+assert(wheel == -1, "R2 scrolls down")
+onButton(pad, "PADLTRIGGER")
+assert(wheel == 1, "L2 scrolls up")
 windowsClosed = 0
 onButton(pad, "PAD2")
 assert(cursorOn, "B closes a window first")

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+- The D-pad now moves the game's cursor from button to button while a window is open and the cursor is on. It jumps to the nearest button in the direction you press, so bag slots, vendor items, tabs and close buttons are all reachable without the stick. The right stick still moves the cursor freely.
+- A and X now send real mouse clicks (left and right) at the cursor, so they work on anything the cursor points at, not only plain buttons. If the game refuses a simulated click, it falls back to clicking the button under the cursor.
+- L2 and R2 scroll the list under the cursor up and down.
+- The game does not document the units its cursor-placing function takes, so the first move is checked against where the cursor really lands and corrected. The result is written to the log ("cursor units").
+- Item menus (options on a bag item, spell-to-bar binding and so on) are the next step.
+
 ## 0.7.0
 - Controller buttons on the action bars and in menus can now show A, B, X and Y, using Blizzard's own button art. The game draws buttons from a "label style" it keeps for each controller (Generic numbers, Letters, Shapes or Reverse). Steam Input shows the game an Xbox-style pad labelled Generic, so by default this switches Valve's pad to Letters.
 - The Other page of the options window has a "Button labels" row: Auto (Letters for Steam), Game default (changes nothing), Numbers, A B X Y, Shapes or Reverse. `/ubf labels` does the same with a status line that shows what each controller is set to.

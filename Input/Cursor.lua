@@ -25,28 +25,34 @@ local function shown(frame)
     return type(frame) == "table" and frame.IsShown and frame:IsShown() and true or false
 end
 
-function Cursor.WindowOpen()
+-- The windows that are open, as a list of their top frames.
+function Cursor.OpenWindows()
+    local list, seen = {}, {}
+    local function add(frame)
+        if shown(frame) and not seen[frame] then
+            seen[frame] = true
+            list[#list + 1] = frame
+        end
+    end
     for _, name in ipairs(UISpecialFrames) do
-        if name ~= OWN_WINDOW and shown(_G[name]) then
-            return true
+        if name ~= OWN_WINDOW then
+            add(_G[name])
         end
     end
     for _, side in ipairs(PANELS) do
-        if shown(GetUIPanel(side)) then
-            return true
-        end
+        add(GetUIPanel(side))
     end
     for _, name in ipairs(FIXED_FRAMES) do
-        if shown(_G[name]) then
-            return true
-        end
+        add(_G[name])
     end
     for i = 1, 13 do
-        if shown(_G["ContainerFrame" .. i]) then
-            return true
-        end
+        add(_G["ContainerFrame" .. i])
     end
-    return false
+    return list
+end
+
+function Cursor.WindowOpen()
+    return #Cursor.OpenWindows() > 0
 end
 
 local function enabled()
@@ -119,6 +125,135 @@ function Cursor.ClickUnderCursor(mouseButton)
     ns.Log("cursor " .. mouseButton .. " click: nothing clickable under the cursor")
 end
 
+-- The D-pad moves the game's cursor from button to button. Positions are in screen
+-- units (a frame's centre times its effective scale, like GetCursorPosition).
+local NODE_TYPES = { Button = true, CheckButton = true }
+local MAX_DEPTH, MAX_NODES = 14, 900
+local MIN_MOVE = 6
+local DIRECTIONS = { PADDUP = "UP", PADDDOWN = "DOWN", PADDLEFT = "LEFT", PADDRIGHT = "RIGHT" }
+
+local function visit(child, out, depth)
+    if child:IsForbidden() or not child:IsShown() then
+        return
+    end
+    if NODE_TYPES[child:GetObjectType()] and child:IsMouseEnabled() and child:IsVisible() then
+        local cx, cy = child:GetCenter()
+        if cx and cy then
+            local scale = child:GetEffectiveScale()
+            out[#out + 1] = { frame = child, x = cx * scale, y = cy * scale }
+        end
+    end
+    if depth < MAX_DEPTH then
+        for _, grandchild in ipairs({ child:GetChildren() }) do
+            if #out < MAX_NODES then
+                pcall(visit, grandchild, out, depth + 1)
+            end
+        end
+    end
+end
+
+function Cursor.Nodes()
+    local out = {}
+    for _, root in ipairs(Cursor.OpenWindows()) do
+        for _, child in ipairs({ root:GetChildren() }) do
+            if #out < MAX_NODES then
+                pcall(visit, child, out, 1)
+            end
+        end
+    end
+    return out
+end
+
+-- The nearest candidate in a direction. Straight ahead wins over off to the side.
+function Cursor.Pick(candidates, ox, oy, direction)
+    local best, bestScore
+    for _, c in ipairs(candidates) do
+        local dx, dy = c.x - ox, c.y - oy
+        local along, across
+        if direction == "UP" then
+            along, across = dy, dx
+        elseif direction == "DOWN" then
+            along, across = -dy, dx
+        elseif direction == "RIGHT" then
+            along, across = dx, dy
+        else
+            along, across = -dx, dy
+        end
+        if along > MIN_MOVE then
+            local score = along + 2 * math.abs(across)
+            if not bestScore or score < bestScore then
+                best, bestScore = c, score
+            end
+        end
+    end
+    return best
+end
+
+-- SetCursorPosition's units are not written down: a first guess is checked on the
+-- next frame against where the cursor really landed, and corrected from then on.
+local calibration = { factor = nil }
+local pendingCheck
+
+function Cursor.MoveTo(px, py)
+    local factor = calibration.factor or (1 / UIParent:GetEffectiveScale())
+    local ax, ay = px * factor, py * factor
+    local bx, by = GetCursorPosition()
+    SetCursorPosition(ax, ay)
+    if not calibration.factor then
+        pendingCheck = { ax = ax, ay = ay, bx = bx, by = by, tries = 0 }
+    end
+end
+
+function Cursor.CheckLanding()
+    local check = pendingCheck
+    if not check then
+        return
+    end
+    local rx, ry = GetCursorPosition()
+    if math.abs(rx - check.bx) < 2 and math.abs(ry - check.by) < 2 then
+        check.tries = check.tries + 1
+        if check.tries > 10 then
+            pendingCheck = nil
+        end
+        return
+    end
+    pendingCheck = nil
+    local factor = check.ax / rx
+    if rx > 50 and factor > 0.2 and factor < 5 then
+        calibration.factor = factor
+        ns.Log(("cursor units: sent %.0f,%.0f and it landed at %.0f,%.0f, factor %.4f"):format(check.ax, check.ay, rx, ry, factor))
+    else
+        ns.Log(("cursor units: could not tell (sent %.0f,%.0f, landed %.0f,%.0f)"):format(check.ax, check.ay, rx, ry))
+    end
+end
+
+function Cursor.Snap(direction)
+    local ox, oy = GetCursorPosition()
+    local target = Cursor.Pick(Cursor.Nodes(), ox, oy, direction)
+    if not target then
+        ns.Log("snap " .. direction .. ": nothing that way")
+        return false
+    end
+    Cursor.MoveTo(target.x, target.y)
+    return true
+end
+
+-- A real mouse click at the cursor; falls back to clicking the button under it.
+function Cursor.Click(mouseButton)
+    local ok, err = pcall(SimulateMouseClick, mouseButton)
+    ns.Log(("simulated %s click: %s"):format(mouseButton, ok and "ok" or tostring(err)))
+    if not ok then
+        Cursor.ClickUnderCursor(mouseButton)
+    end
+end
+
+function Cursor.Scroll(delta)
+    local ok, err = pcall(SimulateMouseWheel, delta)
+    if not ok then
+        ns.Log("simulated wheel failed: " .. tostring(err))
+    end
+end
+
 -- Back: close windows, and if none were open give the stick back to the camera.
 function Cursor.Back()
     local closed = CloseAllWindows()
@@ -130,17 +265,21 @@ end
 
 local function onButton(_, key)
     key = key:match("([^-]+)$") or key
-    if key == "PAD1" then
-        Cursor.ClickUnderCursor("LeftButton")
+    if DIRECTIONS[key] then
+        Cursor.Snap(DIRECTIONS[key])
+    elseif key == "PAD1" then
+        Cursor.Click("LeftButton")
     elseif key == "PAD3" then
-        Cursor.ClickUnderCursor("RightButton")
+        Cursor.Click("RightButton")
+    elseif key == "PADLTRIGGER" then
+        Cursor.Scroll(1)
+    elseif key == "PADRTRIGGER" then
+        Cursor.Scroll(-1)
     elseif key == "PAD2" or key == "PADFORWARD" or key == "PADBACK" then
         Cursor.Back()
     end
 end
 
--- Unless chosen, these start on where the game has no gamepad menus of its own
--- (Midnight) and off where it does (Forever).
 function Cursor.ActionsOn()
     local value = ns.db.cursorActions
     if value == nil then
@@ -247,6 +386,7 @@ frame:SetScript("OnEvent", function()
     Cursor.OnCombatStart()
 end)
 frame:SetScript("OnUpdate", function(_, elapsed)
+    Cursor.CheckLanding()
     sinceLastPoll = sinceLastPoll + elapsed
     if sinceLastPoll >= POLL then
         local step = sinceLastPoll
