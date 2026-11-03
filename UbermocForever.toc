@@ -14,6 +14,7 @@ Core\Compat.lua
 Core\Debug.lua
 Core\SelfTest.lua
 Input\GamePad.lua
+Input\Labels.lua
 Input\PadTest.lua
 Input\Layout.lua
 Input\Cursor.lua

@@ -50,6 +50,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         ns.Pad.PrintReport()
     elseif cmd == "cursor" then
         ns.Cursor.Command(rest)
+    elseif cmd == "labels" then
+        ns.Labels.Command(rest)
     elseif cmd == "binds" then
         ns.Binds.Command(rest)
     elseif cmd == "options" then

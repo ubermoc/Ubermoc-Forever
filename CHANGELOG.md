@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+- Controller buttons on the action bars and in menus can now show A, B, X and Y, using Blizzard's own button art. The game draws buttons from a "label style" it keeps for each controller (Generic numbers, Letters, Shapes or Reverse). Steam Input shows the game an Xbox-style pad labelled Generic, so by default this switches Valve's pad to Letters.
+- The Other page of the options window has a "Button labels" row: Auto (Letters for Steam), Game default (changes nothing), Numbers, A B X Y, Shapes or Reverse. `/ubf labels` does the same with a status line that shows what each controller is set to.
+- It uses the game's own controller settings, so it works the same on Midnight and Forever. Open a window or `/reload` to see the new labels.
+- `/ubf selftest` now checks the glyph art Blizzard's own labels use and records each controller's label style.
+
 ## 0.6.0
 - The game's own gamepad cursor now works with this layout. When any window opens (bags from the backpack key, map, game menu, vendors and so on) the cursor turns on so the right stick moves it, and it goes away when the windows close. A cursor you start yourself is left alone.
 - While the cursor is on and a window is open, A clicks what the cursor points at, X right-clicks it, and B or Start closes windows (and with none open, gives the stick back). These buttons no longer fire abilities underneath. Y is held back for now.

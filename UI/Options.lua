@@ -188,6 +188,15 @@ local function buildRows()
         rows[#rows + 1] = { label = L.OPT_OPACITY, value = L.OPT_PERCENT:format(opacity()),
             onLeft = stepSetting("optionsOpacity", opacity, -5), onRight = stepSetting("optionsOpacity", opacity, 5),
             onFineLeft = stepSetting("optionsOpacity", opacity, -1), onFineRight = stepSetting("optionsOpacity", opacity, 1) }
+        local labelChoices = { ns.Labels.AUTO, ns.Labels.DEFAULT, "Generic", "Letters", "Shapes", "Reverse" }
+        local function stepLabels(delta)
+            return function()
+                ns.Labels.SetChoice(cycle(labelChoices, ns.Labels.Choice(), delta))
+                message = L.OPT_LABELS_CHANGED
+            end
+        end
+        rows[#rows + 1] = { label = L.OPT_LABELS, value = L.OPT_LABEL_NAMES[ns.Labels.Choice()],
+            onLeft = stepLabels(-1), onRight = stepLabels(1) }
         rows[#rows + 1] = { label = L.OPT_CLEAR_BINDS, value = confirmClear and L.OPT_CLEAR_CONFIRM or "",
             onActivate = function()
                 if not confirmClear then

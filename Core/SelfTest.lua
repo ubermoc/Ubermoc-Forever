@@ -2,9 +2,15 @@ local _, ns = ...
 
 -- Runs checks inside the game and stores the results in the saved variables,
 -- so they can be read from disk after /reload without a screenshot.
+-- The first two are the older Forever names that Midnight lacks; the others are the
+-- ones Blizzard's own binding text uses (Generic and Letters styles).
 local ATLASES = {
     "gamepad-xbox1-trigger-lt-normal",
     "gamepad-symbols-plus",
+    "Gamepad_Gen_1_32",
+    "Gamepad_Ltr_A_32",
+    "Gamepad_Ltr_A_64",
+    "Gamepad_Ltr_LTrigger_32",
 }
 
 local function add(results, name, ok, detail)
@@ -75,6 +81,12 @@ function ns.RunSelfTest()
             end
         end
         add(results, "layout other buttons bound", extraOk == extraTotal, extraOk .. " of " .. extraTotal)
+    end
+
+    for _, id in ipairs({ {}, { vendorID = 10462, productID = 4607 } }) do
+        local ok, config = pcall(C_GamePad.GetConfig, id)
+        add(results, "info: label style " .. tostring(id.vendorID or "all devices"), true,
+            ok and config and tostring(config.labelStyle) or "no config")
     end
 
     local failed = 0

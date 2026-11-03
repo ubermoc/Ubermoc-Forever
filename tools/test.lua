@@ -30,6 +30,12 @@ function seterrorhandler() end
 local nativeLoaded = false
 C_AddOns = { GetAddOnMetadata = function() return "test" end, IsAddOnLoaded = function(name) return name == "Blizzard_Gamepad" and nativeLoaded end }
 SlashCmdList = {}
+local configs = {
+    ["all"] = { name = "All Devices", labelStyle = "Generic" },
+    ["10462/4607"] = { vendorID = 10462, productID = 4607, labelStyle = "Generic", rawButtonMappings = { 1, 2, 3 } },
+}
+local applied = 0
+local function configKey(id) return id.vendorID and (id.vendorID .. "/" .. id.productID) or "all" end
 local cursorOn = false
 local mouseFoci = {}
 function GetMouseFoci() return mouseFoci end
@@ -78,11 +84,23 @@ C_GamePad = {
     end,
     AxisIndexToConfigName = function(i) return "Axis" .. i end,
     StickIndexToConfigName = function(i) return "Stick" .. i end,
-    GetDeviceRawState = function() return { name = "raw", vendorID = 1118, productID = 654 } end,
+    GetDeviceRawState = function(id)
+        if id == 2 then return { name = "Steam Virtual Gamepad", vendorID = 10462, productID = 4607 } end
+        return { name = "Combined", vendorID = 0, productID = 0 }
+    end,
+    GetConfig = function(id)
+        local c = configs[configKey(id)]
+        if not c then return nil end
+        local copy = {}
+        for k, v in pairs(c) do copy[k] = v end
+        return copy
+    end,
+    SetConfig = function(c) configs[configKey(c)] = c end,
+    ApplyConfigs = function() applied = applied + 1 end,
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "UI/Options.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "UI/Options.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -93,6 +111,23 @@ end
 fire("ADDON_LOADED", "UbermocForever")
 fire("PLAYER_LOGIN")
 fire("GAME_PAD_CONNECTED")
+assert(configs["10462/4607"].labelStyle == "Letters", "Valve's pad is switched to Letters by default")
+assert(#configs["10462/4607"].rawButtonMappings == 3, "the rest of the pad config is kept")
+assert(configs["all"].labelStyle == "Generic", "other configs are left alone by default")
+assert(applied == 1, "configs applied once")
+fire("GAME_PAD_CONFIGS_CHANGED")
+assert(applied == 1, "nothing is rewritten when the style already matches")
+ns.Labels.Command("shapes")
+assert(configs["10462/4607"].labelStyle == "Shapes" and configs["all"].labelStyle == "Shapes", "an explicit style applies everywhere")
+ns.Labels.Command("default")
+ns.Labels.Command("generic")
+assert(configs["all"].labelStyle == "Generic", "explicit style can change back")
+ns.Labels.Command("default")
+configs["10462/4607"].labelStyle = "Shapes"
+ns.Labels.Command("default")
+assert(configs["10462/4607"].labelStyle == "Shapes", "game default leaves configs alone")
+ns.Labels.Command("auto")
+assert(configs["10462/4607"].labelStyle == "Letters", "auto returns to Letters for Valve")
 SlashCmdList["UBERMOCFOREVER"]("pad")
 SlashCmdList["UBERMOCFOREVER"]("debug")
 SlashCmdList["UBERMOCFOREVER"]("log")
@@ -218,6 +253,11 @@ ns.db.optionsTint, ns.db.optionsOpacity, ns.db.optionsShade = nil, nil, 1
 press(win, "PADDLEFT")
 assert(ns.db.optionsTint == 100 and ns.db.optionsShade == nil and ns.db.optionsOpacity == 95, "0.4.1 dark step carried over")
 saved["PAD4"] = "ACTIONBUTTON4"
+press(win, "PADDDOWN")                       -- button labels row
+press(win, "PADDRIGHT")
+assert(ns.db.labelStyle == "DEFAULT", "button labels row cycles")
+press(win, "PADDLEFT")
+assert(ns.db.labelStyle == nil, "button labels row returns to auto")
 press(win, "PADDDOWN")                       -- clear old saved binds row
 press(win, "PAD1")
 assert(saved["PAD4"] == "ACTIONBUTTON4", "clearing needs a second press")
