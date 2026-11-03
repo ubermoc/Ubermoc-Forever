@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.2
+- New `/ubf test`: one command that runs the self test, saves a snapshot (controller, labels, cursor state, the game settings that matter, other loaded addons and the recent log), then records every button you press for 30 seconds. For each press it notes whether the addon took it, whether it fired an ability instead, or whether nothing happened, and how far the cursor moved. Open a bag, press the D-pad, A, X and B, then `/reload` and the full report is saved in the addon's saved variables. `/ubf test stop` ends it early, and it stops by itself when combat starts.
+
 ## 0.8.1
 - Fixed: pressing the D-pad quickly fired abilities instead of moving the cursor. The game switches its cursor off and on again by itself, and each time the buttons were let go until the next check. They now stay taken for as long as a window is open, and the cursor is re-enabled within a tenth of a second.
 - Button labels: changing the row now tells you exactly what happened (how many controller configs were changed, already right, missing or refused by the game) and which style the active controller reports afterwards, so a change that has no effect can be told apart from one that is refused. Every attempt is written to the log, the action bars redraw their button text right after a change, and in Auto the all-devices setting follows too while a Steam pad is connected, because the combined controller takes its style from there.

@@ -56,6 +56,12 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         ns.Binds.Command(rest)
     elseif cmd == "options" then
         ns.Options.Toggle()
+    elseif cmd == "test" then
+        if rest:lower() == "stop" then
+            ns.Report.Stop()
+        else
+            ns.Report.Run()
+        end
     elseif cmd == "selftest" then
         ns.RunSelfTest()
     elseif cmd == "layout" then

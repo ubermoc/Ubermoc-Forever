@@ -267,6 +267,9 @@ end
 
 local function onButton(_, key)
     key = key:match("([^-]+)$") or key
+    if Cursor.trace then
+        Cursor.trace(key)
+    end
     if DIRECTIONS[key] then
         Cursor.Snap(DIRECTIONS[key])
     elseif key == "PAD1" then

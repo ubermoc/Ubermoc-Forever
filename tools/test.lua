@@ -104,7 +104,7 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "UI/Options.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "UI/Options.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -434,6 +434,21 @@ local report = ns.db.selftest
 assert(report and #report.results >= 10, "self test stored results")
 assert(report.failed >= 1, "missing atlas reported as failure")
 assert(#ns.db.log > 0, "log persisted to saved variables")
+
+-- /ubf test: press analysis tells taken, leaked and ignored presses apart.
+local summary, rows = ns.Report.Analyze({
+    { time = 10, button = "PADDUP", x = 100, y = 100, x2 = 160, y2 = 100 },
+    { time = 12, button = "PAD1", x = 0, y = 0, x2 = 0, y2 = 0 },
+    { time = 14, button = "PAD2", x = 0, y = 0, x2 = 0, y2 = 0 },
+}, { { time = 10.05, key = "PADDUP" }, { time = 14.05, key = "PAD2" } }, { { time = 14.1, event = "UNIT_SPELLCAST_SENT" } }, 9)
+assert(summary.taken == 1 and summary.leaked == 1 and summary.ignored == 1, "press analysis counts")
+assert(rows[1]:find("taken by addon") and rows[1]:find("cursor moved 60"), "press row text")
+assert(rows[3]:find("ability fired"), "leak detected")
+ns.Report.Run()
+assert(ns.db.report and ns.db.report.environment and ns.db.report.time, "report written")
+assert(ns.Cursor.trace, "trace hook installed while recording")
+ns.Report.Stop()
+assert(ns.Cursor.trace == nil and ns.db.report.summary, "report finished")
 
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")

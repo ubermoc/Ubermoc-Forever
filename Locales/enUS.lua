@@ -99,5 +99,11 @@ ns.L = {
     OPT_LABELS = "Button labels",
     OPT_LABEL_NAMES = { AUTO = "Auto", DEFAULT = "Game default", Generic = "Numbers", Letters = "A B X Y", Shapes = "Shapes", Reverse = "Reverse" },
     OPT_LABELS_CHANGED = "Labels: %s",
-    HELP = "Commands: /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf layout (action bar layout), /ubf selftest (check this game build), /ubf options (settings window), /ubf cursor, /ubf binds, /ubf labels, /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
+    TEST_START = "Test started for %d seconds. Open a bag, then press the D-pad, A, X, B and a few other buttons. Type /ubf test stop to end early.",
+    TEST_BANNER = "Ubermoc test: open a bag and press buttons (%d s left)",
+    TEST_RESULT = "Test done: %d presses, %d taken by the addon, %d fired an ability, %d did nothing.",
+    TEST_SAVED = "Type /reload to save the full report to disk.",
+    TEST_COMBAT = "The test cannot start in combat.",
+    TEST_NONE = "No test is running.",
+    HELP = "Commands: /ubf test (full check and button trace), /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf layout (action bar layout), /ubf selftest (check this game build), /ubf options (settings window), /ubf cursor, /ubf binds, /ubf labels, /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
 }
