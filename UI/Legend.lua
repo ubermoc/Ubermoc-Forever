@@ -10,6 +10,7 @@ ns.Legend = Legend
 
 local ICON = 18
 local GAP = "   "
+local NBSP = "\194\160"
 
 -- The lettered art, named as Blizzard's own binding text names it (Gamepad_<name>_64).
 local MIDNIGHT = {
@@ -28,7 +29,6 @@ local FOREVER = {
     PADFORWARD = "gamepad-xbox1-menu-normal", PADBACK = "gamepad-xbox1-view-normal",
     DPAD = "gamepad-xbox1-dpadall-normal",
 }
-local FOREVER_BACKGROUND = "gamepad-footer-slot-bg"
 
 Legend.STYLES = { "Midnight", "Forever" }
 
@@ -84,10 +84,12 @@ local function entryText(entry, style)
             pieces[#pieces + 1] = glyph(key, style)
         end
     end
-    return table.concat(pieces) .. " " .. entry.text
+    return table.concat(pieces) .. NBSP .. entry.text
 end
 
 local legends = {}
+
+local PAD_X, PAD_Y = 10, 8
 
 local function render(legend)
     local style = Legend.Style()
@@ -96,31 +98,45 @@ local function render(legend)
         parts[#parts + 1] = entryText(entry, style)
     end
     legend.text:SetText(table.concat(parts, GAP))
-    if legend.background then
-        local usable = style == "Forever" and Legend.Available("Forever") and atlasExists(FOREVER_BACKGROUND)
-        if usable then
-            legend.background:SetAtlas(FOREVER_BACKGROUND)
-        else
-            legend.background:SetColorTexture(0, 0, 0, 0.6)
-        end
-        legend.baseWidth = legend.text:GetStringWidth() + 30
-        legend:SetWidth(legend.baseWidth)
+    if legend.footer then
+        -- The height follows the wrapped text, so a narrow window gets a second line at the same
+        -- text size instead of a smaller legend.
+        legend:SetHeight(legend.text:GetStringHeight() + 2 * PAD_Y)
     end
 end
 
--- options.background: draw a backing panel (for the free-standing legend). The parent decides
--- where it sits; text only otherwise.
+-- options.footer: a bar that belongs to a window (see Legend.Show): the game's own tooltip panel
+-- look, as wide as the window, text wrapping inside it. Otherwise plain text that the parent places.
 function Legend.Create(parent, options)
-    local legend = CreateFrame("Frame", nil, parent)
-    legend:SetHeight(ICON + 12)
+    local footer = options and options.footer
+    local legend
+    if footer then
+        local ok, made = pcall(CreateFrame, "Frame", nil, parent, "TooltipBackdropTemplate")
+        if ok then
+            legend = made
+        else
+            ns.Log("tooltip panel failed for the legend: " .. tostring(made))
+            legend = CreateFrame("Frame", nil, parent)
+            legend.fallback = legend:CreateTexture(nil, "BACKGROUND")
+            legend.fallback:SetAllPoints()
+            legend.fallback:SetColorTexture(0, 0, 0, 0.7)
+        end
+    else
+        legend = CreateFrame("Frame", nil, parent)
+    end
+    legend:SetHeight(ICON + 2 * PAD_Y)
     legend:EnableMouse(false)
     legend.entries = {}
-    if options and options.background then
-        legend.background = legend:CreateTexture(nil, "BACKGROUND")
-        legend.background:SetAllPoints()
-    end
+    legend.footer = footer and true or nil
     legend.text = legend:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    legend.text:SetPoint("CENTER")
+    if footer then
+        legend.text:SetPoint("TOPLEFT", legend, "TOPLEFT", PAD_X, -PAD_Y)
+        legend.text:SetJustifyH("LEFT")
+        legend.text:SetJustifyV("TOP")
+        legend.text:SetWordWrap(true)
+    else
+        legend.text:SetPoint("CENTER")
+    end
     legends[#legends + 1] = legend
     function legend:Set(entries)
         self.entries = entries
@@ -139,68 +155,62 @@ end
 local shownLegend
 local lastKey
 
--- Where the legend goes, in screen units. rect is the window's left, right, bottom and top; lowestTab
--- is the bottom of its lowest tab (tabs hang below the frame), or nil. The legend lines up with the
--- window's left edge, which stays put when the window changes width from tab to tab (centring it
--- made it jump), sits under the lowest tab, or above the window when there is no room below.
--- The size is the same for every window, so it does not change from tab to tab: small enough to fit
--- Blizzard's standard panel width (338, the size of its portrait panel), and smaller still only for
--- a window narrower than that. Returns scale, point, x, y.
-local MIN_SCALE = 0.6
-local STANDARD_PANEL_WIDTH = 338
-function Legend.ComputeLayout(baseWidth, height, rect, lowestTab)
-    local width = rect.right - rect.left
-    local scale = 1
-    if baseWidth > STANDARD_PANEL_WIDTH then
-        scale = STANDARD_PANEL_WIDTH / baseWidth
+-- Below the window and its tabs when there is room (tabs hang below the frame), above the window
+-- when there is not. roomBelow is the space under the lowest tab in screen units, tabDrop how far
+-- the tabs hang below the window in the window's own units. Returns "below" or "above", and the
+-- gap from the window's edge.
+local GAP_TO_WINDOW = 2
+function Legend.ComputePlacement(roomBelow, height, tabDrop)
+    if roomBelow >= height + 10 then
+        return "below", math.max(0, tabDrop or 0) + GAP_TO_WINDOW
     end
-    if width > 0 and width < STANDARD_PANEL_WIDTH and baseWidth * scale > width then
-        scale = width / baseWidth
-    end
-    scale = math.max(MIN_SCALE, scale)
-    local lowest = math.min(rect.bottom, lowestTab or rect.bottom)
-    if lowest >= height * scale + 10 then
-        return scale, "TOPLEFT", rect.left, lowest - 6
-    end
-    return scale, "BOTTOMLEFT", rect.left, rect.top + 6
+    return "above", GAP_TO_WINDOW
 end
 
-local function place(legend, root, tabButtons)
-    legend:ClearAllPoints()
+-- The legend is part of the window it describes: a child of it, as wide as it, along its bottom
+-- edge, so it moves, scales and hides with the window and is the same size on every tab.
+
+local function attach(legend, root, tabButtons)
     local ui = UIParent:GetEffectiveScale()
-    local scale = root and root.GetEffectiveScale and root:GetEffectiveScale()
-    local left = root and root.GetLeft and root:GetLeft()
-    local right = root and root.GetRight and root:GetRight()
-    local bottom = root and root.GetBottom and root:GetBottom()
-    local top = root and root.GetTop and root:GetTop()
-    if left and right and bottom and top and scale then
-        local factor = scale / ui
-        local lowestTab
-        for _, tab in ipairs(tabButtons or {}) do
-            local tabBottom = tab.GetBottom and tab:GetBottom()
-            if tabBottom then
-                local value = tabBottom * tab:GetEffectiveScale() / ui
-                lowestTab = lowestTab and math.min(lowestTab, value) or value
-            end
+    local scale = root:GetEffectiveScale()
+    if legend:GetParent() ~= root then
+        legend:SetParent(root)
+        lastKey = nil
+    end
+    legend:SetFrameLevel(root:GetFrameLevel() + 1)
+    local rootBottom = root:GetBottom() or 0
+    local tabDrop = 0
+    local lowestTab = rootBottom * scale / ui
+    for _, tab in ipairs(tabButtons or {}) do
+        local tabBottom = tab.GetBottom and tab:GetBottom()
+        if tabBottom then
+            local inRoot = tabBottom * tab:GetEffectiveScale() / scale
+            tabDrop = math.max(tabDrop, rootBottom - inRoot)
+            lowestTab = math.min(lowestTab, tabBottom * tab:GetEffectiveScale() / ui)
         end
-        local s, point, x, y = Legend.ComputeLayout(legend.baseWidth or 0, legend:GetHeight(),
-            { left = left * factor, right = right * factor, bottom = bottom * factor, top = top * factor }, lowestTab)
-        legend:SetScale(s)
-        -- offsets are in the legend's own scale
-        legend:SetPoint(point, UIParent, "BOTTOMLEFT", x / s, y / s)
+    end
+    -- the text wraps at the window's width, which is known before the frame has been laid out
+    legend.text:SetWidth(math.max(50, root:GetWidth() - 2 * PAD_X))
+    render(legend)
+    local where, gap = Legend.ComputePlacement(lowestTab, legend:GetHeight() * scale / ui, tabDrop)
+    legend:ClearAllPoints()
+    if where == "below" then
+        legend:SetPoint("TOPLEFT", root, "BOTTOMLEFT", 0, -gap)
+        legend:SetPoint("TOPRIGHT", root, "BOTTOMRIGHT", 0, -gap)
     else
-        legend:SetScale(1)
-        legend:SetPoint("TOP", UIParent, "TOP", 0, -60)
+        legend:SetPoint("BOTTOMLEFT", root, "TOPLEFT", 0, gap)
+        legend:SetPoint("BOTTOMRIGHT", root, "TOPRIGHT", 0, gap)
     end
 end
 
 function Legend.Show(tabs, root, tabButtons)
-    if not shownLegend then
-        shownLegend = Legend.Create(UIParent, { background = true })
-        shownLegend:SetFrameStrata("TOOLTIP")
-        shownLegend:SetClampedToScreen(true)
+    if not root then
+        Legend.Hide()
+        return
     end
-    place(shownLegend, root, tabButtons)
+    if not shownLegend then
+        shownLegend = Legend.Create(root, { footer = true })
+    end
     local L = ns.L
     local entries = {
         { keys = { "DPAD" }, text = L.LEGEND_MOVE },
@@ -213,10 +223,11 @@ function Legend.Show(tabs, root, tabButtons)
     end
     entries[#entries + 1] = { keys = { "PAD2" }, text = L.LEGEND_BACK }
     local key = (tabs and "t" or "n") .. Legend.Style()
-    if key ~= lastKey or not shownLegend:IsShown() then
+    if key ~= lastKey then
         lastKey = key
         shownLegend:Set(entries)
     end
+    attach(shownLegend, root, tabButtons)
     shownLegend:Show()
 end
 
@@ -225,8 +236,8 @@ function Legend.Status()
     if not shownLegend then
         return "legend: never shown" .. (Legend.lastError and (", last error " .. tostring(Legend.lastError)) or "")
     end
-    return ("legend: %s, style %s, width %.0f, text %q%s"):format(shownLegend:IsShown() and "shown" or "hidden",
-        Legend.Style(), tonumber(shownLegend:GetWidth()) or 0, tostring(shownLegend.text:GetText()),
+    return ("legend: %s, style %s, width %.0f, height %.0f, text %q%s"):format(shownLegend:IsShown() and "shown" or "hidden",
+        Legend.Style(), tonumber(shownLegend:GetWidth()) or 0, tonumber(shownLegend:GetHeight()) or 0, tostring(shownLegend.text:GetText()),
         Legend.lastError and (", last error " .. tostring(Legend.lastError)) or "")
 end
 

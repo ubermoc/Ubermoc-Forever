@@ -21,9 +21,15 @@ function CreateFrame(_, name)
     function f.CreateFontString()
         local fs = setmetatable({}, { __index = function() return proxy() end })
         fs.GetStringWidth = function() return 100 end
+        fs.GetStringHeight = function() return 18 end
         fs.SetText = function(this, text) this.value = text end
         return fs
     end
+    function f:SetHeight(h) self.height = h end
+    function f:GetHeight() return rawget(self, "height") or 0 end
+    function f:SetParent(p) self.parentFrame = p end
+    function f:GetParent() return rawget(self, "parentFrame") end
+    function f:GetFrameLevel() return 1 end
     function f:CreateTexture() return setmetatable({}, { __index = function() return proxy() end }) end
     function f:SetAttribute(k, v) if not rawget(self, "attrs") then self.attrs = {} end self.attrs[k] = v end
     handlers[#handlers + 1] = f
@@ -651,25 +657,22 @@ ns.Legend.SetChoice("Midnight")
 assert(ns.Legend.Style() == "Midnight" and ns.db.legendStyle == "Midnight", "the style can be switched")
 ns.Legend.SetChoice("Auto")
 assert(ns.db.legendStyle == nil and ns.Legend.Style() == "Forever", "auto returns to the game's own style")
-ns.Legend.Show(true)
+-- the legend is a footer that belongs to the window: below its tabs, wrapping at its width
+local fakeRoot = { GetEffectiveScale = function() return 1 end, GetBottom = function() return 300 end,
+    GetWidth = function() return 500 end, GetFrameLevel = function() return 5 end }
+local hang = { GetBottom = function() return 270 end, GetEffectiveScale = function() return 1 end }
+ns.Legend.Show(true, fakeRoot, { hang })
 assert(ns.Legend.Available("Midnight") and ns.Legend.Available("Forever"), "styles are available when their art exists")
 assert(ns.Legend.Status():find("legend: shown"), "legend status reports it")
--- placement: left edge, under the tabs, shrunk to fit a narrow panel, above when no room below
-local sc, pt, lx, ly = ns.Legend.ComputeLayout(300, 32, { left = 100, right = 700, bottom = 300, top = 700 }, 270)
-assert(sc == 1 and pt == "TOPLEFT" and lx == 100 and ly == 264, "small legend: full size, left edge, under the lowest tab")
-local big = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 900, bottom = 300, top = 700 }, nil)
-assert(math.abs(big - 338 / 450) < 1e-9, "a long legend is sized to fit the standard panel width")
-assert(ns.Legend.ComputeLayout(450, 32, { left = 100, right = 500, bottom = 300, top = 700 }, nil) == big, "and the same size on a wider or narrower window")
-sc, pt, lx = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 300, bottom = 300, top = 700 }, nil)
-assert(math.abs(sc - 200 / 450) < 1e-9 or sc == 0.6, "a window narrower than the standard panel shrinks it more")
-assert(pt == "TOPLEFT" and lx == 100, "still at the left edge")
-sc = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 150, bottom = 300, top = 700 }, nil)
-assert(sc == 0.6, "never smaller than the floor")
-local _, abovePoint, _, aboveY = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 700, bottom = 20, top = 400 }, nil)
-assert(abovePoint == "BOTTOMLEFT" and aboveY == 406, "no room below: above the window")
-local _, _, wideX = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 900, bottom = 300, top = 700 }, nil)
-local _, _, narrowX = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 500, bottom = 300, top = 700 }, nil)
-assert(wideX == narrowX, "the legend does not move when the window changes width")
+assert(ns.Legend.Status():find("height 34"), "the height follows the wrapped text (18 + 2 x 8)")
+ns.Legend.Show(false, nil)
+assert(ns.Legend.Status():find("legend: hidden"), "no window, no legend")
+local where, gap = ns.Legend.ComputePlacement(270, 34, 30)
+assert(where == "below" and gap == 32, "below the tabs, clear of how far they hang")
+where, gap = ns.Legend.ComputePlacement(270, 34, 0)
+assert(where == "below" and gap == 2, "no tabs: just under the window")
+where, gap = ns.Legend.ComputePlacement(20, 34, 30)
+assert(where == "above" and gap == 2, "no room below: above the window")
 ns.Legend.Hide()
 
 local out = table.concat(printed, "\n")
