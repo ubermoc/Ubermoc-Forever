@@ -46,9 +46,9 @@ local EXTRA_COMMANDS = {
     TOGGLEAUTORUN = true, INTERACTTARGET = true, JUMP = true,
 }
 
--- UBFMENU opens the game menu directly, the way the menu button on the micro bar does. The game's
--- own TOGGLEGAMEMENU is the Esc key: it stops casting, clears the target and closes windows first,
--- and those steps can use up the press so the menu never opens.
+-- UBFMENU is Start in steps: close panels, clear the target and stop a cast, then open the menu on
+-- the next press. The game's own TOGGLEGAMEMENU is the Esc key, and on a controller its first steps
+-- can use up every press so the menu never opens.
 local BIND_AS = { UBFMENU = "CLICK UbermocForeverMenu:LeftButton" }
 
 local function bindingFor(command)

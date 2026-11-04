@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.6
+- Start works in steps again, like Esc on a keyboard, but reliably on a controller. The first press closes pop-ups, the settings panel, menus, windows and bags, clears your target and stops a cast. Once there is nothing left to clear, the next press opens the game menu, and the one after puts it away. Before 0.8.5 it was the game's own Esc action, which on a controller can use up every press; 0.8.5 always opened the menu and never cleared anything.
+- Clearing the target and stopping a cast are protected actions, so they run from a secure macro (`/stopcasting`, `/cleartarget`, both checked on Midnight and Forever) on a button that Start clicks. The closing and the menu are done just before it. In combat the press always runs the macro, because a secure button cannot be changed there.
+- The Other buttons page shows the new choice as "Clear, close, then menu". The earlier "Game menu (direct)" setting is the same entry, and the game's own Esc action is still there as TOGGLEGAMEMENU.
+
 ## 0.8.5
 - Start now opens the game menu directly, every time. Before, it ran the game's whole Esc action, which stops casting, clears your target and closes windows first, and the controller's first Esc steps can use up the press, so with a target selected the menu never opened. Start now does what the game's own menu button does: closes the settings panel, menus and windows, then shows the menu (with the Ubermoc Forever button at the top), and pressing it again puts the menu away. It never clears your target. It works with a paddle held too, and in combat. The old behaviour is still available as "TOGGLEGAMEMENU" in the Other buttons page.
 - Existing settings are moved over once: if Start was still on the old default, it becomes "Game menu (direct)".

@@ -18,6 +18,7 @@ function CreateFrame(_, name)
     function f:Show() self.shown = true end
     function f:Hide() self.shown = false end
     function f:IsShown() return self.shown end
+    function f:SetAttribute(k, v) if not rawget(self, "attrs") then self.attrs = {} end self.attrs[k] = v end
     handlers[#handlers + 1] = f
     return f
 end
@@ -498,18 +499,35 @@ local added = menuButtons[3]
 assert(added.text == "Ubermoc Forever" and added.layoutIndex == 0, "menu button is first in layout")
 assert(menuButtons[1].topPadding == 20, "old first button gets a gap")
 assert(GameMenuFrame.buttons[1] == added and GameMenuFrame.dirty, "list order and relayout")
--- Start's menu key: shows the menu after closing what is open, and puts it away when it is up
+-- Start works in steps: clear and close first, the menu once there is nothing left, then hide it
 local shownNow = false
 GameMenuFrame.IsShown = function() return shownNow end
-local shownCalls = 0
-function ShowUIPanel(f) if f == GameMenuFrame then shownNow = true shownCalls = shownCalls + 1 end end
+function ShowUIPanel(f) if f == GameMenuFrame then shownNow = true end end
 function HideUIPanel(f) menuHidden = menuHidden + 1 if f == GameMenuFrame then shownNow = false end end
 function CloseMenus() end
+local hasTarget, anyWindow = true, false
+function UnitExists() return hasTarget end
+function UnitCastingInfo() return nil end
+function UnitChannelInfo() return nil end
+local realWindowOpen = ns.Cursor.WindowOpen
+ns.Cursor.WindowOpen = function() return anyWindow end
+local starter
+for _, f in ipairs(handlers) do if f.name == "UbermocForeverMenu" then starter = f end end
+assert(starter and starter.attrs.type == "macro" and starter.attrs.macrotext:find("/cleartarget"), "start button clears with a macro")
 windowsClosed = 0
-ns.ToggleGameMenu()
-assert(shownNow and windowsClosed == 1, "Start closes windows and shows the menu")
-ns.ToggleGameMenu()
-assert(not shownNow, "Start again puts the menu away")
+assert(ns.StartPressed() == "clear" and not shownNow and windowsClosed == 0, "with a target, Start only clears it")
+starter.scripts.PreClick()
+assert(starter.attrs.type == "macro", "a clearing press keeps the macro")
+starter.scripts.PostClick()
+hasTarget, anyWindow = false, true
+assert(ns.StartPressed() == "clear" and not shownNow and windowsClosed == 1, "with a window open, Start closes it")
+anyWindow = false
+starter.scripts.PreClick()
+assert(shownNow and starter.attrs.type == nil, "nothing left: Start opens the menu and does not clear")
+starter.scripts.PostClick()
+assert(starter.attrs.type == "macro", "the macro is back for the next press")
+assert(ns.StartPressed() == "hide" and not shownNow, "Start again puts the menu away")
+ns.Cursor.WindowOpen = realWindowOpen
 local hiddenBefore = menuHidden
 added.callback()
 assert(menuHidden == hiddenBefore + 1, "menu closes when the button is used")

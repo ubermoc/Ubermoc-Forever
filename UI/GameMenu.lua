@@ -8,38 +8,102 @@ local SECTION_GAP = 20
 
 local hooked
 
--- The same steps as the menu button on the micro bar: close what is open, then show the menu,
--- or put it away if it is already up. Nothing here stops casting or clears the target.
-function ns.ToggleGameMenu()
-    local menu = _G.GameMenuFrame
-    if not menu then
-        return
+-- Start works in steps, like Esc on a keyboard: the first press closes what is open, clears the
+-- target and stops a cast, and once there is nothing left to clear the next press opens the menu.
+-- (The game's own Esc action does this too, but on a controller its first steps can use up every
+-- press so the menu never opens.) Clearing the target and stopping a cast are protected, so they
+-- run from a secure macro on the button; the closing and the menu are done just before it.
+local CLEAR_MACRO = "/stopcasting\n/cleartarget"
+
+local function isShown(frame)
+    return type(frame) == "table" and frame.IsShown and frame:IsShown() and true or false
+end
+
+local function casting()
+    local ok, busy = pcall(function()
+        return UnitCastingInfo("player") ~= nil or UnitChannelInfo("player") ~= nil
+    end)
+    return ok and busy
+end
+
+local function panelsOpen()
+    if ns.Cursor.WindowOpen() or isShown(_G.SettingsPanel) or isShown(_G.UbermocForeverOptions)
+        or isShown(_G.DropDownList1) or isShown(_G.DropDownList2) then
+        return true
     end
-    if menu:IsShown() then
-        PlaySound(SOUNDKIT.IG_MAINMENU_QUIT)
-        HideUIPanel(menu)
-        return
+    for i = 1, 4 do
+        if isShown(_G["StaticPopup" .. i]) then
+            return true
+        end
     end
-    if AreAllPanelsDisallowed and AreAllPanelsDisallowed() then
-        return
+    return false
+end
+
+local function closePanels()
+    if type(StaticPopup_EscapePressed) == "function" then
+        pcall(StaticPopup_EscapePressed)
     end
-    if _G.SettingsPanel and _G.SettingsPanel:IsShown() then
-        _G.SettingsPanel:Close()
+    if isShown(_G.SettingsPanel) then
+        pcall(_G.SettingsPanel.Close, _G.SettingsPanel, true)
     end
     ns.Options.Hide()
-    CloseMenus()
+    if type(CloseMenus) == "function" then
+        pcall(CloseMenus)
+    end
     CloseAllWindows()
+end
+
+function ns.OpenGameMenu()
+    local menu = _G.GameMenuFrame
+    if not menu or (AreAllPanelsDisallowed and AreAllPanelsDisallowed()) then
+        return
+    end
+    closePanels()
     PlaySound(SOUNDKIT.IG_MAINMENU_OPEN)
     ShowUIPanel(menu)
 end
 
--- Bindings reach a function through a click on a button; this one is bound to Start.
-local starter = CreateFrame("Button", "UbermocForeverMenu", UIParent)
+-- What a press of Start does: "hide" the menu if it is up, "clear" (close panels, then the macro
+-- clears the target and stops a cast), or "menu" when there was nothing to clear.
+function ns.StartPressed()
+    local menu = _G.GameMenuFrame
+    if isShown(menu) then
+        PlaySound(SOUNDKIT.IG_MAINMENU_QUIT)
+        HideUIPanel(menu)
+        return "hide"
+    end
+    local panels = panelsOpen()
+    if panels or UnitExists("target") or casting() then
+        if panels then
+            closePanels()
+        end
+        return "clear"
+    end
+    ns.OpenGameMenu()
+    return "menu"
+end
+
+-- Bindings reach this through a click on the button. It is a secure button so that the macro can
+-- clear the target; the attribute is switched off for presses that should not clear anything
+-- (it cannot be changed in combat, where the press always runs the macro).
+local starter = CreateFrame("Button", "UbermocForeverMenu", UIParent, "SecureActionButtonTemplate")
 starter:RegisterForClicks("AnyUp")
-starter:SetScript("OnClick", function()
-    local ok, err = pcall(ns.ToggleGameMenu)
+starter:SetAttribute("useOnKeyDown", false)
+starter:SetAttribute("type", "macro")
+starter:SetAttribute("macrotext", CLEAR_MACRO)
+starter:SetScript("PreClick", function()
+    local ok, action = pcall(ns.StartPressed)
     if not ok then
-        ns.Log("game menu key failed: " .. tostring(err))
+        ns.Log("start key failed: " .. tostring(action))
+        return
+    end
+    if not InCombatLockdown() then
+        starter:SetAttribute("type", action == "clear" and "macro" or nil)
+    end
+end)
+starter:SetScript("PostClick", function()
+    if not InCombatLockdown() then
+        starter:SetAttribute("type", "macro")
     end
 end)
 
