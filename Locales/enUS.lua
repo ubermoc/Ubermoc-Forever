@@ -76,6 +76,7 @@ ns.L = {
     LEGEND_MOVE = "Move", LEGEND_SELECT = "Select", LEGEND_USE = "Use", LEGEND_SCROLL = "Scroll",
     LEGEND_TABS = "Tabs", LEGEND_BACK = "Back", LEGEND_CLOSE = "Close",
     LEGEND_OPT_MOVE = "Move and change", LEGEND_OPT_FINE = "Fine", LEGEND_OPT_PAGE = "Page",
+    LEGEND_OPT_MOVE_LIST = "Move", LEGEND_OPT_CHOOSE = "Choose", LEGEND_OPT_CANCEL = "Cancel",
     OPT_STYLE = "Interface style",
     OPT_STYLE_AUTO = "Auto (%s)",
     OPT_STYLE_CHANGED = "Interface style: %s.",

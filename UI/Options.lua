@@ -120,18 +120,36 @@ local function buildRows()
                 Layout.SetModifier(which, key)
             end
         end
+        local function paddleChoices(otherButton)
+            local list = {}
+            for _, key in ipairs(Layout.PADDLES) do
+                if key ~= otherButton then
+                    list[#list + 1] = { text = Layout.Friendly(key), value = key }
+                end
+            end
+            return list
+        end
         rows[#rows + 1] = { label = L.OPT_SHIFT_PADDLE, value = Layout.Friendly(c.shiftButton),
-            onLeft = modifierRow("shift", "shiftButton", -1), onRight = modifierRow("shift", "shiftButton", 1) }
+            onLeft = modifierRow("shift", "shiftButton", -1), onRight = modifierRow("shift", "shiftButton", 1),
+            choices = paddleChoices(c.ctrlButton), current = c.shiftButton,
+            pick = function(value) Layout.SetModifier("shift", value) end }
         rows[#rows + 1] = { label = L.OPT_CTRL_PADDLE, value = Layout.Friendly(c.ctrlButton),
-            onLeft = modifierRow("ctrl", "ctrlButton", -1), onRight = modifierRow("ctrl", "ctrlButton", 1) }
+            onLeft = modifierRow("ctrl", "ctrlButton", -1), onRight = modifierRow("ctrl", "ctrlButton", 1),
+            choices = paddleChoices(c.shiftButton), current = c.ctrlButton,
+            pick = function(value) Layout.SetModifier("ctrl", value) end }
         for set, def in ipairs(Layout.SETS) do
             local function step(delta)
                 return function()
                     Layout.SetBar(set, (c.bars[set] - 1 + delta) % Layout.MAX_BAR + 1)
                 end
             end
+            local bars = {}
+            for bar = 1, Layout.MAX_BAR do
+                bars[bar] = { text = L.OPT_BAR:format(bar), value = bar }
+            end
             rows[#rows + 1] = { label = L.OPT_SET:format(def.label), value = L.OPT_BAR:format(c.bars[set]),
-                onLeft = step(-1), onRight = step(1) }
+                onLeft = step(-1), onRight = step(1), choices = bars, current = c.bars[set],
+                pick = function(value) Layout.SetBar(set, value) end }
         end
 
     elseif page == 4 then
@@ -146,8 +164,18 @@ local function buildRows()
                 end
             end
             local current = C_CVar.GetCVar(name) or "?"
+            local buttons = {}
+            for i, key in ipairs(CLICK_BUTTONS) do
+                buttons[i] = { text = Layout.Friendly(key) .. (Layout.UsesKey(key) and " *" or ""), value = key }
+            end
             return { label = label, value = Layout.Friendly(current) .. (Layout.UsesKey(current) and " *" or ""),
-                onLeft = step(-1), onRight = step(1) }
+                onLeft = step(-1), onRight = step(1), choices = buttons, current = current,
+                pick = function(key)
+                    setCursorCVar(name, key)
+                    if Layout.UsesKey(key) then
+                        message = L.OPT_CLICK_SHARED
+                    end
+                end }
         end
         local function boolRow(label, read, write)
             local function toggle()
@@ -187,8 +215,13 @@ local function buildRows()
                     Layout.SetExtra(key, cycle(Layout.EXTRA_COMMAND_LIST, c.extras[key], delta))
                 end
             end
+            local commands = {}
+            for i, command in ipairs(Layout.EXTRA_COMMAND_LIST) do
+                commands[i] = { text = Layout.CommandName(command), value = command }
+            end
             rows[#rows + 1] = { label = Layout.Friendly(key), value = Layout.CommandName(c.extras[key]),
-                onLeft = step(-1), onRight = step(1) }
+                onLeft = step(-1), onRight = step(1), choices = commands, current = c.extras[key],
+                pick = function(value) Layout.SetExtra(key, value) end }
         end
         local function stepSetting(field, read, delta)
             return function()
@@ -210,20 +243,35 @@ local function buildRows()
                 message = L.OPT_LABELS_CHANGED:format(ns.Labels.Describe(result))
             end
         end
+        local labelList = {}
+        for i, choice in ipairs(labelChoices) do
+            labelList[i] = { text = L.OPT_LABEL_NAMES[choice], value = choice }
+        end
         rows[#rows + 1] = { label = L.OPT_LABELS, value = L.OPT_LABEL_NAMES[ns.Labels.Choice()],
-            onLeft = stepLabels(-1), onRight = stepLabels(1) }
+            onLeft = stepLabels(-1), onRight = stepLabels(1), choices = labelList, current = ns.Labels.Choice(),
+            pick = function(choice)
+                local result = ns.Labels.SetChoice(choice)
+                message = L.OPT_LABELS_CHANGED:format(ns.Labels.Describe(result))
+            end }
         local styleChoices = { "Auto", "Midnight", "Forever" }
+        local function chooseStyle(choice)
+            ns.Legend.SetChoice(choice)
+            local style = ns.Legend.Style()
+            message = ns.Legend.Available(style) and L.OPT_STYLE_CHANGED:format(style) or L.OPT_STYLE_MISSING:format(style)
+            Options.Restyle()
+        end
         local function stepStyle(delta)
             return function()
-                local choice = cycle(styleChoices, ns.Legend.Choice(), delta)
-                ns.Legend.SetChoice(choice)
-                local style = ns.Legend.Style()
-                message = ns.Legend.Available(style) and L.OPT_STYLE_CHANGED:format(style) or L.OPT_STYLE_MISSING:format(style)
-                Options.Restyle()
+                chooseStyle(cycle(styleChoices, ns.Legend.Choice(), delta))
             end
         end
+        local styleList = {}
+        for i, choice in ipairs(styleChoices) do
+            styleList[i] = { text = choice == "Auto" and L.OPT_STYLE_AUTO:format(ns.Legend.Style()) or choice, value = choice }
+        end
         local styleValue = ns.Legend.Choice() == "Auto" and L.OPT_STYLE_AUTO:format(ns.Legend.Style()) or ns.Legend.Choice()
-        rows[#rows + 1] = { label = L.OPT_STYLE, value = styleValue, onLeft = stepStyle(-1), onRight = stepStyle(1) }
+        rows[#rows + 1] = { label = L.OPT_STYLE, value = styleValue, onLeft = stepStyle(-1), onRight = stepStyle(1),
+            choices = styleList, current = ns.Legend.Choice(), pick = chooseStyle }
         rows[#rows + 1] = { label = L.OPT_CLEAR_BINDS, value = confirmClear and L.OPT_CLEAR_CONFIRM or "",
             onActivate = function()
                 if not confirmClear then
@@ -273,6 +321,129 @@ local function render()
     status:SetText(message)
 end
 
+-- A drop-down list for any row that has choices: A opens it next to the row, the D-pad moves, A
+-- picks, B closes it without changing anything. It is a child of the window, drawn in the game's
+-- tooltip panel look, and takes the buttons while it is open.
+local DD_ITEMS, DD_ROW, DD_PAD, DD_WIDTH = 8, 22, 8, 240
+local dropdown, ddFrame
+
+local function ddBuild()
+    local ok, made = pcall(CreateFrame, "Frame", nil, frame, "TooltipBackdropTemplate")
+    if ok then
+        ddFrame = made
+    else
+        ddFrame = CreateFrame("Frame", nil, frame)
+        ddFrame.fallback = ddFrame:CreateTexture(nil, "BACKGROUND")
+        ddFrame.fallback:SetAllPoints()
+        ddFrame.fallback:SetColorTexture(0, 0, 0, 0.9)
+    end
+    ddFrame:SetFrameLevel(frame:GetFrameLevel() + 100)
+    ddFrame:SetWidth(DD_WIDTH)
+    ddFrame:Hide()
+    ddFrame.items = {}
+    for i = 1, DD_ITEMS do
+        local item = CreateFrame("Frame", nil, ddFrame)
+        item:SetHeight(DD_ROW)
+        item:SetPoint("TOPLEFT", ddFrame, "TOPLEFT", DD_PAD, -DD_PAD - (i - 1) * DD_ROW)
+        item:SetPoint("TOPRIGHT", ddFrame, "TOPRIGHT", -DD_PAD, -DD_PAD - (i - 1) * DD_ROW)
+        item.highlight = item:CreateTexture(nil, "BACKGROUND")
+        item.highlight:SetAllPoints()
+        item.highlight:SetColorTexture(1, 0.82, 0, 0.25)
+        item.text = item:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        item.text:SetPoint("LEFT", item, "LEFT", 8, 0)
+        ddFrame.items[i] = item
+    end
+end
+
+local function ddRender()
+    local d = dropdown
+    for i = 1, DD_ITEMS do
+        local item, choice = ddFrame.items[i], d.items[d.top + i - 1]
+        if choice then
+            local current = choice.value == d.row.current
+            item.text:SetText((current and "|cffffd100" or "") .. choice.text .. (current and "|r" or ""))
+            item.highlight:SetShown(d.top + i - 1 == d.sel)
+            item:Show()
+        else
+            item:Hide()
+        end
+    end
+end
+
+local function closeDropdown()
+    dropdown = nil
+    if ddFrame then
+        ddFrame:Hide()
+    end
+    if legend and legend.normalEntries then
+        legend:Set(legend.normalEntries)
+    end
+end
+
+function Options.DropdownOpen()
+    return dropdown ~= nil
+end
+
+local function openDropdown(rowFrameIndex, data)
+    if not ddFrame then
+        ddBuild()
+    end
+    local items = data.choices
+    local sel = 1
+    for i, choice in ipairs(items) do
+        if choice.value == data.current then
+            sel = i
+        end
+    end
+    local shownCount = math.min(#items, DD_ITEMS)
+    dropdown = { row = data, items = items, sel = sel, top = math.max(1, math.min(sel - shownCount + 1, #items - shownCount + 1)) }
+    local height = shownCount * DD_ROW + 2 * DD_PAD
+    ddFrame:SetHeight(height)
+    ddFrame:ClearAllPoints()
+    local rowFrame = rowFrames[rowFrameIndex]
+    local rowBottom = 64 + rowFrameIndex * ROW_HEIGHT
+    if rowBottom + height > HEIGHT - 40 then
+        ddFrame:SetPoint("BOTTOMRIGHT", rowFrame, "TOPRIGHT", -8, 2)
+    else
+        ddFrame:SetPoint("TOPRIGHT", rowFrame, "BOTTOMRIGHT", -8, -2)
+    end
+    ddRender()
+    ddFrame:Show()
+    if legend then
+        legend:Set({
+            { keys = { "DPAD" }, text = L.LEGEND_OPT_MOVE_LIST },
+            { keys = { "PAD1" }, text = L.LEGEND_OPT_CHOOSE },
+            { keys = { "PAD2" }, text = L.LEGEND_OPT_CANCEL },
+        })
+    end
+end
+
+local function dropdownKey(key)
+    local d = dropdown
+    if key == "PADDUP" or key == "PADLSTICKUP" then
+        d.sel = (d.sel - 2) % #d.items + 1
+    elseif key == "PADDDOWN" or key == "PADLSTICKDOWN" then
+        d.sel = d.sel % #d.items + 1
+    elseif key == "PAD1" then
+        local choice = d.items[d.sel]
+        local pick = d.row.pick
+        closeDropdown()
+        if pick then
+            pick(choice.value)
+        end
+        return
+    elseif key == "PAD2" or key == "PADBACK" or key == "PADFORWARD" then
+        closeDropdown()
+        return
+    end
+    if d.sel < d.top then
+        d.top = d.sel
+    elseif d.sel > d.top + DD_ITEMS - 1 then
+        d.top = d.sel - DD_ITEMS + 1
+    end
+    ddRender()
+end
+
 local function handleKey(key)
     key = key:match("([^-]+)$") or key
     ns.Log("options key " .. key)
@@ -280,6 +451,12 @@ local function handleKey(key)
         confirmClear = false
     end
     message = L.OPT_LAST_KEY:format(key)
+
+    if dropdown then
+        dropdownKey(key)
+        render()
+        return
+    end
 
     if captureSlot then
         if key == "PADBACK" then
@@ -315,8 +492,12 @@ local function handleKey(key)
     elseif key == "PADRTRIGGER" then
         if row.onFineRight then row.onFineRight() end
     elseif key == "PAD1" then
-        local action = row.onActivate or row.onRight
-        if action then action() end
+        if row.choices and not row.onActivate then
+            openDropdown(index, row)
+        else
+            local action = row.onActivate or row.onRight
+            if action then action() end
+        end
     elseif key == "PADLSHOULDER" then
         page = (page - 2) % PAGE_COUNT + 1
         index = 1
@@ -406,13 +587,16 @@ local function create()
     legend = ns.Legend.Create(frame)
     legend:SetPoint("BOTTOM", frame, "BOTTOM", 0, 6)
     legend:SetWidth(frame:GetWidth())
-    legend:Set({
+    legend.normalEntries = {
         { keys = { "DPAD" }, text = L.LEGEND_OPT_MOVE },
         { keys = { "PADLTRIGGER", "PADRTRIGGER" }, text = L.LEGEND_OPT_FINE },
         { keys = { "PAD1" }, text = L.LEGEND_SELECT },
         { keys = { "PADLSHOULDER", "PADRSHOULDER" }, text = L.LEGEND_OPT_PAGE },
         { keys = { "PAD2" }, text = L.LEGEND_CLOSE },
-    })
+    }
+    legend:Set(legend.normalEntries)
+    ddFrame = nil
+    dropdown = nil
 
     frame:EnableGamePadButton(true)
     frame:SetScript("OnGamePadButtonDown", function(_, key)
@@ -430,6 +614,7 @@ end
 
 function Options.Hide()
     captureSlot = nil
+    closeDropdown()
     if frame then
         frame:Hide()
     end

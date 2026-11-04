@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.10.0
+- Drop-down lists in the options. Press A on any row that has a set of choices and a list opens next to it, in the game's tooltip panel look: the D-pad moves, A picks, B closes it without changing anything. The current choice is shown in gold. It works for the Shift and Ctrl paddles, the bar each paddle set reaches, the other-button commands (Start, Select, L3, L4, L5), the cursor click buttons, the button labels and the interface style. The legend at the bottom changes to Move / Choose / Cancel while a list is open, and the list opens below the row, or above it near the bottom of the window. The old left / right stepping still works on those rows.
+
 ## 0.9.9
 - The legend is now part of the window it describes instead of a floating bar. It is attached along the window's bottom edge (below its tabs, or above the window if there is no room), as wide as the window, drawn in the game's own tooltip panel style, and it moves, scales and hides with the window. Its text is always the same size; when a window is narrow the entries wrap onto a second line instead of shrinking, so nothing changes size from tab to tab. A picture and its label never split across lines.
 - This replaces the 0.9.7 and 0.9.8 behaviour of shrinking the legend to fit.

@@ -254,6 +254,21 @@ assert(cfg.bars[1] == 2, "bar cycles")
 press(win, "PADRSHOULDER")        -- page 3
 press(win, "PADDRIGHT")
 assert(cfg.extras.PADFORWARD == "TOGGLEGAMEMENU", "extra command cycles")
+-- A opens a drop-down list on a row with choices; the D-pad moves, A picks, B cancels
+press(win, "PAD1")
+assert(ns.Options.DropdownOpen(), "A opens the list")
+press(win, "PADDDOWN")
+press(win, "PAD1")
+assert(not ns.Options.DropdownOpen() and cfg.extras.PADFORWARD == "TOGGLEWORLDMAP", "the highlighted choice is picked")
+press(win, "PAD1")
+press(win, "PADDUP")
+press(win, "PAD2")
+assert(not ns.Options.DropdownOpen() and cfg.extras.PADFORWARD == "TOGGLEWORLDMAP", "B closes the list and changes nothing")
+press(win, "PAD1")
+for _ = 1, 20 do press(win, "PADDDOWN") end
+press(win, "PAD1")
+assert(cfg.extras.PADFORWARD ~= nil and not ns.Options.DropdownOpen(), "the list wraps and still picks")
+cfg.extras.PADFORWARD = "TOGGLEGAMEMENU"
 for _ = 1, 5 do press(win, "PADDDOWN") end   -- window background tint row
 press(win, "PADDRIGHT")
 assert(ns.db.optionsTint == 50, "tint steps by 5 from 45")
