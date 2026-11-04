@@ -10,8 +10,11 @@ ns.Tabs = Tabs
 
 local MAX_DEPTH = 6
 
-local function usable(button)
-    return type(button) == "table" and button.IsShown and button:IsShown() and button.IsEnabled and button:IsEnabled() and button.Click
+-- A tab can be gone to when it is shown and enabled. The tab you are on is the exception: the game
+-- disables the selected tab, so it has to count anyway or the current position would be lost.
+local function usable(button, isSelected)
+    return type(button) == "table" and button.IsShown and button:IsShown() and button.Click
+        and (isSelected or (button.IsEnabled and button:IsEnabled()))
 end
 
 -- Returns the usable tab buttons in order and the position of the selected one (or nil).
@@ -19,9 +22,10 @@ local function fromFrame(frame)
     if type(frame.tabs) == "table" and frame.selectedTabID ~= nil then
         local list, selected = {}, nil
         for _, button in ipairs(frame.tabs) do
-            if usable(button) then
+            local isSelected = button.GetTabID and button:GetTabID() == frame.selectedTabID
+            if usable(button, isSelected) then
                 list[#list + 1] = button
-                if button.GetTabID and button:GetTabID() == frame.selectedTabID then
+                if isSelected then
                     selected = #list
                 end
             end
@@ -35,9 +39,10 @@ local function fromFrame(frame)
         local list, selected = {}, nil
         for i = 1, frame.numTabs do
             local button = (type(frame.Tabs) == "table" and frame.Tabs[i]) or (name and _G[name .. "Tab" .. i])
-            if usable(button) then
+            local isSelected = i == frame.selectedTab
+            if usable(button, isSelected) then
                 list[#list + 1] = button
-                if i == frame.selectedTab then
+                if isSelected then
                     selected = #list
                 end
             end

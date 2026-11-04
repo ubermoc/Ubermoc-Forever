@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.6
+- Fixed L1 / R1 jumping to the first or last tab and then only moving between two. The game disables the tab you are on, and the tab finder was leaving disabled tabs out, so it lost track of which tab was current. R1 then always chose the first tab and L1 the last. The current tab now counts as the starting point, so each press goes to the next or previous tab, wrapping at the ends. A window with only two tabs (Dungeons & Raids, Achievements) now also shows "Tabs" in the legend, which it did not before.
+- Because those windows' tabs are now found, the legend also sits below them instead of on top of them.
+
 ## 0.9.5
 - The options window can now be drawn on Blizzard's own portrait panel, the same panel Forever's own screens are built on. It shows Forever's bronze frame on Forever and the plain gray one on Midnight, with the player's portrait and the game's own title bar. The window and the legend share one setting, "Interface style" on the Other page: Auto uses each game's own look (the portrait panel on Forever, the plain panel on Midnight, as before), and Midnight or Forever can be chosen to switch. Changing it redraws the open window at once, on the same page.
 - The window background tint and opacity work on both panels; on the portrait panel the tint darkens its rock background.

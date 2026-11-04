@@ -583,6 +583,21 @@ tabbed.selectedTab = 1
 assert(ns.Tabs.Target(-1) == t3, "previous wraps to the last tab")
 tabbed.selectedTab = 2
 assert(ns.Tabs.Target(1) == t3 and ns.Tabs.Target(-1) == t1, "every tab can be reached in both directions")
+-- the game disables the tab you are on; it must still count as the current position
+local d1, d2, d3 = tabButton(1, false), tabButton(2), tabButton(3)
+tabbed = { numTabs = 3, selectedTab = 1, Tabs = { d1, d2, d3 }, GetName = function() return "Tabbed" end,
+    IsShown = function() return true end, GetChildren = function() end }
+assert(ns.Tabs.Target(1) == d2 and ns.Tabs.Target(-1) == d3, "the disabled selected tab is the starting point")
+tabbed.selectedTab = 2
+d1.IsEnabled = function() return true end
+d2.IsEnabled = function() return false end
+assert(ns.Tabs.Target(1) == d3 and ns.Tabs.Target(-1) == d1, "stepping continues from the middle")
+local two = { numTabs = 2, selectedTab = 1, Tabs = { tabButton(1, false), tabButton(2) }, GetName = function() return "Two" end,
+    IsShown = function() return true end, GetChildren = function() end }
+tabbed = two
+assert(ns.Tabs.Available() and ns.Tabs.Target(1) == two.Tabs[2], "a two-tab window counts as having tabs")
+tabbed = { numTabs = 3, selectedTab = 1, Tabs = { t1, t2, t3 }, GetName = function() return "Tabbed" end,
+    IsShown = function() return true end, GetChildren = function() end }
 local s1, s2 = tabButton(1), tabButton(2, false)
 local s3 = tabButton(3)
 local system = { tabs = { s1, s2, s3 }, selectedTabID = 1 }
