@@ -543,6 +543,10 @@ assert(broken.results[1].name == "self test ran" and broken.results[1].detail:fi
 ns.RunSelfTest = realSelfTest
 SlashCmdList["UBERMOCFOREVER"]("autotest")
 SlashCmdList["UBERMOCFOREVER"]("autotest off")
+local reloads = 0
+function ReloadUI() reloads = reloads + 1 end
+SlashCmdList["UBERMOCFOREVER"]("reload")
+assert(reloads == 1, "/ubf reload reloads the UI")
 assert(not ns.AutoTest.Enabled(), "/ubf autotest off")
 
 -- The watcher's reader understands the saved variables file the game writes.

@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Auto test for development: `/ubf autotest on` (or "Self test on every load" on the Other page of the options) runs the self test by itself every time the UI loads. It waits two seconds after entering the world, runs once per load, and keeps the results in the saved variables: addon version, game, game version and build, time, what started it (login or reload), the load events in order, every check with pass/fail and detail, any Lua errors from this addon, and which checks failed or were fixed since the run before. It is off by default. `/ubf autotest now` runs it on demand, `/ubf autotest` shows the last result.
+- `/ubf reload` reloads the UI, so a one-line macro on an action bar slot your controller reaches can do it with one button.
 - A crashing self test no longer stops anything: it is recorded as a failed check with the error text.
 - New `tools/watch.sh` watches both games' saved variables and prints a short pass/fail summary each time the game writes them (each /reload). `tools/watch.sh --once` prints both summaries and exits. It points out when the results are from an older build than the one installed.
 - The offline test now also loads the whole addon a second time as Midnight (Midnight defaults, the same layout, auto test on reload), tests the auto test's results, and reads a saved variables file with the watcher's reader.

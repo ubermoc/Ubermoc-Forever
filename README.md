@@ -13,4 +13,5 @@ Download the latest zip from Releases and extract `UbermocForever` into the `Int
 - `/ubf pad`, `/ubf padtest`, `/ubf padmap`: controller report, live readout and full button list
 - `/ubf layout on|off|status|reset|bind|bar`: action bar layout for the controller
 - `/ubf autotest on|off|now`: run the self test by itself on every load and keep the results in the saved variables (for development)
+- `/ubf reload`: reload the UI (handy as a one-button macro on a controller-reachable action bar slot)
 - `/ubf version`: show version and game type
