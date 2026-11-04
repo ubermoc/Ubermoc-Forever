@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.8
+- The legend is now one size everywhere. In 0.9.7 it was shrunk to each window's own width, so it was smaller on Reputation and Currency than on Character. It is now sized once to fit Blizzard's standard panel width (338), so it is the same on every tab and window, and fits inside any panel that wide or wider. Only a window narrower than that makes it smaller. The pictures and spacing are slightly tighter so it stays easy to read at that size.
+
 ## 0.9.7
 - The legend no longer jumps around when you switch tabs. It used to centre itself on the window, and a window like Character changes width from tab to tab, so it moved. It now lines up with the window's left edge, which does not move, and sits under the lowest tab.
 - The legend now fits inside the window it belongs to. If the window is narrower than the legend (Reputation and Currency on the Character window, for one), the legend shrinks to fit, down to a floor of 60% of its size.

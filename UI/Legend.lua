@@ -8,8 +8,8 @@ local _, ns = ...
 local Legend = {}
 ns.Legend = Legend
 
-local ICON = 20
-local GAP = "     "
+local ICON = 18
+local GAP = "   "
 
 -- The lettered art, named as Blizzard's own binding text names it (Gamepad_<name>_64).
 local MIDNIGHT = {
@@ -142,15 +142,22 @@ local lastKey
 -- Where the legend goes, in screen units. rect is the window's left, right, bottom and top; lowestTab
 -- is the bottom of its lowest tab (tabs hang below the frame), or nil. The legend lines up with the
 -- window's left edge, which stays put when the window changes width from tab to tab (centring it
--- made it jump), sits under the lowest tab, or above the window when there is no room below, and
--- shrinks to fit when the window is narrower than it is. Returns scale, point, x, y.
+-- made it jump), sits under the lowest tab, or above the window when there is no room below.
+-- The size is the same for every window, so it does not change from tab to tab: small enough to fit
+-- Blizzard's standard panel width (338, the size of its portrait panel), and smaller still only for
+-- a window narrower than that. Returns scale, point, x, y.
 local MIN_SCALE = 0.6
+local STANDARD_PANEL_WIDTH = 338
 function Legend.ComputeLayout(baseWidth, height, rect, lowestTab)
     local width = rect.right - rect.left
     local scale = 1
-    if baseWidth > width and width > 0 then
-        scale = math.max(MIN_SCALE, width / baseWidth)
+    if baseWidth > STANDARD_PANEL_WIDTH then
+        scale = STANDARD_PANEL_WIDTH / baseWidth
     end
+    if width > 0 and width < STANDARD_PANEL_WIDTH and baseWidth * scale > width then
+        scale = width / baseWidth
+    end
+    scale = math.max(MIN_SCALE, scale)
     local lowest = math.min(rect.bottom, lowestTab or rect.bottom)
     if lowest >= height * scale + 10 then
         return scale, "TOPLEFT", rect.left, lowest - 6
