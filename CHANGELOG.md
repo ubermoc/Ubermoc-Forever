@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.3
+- The legend no longer sits over the main action bar. It now goes under the open window, like the footers on Blizzard's own screens, or above the window when there is no room below, and is kept on screen. It moves with the window.
+- The D-pad is one picture with "Move" instead of four. Midnight has no picture for the whole D-pad, so one direction stands for it; Forever uses its own whole-D-pad picture. The self test now also looks for a whole-D-pad picture in Midnight.
+
 ## 0.9.2
 - Removed the step that told the action bar buttons to redraw their key text after a label change. The game's log showed over a hundred blocked actions on the action bars (MultiBar buttons and containers, the stance bar) in the same minute, and this call into Blizzard's own button code is the only place this addon touched them. The game redraws the key text itself when the controller settings change.
 - The legend now catches and logs any error it hits instead of failing silently, and `/ubf legend` prints whether the legend exists, is shown, its style, its width and its text, so a missing legend can be traced.

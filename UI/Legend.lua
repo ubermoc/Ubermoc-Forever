@@ -78,8 +78,8 @@ local function entryText(entry, style)
     local pieces = {}
     for _, key in ipairs(entry.keys) do
         if key == "DPAD" and not (style == "Forever" and Legend.Available("Forever")) then
-            pieces[#pieces + 1] = glyph("PADDUP", style) .. glyph("PADDDOWN", style)
-                .. glyph("PADDLEFT", style) .. glyph("PADDRIGHT", style)
+            -- Midnight has no single picture for the whole D-pad; one direction stands for it.
+            pieces[#pieces + 1] = glyph("PADDUP", style)
         else
             pieces[#pieces + 1] = glyph(key, style)
         end
@@ -138,12 +138,37 @@ end
 local shownLegend
 local lastKey
 
-function Legend.Show(tabs)
+local lastRoot
+
+-- Under the window, like the footers on Blizzard's own screens; above it when there is no room
+-- below, and kept on screen either way. Without a window it sits at the top of the screen.
+local function place(legend, root)
+    if root == lastRoot and legend:IsShown() then
+        return
+    end
+    lastRoot = root
+    legend:ClearAllPoints()
+    local bottom = root and root.GetBottom and root:GetBottom()
+    local scale = root and root.GetEffectiveScale and root:GetEffectiveScale()
+    if bottom and scale then
+        local room = bottom * scale / UIParent:GetEffectiveScale()
+        if room >= legend:GetHeight() + 10 then
+            legend:SetPoint("TOP", root, "BOTTOM", 0, -6)
+        else
+            legend:SetPoint("BOTTOM", root, "TOP", 0, 6)
+        end
+    else
+        legend:SetPoint("TOP", UIParent, "TOP", 0, -60)
+    end
+end
+
+function Legend.Show(tabs, root)
     if not shownLegend then
         shownLegend = Legend.Create(UIParent, { background = true })
         shownLegend:SetFrameStrata("TOOLTIP")
-        shownLegend:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 90)
+        shownLegend:SetClampedToScreen(true)
     end
+    place(shownLegend, root)
     local L = ns.L
     local entries = {
         { keys = { "DPAD" }, text = L.LEGEND_MOVE },
@@ -177,5 +202,5 @@ function Legend.Hide()
     if shownLegend then
         shownLegend:Hide()
     end
-    lastKey = nil
+    lastKey, lastRoot = nil, nil
 end

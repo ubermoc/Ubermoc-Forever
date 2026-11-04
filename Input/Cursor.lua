@@ -78,7 +78,7 @@ function Cursor.Update(step)
         if tabCheck >= TAB_CHECK or not legendUp then
             tabCheck = 0
             legendUp = true
-            local ok, err = pcall(function() ns.Legend.Show(ns.Tabs.Available()) end)
+            local ok, err = pcall(function() ns.Legend.Show(ns.Tabs.Available(), Cursor.OpenWindows()[1]) end)
             if not ok and err ~= ns.Legend.lastError then
                 ns.Legend.lastError = err
                 ns.Log("legend failed: " .. tostring(err))
