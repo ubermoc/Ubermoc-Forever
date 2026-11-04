@@ -63,11 +63,26 @@ local function opacity()
     return ns.db.optionsOpacity or DEFAULT_OPACITY
 end
 
+-- Two frames can be drawn. The plain panel (Midnight's look) has a background and an inset behind
+-- the rows; Blizzard's portrait panel (Forever's look, the one its own screens use) has one rock
+-- background, so the tint darkens that instead.
+local TINT_DARKEST = 0.55
 local function applyBackground()
-    if frame then
-        frame.Bg:SetAlpha(opacity() / 100)
-        frame.InsetBg:SetAlpha(tint() / 100 * opacity() / 100)
+    if not frame then
+        return
     end
+    frame.Bg:SetAlpha(opacity() / 100)
+    if frame.InsetBg then
+        frame.InsetBg:SetAlpha(tint() / 100 * opacity() / 100)
+    else
+        local shade = 1 - TINT_DARKEST * tint() / 100
+        frame.Bg:SetVertexColor(shade, shade, shade)
+    end
+end
+
+-- The look to draw: the interface style (the game's own by default).
+local function wantedStyle()
+    return ns.Legend.Style()
 end
 
 local function setCursorCVar(name, value)
@@ -204,6 +219,7 @@ local function buildRows()
                 ns.Legend.SetChoice(choice)
                 local style = ns.Legend.Style()
                 message = ns.Legend.Available(style) and L.OPT_STYLE_CHANGED:format(style) or L.OPT_STYLE_MISSING:format(style)
+                Options.Restyle()
             end
         end
         local styleValue = ns.Legend.Choice() == "Auto" and L.OPT_STYLE_AUTO:format(ns.Legend.Style()) or ns.Legend.Choice()
@@ -315,15 +331,55 @@ local function handleKey(key)
 end
 Options.HandleKey = handleKey
 
+local WINDOW_NAME = "UbermocForeverOptions"
+local watcher
+
 local function create()
-    frame = CreateFrame("Frame", "UbermocForeverOptions", UIParent, "BasicFrameTemplateWithInset")
+    local requested = wantedStyle()
+    local style = requested
+    local old = frame
+    local x, y
+    if old then
+        -- A template cannot be changed once a frame exists, so the old frame is put away and its
+        -- place and name are taken over by the new one.
+        x, y = old:GetCenter()
+        old:Hide()
+        old:SetParent(nil)
+        for i = #UISpecialFrames, 1, -1 do
+            if UISpecialFrames[i] == WINDOW_NAME then
+                table.remove(UISpecialFrames, i)
+            end
+        end
+        rowFrames = {}
+    end
+    local name = not old and WINDOW_NAME or nil
+    if style == "Forever" then
+        local ok, made = pcall(CreateFrame, "Frame", name, UIParent, "PortraitFrameTemplate")
+        if ok then
+            frame = made
+            frame:SetTitle(L.OPT_TITLE)
+            frame:SetPortraitToUnit("player")
+        else
+            ns.Log("portrait panel failed, using the plain panel: " .. tostring(made))
+            style = "Midnight"
+        end
+    end
+    if style ~= "Forever" then
+        frame = CreateFrame("Frame", name, UIParent, "BasicFrameTemplateWithInset")
+        frame.TitleText:SetText(L.OPT_TITLE)
+    end
+    rawset(_G, WINDOW_NAME, frame)
+    frame.uiStyle, frame.requestedStyle = style, requested
     frame:SetSize(WIDTH, HEIGHT)
-    frame:SetPoint("CENTER")
+    if x and y then
+        frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+    else
+        frame:SetPoint("CENTER")
+    end
     frame:SetFrameStrata("DIALOG")
     frame:EnableMouse(true)
-    frame.TitleText:SetText(L.OPT_TITLE)
     applyBackground()
-    table.insert(UISpecialFrames, "UbermocForeverOptions")
+    table.insert(UISpecialFrames, WINDOW_NAME)
 
     header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOP", frame, "TOP", 0, -34)
@@ -363,11 +419,13 @@ local function create()
         handleKey(key)
     end)
 
-    local watcher = CreateFrame("Frame")
-    watcher:RegisterEvent("PLAYER_REGEN_DISABLED")
-    watcher:SetScript("OnEvent", function()
-        Options.Hide()
-    end)
+    if not watcher then
+        watcher = CreateFrame("Frame")
+        watcher:RegisterEvent("PLAYER_REGEN_DISABLED")
+        watcher:SetScript("OnEvent", function()
+            Options.Hide()
+        end)
+    end
 end
 
 function Options.Hide()
@@ -386,10 +444,20 @@ function Options.Toggle()
         print(L.OPT_COMBAT)
         return
     end
-    if not frame then
+    if not frame or frame.requestedStyle ~= wantedStyle() then
         create()
     end
     page, index, message = 1, 1, ""
     frame:Show()
     render()
+end
+
+-- The style row changed while the window is open: draw it again in the new style, same page.
+function Options.Restyle()
+    if frame and frame.requestedStyle ~= wantedStyle() then
+        local wasShown = frame:IsShown()
+        create()
+        frame:SetShown(wasShown)
+        render()
+    end
 end

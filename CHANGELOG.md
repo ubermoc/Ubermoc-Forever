@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.5
+- The options window can now be drawn on Blizzard's own portrait panel, the same panel Forever's own screens are built on. It shows Forever's bronze frame on Forever and the plain gray one on Midnight, with the player's portrait and the game's own title bar. The window and the legend share one setting, "Interface style" on the Other page: Auto uses each game's own look (the portrait panel on Forever, the plain panel on Midnight, as before), and Midnight or Forever can be chosen to switch. Changing it redraws the open window at once, on the same page.
+- The window background tint and opacity work on both panels; on the portrait panel the tint darkens its rock background.
+- If the portrait panel cannot be created for any reason, the plain panel is used and the reason is logged.
+
 ## 0.9.4
 - Fixed the "interface action failed" error when switching tabs (it showed on the Adventure Guide). The tab was clicked from addon code, which runs the tab's own handler as addon code, and handlers that use protected functions are blocked. L1 / R1 now move the cursor onto the next or previous tab, and a real click is sent when you let go of the button. The game only lets addon code place the cursor or click once per controller event, and the click needs the cursor to have landed, which is why the click happens on release.
 - Fixed R1 acting like a mouse click and not switching tabs. The game's own cursor maps R2 to left click and R1 to right click by default, so R1 right-clicked and R2 clicked while scrolling. While this addon has the buttons, those two settings are switched to NONE and put back if the addon stops; a button you chose yourself is left alone. The Cursor page can set them to NONE too.

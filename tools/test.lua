@@ -279,11 +279,14 @@ press(win, "PADDLEFT")
 assert(ns.db.labelStyle == nil, "button labels row returns to auto")
 press(win, "PADDDOWN")                       -- button picture style row
 press(win, "PADDRIGHT")
-assert(ns.db.legendStyle == "Midnight", "picture style row cycles from auto to Midnight")
+assert(ns.db.legendStyle == "Midnight", "interface style row cycles from auto to Midnight")
+assert(rawget(_G, "UbermocForeverOptions").uiStyle == "Midnight", "the open window is redrawn in the plain panel")
 press(win, "PADDRIGHT")
 assert(ns.db.legendStyle == "Forever", "then to Forever")
+assert(rawget(_G, "UbermocForeverOptions").uiStyle == "Forever", "and in Blizzard's portrait panel")
 press(win, "PADDRIGHT")
 assert(ns.db.legendStyle == nil, "and back to auto")
+assert(rawget(_G, "UbermocForeverOptions").uiStyle == "Forever", "auto is the game's own style (Forever here)")
 press(win, "PADDDOWN")                       -- clear old saved binds row
 press(win, "PAD1")
 assert(saved["PAD4"] == "ACTIONBUTTON4", "clearing needs a second press")
@@ -595,6 +598,7 @@ tabNode.GetCenter = function() return 300, 200 end
 tabNode.GetEffectiveScale = function() return 1 end
 local realTarget = ns.Tabs.Target
 ns.Tabs.Target = function() return tabNode end
+ns.Options.Hide()
 ns.Cursor.OpenWindows = function() return { tabbed } end
 tabbed = { IsShown = function() return true end, GetChildren = function() end }
 ns.Cursor.Update(0.05)
