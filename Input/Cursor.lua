@@ -316,7 +316,9 @@ function Cursor.Back()
     if not closed then
         local settings = _G.SettingsPanel
         if shown(settings) then
-            closed = pcall(settings.Close, settings)
+            -- true: do not go back to the game menu afterwards, which runs the game's whole Esc
+            -- action from this addon's call and is blocked (stop casting is protected)
+            closed = pcall(settings.Close, settings, true)
         end
     end
     if not closed then

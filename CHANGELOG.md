@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.1
+- Fixed an "interface action failed" error when B closed the game's settings panel. Closing it the normal way makes the game step back to the menu, and that step runs its whole Esc action (including stopping a cast, which an addon may not do) from this addon's call, so the game blocked it. B now closes the settings panel without the step back.
+
 ## 0.9.0
 - Button legend. While a window is open and the controller has the buttons, a legend along the bottom of the screen shows what each button does, in the game's own gold text with the game's own button pictures: D-pad move, A select, X use (right-click), L2 / R2 scroll, L1 / R1 tabs (only when the window has tabs), B back. The options window shows the same kind of legend instead of its old text line.
 - L1 / R1 now switch tabs in any open window that has them, as the shoulder buttons do on Blizzard's own controller screens. Both kinds of tab the game uses are handled (checked in the code of both builds), disabled tabs are skipped, and it wraps round at the ends.

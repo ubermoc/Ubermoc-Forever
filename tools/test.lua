@@ -434,6 +434,14 @@ assert(not popupUp and windowsClosed == 0, "B closes a dialog before anything el
 onButton(pad, "PAD2")
 assert(windowsClosed == 1, "B then closes the windows")
 assert(not escTouched, "the Esc action (target clear, stop casting) is not used")
+-- the settings panel is closed without the game's step back to the menu, which would run Esc
+local closeArg, panelOpen
+SettingsPanel = { IsShown = function() return panelOpen end, Close = function(_, skip) closeArg = skip panelOpen = false end }
+panelOpen = true
+windowsClosed = 0
+onButton(pad, "PAD2")
+assert(closeArg == true and windowsClosed == 0, "B closes the settings panel and skips the step back to the menu")
+SettingsPanel = nil
 StaticPopup_EscapePressed, ToggleGameMenu = nil, nil
 cursorOn = true
 menu.shown = false
