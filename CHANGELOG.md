@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2
+- Removed the step that told the action bar buttons to redraw their key text after a label change. The game's log showed over a hundred blocked actions on the action bars (MultiBar buttons and containers, the stance bar) in the same minute, and this call into Blizzard's own button code is the only place this addon touched them. The game redraws the key text itself when the controller settings change.
+- The legend now catches and logs any error it hits instead of failing silently, and `/ubf legend` prints whether the legend exists, is shown, its style, its width and its text, so a missing legend can be traced.
+
 ## 0.9.1
 - Fixed an "interface action failed" error when B closed the game's settings panel. Closing it the normal way makes the game step back to the menu, and that step runs its whole Esc action (including stopping a cast, which an addon may not do) from this addon's call, so the game blocked it. B now closes the settings panel without the step back.
 

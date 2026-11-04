@@ -113,5 +113,5 @@ ns.L = {
     TEST_SAVED = "Type /reload to save the full report to disk.",
     TEST_COMBAT = "The test cannot start in combat.",
     TEST_NONE = "No test is running.",
-    HELP = "Commands: /ubf test (full check and button trace), /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf layout (action bar layout), /ubf selftest (check this game build), /ubf options (settings window), /ubf cursor, /ubf binds, /ubf labels, /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
+    HELP = "Commands: /ubf test (full check and button trace), /ubf pad (list controllers), /ubf padtest (live button readout), /ubf padmap (list every button name), /ubf layout (action bar layout), /ubf selftest (check this game build), /ubf legend (legend status), /ubf options (settings window), /ubf cursor, /ubf binds, /ubf labels, /ubf debug (toggle logging), /ubf log (show recent log), /ubf version",
 }

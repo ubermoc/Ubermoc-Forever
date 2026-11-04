@@ -603,6 +603,7 @@ ns.Legend.SetChoice("Auto")
 assert(ns.db.legendStyle == nil and ns.Legend.Style() == "Forever", "auto returns to the game's own style")
 ns.Legend.Show(true)
 assert(ns.Legend.Available("Midnight") and ns.Legend.Available("Forever"), "styles are available when their art exists")
+assert(ns.Legend.Status():find("legend: shown"), "legend status reports it")
 ns.Legend.Hide()
 
 local out = table.concat(printed, "\n")

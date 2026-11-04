@@ -65,21 +65,6 @@ local function configIDs()
     return ids
 end
 
--- Names of the buttons that show key text, so they can be told to redraw it.
-local BAR_PREFIXES = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton",
-    "MultiBarRightButton", "MultiBarLeftButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button" }
-
-function Labels.RefreshBars()
-    for _, prefix in ipairs(BAR_PREFIXES) do
-        for i = 1, 12 do
-            local button = _G[prefix .. i]
-            if button and button.UpdateHotkeys then
-                pcall(button.UpdateHotkeys, button, button.buttonType)
-            end
-        end
-    end
-end
-
 -- Returns a table: changed, same (already the wanted style), missing (no config to change), failed.
 function Labels.Apply()
     local result = { changed = 0, same = 0, missing = 0, failed = 0 }
@@ -113,7 +98,6 @@ function Labels.Apply()
     if result.changed > 0 then
         local ok, err = pcall(C_GamePad.ApplyConfigs)
         ns.Log("labels apply configs: " .. (ok and "ok" or tostring(err)))
-        Labels.RefreshBars()
     end
     applying = false
     return result

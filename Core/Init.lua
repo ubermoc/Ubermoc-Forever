@@ -54,6 +54,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         ns.Labels.Command(rest)
     elseif cmd == "binds" then
         ns.Binds.Command(rest)
+    elseif cmd == "legend" then
+        print(ns.Legend.Status())
     elseif cmd == "options" then
         ns.Options.Toggle()
     elseif cmd == "test" then

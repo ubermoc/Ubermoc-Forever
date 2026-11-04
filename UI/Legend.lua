@@ -163,6 +163,16 @@ function Legend.Show(tabs)
     shownLegend:Show()
 end
 
+-- One line for /ubf legend: whether the free-standing legend exists, is shown, and what it says.
+function Legend.Status()
+    if not shownLegend then
+        return "legend: never shown" .. (Legend.lastError and (", last error " .. tostring(Legend.lastError)) or "")
+    end
+    return ("legend: %s, style %s, width %.0f, text %q%s"):format(shownLegend:IsShown() and "shown" or "hidden",
+        Legend.Style(), tonumber(shownLegend:GetWidth()) or 0, tostring(shownLegend.text:GetText()),
+        Legend.lastError and (", last error " .. tostring(Legend.lastError)) or "")
+end
+
 function Legend.Hide()
     if shownLegend then
         shownLegend:Hide()
