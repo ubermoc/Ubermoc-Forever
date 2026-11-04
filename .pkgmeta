@@ -7,3 +7,4 @@ ignore:
   - README.md
   - .luacheckrc
   - assets
+  - CLAUDE.md
