@@ -78,7 +78,10 @@ function Cursor.Update(step)
         if tabCheck >= TAB_CHECK or not legendUp then
             tabCheck = 0
             legendUp = true
-            local ok, err = pcall(function() ns.Legend.Show(ns.Tabs.Available(), Cursor.OpenWindows()[1]) end)
+            local ok, err = pcall(function()
+                local tabButtons = ns.Tabs.Find()
+                ns.Legend.Show(tabButtons ~= nil, Cursor.OpenWindows()[1], tabButtons)
+            end)
             if not ok and err ~= ns.Legend.lastError then
                 ns.Legend.lastError = err
                 ns.Log("legend failed: " .. tostring(err))
@@ -337,6 +340,41 @@ function Cursor.Back()
     weEnabledIt = false
 end
 
+-- The shoulder press moves the cursor onto the next tab; the click is sent when the button is
+-- released, because the game only lets addon code place the cursor or click once per controller
+-- event, and the click needs the cursor to have landed first. A real click, not tab:Click(),
+-- keeps the tab's own code from running as addon code.
+local pendingTab
+
+function Cursor.TabStep(direction, key)
+    local button = ns.Tabs.Target(direction)
+    if not button then
+        return false
+    end
+    local cx, cy = button:GetCenter()
+    if not cx then
+        return false
+    end
+    local scale = button:GetEffectiveScale()
+    Cursor.MoveTo(cx * scale, cy * scale)
+    pendingTab = { key = key, time = GetTime() }
+    return true
+end
+
+local function onButtonUp(_, key)
+    key = key:match("([^-]+)$") or key
+    local pending = pendingTab
+    if not pending or pending.key ~= key then
+        return
+    end
+    pendingTab = nil
+    if GetTime() - pending.time > 1.5 then
+        return
+    end
+    local ok, err = pcall(SimulateMouseClick, "LeftButton")
+    ns.Log("tab click on release: " .. (ok and "ok" or tostring(err)))
+end
+
 local function onButton(_, key)
     key = key:match("([^-]+)$") or key
     if Cursor.trace then
@@ -349,9 +387,9 @@ local function onButton(_, key)
     elseif key == "PAD3" then
         Cursor.Click("RightButton")
     elseif key == "PADLSHOULDER" then
-        ns.Tabs.Step(-1)
+        Cursor.TabStep(-1, key)
     elseif key == "PADRSHOULDER" then
-        ns.Tabs.Step(1)
+        Cursor.TabStep(1, key)
     elseif key == "PADLTRIGGER" then
         Cursor.Scroll(1)
     elseif key == "PADRTRIGGER" then
@@ -369,8 +407,41 @@ function Cursor.ActionsOn()
     return value
 end
 
+-- The game's own cursor click buttons are R2 (left click) and R1 (right click) by default, which
+-- would click while those buttons scroll and switch tabs here. While this addon takes the
+-- buttons they are set to NONE, and put back when it stops (a button you chose yourself stays).
+local CLICK_CVARS = { left = { "GamePadCursorLeftClick", "PADRTRIGGER" },
+    right = { "GamePadCursorRightClick", "PADRSHOULDER" } }
+
+function Cursor.ManageClickCVars()
+    local db = ns.db
+    if InCombatLockdown() then
+        return
+    end
+    for which, def in pairs(CLICK_CVARS) do
+        local name, default = def[1], def[2]
+        local current = C_CVar.GetCVar(name)
+        local backup = db.clickBackup and db.clickBackup[which]
+        if current ~= nil then
+            if Cursor.ActionsOn() then
+                if current == default then
+                    db.clickBackup = db.clickBackup or {}
+                    db.clickBackup[which] = current
+                    local ok = pcall(C_CVar.SetCVar, name, "NONE")
+                    ns.Log(("%s: NONE %s"):format(name, (ok and C_CVar.GetCVar(name) == "NONE") and "ok" or "refused"))
+                end
+            elseif backup and current == "NONE" then
+                pcall(C_CVar.SetCVar, name, backup)
+                db.clickBackup[which] = nil
+                ns.Log(name .. " put back to " .. backup)
+            end
+        end
+    end
+end
+
 function Cursor.SetActions(on)
     ns.db.cursorActions = on and true or false
+    Cursor.ManageClickCVars()
 end
 
 function Cursor.CloseOnCombat()
@@ -389,9 +460,12 @@ function syncInput(want)
     input:EnableGamePadButton(want)
     if want then
         input:SetScript("OnGamePadButtonDown", onButton)
+        input:SetScript("OnGamePadButtonUp", onButtonUp)
         input:Show()
     else
         input:SetScript("OnGamePadButtonDown", nil)
+        input:SetScript("OnGamePadButtonUp", nil)
+        pendingTab = nil
         input:Hide()
     end
     ns.Log("cursor buttons " .. (want and "taken" or "released"))
@@ -466,8 +540,13 @@ end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
-frame:SetScript("OnEvent", function()
-    Cursor.OnCombatStart()
+frame:RegisterEvent("PLAYER_LOGIN")
+frame:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then
+        Cursor.ManageClickCVars()
+    else
+        Cursor.OnCombatStart()
+    end
 end)
 frame:SetScript("OnUpdate", function(_, elapsed)
     Cursor.CheckLanding()

@@ -307,7 +307,7 @@ press(win, "PADDRIGHT")
 assert(cvars.GamePadCursorLeftClick == "PADRSHOULDER", "left click button cycles")
 press(win, "PADDLEFT")
 press(win, "PADDLEFT")
-assert(cvars.GamePadCursorLeftClick == "PADFORWARD", "left click button wraps")
+assert(cvars.GamePadCursorLeftClick == "NONE", "left click button can be switched off")
 press(win, "PADDDOWN")
 press(win, "PADDRIGHT")
 assert(cvars.GamePadCursorRightClick == "PADLTRIGGER", "right click button cycles")
@@ -573,24 +573,55 @@ local tabbed = { numTabs = 3, selectedTab = 1, Tabs = { t1, t2, t3 }, GetName = 
 local realOpen = ns.Cursor.OpenWindows
 ns.Cursor.OpenWindows = function() return { tabbed } end
 assert(ns.Tabs.Available(), "panel tabs are found")
-assert(ns.Tabs.Step(1) and t2.clicks == 1, "next tab is clicked")
+assert(ns.Tabs.Target(1) == t2 and t2.clicks == 0, "next tab is the target and is not clicked from addon code")
 tabbed.selectedTab = 3
-ns.Tabs.Step(1)
-assert(t1.clicks == 1, "tabs wrap round at the end")
+assert(ns.Tabs.Target(1) == t1, "tabs wrap round at the end")
 tabbed.selectedTab = 1
-ns.Tabs.Step(-1)
-assert(t3.clicks == 1, "previous wraps to the last tab")
+assert(ns.Tabs.Target(-1) == t3, "previous wraps to the last tab")
+tabbed.selectedTab = 2
+assert(ns.Tabs.Target(1) == t3 and ns.Tabs.Target(-1) == t1, "every tab can be reached in both directions")
 local s1, s2 = tabButton(1), tabButton(2, false)
 local s3 = tabButton(3)
 local system = { tabs = { s1, s2, s3 }, selectedTabID = 1 }
 tabbed = { IsShown = function() return true end, GetChildren = function() return system end }
 system.GetChildren = function() end
 system.IsShown = function() return true end
-ns.Tabs.Step(1)
-assert(s3.clicks == 1 and s2.clicks == 0, "tab systems skip disabled tabs")
+assert(ns.Tabs.Target(1) == s3, "tab systems skip disabled tabs")
 tabbed = { IsShown = function() return true end, GetChildren = function() end }
-assert(not ns.Tabs.Available() and not ns.Tabs.Step(1), "no tabs, nothing happens")
+assert(not ns.Tabs.Available() and ns.Tabs.Target(1) == nil, "no tabs, nothing happens")
+-- the cursor goes to the tab on press and a real click is sent on release
+local tabNode = tabButton(2)
+tabNode.GetCenter = function() return 300, 200 end
+tabNode.GetEffectiveScale = function() return 1 end
+local realTarget = ns.Tabs.Target
+ns.Tabs.Target = function() return tabNode end
+ns.Cursor.OpenWindows = function() return { tabbed } end
+tabbed = { IsShown = function() return true end, GetChildren = function() end }
+ns.Cursor.Update(0.05)
+local clicksBefore = #sim
+cursorPos, setCalls = { x = 0, y = 0 }, 0
+assert(ns.Cursor.TabStep(1, "PADRSHOULDER") and setCalls == 1, "shoulder press moves the cursor onto the tab")
+assert(#sim == clicksBefore, "no click yet on press")
+assert(pad.scripts.OnGamePadButtonUp, "release is watched while the buttons are taken")
+pad.scripts.OnGamePadButtonUp(pad, "PADRSHOULDER")
+assert(#sim == clicksBefore + 1 and sim[#sim] == "LeftButton", "release sends a real click")
+pad.scripts.OnGamePadButtonUp(pad, "PADRSHOULDER")
+assert(#sim == clicksBefore + 1, "only one click per press")
+ns.Tabs.Target = realTarget
 ns.Cursor.OpenWindows = realOpen
+
+-- The game's own cursor click buttons (R2, R1) are switched off while the buttons are taken here
+cvars.GamePadCursorLeftClick, cvars.GamePadCursorRightClick = "PADRTRIGGER", "PADRSHOULDER"
+ns.db.cursorActions, ns.db.clickBackup = true, nil
+ns.Cursor.ManageClickCVars()
+assert(cvars.GamePadCursorLeftClick == "NONE" and cvars.GamePadCursorRightClick == "NONE", "engine clicks are switched off")
+ns.Cursor.SetActions(false)
+assert(cvars.GamePadCursorLeftClick == "PADRTRIGGER" and cvars.GamePadCursorRightClick == "PADRSHOULDER", "and put back")
+cvars.GamePadCursorLeftClick = "PADBACK"
+ns.Cursor.SetActions(true)
+assert(cvars.GamePadCursorLeftClick == "PADBACK", "a button you chose yourself is left alone")
+cvars.GamePadCursorLeftClick = "PADRTRIGGER"
+ns.db.cursorActions, ns.db.clickBackup = nil, nil
 
 -- Legend: each game defaults to its own style, and the choice can be changed
 ns.isForever = false

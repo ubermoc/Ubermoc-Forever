@@ -138,37 +138,42 @@ end
 local shownLegend
 local lastKey
 
-local lastRoot
-
--- Under the window, like the footers on Blizzard's own screens; above it when there is no room
--- below, and kept on screen either way. Without a window it sits at the top of the screen.
-local function place(legend, root)
-    if root == lastRoot and legend:IsShown() then
-        return
-    end
-    lastRoot = root
+-- Under the window and its tabs (tabs hang below the frame), like the footers on Blizzard's own
+-- screens; above the window when there is no room below. Kept on screen either way. Without a
+-- window it sits at the top of the screen.
+local function place(legend, root, tabButtons)
     legend:ClearAllPoints()
-    local bottom = root and root.GetBottom and root:GetBottom()
+    local ui = UIParent:GetEffectiveScale()
     local scale = root and root.GetEffectiveScale and root:GetEffectiveScale()
-    if bottom and scale then
-        local room = bottom * scale / UIParent:GetEffectiveScale()
-        if room >= legend:GetHeight() + 10 then
-            legend:SetPoint("TOP", root, "BOTTOM", 0, -6)
+    local bottom = root and root.GetBottom and root:GetBottom()
+    local top = root and root.GetTop and root:GetTop()
+    local cx = root and root.GetCenter and root:GetCenter()
+    if bottom and top and cx and scale then
+        local lowest, highest = bottom * scale / ui, top * scale / ui
+        for _, tab in ipairs(tabButtons or {}) do
+            local tabBottom = tab.GetBottom and tab:GetBottom()
+            if tabBottom then
+                lowest = math.min(lowest, tabBottom * tab:GetEffectiveScale() / ui)
+            end
+        end
+        local x = cx * scale / ui
+        if lowest >= legend:GetHeight() + 10 then
+            legend:SetPoint("TOP", UIParent, "BOTTOMLEFT", x, lowest - 6)
         else
-            legend:SetPoint("BOTTOM", root, "TOP", 0, 6)
+            legend:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", x, highest + 6)
         end
     else
         legend:SetPoint("TOP", UIParent, "TOP", 0, -60)
     end
 end
 
-function Legend.Show(tabs, root)
+function Legend.Show(tabs, root, tabButtons)
     if not shownLegend then
         shownLegend = Legend.Create(UIParent, { background = true })
         shownLegend:SetFrameStrata("TOOLTIP")
         shownLegend:SetClampedToScreen(true)
     end
-    place(shownLegend, root)
+    place(shownLegend, root, tabButtons)
     local L = ns.L
     local entries = {
         { keys = { "DPAD" }, text = L.LEGEND_MOVE },
@@ -202,5 +207,5 @@ function Legend.Hide()
     if shownLegend then
         shownLegend:Hide()
     end
-    lastKey, lastRoot = nil, nil
+    lastKey = nil
 end

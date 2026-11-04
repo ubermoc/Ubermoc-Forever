@@ -80,14 +80,16 @@ function Tabs.Available()
     return Tabs.Find() ~= nil
 end
 
--- direction is -1 or 1; goes round at the ends. Returns true if a tab was clicked.
-function Tabs.Step(direction)
+-- direction is -1 or 1; goes round at the ends. Returns the tab button to go to, or nil.
+-- The tab is not clicked from here: a click made by addon code runs the tab's handler as addon
+-- code, and handlers that use protected functions (the Encounter Journal's, for one) are blocked.
+-- The cursor goes to the tab instead and a real click is sent (see Cursor.TabStep).
+function Tabs.Target(direction)
     local list, selected = Tabs.Find()
     if not list then
-        return false
+        return nil
     end
     local target = ((selected or (direction > 0 and 0 or 1)) - 1 + direction) % #list + 1
-    local ok = pcall(list[target].Click, list[target])
-    ns.Log(("tab step %d: %d of %d %s"):format(direction, target, #list, ok and "ok" or "failed"))
-    return ok
+    ns.Log(("tab target %d: %d of %d"):format(direction, target, #list))
+    return list[target]
 end

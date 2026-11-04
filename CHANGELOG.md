@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.4
+- Fixed the "interface action failed" error when switching tabs (it showed on the Adventure Guide). The tab was clicked from addon code, which runs the tab's own handler as addon code, and handlers that use protected functions are blocked. L1 / R1 now move the cursor onto the next or previous tab, and a real click is sent when you let go of the button. The game only lets addon code place the cursor or click once per controller event, and the click needs the cursor to have landed, which is why the click happens on release.
+- Fixed R1 acting like a mouse click and not switching tabs. The game's own cursor maps R2 to left click and R1 to right click by default, so R1 right-clicked and R2 clicked while scrolling. While this addon has the buttons, those two settings are switched to NONE and put back if the addon stops; a button you chose yourself is left alone. The Cursor page can set them to NONE too.
+- The legend no longer covers the tabs that hang below a window. It sits below the lowest tab (or above the window when there is no room), centred on the window.
+
 ## 0.9.3
 - The legend no longer sits over the main action bar. It now goes under the open window, like the footers on Blizzard's own screens, or above the window when there is no room below, and is kept on screen. It moves with the window.
 - The D-pad is one picture with "Move" instead of four. Midnight has no picture for the whole D-pad, so one direction stands for it; Forever uses its own whole-D-pad picture. The self test now also looks for a whole-D-pad picture in Midnight.

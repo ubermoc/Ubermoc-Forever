@@ -21,7 +21,7 @@ local OLD_SHADES = { 100, 45, 0 }
 
 -- The game's own gamepad cursor: the right stick moves it, and two buttons click.
 -- Click buttons the community guide lists as accepted; defaults are R2 and R1.
-local CLICK_BUTTONS = { "PADRTRIGGER", "PADRSHOULDER", "PADLTRIGGER", "PADLSHOULDER", "PADBACK", "PADFORWARD" }
+local CLICK_BUTTONS = { "NONE", "PADRTRIGGER", "PADRSHOULDER", "PADLTRIGGER", "PADLSHOULDER", "PADBACK", "PADFORWARD" }
 local CURSOR_DEFAULTS = { GamePadCursorLeftClick = "PADRTRIGGER", GamePadCursorRightClick = "PADRSHOULDER",
     GamePadCursorCentering = "0" }
 local PAGE_COUNT = 4
