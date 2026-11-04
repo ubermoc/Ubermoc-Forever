@@ -527,6 +527,10 @@ assert(shownNow and starter.attrs.type == nil, "nothing left: Start opens the me
 starter.scripts.PostClick()
 assert(starter.attrs.type == "macro", "the macro is back for the next press")
 assert(ns.StartPressed() == "hide" and not shownNow, "Start again puts the menu away")
+inCombat = true
+local menuBefore = shownNow
+assert(ns.StartPressed() == "combat" and shownNow == menuBefore, "in combat Start leaves the panels alone")
+inCombat = false
 ns.Cursor.WindowOpen = realWindowOpen
 local hiddenBefore = menuHidden
 added.callback()

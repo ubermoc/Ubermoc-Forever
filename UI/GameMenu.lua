@@ -63,9 +63,14 @@ function ns.OpenGameMenu()
     ShowUIPanel(menu)
 end
 
--- What a press of Start does: "hide" the menu if it is up, "clear" (close panels, then the macro
+-- What a press of Start does: "combat" (nothing but the macro), "hide" the menu if it is up, "clear" (close panels, then the macro
 -- clears the target and stops a cast), or "menu" when there was nothing to clear.
 function ns.StartPressed()
+    -- Showing and hiding panels is blocked in combat ("interface action failed because of an
+    -- AddOn"); only the secure macro may act there, so nothing is touched.
+    if InCombatLockdown() then
+        return "combat"
+    end
     local menu = _G.GameMenuFrame
     if isShown(menu) then
         PlaySound(SOUNDKIT.IG_MAINMENU_QUIT)
@@ -161,4 +166,12 @@ frame:SetScript("OnEvent", function(_, event, name)
     if event == "PLAYER_LOGIN" or name == "Blizzard_GameMenu" then
         hook()
     end
+end)
+
+-- When the game blocks something an addon tried, write down what, so it can be found afterwards.
+local watcher = CreateFrame("Frame")
+watcher:RegisterEvent("ADDON_ACTION_BLOCKED")
+watcher:RegisterEvent("ADDON_ACTION_FORBIDDEN")
+watcher:SetScript("OnEvent", function(_, event, who, what)
+    ns.Log(("%s: %s tried %s"):format(event, tostring(who), tostring(what)))
 end)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.7
+- Start in combat no longer tries to show, hide or close any panel, which the game blocks and reports as "interface action failed because of an AddOn". In combat the press only runs the secure macro (stop the cast, clear the target); everything out of combat works as in 0.8.6.
+- If the game ever blocks something this addon tried, the event and the action name are now written to the log (`/ubf log`, and the saved variables), so the cause can be found.
+
 ## 0.8.6
 - Start works in steps again, like Esc on a keyboard, but reliably on a controller. The first press closes pop-ups, the settings panel, menus, windows and bags, clears your target and stops a cast. Once there is nothing left to clear, the next press opens the game menu, and the one after puts it away. Before 0.8.5 it was the game's own Esc action, which on a controller can use up every press; 0.8.5 always opened the menu and never cleared anything.
 - Clearing the target and stopping a cast are protected actions, so they run from a secure macro (`/stopcasting`, `/cleartarget`, both checked on Midnight and Forever) on a button that Start clicks. The closing and the menu are done just before it. In combat the press always runs the macro, because a secure button cannot be changed there.
