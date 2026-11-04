@@ -20,5 +20,7 @@ Input\Layout.lua
 Input\Cursor.lua
 Input\Binds.lua
 Core\Report.lua
+Input\Tabs.lua
+UI\Legend.lua
 UI\Options.lua
 UI\GameMenu.lua

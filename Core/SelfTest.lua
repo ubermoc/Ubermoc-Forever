@@ -11,6 +11,10 @@ local ATLASES = {
     "Gamepad_Ltr_A_32",
     "Gamepad_Ltr_A_64",
     "Gamepad_Ltr_LTrigger_32",
+    "Gamepad_Ltr_B_64", "Gamepad_Ltr_X_64", "Gamepad_Ltr_Y_64",
+    "Gamepad_Ltr_LShoulder_64", "Gamepad_Ltr_RShoulder_64", "Gamepad_Ltr_RTrigger_64",
+    "Gamepad_Ltr_Up_64", "Gamepad_Ltr_Menu_64",
+    "gamepad-xbox1-buttona-normal", "gamepad-xbox1-dpadall-normal", "gamepad-footer-slot-bg",
 }
 
 local function add(results, name, ok, detail)

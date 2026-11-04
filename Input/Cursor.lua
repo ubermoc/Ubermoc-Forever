@@ -20,6 +20,9 @@ local closedFor = 0
 local lastState
 local sinceLastPoll = 0
 local syncInput
+local inputActive = false
+local tabCheck, legendUp = 0, false
+local TAB_CHECK = 0.5
 
 local function shown(frame)
     return type(frame) == "table" and frame.IsShown and frame:IsShown() and true or false
@@ -70,6 +73,16 @@ function Cursor.Update(step)
     -- The game switches its cursor off and on again by itself, so the buttons stay taken for as
     -- long as a window is open; letting go for even a moment would fire abilities.
     syncInput(not InCombatLockdown() and Cursor.ActionsOn() and not shown(ownWindow) and Cursor.WindowOpen())
+    if inputActive then
+        tabCheck = tabCheck + step
+        if tabCheck >= TAB_CHECK or not legendUp then
+            tabCheck = 0
+            legendUp = true
+            ns.Legend.Show(ns.Tabs.Available())
+        end
+    else
+        legendUp = false
+    end
     if InCombatLockdown() or not Cursor.Auto() then
         closedFor = 0
         return
@@ -100,7 +113,6 @@ end
 local input = CreateFrame("Frame", "UbermocForeverCursorInput", UIParent)
 input:SetSize(1, 1)
 input:SetPoint("TOPLEFT", UIParent, "TOPLEFT")
-local inputActive = false
 
 local function clickable(frame)
     for _ = 1, 5 do
@@ -330,6 +342,10 @@ local function onButton(_, key)
         Cursor.Click("LeftButton")
     elseif key == "PAD3" then
         Cursor.Click("RightButton")
+    elseif key == "PADLSHOULDER" then
+        ns.Tabs.Step(-1)
+    elseif key == "PADRSHOULDER" then
+        ns.Tabs.Step(1)
     elseif key == "PADLTRIGGER" then
         Cursor.Scroll(1)
     elseif key == "PADRTRIGGER" then
@@ -373,6 +389,9 @@ function syncInput(want)
         input:Hide()
     end
     ns.Log("cursor buttons " .. (want and "taken" or "released"))
+    if not want then
+        ns.Legend.Hide()
+    end
 end
 
 -- Combat starts: windows close, the cursor goes, and the buttons are the abilities again.

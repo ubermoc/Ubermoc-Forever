@@ -18,6 +18,13 @@ function CreateFrame(_, name)
     function f:Show() self.shown = true end
     function f:Hide() self.shown = false end
     function f:IsShown() return self.shown end
+    function f.CreateFontString()
+        local fs = setmetatable({}, { __index = function() return proxy() end })
+        fs.GetStringWidth = function() return 100 end
+        fs.SetText = function(this, text) this.value = text end
+        return fs
+    end
+    function f:CreateTexture() return setmetatable({}, { __index = function() return proxy() end }) end
     function f:SetAttribute(k, v) if not rawget(self, "attrs") then self.attrs = {} end self.attrs[k] = v end
     handlers[#handlers + 1] = f
     return f
@@ -110,7 +117,7 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "UI/Options.lua", "UI/GameMenu.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "Input/Tabs.lua", "UI/Legend.lua", "UI/Options.lua", "UI/GameMenu.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg)
@@ -270,6 +277,13 @@ press(win, "PADDRIGHT")
 assert(ns.db.labelStyle == "DEFAULT", "button labels row cycles")
 press(win, "PADDLEFT")
 assert(ns.db.labelStyle == nil, "button labels row returns to auto")
+press(win, "PADDDOWN")                       -- button picture style row
+press(win, "PADDRIGHT")
+assert(ns.db.legendStyle == "Midnight", "picture style row cycles from auto to Midnight")
+press(win, "PADDRIGHT")
+assert(ns.db.legendStyle == "Forever", "then to Forever")
+press(win, "PADDRIGHT")
+assert(ns.db.legendStyle == nil, "and back to auto")
 press(win, "PADDDOWN")                       -- clear old saved binds row
 press(win, "PAD1")
 assert(saved["PAD4"] == "ACTIONBUTTON4", "clearing needs a second press")
@@ -535,6 +549,53 @@ ns.Cursor.WindowOpen = realWindowOpen
 local hiddenBefore = menuHidden
 added.callback()
 assert(menuHidden == hiddenBefore + 1, "menu closes when the button is used")
+
+-- Tabs: both kinds of tab are found, and the shoulders step through them
+local function tabButton(id, enabled)
+    local b = { clicks = 0, id = id }
+    function b:IsShown() return true end
+    function b:IsEnabled() return enabled ~= false end
+    function b:Click() self.clicks = self.clicks + 1 end
+    function b:GetTabID() return self.id end
+    return b
+end
+local t1, t2, t3 = tabButton(1), tabButton(2), tabButton(3)
+local tabbed = { numTabs = 3, selectedTab = 1, Tabs = { t1, t2, t3 }, GetName = function() return "Tabbed" end,
+    IsShown = function() return true end, GetChildren = function() end }
+local realOpen = ns.Cursor.OpenWindows
+ns.Cursor.OpenWindows = function() return { tabbed } end
+assert(ns.Tabs.Available(), "panel tabs are found")
+assert(ns.Tabs.Step(1) and t2.clicks == 1, "next tab is clicked")
+tabbed.selectedTab = 3
+ns.Tabs.Step(1)
+assert(t1.clicks == 1, "tabs wrap round at the end")
+tabbed.selectedTab = 1
+ns.Tabs.Step(-1)
+assert(t3.clicks == 1, "previous wraps to the last tab")
+local s1, s2 = tabButton(1), tabButton(2, false)
+local s3 = tabButton(3)
+local system = { tabs = { s1, s2, s3 }, selectedTabID = 1 }
+tabbed = { IsShown = function() return true end, GetChildren = function() return system end }
+system.GetChildren = function() end
+system.IsShown = function() return true end
+ns.Tabs.Step(1)
+assert(s3.clicks == 1 and s2.clicks == 0, "tab systems skip disabled tabs")
+tabbed = { IsShown = function() return true end, GetChildren = function() end }
+assert(not ns.Tabs.Available() and not ns.Tabs.Step(1), "no tabs, nothing happens")
+ns.Cursor.OpenWindows = realOpen
+
+-- Legend: each game defaults to its own style, and the choice can be changed
+ns.isForever = false
+assert(ns.Legend.Style() == "Midnight", "Midnight defaults to its own style")
+ns.isForever = true
+assert(ns.Legend.Style() == "Forever", "Forever defaults to its own style")
+ns.Legend.SetChoice("Midnight")
+assert(ns.Legend.Style() == "Midnight" and ns.db.legendStyle == "Midnight", "the style can be switched")
+ns.Legend.SetChoice("Auto")
+assert(ns.db.legendStyle == nil and ns.Legend.Style() == "Forever", "auto returns to the game's own style")
+ns.Legend.Show(true)
+assert(ns.Legend.Available("Midnight") and ns.Legend.Available("Forever"), "styles are available when their art exists")
+ns.Legend.Hide()
 
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")

@@ -28,7 +28,7 @@ local PAGE_COUNT = 4
 
 local frame
 local rowFrames = {}
-local header, hint, status
+local header, hint, status, legend
 local page, index = 1, 1
 local captureSlot
 local confirmClear = false
@@ -197,6 +197,17 @@ local function buildRows()
         end
         rows[#rows + 1] = { label = L.OPT_LABELS, value = L.OPT_LABEL_NAMES[ns.Labels.Choice()],
             onLeft = stepLabels(-1), onRight = stepLabels(1) }
+        local styleChoices = { "Auto", "Midnight", "Forever" }
+        local function stepStyle(delta)
+            return function()
+                local choice = cycle(styleChoices, ns.Legend.Choice(), delta)
+                ns.Legend.SetChoice(choice)
+                local style = ns.Legend.Style()
+                message = ns.Legend.Available(style) and L.OPT_STYLE_CHANGED:format(style) or L.OPT_STYLE_MISSING:format(style)
+            end
+        end
+        local styleValue = ns.Legend.Choice() == "Auto" and L.OPT_STYLE_AUTO:format(ns.Legend.Style()) or ns.Legend.Choice()
+        rows[#rows + 1] = { label = L.OPT_STYLE, value = styleValue, onLeft = stepStyle(-1), onRight = stepStyle(1) }
         rows[#rows + 1] = { label = L.OPT_CLEAR_BINDS, value = confirmClear and L.OPT_CLEAR_CONFIRM or "",
             onActivate = function()
                 if not confirmClear then
@@ -241,7 +252,8 @@ local function render()
     local names = { L.OPT_PAGE_BUTTONS, L.OPT_PAGE_MODIFIERS, L.OPT_PAGE_OTHER, L.OPT_PAGE_CURSOR }
     names[page] = "[" .. names[page] .. "]"
     header:SetText("L1  " .. table.concat(names, "   ") .. "  R1")
-    hint:SetText(captureSlot and L.OPT_CAPTURE:format(captureSlot) or L.OPT_HINT)
+    hint:SetText(captureSlot and L.OPT_CAPTURE:format(captureSlot) or "")
+    legend:SetShown(not captureSlot)
     status:SetText(message)
 end
 
@@ -335,6 +347,16 @@ local function create()
     status:SetPoint("BOTTOM", frame, "BOTTOM", 0, 34)
     hint = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     hint:SetPoint("BOTTOM", frame, "BOTTOM", 0, 14)
+    legend = ns.Legend.Create(frame)
+    legend:SetPoint("BOTTOM", frame, "BOTTOM", 0, 6)
+    legend:SetWidth(frame:GetWidth())
+    legend:Set({
+        { keys = { "DPAD" }, text = L.LEGEND_OPT_MOVE },
+        { keys = { "PADLTRIGGER", "PADRTRIGGER" }, text = L.LEGEND_OPT_FINE },
+        { keys = { "PAD1" }, text = L.LEGEND_SELECT },
+        { keys = { "PADLSHOULDER", "PADRSHOULDER" }, text = L.LEGEND_OPT_PAGE },
+        { keys = { "PAD2" }, text = L.LEGEND_CLOSE },
+    })
 
     frame:EnableGamePadButton(true)
     frame:SetScript("OnGamePadButtonDown", function(_, key)

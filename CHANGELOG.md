@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+- Button legend. While a window is open and the controller has the buttons, a legend along the bottom of the screen shows what each button does, in the game's own gold text with the game's own button pictures: D-pad move, A select, X use (right-click), L2 / R2 scroll, L1 / R1 tabs (only when the window has tabs), B back. The options window shows the same kind of legend instead of its old text line.
+- L1 / R1 now switch tabs in any open window that has them, as the shoulder buttons do on Blizzard's own controller screens. Both kinds of tab the game uses are handled (checked in the code of both builds), disabled tabs are skipped, and it wraps round at the ends.
+- Picture style. The legend defaults to each game's own style: the lettered button art on Midnight, and Forever's own art on Forever. The Other page has a "Button picture style" row (Auto, Midnight, Forever) to switch. Forever's art is not in Midnight, so choosing it there shows the Midnight pictures and says so. Forever's pictures are used on Forever as soon as the game has them.
+- The self test now also checks the pictures both styles use.
+- Kept as they were: the D-pad moves, L2 / R2 scroll, A / X click, B goes back.
+
 ## 0.8.7
 - Start in combat no longer tries to show, hide or close any panel, which the game blocks and reports as "interface action failed because of an AddOn". In combat the press only runs the secure macro (stop the cast, clear the target); everything out of combat works as in 0.8.6.
 - If the game ever blocks something this addon tried, the event and the action name are now written to the log (`/ubf log`, and the saved variables), so the cause can be found.
