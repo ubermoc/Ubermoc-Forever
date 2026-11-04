@@ -654,6 +654,18 @@ assert(ns.db.legendStyle == nil and ns.Legend.Style() == "Forever", "auto return
 ns.Legend.Show(true)
 assert(ns.Legend.Available("Midnight") and ns.Legend.Available("Forever"), "styles are available when their art exists")
 assert(ns.Legend.Status():find("legend: shown"), "legend status reports it")
+-- placement: left edge, under the tabs, shrunk to fit a narrow panel, above when no room below
+local sc, pt, lx, ly = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 700, bottom = 300, top = 700 }, 270)
+assert(sc == 1 and pt == "TOPLEFT" and lx == 100 and ly == 264, "wide panel: left edge, under the lowest tab")
+sc, pt, lx = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 400, bottom = 300, top = 700 }, nil)
+assert(math.abs(sc - 300 / 450) < 1e-9 and pt == "TOPLEFT" and lx == 100, "narrow panel: shrunk to fit")
+sc = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 150, bottom = 300, top = 700 }, nil)
+assert(sc == 0.6, "never smaller than the floor")
+local _, abovePoint, _, aboveY = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 700, bottom = 20, top = 400 }, nil)
+assert(abovePoint == "BOTTOMLEFT" and aboveY == 406, "no room below: above the window")
+local _, _, wideX = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 900, bottom = 300, top = 700 }, nil)
+local _, _, narrowX = ns.Legend.ComputeLayout(450, 32, { left = 100, right = 500, bottom = 300, top = 700 }, nil)
+assert(wideX == narrowX, "the legend does not move when the window changes width")
 ns.Legend.Hide()
 
 local out = table.concat(printed, "\n")

@@ -103,7 +103,8 @@ local function render(legend)
         else
             legend.background:SetColorTexture(0, 0, 0, 0.6)
         end
-        legend:SetWidth(legend.text:GetStringWidth() + 30)
+        legend.baseWidth = legend.text:GetStringWidth() + 30
+        legend:SetWidth(legend.baseWidth)
     end
 end
 
@@ -138,31 +139,50 @@ end
 local shownLegend
 local lastKey
 
--- Under the window and its tabs (tabs hang below the frame), like the footers on Blizzard's own
--- screens; above the window when there is no room below. Kept on screen either way. Without a
--- window it sits at the top of the screen.
+-- Where the legend goes, in screen units. rect is the window's left, right, bottom and top; lowestTab
+-- is the bottom of its lowest tab (tabs hang below the frame), or nil. The legend lines up with the
+-- window's left edge, which stays put when the window changes width from tab to tab (centring it
+-- made it jump), sits under the lowest tab, or above the window when there is no room below, and
+-- shrinks to fit when the window is narrower than it is. Returns scale, point, x, y.
+local MIN_SCALE = 0.6
+function Legend.ComputeLayout(baseWidth, height, rect, lowestTab)
+    local width = rect.right - rect.left
+    local scale = 1
+    if baseWidth > width and width > 0 then
+        scale = math.max(MIN_SCALE, width / baseWidth)
+    end
+    local lowest = math.min(rect.bottom, lowestTab or rect.bottom)
+    if lowest >= height * scale + 10 then
+        return scale, "TOPLEFT", rect.left, lowest - 6
+    end
+    return scale, "BOTTOMLEFT", rect.left, rect.top + 6
+end
+
 local function place(legend, root, tabButtons)
     legend:ClearAllPoints()
     local ui = UIParent:GetEffectiveScale()
     local scale = root and root.GetEffectiveScale and root:GetEffectiveScale()
+    local left = root and root.GetLeft and root:GetLeft()
+    local right = root and root.GetRight and root:GetRight()
     local bottom = root and root.GetBottom and root:GetBottom()
     local top = root and root.GetTop and root:GetTop()
-    local cx = root and root.GetCenter and root:GetCenter()
-    if bottom and top and cx and scale then
-        local lowest, highest = bottom * scale / ui, top * scale / ui
+    if left and right and bottom and top and scale then
+        local factor = scale / ui
+        local lowestTab
         for _, tab in ipairs(tabButtons or {}) do
             local tabBottom = tab.GetBottom and tab:GetBottom()
             if tabBottom then
-                lowest = math.min(lowest, tabBottom * tab:GetEffectiveScale() / ui)
+                local value = tabBottom * tab:GetEffectiveScale() / ui
+                lowestTab = lowestTab and math.min(lowestTab, value) or value
             end
         end
-        local x = cx * scale / ui
-        if lowest >= legend:GetHeight() + 10 then
-            legend:SetPoint("TOP", UIParent, "BOTTOMLEFT", x, lowest - 6)
-        else
-            legend:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", x, highest + 6)
-        end
+        local s, point, x, y = Legend.ComputeLayout(legend.baseWidth or 0, legend:GetHeight(),
+            { left = left * factor, right = right * factor, bottom = bottom * factor, top = top * factor }, lowestTab)
+        legend:SetScale(s)
+        -- offsets are in the legend's own scale
+        legend:SetPoint(point, UIParent, "BOTTOMLEFT", x / s, y / s)
     else
+        legend:SetScale(1)
         legend:SetPoint("TOP", UIParent, "TOP", 0, -60)
     end
 end

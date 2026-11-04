@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.7
+- The legend no longer jumps around when you switch tabs. It used to centre itself on the window, and a window like Character changes width from tab to tab, so it moved. It now lines up with the window's left edge, which does not move, and sits under the lowest tab.
+- The legend now fits inside the window it belongs to. If the window is narrower than the legend (Reputation and Currency on the Character window, for one), the legend shrinks to fit, down to a floor of 60% of its size.
+
 ## 0.9.6
 - Fixed L1 / R1 jumping to the first or last tab and then only moving between two. The game disables the tab you are on, and the tab finder was leaving disabled tabs out, so it lost track of which tab was current. R1 then always chose the first tab and L1 the last. The current tab now counts as the starting point, so each press goes to the next or previous tab, wrapping at the ends. A window with only two tabs (Dungeons & Raids, Achievements) now also shows "Tabs" in the legend, which it did not before.
 - Because those windows' tabs are now found, the legend also sits below them instead of on top of them.
