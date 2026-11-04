@@ -40,6 +40,11 @@ local previous = geterrorhandler()
 seterrorhandler(function(err)
     if type(err) == "string" and err:find(ADDON, 1, true) then
         ns.Log("ERROR " .. err)
+        -- Errors from this load, for the auto test's results.
+        ns.errors = ns.errors or {}
+        if #ns.errors < 20 then
+            ns.errors[#ns.errors + 1] = err
+        end
     end
     return previous(err)
 end)

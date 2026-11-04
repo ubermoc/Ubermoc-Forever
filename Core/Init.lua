@@ -66,6 +66,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         end
     elseif cmd == "selftest" then
         ns.RunSelfTest()
+    elseif cmd == "autotest" then
+        ns.AutoTest.Command(rest)
     elseif cmd == "layout" then
         ns.Layout.Command(rest)
     elseif cmd == "padmap" then

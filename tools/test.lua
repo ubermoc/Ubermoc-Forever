@@ -38,6 +38,8 @@ end
 function GetBuildInfo() return "1.60.1", "70707", "x", 16001 end
 function GetTime() return 1 end
 function date() return "2026-01-01 00:00:00" end
+function time() return 1700000000 end
+C_Timer = { After = function(_, fn) fn() end }
 C_Texture = { GetAtlasInfo = function(a) if a:find("xbox") then return {} end end }
 function geterrorhandler() return function() end end
 function seterrorhandler() end
@@ -123,12 +125,13 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "Input/Tabs.lua", "UI/Legend.lua", "UI/Options.lua", "UI/GameMenu.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua", "Core/AutoTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "Input/Tabs.lua", "UI/Legend.lua", "UI/Options.lua", "UI/GameMenu.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
-local function fire(event, arg)
-    for _, h in ipairs(handlers) do
-        if h.events[event] and h.fn then h.fn(h, event, arg) end
+local function fire(event, arg, arg2, from)
+    for i = from or 1, #handlers do
+        local h = handlers[i]
+        if h.events[event] and h.fn then h.fn(h, event, arg, arg2) end
     end
 end
 fire("ADDON_LOADED", "UbermocForever")
@@ -505,6 +508,85 @@ assert(report and #report.results >= 10, "self test stored results")
 assert(report.failed >= 1, "missing atlas reported as failure")
 assert(#ns.db.log > 0, "log persisted to saved variables")
 
+-- Auto test: the summary compares with the run before and only counts what got worse.
+local rowsA = { { name = "a", ok = true }, { name = "b", ok = false, detail = "x" }, { name = "c", ok = false } }
+local first = ns.AutoTest.Summarize(rowsA)
+assert(first.passed == 1 and first.failed == 2 and #first.newFailures == 0 and first.ok, "a first run has nothing to compare with")
+local rowsB = { { name = "a", ok = false }, { name = "b", ok = true }, { name = "c", ok = false } }
+local second = ns.AutoTest.Summarize(rowsB, first)
+assert(#second.newFailures == 1 and second.newFailures[1] == "a" and not second.ok, "a new failure is reported")
+assert(#second.fixed == 1 and second.fixed[1] == "b", "a fixed check is reported")
+assert(not ns.AutoTest.Summarize(rowsA, first, { "boom" }).ok, "a Lua error is never ok")
+-- off by default: entering the world runs nothing
+ns.db.autotestResult = nil
+fire("PLAYER_ENTERING_WORLD", false, true)
+assert(ns.db.autotest == nil and ns.db.autotestResult == nil, "auto test is off by default")
+SlashCmdList["UBERMOCFOREVER"]("autotest on")
+assert(ns.AutoTest.Enabled(), "/ubf autotest on switches it on")
+SlashCmdList["UBERMOCFOREVER"]("autotest now")
+local run1 = ns.db.autotestResult
+assert(run1 and run1.seq == 1 and run1.trigger == "command" and run1.game == "Forever" and run1.toc == 16001
+    and run1.build == "70707" and run1.version == "test" and run1.epoch == 1700000000, "result shape")
+assert(run1.total == #run1.results and run1.total > 10, "every row is kept")
+local hasModuleRow
+for _, row in ipairs(run1.results) do if row.name == "module Layout loaded" then hasModuleRow = row.ok end end
+assert(hasModuleRow, "module checks are added")
+ns.errors = { "UbermocForever/Input/Cursor.lua:1: boom" }
+SlashCmdList["UBERMOCFOREVER"]("autotest now")
+assert(ns.db.autotestResult.seq == 2 and #ns.db.autotestResult.errors == 1 and not ns.db.autotestResult.ok, "errors are stored")
+ns.errors = nil
+assert(#ns.db.autotestHistory == 2, "history grows by one line per run")
+local realSelfTest = ns.RunSelfTest
+ns.RunSelfTest = function() error("selftest broke") end
+local broken = ns.AutoTest.Run("command")
+assert(broken.results[1].name == "self test ran" and broken.results[1].detail:find("selftest broke"), "a crashing self test is a failure, not a crash")
+ns.RunSelfTest = realSelfTest
+SlashCmdList["UBERMOCFOREVER"]("autotest")
+SlashCmdList["UBERMOCFOREVER"]("autotest off")
+assert(not ns.AutoTest.Enabled(), "/ubf autotest off")
+
+-- The watcher's reader understands the saved variables file the game writes.
+local function serialize(v, indent)
+    if type(v) == "table" then
+        local parts = {}
+        for k, val in pairs(v) do
+            local key = type(k) == "number" and ("[" .. k .. "]") or ("[%q]"):format(k)
+            parts[#parts + 1] = indent .. "\t" .. key .. " = " .. serialize(val, indent .. "\t") .. ","
+        end
+        return "{\n" .. table.concat(parts, "\n") .. "\n" .. indent .. "}"
+    elseif type(v) == "string" then
+        return ("%q"):format(v)
+    end
+    return tostring(v)
+end
+local function summarize(db, toc)
+    local svPath, tocPath = os.tmpname(), os.tmpname()
+    local f = assert(io.open(svPath, "w"))
+    f:write("\nUbermocForeverDB = " .. serialize(db, "") .. "\n")
+    f:close()
+    f = assert(io.open(tocPath, "w"))
+    f:write("## Interface: 16001\n## Version: " .. toc .. "\n")
+    f:close()
+    local p = io.popen(("lua tools/autotest_summary.lua %q test %q"):format(svPath, tocPath))
+    local text = p:read("*a")
+    local _, _, code = p:close()
+    os.remove(svPath)
+    os.remove(tocPath)
+    return text, code
+end
+SlashCmdList["UBERMOCFOREVER"]("autotest now")
+SlashCmdList["UBERMOCFOREVER"]("autotest now")
+local seen, code = summarize(ns.db, "test")
+assert(code == 0 and seen:find("test: OK") and seen:find("Forever test"), "reader: ok run, got " .. seen)
+assert(not seen:find("NOTE"), "no stale note when the installed version matches")
+ns.db.autotestResult.newFailures = { ns.db.autotestResult.failures[1].name }
+ns.db.autotestResult.ok = false
+seen, code = summarize(ns.db, "0.99")
+assert(code == 1 and seen:find("WORSE") and seen:find("NEW FAILURE") and seen:find("NOTE"), "reader: worse run and stale build, got " .. seen)
+seen, code = summarize({ debug = false }, "test")
+assert(code == 2 and seen:find("no auto test results"), "reader: no results yet")
+ns.db.autotestResult, ns.db.autotestHistory = nil, nil
+
 -- /ubf test: press analysis tells taken, leaked and ignored presses apart.
 local summary, rows = ns.Report.Analyze({
     { time = 10, button = "PADDUP", x = 100, y = 100, x2 = 160, y2 = 100 },
@@ -689,6 +771,43 @@ assert(where == "below" and gap == 2, "no tabs: just under the window")
 where, gap = ns.Legend.ComputePlacement(20, 34, 30)
 assert(where == "above" and gap == 2, "no room below: above the window")
 ns.Legend.Hide()
+
+-- Midnight: load every file again as the other game, in a fresh saved variables table.
+do
+    local realBuild = GetBuildInfo
+    function GetBuildInfo() return "12.1.5", "70783", "x", 120105 end
+    local savedDB = UbermocForeverDB
+    UbermocForeverDB = nil
+    ClearOverrideBindings()
+    local from = #handlers + 1
+    local mid = {}
+    for _, file in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua",
+        "Core/AutoTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua",
+        "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "Input/Tabs.lua", "UI/Legend.lua", "UI/Options.lua",
+        "UI/GameMenu.lua" }) do
+        assert(loadfile(file))("UbermocForever", mid)
+    end
+    fire("ADDON_LOADED", "UbermocForever", nil, from)
+    fire("PLAYER_LOGIN", nil, nil, from)
+    assert(mid.gameType == "Midnight" and not mid.isForever and mid.toc == 120105, "Midnight game type")
+    assert(not mid.HasNativeGamepad(), "Midnight has no Blizzard_Gamepad")
+    assert(mid.Cursor.Auto() and mid.Cursor.ActionsOn(), "cursor takeovers default on in Midnight")
+    assert(mid.Legend.Style() == "Midnight", "Midnight style by default")
+    mid.Layout.Command("on")
+    assert(count(bindings) == 68 and bindings["PAD3"] == "ACTIONBUTTON1", "the same layout in Midnight")
+    mid.Layout.Command("off")
+    mid.db.autotest = true
+    fire("PLAYER_ENTERING_WORLD", false, true, from)
+    local r = mid.db.autotestResult
+    assert(r and r.game == "Midnight" and r.trigger == "reload" and r.toc == 120105, "auto test runs on reload in Midnight")
+    local sawReload
+    for _, e in ipairs(r.events) do if e:find("PLAYER_ENTERING_WORLD login=false reload=true") then sawReload = true end end
+    assert(sawReload and r.events[1]:find("ADDON_LOADED"), "load events are recorded in order")
+    fire("PLAYER_ENTERING_WORLD", false, false, from)
+    assert(mid.db.autotestResult.seq == 1, "only one run per load (zoning does not run it again)")
+    GetBuildInfo = realBuild
+    UbermocForeverDB = savedDB
+end
 
 local out = table.concat(printed, "\n")
 assert(ns.isForever and ns.gameType == "Forever", "game type")

@@ -13,6 +13,7 @@ Core\Init.lua
 Core\Compat.lua
 Core\Debug.lua
 Core\SelfTest.lua
+Core\AutoTest.lua
 Input\GamePad.lua
 Input\Labels.lua
 Input\PadTest.lua

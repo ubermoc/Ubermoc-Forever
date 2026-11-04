@@ -57,4 +57,6 @@ read_globals = {
     "GetTime",
     "geterrorhandler",
     "seterrorhandler",
+    "time",
+    "C_Timer",
 }

@@ -287,6 +287,12 @@ local function buildRows()
                 local ok, count = ns.Binds.Restore()
                 message = ok and L.OPT_BINDS_RESTORED:format(count) or L.OPT_BINDS_NONE
             end }
+        local function toggleAutoTest()
+            ns.AutoTest.SetEnabled(not ns.AutoTest.Enabled())
+            message = ns.AutoTest.Enabled() and L.AUTOTEST_ON or L.AUTOTEST_OFF
+        end
+        rows[#rows + 1] = { label = L.OPT_AUTOTEST, value = ns.AutoTest.Enabled() and L.YES or L.NO,
+            onLeft = toggleAutoTest, onRight = toggleAutoTest, onActivate = toggleAutoTest }
         rows[#rows + 1] = { label = L.OPT_SELFTEST, value = "", onActivate = ns.RunSelfTest }
         rows[#rows + 1] = { label = L.OPT_RELOAD, value = "", onActivate = function() ReloadUI() end }
         rows[#rows + 1] = { label = L.OPT_CLOSE, value = "", onActivate = function() Options.Hide() end }
