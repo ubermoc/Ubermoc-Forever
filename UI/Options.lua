@@ -172,7 +172,7 @@ local function buildRows()
                     Layout.SetExtra(key, cycle(Layout.EXTRA_COMMAND_LIST, c.extras[key], delta))
                 end
             end
-            rows[#rows + 1] = { label = Layout.Friendly(key), value = c.extras[key],
+            rows[#rows + 1] = { label = Layout.Friendly(key), value = Layout.CommandName(c.extras[key]),
                 onLeft = step(-1), onRight = step(1) }
         end
         local function stepSetting(field, read, delta)
@@ -213,6 +213,7 @@ local function buildRows()
                 message = ok and L.OPT_BINDS_RESTORED:format(count) or L.OPT_BINDS_NONE
             end }
         rows[#rows + 1] = { label = L.OPT_SELFTEST, value = "", onActivate = ns.RunSelfTest }
+        rows[#rows + 1] = { label = L.OPT_RELOAD, value = "", onActivate = function() ReloadUI() end }
         rows[#rows + 1] = { label = L.OPT_CLOSE, value = "", onActivate = function() Options.Hide() end }
     end
     return rows

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.5
+- Start now opens the game menu directly, every time. Before, it ran the game's whole Esc action, which stops casting, clears your target and closes windows first, and the controller's first Esc steps can use up the press, so with a target selected the menu never opened. Start now does what the game's own menu button does: closes the settings panel, menus and windows, then shows the menu (with the Ubermoc Forever button at the top), and pressing it again puts the menu away. It never clears your target. It works with a paddle held too, and in combat. The old behaviour is still available as "TOGGLEGAMEMENU" in the Other buttons page.
+- Existing settings are moved over once: if Start was still on the old default, it becomes "Game menu (direct)".
+- B closes the top thing with the same safe steps instead of the full Esc action: a dialog first, then the settings panel, menus, windows and bags. This replaces the 0.8.4 behaviour, which could clear your target or stop a cast instead of closing the window.
+- New "Reload UI" row under "Run self test" on the Other page. It reloads the interface, which also saves the self test results to disk.
+
 ## 0.8.4
 - B and Start now do what Esc does. They go through the game's own Esc path (`ToggleGameMenu`), which closes pop-up dialogs, the settings panel, menus, windows and bags in the right order, and in the same order on Midnight and Forever (both builds' code checked). Before, they only closed windows, so a pop-up dialog or the settings panel could not be backed out of. If nothing claims the press and Esc would open the game menu, the menu is put away again.
 - The first D-pad press in a menu goes to the nearest button when the cursor is not on one yet (a freshly opened game menu, a pop-up), instead of doing nothing. After that the D-pad moves from button to button as before. The game only allows the cursor to be placed in answer to a controller press, so it cannot jump there by itself when a menu opens.

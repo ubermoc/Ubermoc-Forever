@@ -75,7 +75,7 @@ function ns.RunSelfTest()
         for key, command in pairs(c.extras or {}) do
             if command ~= "NONE" then
                 extraTotal = extraTotal + 1
-                if GetBindingAction(key, true) == command then
+                if GetBindingAction(key, true) == ns.Layout.BindingFor(command) then
                     extraOk = extraOk + 1
                 end
             end

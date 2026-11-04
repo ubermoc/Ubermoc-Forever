@@ -8,6 +8,41 @@ local SECTION_GAP = 20
 
 local hooked
 
+-- The same steps as the menu button on the micro bar: close what is open, then show the menu,
+-- or put it away if it is already up. Nothing here stops casting or clears the target.
+function ns.ToggleGameMenu()
+    local menu = _G.GameMenuFrame
+    if not menu then
+        return
+    end
+    if menu:IsShown() then
+        PlaySound(SOUNDKIT.IG_MAINMENU_QUIT)
+        HideUIPanel(menu)
+        return
+    end
+    if AreAllPanelsDisallowed and AreAllPanelsDisallowed() then
+        return
+    end
+    if _G.SettingsPanel and _G.SettingsPanel:IsShown() then
+        _G.SettingsPanel:Close()
+    end
+    ns.Options.Hide()
+    CloseMenus()
+    CloseAllWindows()
+    PlaySound(SOUNDKIT.IG_MAINMENU_OPEN)
+    ShowUIPanel(menu)
+end
+
+-- Bindings reach a function through a click on a button; this one is bound to Start.
+local starter = CreateFrame("Button", "UbermocForeverMenu", UIParent)
+starter:RegisterForClicks("AnyUp")
+starter:SetScript("OnClick", function()
+    local ok, err = pcall(ns.ToggleGameMenu)
+    if not ok then
+        ns.Log("game menu key failed: " .. tostring(err))
+    end
+end)
+
 local function openOptions()
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
     HideUIPanel(GameMenuFrame)

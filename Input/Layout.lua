@@ -33,7 +33,7 @@ local MAX_BAR = 8
 -- Order is the order they are listed in.
 local EXTRA_ORDER = { "PADFORWARD", "PADBACK", "PADLSTICK", "PADPADDLE2", "PADPADDLE4" }
 local DEFAULT_EXTRAS = {
-    PADFORWARD = "TOGGLEGAMEMENU",
+    PADFORWARD = "UBFMENU",
     PADBACK = "TOGGLEWORLDMAP",
     PADLSTICK = "TOGGLEAUTORUN",
     PADPADDLE2 = "INTERACTTARGET",
@@ -42,9 +42,18 @@ local DEFAULT_EXTRAS = {
 -- Commands that can be chosen for an extra button, checked against the game's
 -- own binding list. NONE leaves the button unbound.
 local EXTRA_COMMANDS = {
-    NONE = true, TOGGLEGAMEMENU = true, TOGGLEWORLDMAP = true,
+    NONE = true, UBFMENU = true, TOGGLEGAMEMENU = true, TOGGLEWORLDMAP = true,
     TOGGLEAUTORUN = true, INTERACTTARGET = true, JUMP = true,
 }
+
+-- UBFMENU opens the game menu directly, the way the menu button on the micro bar does. The game's
+-- own TOGGLEGAMEMENU is the Esc key: it stops casting, clears the target and closes windows first,
+-- and those steps can use up the press so the menu never opens.
+local BIND_AS = { UBFMENU = "CLICK UbermocForeverMenu:LeftButton" }
+
+local function bindingFor(command)
+    return BIND_AS[command] or command
+end
 
 local DEFAULT_SHIFT_BUTTON = "PADPADDLE1"
 local DEFAULT_CTRL_BUTTON = "PADPADDLE3"
@@ -102,6 +111,13 @@ local function config()
     for _, key in ipairs(EXTRA_ORDER) do
         c.extras[key] = c.extras[key] or DEFAULT_EXTRAS[key]
     end
+    if not c.menuDirect then
+        -- Start used to default to the Esc action; the direct menu replaces that default once.
+        if c.extras.PADFORWARD == "TOGGLEGAMEMENU" then
+            c.extras.PADFORWARD = "UBFMENU"
+        end
+        c.menuDirect = true
+    end
     c.shiftButton = c.shiftButton or DEFAULT_SHIFT_BUTTON
     c.ctrlButton = c.ctrlButton or DEFAULT_CTRL_BUTTON
     return c
@@ -134,7 +150,7 @@ local function bindAll(c)
         end
         for _, key in ipairs(EXTRA_ORDER) do
             if c.extras[key] ~= "NONE" then
-                SetOverrideBinding(owner, true, def.prefix .. key, c.extras[key])
+                SetOverrideBinding(owner, true, def.prefix .. key, bindingFor(c.extras[key]))
                 count = count + 1
             end
         end
@@ -210,7 +226,7 @@ function Layout.PrintStatus()
         if command ~= "NONE" then
             for _, def in ipairs(SETS) do
                 extraTotal = extraTotal + 1
-                if GetBindingAction(def.prefix .. key, true) == command then
+                if GetBindingAction(def.prefix .. key, true) == bindingFor(command) then
                     extraOk = extraOk + 1
                 end
             end
@@ -235,10 +251,14 @@ Layout.SLOT_COUNT = SLOT_COUNT
 Layout.MAX_BAR = MAX_BAR
 Layout.SETS = SETS
 Layout.EXTRA_ORDER = EXTRA_ORDER
-Layout.EXTRA_COMMAND_LIST = { "NONE", "TOGGLEGAMEMENU", "TOGGLEWORLDMAP", "TOGGLEAUTORUN", "INTERACTTARGET", "JUMP" }
+Layout.EXTRA_COMMAND_LIST = { "NONE", "UBFMENU", "TOGGLEGAMEMENU", "TOGGLEWORLDMAP", "TOGGLEAUTORUN", "INTERACTTARGET", "JUMP" }
 Layout.PADDLES = { "PADPADDLE1", "PADPADDLE2", "PADPADDLE3", "PADPADDLE4" }
 Layout.Config = config
 Layout.Friendly = friendly
+Layout.BindingFor = bindingFor
+function Layout.CommandName(command)
+    return ns.L["CMD_" .. command] or command
+end
 Layout.ValidKeys = validKeys
 
 -- True when the key is already used by the layout (a bar slot, an other button, or a modifier paddle).

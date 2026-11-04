@@ -292,22 +292,29 @@ function Cursor.Scroll(delta)
     end
 end
 
--- Back does what Esc does. The game's Esc path closes dialogs, menus, the settings panel,
--- windows and bags in order, which closing the windows alone does not. If nothing claims
--- it, Esc would open the game menu, so a menu that was not open before is put away again.
+-- Back closes the top thing: a dialog first, then the settings panel, menus, windows and bags.
+-- The game's whole Esc action also stops casting and clears the target, and can use up
+-- the press before anything closes, so only the closing steps are used.
 function Cursor.Back()
-    local menuWasShown = shown(_G.GameMenuFrame)
-    local ok = type(ToggleGameMenu) == "function" and pcall(ToggleGameMenu)
-    if ok then
-        if not menuWasShown and shown(_G.GameMenuFrame) then
-            pcall(HideUIPanel, _G.GameMenuFrame)
-            ns.Log("back: nothing claimed it, game menu put away")
+    local closed
+    if type(StaticPopup_EscapePressed) == "function" then
+        local ok, result = pcall(StaticPopup_EscapePressed)
+        closed = ok and result
+    end
+    if not closed then
+        local settings = _G.SettingsPanel
+        if shown(settings) then
+            closed = pcall(settings.Close, settings)
         end
-    else
-        local closed = CloseAllWindows()
-        if not closed and enabled() then
-            SetGamePadCursorControl(false)
+    end
+    if not closed then
+        if type(CloseMenus) == "function" then
+            pcall(CloseMenus)
         end
+        closed = CloseAllWindows()
+    end
+    if not closed and enabled() then
+        SetGamePadCursorControl(false)
     end
     weEnabledIt = false
 end

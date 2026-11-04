@@ -162,7 +162,8 @@ assert(bindings["CTRL-PAD3"] == "MULTIACTIONBAR2BUTTON1", "ctrl set is bar 3")
 assert(bindings["CTRL-SHIFT-PADDUP"] == "MULTIACTIONBAR3BUTTON8", "both set is bar 4")
 assert(cvars.GamePadEmulateShift == "PADPADDLE1" and cvars.GamePadEmulateCtrl == "PADPADDLE3", "paddles emulate modifiers")
 
-assert(bindings["PADFORWARD"] == "TOGGLEGAMEMENU", "Start opens the game menu")
+assert(bindings["PADFORWARD"] == "CLICK UbermocForeverMenu:LeftButton", "Start opens the game menu directly")
+assert(bindings["CTRL-PADFORWARD"] == "CLICK UbermocForeverMenu:LeftButton", "Start works with a paddle held too")
 assert(bindings["PADBACK"] == "TOGGLEWORLDMAP", "Select opens the map")
 assert(bindings["PADLSTICK"] == "TOGGLEAUTORUN", "L3 auto-runs")
 assert(bindings["PADPADDLE2"] == "INTERACTTARGET", "L4 interacts")
@@ -238,7 +239,7 @@ press(win, "PADDRIGHT")
 assert(cfg.bars[1] == 2, "bar cycles")
 press(win, "PADRSHOULDER")        -- page 3
 press(win, "PADDRIGHT")
-assert(cfg.extras.PADFORWARD == "TOGGLEWORLDMAP", "extra command cycles")
+assert(cfg.extras.PADFORWARD == "TOGGLEGAMEMENU", "extra command cycles")
 for _ = 1, 5 do press(win, "PADDDOWN") end   -- window background tint row
 press(win, "PADDRIGHT")
 assert(ns.db.optionsTint == 50, "tint steps by 5 from 45")
@@ -408,18 +409,17 @@ onButton(pad, "PAD2")
 assert(cursorOn, "B closes a window first")
 onButton(pad, "PAD2")
 assert(not cursorOn, "B with no window open gives the stick back")
--- Back uses the game's Esc path once it exists, and puts away a menu that Esc opened by itself
-local escCalls, escOpensMenu, menuUp = 0, false, false
-function ToggleGameMenu() escCalls = escCalls + 1 if escOpensMenu then menuUp = true end end
-local menuStub = GameMenuFrame
-GameMenuFrame = { IsShown = function() return menuUp end }
+-- Back closes a dialog first, then everything else, and never runs the Esc action
+local popupUp, escTouched = true, false
+function StaticPopup_EscapePressed() if popupUp then popupUp = false return 1 end end
+function ToggleGameMenu() escTouched = true end
+windowsClosed = 0
 onButton(pad, "PAD2")
-assert(escCalls == 1, "B takes the Esc path")
-escOpensMenu = true
+assert(not popupUp and windowsClosed == 0, "B closes a dialog before anything else")
 onButton(pad, "PAD2")
-assert(escCalls == 2 and menuUp, "the menu Esc opened is noticed")
-GameMenuFrame = menuStub
-ToggleGameMenu = nil
+assert(windowsClosed == 1, "B then closes the windows")
+assert(not escTouched, "the Esc action (target clear, stop casting) is not used")
+StaticPopup_EscapePressed, ToggleGameMenu = nil, nil
 cursorOn = true
 menu.shown = false
 cursorOn = true
@@ -498,6 +498,18 @@ local added = menuButtons[3]
 assert(added.text == "Ubermoc Forever" and added.layoutIndex == 0, "menu button is first in layout")
 assert(menuButtons[1].topPadding == 20, "old first button gets a gap")
 assert(GameMenuFrame.buttons[1] == added and GameMenuFrame.dirty, "list order and relayout")
+-- Start's menu key: shows the menu after closing what is open, and puts it away when it is up
+local shownNow = false
+GameMenuFrame.IsShown = function() return shownNow end
+local shownCalls = 0
+function ShowUIPanel(f) if f == GameMenuFrame then shownNow = true shownCalls = shownCalls + 1 end end
+function HideUIPanel(f) menuHidden = menuHidden + 1 if f == GameMenuFrame then shownNow = false end end
+function CloseMenus() end
+windowsClosed = 0
+ns.ToggleGameMenu()
+assert(shownNow and windowsClosed == 1, "Start closes windows and shows the menu")
+ns.ToggleGameMenu()
+assert(not shownNow, "Start again puts the menu away")
 local hiddenBefore = menuHidden
 added.callback()
 assert(menuHidden == hiddenBefore + 1, "menu closes when the button is used")
