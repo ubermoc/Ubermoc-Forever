@@ -33,9 +33,8 @@ local function shown(frame)
 end
 
 local function inSpellBook()
-    if shown(BookPane) then return true end          -- retail (Midnight)
-    local sb = SpellBookFrame                        -- legacy
-    if sb and sb:IsShown() then return true end      -- Forever
+    local sb = SpellBookFrame                        -- spell book frame on screen
+    if sb and sb:IsShown() then return true end
     return false
 end
 

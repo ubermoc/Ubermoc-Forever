@@ -63,9 +63,10 @@ local function opacity()
     return ns.db.optionsOpacity or DEFAULT_OPACITY
 end
 
--- Two frames can be drawn. The plain panel (Midnight's look) has a background and an inset behind
--- the rows; Blizzard's portrait panel (Forever's look, the one its own screens use) has one rock
--- background, so the tint darkens that instead.
+-- Two frame templates can be used. PortraitFrameTemplate shows the player portrait and a
+-- title bar (Forever's standard panel); BasicFrameTemplateWithInset is a clean plain panel.
+-- Auto picks PortraitFrameTemplate; "Letters" forces the plain one. The tint slider only
+-- affects PlainFrame because PortraitFrame already has its own texture.
 local TINT_DARKEST = 0.55
 local function applyBackground()
     if not frame then
@@ -253,7 +254,7 @@ local function buildRows()
                 local result = ns.Labels.SetChoice(choice)
                 message = L.OPT_LABELS_CHANGED:format(ns.Labels.Describe(result))
             end }
-        local styleChoices = { "Auto", "Midnight", "Forever" }
+        local styleChoices = { "Auto", "Letters", "Forever" }
         local function chooseStyle(choice)
             ns.Legend.SetChoice(choice)
             local style = ns.Legend.Style()
@@ -548,7 +549,7 @@ local function create()
             frame:SetPortraitToUnit("player")
         else
             ns.Log("portrait panel failed, using the plain panel: " .. tostring(made))
-            style = "Midnight"
+            style = "Plain"
         end
     end
     if style ~= "Forever" then

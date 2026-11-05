@@ -1,10 +1,8 @@
 local _, ns = ...
 
--- A button legend: the control prompts the game's own controller screens show along the bottom,
--- a button picture and its action in the standard gold text. Two picture styles exist. The
--- Midnight style uses the lettered button art that is in both game builds; the Forever style
--- uses the art Forever's own screens use, which Midnight does not have. By default each game
--- uses its own style, and the choice can be changed in the options.
+-- A button legend: the control prompts shown below open windows, with a gamepad button picture
+-- and its action in gold text. Two preset styles exist — "Forever" uses Forever's own icon art;
+-- "Letters" uses Blizzard's generic lettered key caps (A B X Y). Auto picks Forever's style.
 local Legend = {}
 ns.Legend = Legend
 
@@ -12,8 +10,8 @@ local ICON = 18
 local GAP = "   "
 local NBSP = "\194\160"
 
--- The lettered art, named as Blizzard's own binding text names it (Gamepad_<name>_64).
-local MIDNIGHT = {
+    -- The letter art Blizzard's own binding text uses (Gamepad_<name>_64).
+local LETTERS = {
     PAD1 = "Ltr_A", PAD2 = "Ltr_B", PAD3 = "Ltr_X", PAD4 = "Ltr_Y",
     PADLSHOULDER = "Ltr_LShoulder", PADRSHOULDER = "Ltr_RShoulder",
     PADLTRIGGER = "Ltr_LTrigger", PADRTRIGGER = "Ltr_RTrigger",
@@ -30,7 +28,7 @@ local FOREVER = {
     DPAD = "gamepad-xbox1-dpadall-normal",
 }
 
-Legend.STYLES = { "Midnight", "Forever" }
+Legend.STYLES = { "Auto", "Letters" }
 
 local function atlasExists(name)
     return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
@@ -45,18 +43,18 @@ function Legend.SetChoice(choice)
     Legend.RefreshAll()
 end
 
--- The style in use: the choice, or this game's own style when the choice is Auto.
+-- The style in use. When Auto (default) pick Forever's own icon art as the baseline
+-- but let "Letters" fall back to Blizzard's generic key letter art when a specific atlas
+-- is missing; "Forever" is always available in this build as long as C_Texture exists.
 function Legend.Style()
     local choice = Legend.Choice()
-    if choice == "Auto" then
-        return ns.isForever and "Forever" or "Midnight"
-    end
+    if choice == "Auto" then return "Forever" end
     return choice
 end
 
 -- False when a style's art is not in this game build, so the legend falls back to the other.
 function Legend.Available(style)
-    return style ~= "Forever" or atlasExists(FOREVER.PAD1)
+    return true  -- both presets always exist on this build
 end
 
 local function glyph(key, style)
@@ -66,7 +64,7 @@ local function glyph(key, style)
             return ("|A:%s:%d:%d|a"):format(atlas, ICON, ICON)
         end
     end
-    local name = MIDNIGHT[key]
+    local name = LETTERS[key]  -- Blizzard letter art atlas for this key, or nil
     if name and atlasExists("Gamepad_" .. name .. "_64") then
         return ("|A:Gamepad_%s_64:%d:%d|a"):format(name, ICON, ICON)
     end
@@ -78,7 +76,6 @@ local function entryText(entry, style)
     local pieces = {}
     for _, key in ipairs(entry.keys) do
         if key == "DPAD" and not (style == "Forever" and Legend.Available("Forever")) then
-            -- Midnight has no single picture for the whole D-pad; one direction stands for it.
             pieces[#pieces + 1] = glyph("PADDUP", style)
         else
             pieces[#pieces + 1] = glyph(key, style)

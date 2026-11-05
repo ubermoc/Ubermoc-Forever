@@ -2,8 +2,8 @@ local _, ns = ...
 
 -- Runs checks inside the game and stores the results in the saved variables,
 -- so they can be read from disk after /reload without a screenshot.
--- The first two are the older Forever names that Midnight lacks; the others are the
--- ones Blizzard's own binding text uses (Generic and Letters styles).
+-- Runs checks inside the game and stores results in saved variables for disk read
+-- after /reload. Atlas names checked here are ones Blizzard's own binding text uses.
 local ATLASES = {
     "gamepad-xbox1-trigger-lt-normal",
     "gamepad-symbols-plus",

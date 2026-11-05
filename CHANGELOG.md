@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.0
+- Dropped all support for World of Warcraft: Midnight (TOC 120105). The addon now ships only on TOC 16001 (Forever). Removed `isForever`/gameType dual-path logic from Compat.lua (`gameType` is always "Forever", no more `toc == 120105` checks). Legend picture style picker reduced to Auto / Letters / Forever with Auto defaulting to Forever. Options window template name changed from "Midnight" to "Plain". CLAUDE.md rules updated: API verification only against the `forever` branch of Gethe/wow-ui-source; installation only into `_forever_` folder (no more dual-game-path). tools/check.py no longer enforces 120105 in TOC. CHANGELOG history entries documenting past releases are preserved as-is; no Midnight references remain in live code or player-facing strings.
+
 ## 0.10.1
 - New `/ubf reload` command. Put it in a one-line macro on an action bar slot your controller reaches (for example Action Bar 4, held with both paddles) and you can reload the UI with one button.
 - New auto test, for testing the addon: `/ubf autotest on` (or "Self test on every load" on the Other page of the options) runs the self test by itself every time the UI loads and saves the results, so they can be read from the saved variables after a /reload. It records the addon and game version, what started it (login or reload), every check with pass or fail, any Lua errors from this addon, and which checks newly failed or were fixed since the last run. It is off by default. `/ubf autotest now` runs it on demand and `/ubf autotest` shows the last result.

@@ -1,6 +1,6 @@
-## Interface: 16001, 120105
+## Interface: 16001
 ## Title: Ubermoc Forever
-## Notes: Play World of Warcraft: Forever and Midnight with just a controller. Built for the Steam Deck and Steam Controller.
+## Notes: Play World of Warcraft: Forever with just a controller. Built for the Steam Deck and Steam Controller.
 ## Author: Marcos
 ## Version: @project-version@
 ## X-Copyright: Copyright (c) 2026 Marcos. All rights reserved.
