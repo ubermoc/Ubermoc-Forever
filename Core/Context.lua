@@ -11,7 +11,7 @@ local _, ns = ...
 --     BAGS        – any bag frame visible
 --     PROFESSIONS – profession window (Trainer, Blacksmithing…) is shown
 --     NPC         – Questgiver or Gossip dialog active
---     MENU        – GameMenuFrame / SettingsPanel (not addon menus)
+--     MENU        – GameMenuFrame / SettingsPanel / addon menus
 --
 -- Listeners: Context.Register(fn) calls fn(contextEntered, contextLeft)
 
@@ -34,7 +34,7 @@ end
 
 local function inSpellBook()
     if shown(BookPane) then return true end          -- retail (Midnight)
-    local sb = SpellBookFrame                         -- legacy
+    local sb = SpellBookFrame                        -- legacy
     if sb and sb:IsShown() then return true end      -- Forever
     return false
 end
@@ -46,41 +46,103 @@ local function inBags()
     return shown(ContainerFrameCombinedBags)         -- retail single-bag
 end
 
-local function inProfessions()
-    if shown(ProfessionFrame) then return true end
-    if shown(ProfessionFrameContainer) then return true end
+-- ─── Task 3: PROFESSIONS – all profession window types ──────────────────────
+
+-- Full list of Blizzard profession frames across expansions.
+local _PROF_FRAMES = {
+    ProfessionFrame,        -- general profession frame (Forever/retail)
+    ProfessionFrameContainer,  -- universal container wrapper
+    ProfessionMacroFrame,   -- Legion+ macro-tabbed professions
+    ProfessionSkillFrame,   -- profession skill-tree / talent panel
+    TradeSkillFrame,        -- legacy trade-skill tab
+    EngineerBox,            -- engineering crafting box (bottom-right)
+    EnchantingWindow,       -- enchanting window variant
+    CookingFrame,           -- cooking frame
+}
+
+function inProfessions()
+    if shown(ProfessionFrame)               then return true end -- general profession frame
+    if shown(ProfessionFrameContainer)      then return true end -- universal container wrapper
+    if shown(ProfessionMacroFrame)          then return true end -- Legion+ macro-tabbed professions
+    if shown(ProfessionSkillFrame)          then return true end -- skill-tree / talent panel
+    if shown(TradeSkillFrame)               then return true end -- legacy trade-skill tab
+    if shown(EngineerBox)                   then return true end -- engineering crafting box
+    if shown(EnchantingWindow)              then return true end -- enchanting frame variant
+    if shown(CookingFrame)                  then return true end -- cooking window
+    return false
 end
 
-local function nearNPC()
-    return shown(QuestgiverFrame) or shown(GossipFrame)
+-- ─── Task 1: NPC – Questgiver + Gossip + QuestFrame ────────────────────────
+
+-- All Blizzard frames that indicate an active NPC dialog.
+function nearNPC()
+    if shown(QuestgiverFrame)  then return true end  -- quest-giving NPC dialog
+    if shown(GossipFrame)      then return true end  -- general gossip (non-quest) NPC popup
+    -- Task 1: QuestFrame is the standalone quest-frame used by some UIs
+    local qf = QuestFrame
+    if qf and qf:IsShown() then return true end
+    return false
 end
 
-local function inMenu()
-    return shown(GameMenuFrame) or (shown(SettingsPanel))
+-- ─── Task 2: MENU – GameMenuFrame + SettingsPanel + addon menus ─────────────
+
+function inMenu()
+    local frames = {GameMenuFrame, -- ESC menu / game pause (task 2)
+                    SettingsPanel, -- Blizzard settings panel overlay  (task 2)
+                    }
+    for _, f in ipairs(frames) do
+        if shown(f) then return true end
+    end
+
+    -- Check addon menus by inspecting UIParent children for modal popups.
+    local count = UIParent and UIParent:GetNumChildren()
+    if not count or count == 0 then return false end
+    for i = 1, count do
+        local child = select(i, UIParent:GetChildren())
+        if type(child) == "table" and type(child.IsShown) == "function" and pcall(child.IsShown, child) then
+            local name = type(child.GetName) == "function" and child:GetName()
+            if name and _MENU_EXCLUDE[name] == nil then
+                -- Known non-menu frames are in the exclusion list above.
+                -- Any remaining popup with title text is an addon menu context.
+                local title = type(child.GetTitle) == "function" and child:GetTitle()
+                if title and #title > 0 then return true end
+            end
+        end
+    end
+    return false
 end
+
+-- Exclusions list: frames that match by pattern but are NOT menu contexts.
+local _MENU_EXCLUDE = {
+    ["ContainerFrameCombinedBags"]      = true,
+}
 
 -- ─── Classification logic ──────────────────────────────────────────────────
 
 -- Priority order matters: SpellBook and Profession may overlap, but each player
 -- sees only one at a time.  Combat is always highest priority.
 local function classify()
-    if UnitAffectingCombat("player")      then return "COMBAT"         end
-    if inSpellBook()                      then return "SPELLBOOK"     end
-    if nearNPC()                          then return "NPC"           end
-    if inProfessions()                    then return "PROFESSIONS"   end
-    if inBags()                           then return "BAGS"          end
-    if inMenu()                           then return "MENU"          end
+    if UnitAffectingCombat("player")         then return "COMBAT"       end
+    if inSpellBook()                         then return "SPELLBOOK"    end
+    if nearNPC()                             then return "NPC"          end
+    if inProfessions()                       then return "PROFESSIONS"  end
+    if inBags()                              then return "BAGS"         end
+    if inMenu()                              then return "MENU"         end
     return "NONE"
 end
 
--- ─── Listener management ──────────────────────────────────────────────────
+-- ─── Task 5: Listener registry (expanded) ──────────────────────────────────
 
+--- Register a listener that receives OnEnter/OnExit notifications.
+-- @param fn Function called as fn(context, signal) where signal is "enter"/"exit"
+-- @return numeric id to pass to Context.Unregister()
 function Context.Register(fn)
     listenerId = listenerId + 1
     listeners[#listeners + 1] = { id = listenerId, fn = fn }
     return listenerId
 end
 
+--- Unregister a listener by its id. Returns true on success.
 function Context.Unregister(id)
     for i = #listeners, 1, -1 do
         if listeners[i].id == id then
@@ -91,16 +153,49 @@ function Context.Unregister(id)
     return false
 end
 
--- ─── Context dispatch ──────────────────────────────────────────────────────
--- Called when the player enters or leaves a context.  Listeners run first; if
--- any of them signals an error it is logged but does not stop the others.
+--- Return count of registered listeners (for debugging).
+function Context.ListenerCount()
+    return #listeners
+end
+
+--- Return an array of listener identifiers for debugging.
+function Context.ListenerNames()
+    local out = {}
+    for i, l in ipairs(listeners) do
+        out[i] = ("listener-%d"):format(l.id)
+    end
+    return out
+end
+
+-- ─── Task 4: OnEnter / OnExit callbacks ─────────────────────────────────────
+
+local function fireOnEnter(ctx)
+    for _, l in ipairs(listeners) do
+        local ok, err = pcall(l.fn, ctx, "enter")
+        if not ok and ns.Log then
+            ns.Log("context onenter error: " .. tostring(err))
+        end
+    end
+end
+
+local function fireOnExit(ctx)
+    for _, l in ipairs(listeners) do
+        local ok, err = pcall(l.fn, ctx, "exit")
+        if not ok and ns.Log then
+            ns.Log("context onexit error: " .. tostring(err))
+        end
+    end
+end
 
 local function onContextChange(oldCtx, newCtx)
     if oldCtx == newCtx then return end
+    fireOnExit(oldCtx)
+    fireOnEnter(newCtx)
+    -- backward-compat: also call the original transition-style callback
     for _, l in ipairs(listeners) do
-        local ok, err = pcall(l.fn, newCtx, oldCtx)
-        if not ok and ns.Log then
-            ns.Log("context listener error: " .. tostring(err))
+        local ok2, err = pcall(l.fn, newCtx, oldCtx)
+        if not ok2 and ns.Log then
+            ns.Log("context ontransition error: " .. tostring(err))
         end
     end
 end
@@ -140,7 +235,7 @@ combatFrame:SetScript("OnEvent", function(_, ev)
         end
     else
         -- Left combat; let OnUpdate classify normally on the next tick.
-        onContextChange("COMBAT", "NONE")
+        onContextChange(currentContext, "NONE")
         currentContext = "NONE"
         ns.Log("combat ended, context reset for classification")
     end
@@ -149,33 +244,32 @@ end)
 -- ─── Public query API ──────────────────────────────────────────────────────
 
 function Context.Current()  return currentContext end
-function Context.Is(name)   return name and currentContext == name end
+function Context.Is(name)   
+    return name       and currentContext == name         end
 
 function Context.InCombat()         return currentContext == "COMBAT"        end
 function Context.IsSpellBook()      return currentContext == "SPELLBOOK"     end
-function Context.IsBags()           return currentContext == "BAGS"          end
+function Context.IsInBags()         return currentContext == "BAGS"          end
 function Context.IsProfessions()    return currentContext == "PROFESSIONS"   end
-function Context.NearNPC()          return currentContext == "NPC"           end
+function Context.IsNearNPC()        return currentContext == "NPC"           end
+function Context.IsMenu()           return currentContext == "MENU"          end
 
 -- ─── Slash command: /ubf context ──────────────────────────────────────────
 
 function Context.PrintState()
     local label = currentContext
-    if currentContext == "NONE" then
-        label = "Normal gameplay"
-      elseif currentContext == "COMBAT" then
-        label = "Combat"
-      end
+    if currentContext == "NONE"      then label = "Normal gameplay"          end
+    if currentContext == "COMBAT"    then label = "Combat"                   end
     print(("Context: %s"):format(label))
-    print("Listeners registered: %d", #listeners)
+    print(("Listeners registered: %d"):format(#listeners))
 end
 
 -- ─── Auto-enable Layout on PLAYER_LOGIN (integration hook for Init.lua) ────
 
 function Context.OnPlayerLogin()
-    ns.Log("context engine init: auto-enabling layout")
-    if type(ns.Layout.SetEnabled) == "function" then
-        pcall(ns.Layout.SetEnabled, true)  -- will handle pending in combat
+   ns.Log("context engine init: auto-enabling layout")
+    if type(ns.Layout.SetEnabled) == "function"  then
+        pcall(ns.Layout.SetEnabled, true)  -- will handle in-combat pending
     end
 end
 
