@@ -1,5 +1,7 @@
 local _, ns = ...
 
+if not ns.BindingHint then ns.BindingHint = {} end
+
 -- Checkpont 3: Native Binding Hints
 -- Shows gamepad key names on Blizzard UI elements using WoW's own binding text system.
 -- No custom art — every overlay uses FontString with native font objects, so hints inherit
@@ -77,7 +79,7 @@ end
 
 -- ─── Action bar HotKey refresh ──────────────────────────────────────────────
 -- Forces every visible action button's $parentHotKey to re-read the SetOverrideBinding chain.
-function BindingHint.HookActionBars()
+function ns.BindingHint.HookActionBars()
     if InCombatLockdown() then return end
 
     local BAR_COUNT = #Layout.SETS or 2
@@ -233,7 +235,7 @@ end
 
 -- ─── Public API ─────────────────────────────────────────────────────────────
 
-function BindingHint.Start(_context)
+function ns.BindingHint.Start(_context)
     hideAllHints()
 
     if listenerId ~= nil then ns.Context.Unregister(listenerId) end
@@ -253,19 +255,19 @@ function BindingHint.Start(_context)
     end
 
     -- Refresh action bar hotkeys on every Start.
-    BindingHint.HookActionBars()
+    ns.BindingHint.HookActionBars()
 end
 
-function BindingHint.Stop()
+function ns.BindingHint.Stop()
     if listenerId ~= nil then
         ns.Context.Unregister(listenerId)
         listenerId = nil
     end
     hideAllHints()
-    BindingHint.HookActionBars()
+    ns.BindingHint.HookActionBars()
 end
 
-function BindingHint.Refresh()
+function ns.BindingHint.Refresh()
     hideAllHints()
     local curCtx = ns.Context.Current()
     if curCtx ~= "NONE" then
@@ -275,7 +277,7 @@ function BindingHint.Refresh()
         elseif curCtx == "MENU"       then showMenuHint()
         end
     end
-    BindingHint.HookActionBars()
+    ns.BindingHint.HookActionBars()
 end
 
 -- ─── Slash command helper: /ubf bindings (debug) ────────────────────────────
