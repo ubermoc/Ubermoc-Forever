@@ -301,3 +301,19 @@ end
 
 -- Debug helper for slash commands — registered at line 5 of this module.
 ns.PrintBindings = printBindings     -- callable from /ubf bindings via Init.lua
+
+-- ─── Binding display screen (context=NONE) ─────────────────────────────────
+-- Shows a unified layout grid of every controller button mapped by the
+-- current modifier page, with START/SELECT/L3/R3 always on top across all 4.
+
+local displayFrame    = nil   -- master panel frame
+local extraSlots      = {}    -- {frame (FontString), label} for Start/Select/L3/R3
+local barCards        = {}    -- panels per modifier page with action button rows inside
+local pageIndicator   = nil   -- "Page X / 4" text
+local currentDisplayPage = 1  -- which modifier page is shown
+local displayListenerId = nil -- back to Context listener
+
+-- Frame pool for reusing overlay hints without GC churn.
+local hintOverlays = {}   -- entries: { frame, anchor }
+local hintIdCounter  = 0
+local listenerId     = nil   -- Context.Register return value

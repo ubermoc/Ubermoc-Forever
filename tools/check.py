@@ -34,8 +34,8 @@ def check():
         errors.append(f"Lua file not in TOC: {f}")
     text = TOC.read_text(encoding="utf-8")
     m = re.search(r"^## Interface:\s*(.+)$", text, re.M)
-    if not m or "16001" not in m.group(1) or "120105" not in m.group(1):
-        errors.append("TOC Interface line must include 16001 and 120105")
+    if not m or "16001" not in m.group(1):
+        errors.append("TOC Interface line must include 16001")
     return errors
 
 

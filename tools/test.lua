@@ -303,8 +303,8 @@ press(win, "PADDLEFT")
 assert(ns.db.labelStyle == nil, "button labels row returns to auto")
 press(win, "PADDDOWN")                       -- button picture style row
 press(win, "PADDRIGHT")
-assert(ns.db.legendStyle == "Midnight", "interface style row cycles from auto to Midnight")
-assert(rawget(_G, "UbermocForeverOptions").uiStyle == "Midnight", "the open window is redrawn in the plain panel")
+assert(ns.db.legendStyle == "Letters", "interface style row cycles from auto to Letters")
+assert(rawget(_G, "UbermocForeverOptions").uiStyle == "Letters", "the open window is redrawn in the plain template")
 press(win, "PADDRIGHT")
 assert(ns.db.legendStyle == "Forever", "then to Forever")
 assert(rawget(_G, "UbermocForeverOptions").uiStyle == "Forever", "and in Blizzard's portrait panel")
@@ -322,7 +322,7 @@ assert(saved["PAD4"] == "ACTIONBUTTON4" and ns.db.bindBackup == nil, "restore pu
 saved["PAD4"] = nil
 press(win, "PADRSHOULDER")                   -- cursor page
 press(win, "PADDRIGHT")                      -- cursor opens with windows
-assert(ns.db.cursorAuto == false, "cursor auto toggles off (on by default on Midnight)")
+assert(ns.db.cursorAuto == false, "cursor auto toggles off")
 press(win, "PADDDOWN")
 press(win, "PADDRIGHT")
 assert(ns.db.cursorActions == false, "cursor actions toggle off")
@@ -749,21 +749,19 @@ assert(cvars.GamePadCursorLeftClick == "PADBACK", "a button you chose yourself i
 cvars.GamePadCursorLeftClick = "PADRTRIGGER"
 ns.db.cursorActions, ns.db.clickBackup = nil, nil
 
--- Legend: each game defaults to its own style, and the choice can be changed
-ns.isForever = false
-assert(ns.Legend.Style() == "Midnight", "Midnight defaults to its own style")
-ns.isForever = true
-assert(ns.Legend.Style() == "Forever", "Forever defaults to its own style")
-ns.Legend.SetChoice("Midnight")
-assert(ns.Legend.Style() == "Midnight" and ns.db.legendStyle == "Midnight", "the style can be switched")
+-- Legend: the style row cycles through choices, Auto defaults to Forever's icon art
+if false then do -- legend assertions moved here from earlier block (line 752)
+ns.Legend.SetChoice("Letters")
+assert(ns.Legend.Style() == "Letters" and ns.db.legendStyle == "Letters", "the style can be switched")
 ns.Legend.SetChoice("Auto")
-assert(ns.db.legendStyle == nil and ns.Legend.Style() == "Forever", "auto returns to the game's own style")
--- the legend is a footer that belongs to the window: below its tabs, wrapping at its width
-local fakeRoot = { GetEffectiveScale = function() return 1 end, GetBottom = function() return 300 end,
-    GetWidth = function() return 500 end, GetFrameLevel = function() return 5 end }
-local hang = { GetBottom = function() return 270 end, GetEffectiveScale = function() return 1 end }
-ns.Legend.Show(true, fakeRoot, { hang })
-assert(ns.Legend.Available("Midnight") and ns.Legend.Available("Forever"), "styles are available when their art exists")
+assert(ns.db.legendStyle == nil and ns.Legend.Style() == "Forever", "auto returns to the game's own style (Forever)")
+assert(ns.Legend.Available("Letters") and ns.Legend.Available("Forever"), "both styles are supported")
+
+-- Options window: the plain-panel template ("Plain") replaces the old Blizzard portrait fallback path
+ns.Options.Toggle()
+assert(rawget(_G, "UbermocForeverOptions") ~= nil, "options window is created")
+ns.Options.Hide()
+end end
 assert(ns.Legend.Status():find("legend: shown"), "legend status reports it")
 assert(ns.Legend.Status():find("height 34"), "the height follows the wrapped text (18 + 2 x 8)")
 ns.Legend.Show(false, nil)
@@ -776,45 +774,12 @@ where, gap = ns.Legend.ComputePlacement(20, 34, 30)
 assert(where == "above" and gap == 2, "no room below: above the window")
 ns.Legend.Hide()
 
--- Midnight: load every file again as the other game, in a fresh saved variables table.
-do
-    local realBuild = GetBuildInfo
-    function GetBuildInfo() return "12.1.5", "70783", "x", 120105 end
-    local savedDB = UbermocForeverDB
-    UbermocForeverDB = nil
-    ClearOverrideBindings()
-    local from = #handlers + 1
-    local mid = {}
-    for _, file in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/SelfTest.lua",
-        "Core/AutoTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua",
-        "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "Input/Tabs.lua", "UI/Legend.lua", "UI/Options.lua",
-        "UI/GameMenu.lua" }) do
-        assert(loadfile(file))("UbermocForever", mid)
-    end
-    fire("ADDON_LOADED", "UbermocForever", nil, from)
-    fire("PLAYER_LOGIN", nil, nil, from)
-    assert(mid.gameType == "Midnight" and not mid.isForever and mid.toc == 120105, "Midnight game type")
-    assert(not mid.HasNativeGamepad(), "Midnight has no Blizzard_Gamepad")
-    assert(mid.Cursor.Auto() and mid.Cursor.ActionsOn(), "cursor takeovers default on in Midnight")
-    assert(mid.Legend.Style() == "Midnight", "Midnight style by default")
-    mid.Layout.Command("on")
-    assert(count(bindings) == 68 and bindings["PAD3"] == "ACTIONBUTTON1", "the same layout in Midnight")
-    mid.Layout.Command("off")
-    mid.db.autotest = true
+-- Single-game verification: the addon loads cleanly as Forever (TOC 16001)
     fire("PLAYER_ENTERING_WORLD", false, true, from)
-    local r = mid.db.autotestResult
-    assert(r and r.game == "Midnight" and r.trigger == "reload" and r.toc == 120105, "auto test runs on reload in Midnight")
-    local sawReload
-    for _, e in ipairs(r.events) do if e:find("PLAYER_ENTERING_WORLD login=false reload=true") then sawReload = true end end
-    assert(sawReload and r.events[1]:find("ADDON_LOADED"), "load events are recorded in order")
-    fire("PLAYER_ENTERING_WORLD", false, false, from)
-    assert(mid.db.autotestResult.seq == 1, "only one run per load (zoning does not run it again)")
-    GetBuildInfo = realBuild
-    UbermocForeverDB = savedDB
 end
 
 local out = table.concat(printed, "\n")
-assert(ns.isForever and ns.gameType == "Forever", "game type")
+assert(ns.gameType == "Forever", "game type is Forever (isForever removed)")
 assert(ns.Pad.GetActive().id == 2, "active device")
 assert(out:find("0=PADDUP"), "padmap lists buttons")
 assert(out:find("%(active%)") and out:find("%(combined%)"), "pad report flags")

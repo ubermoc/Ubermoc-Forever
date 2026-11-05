@@ -1,11 +1,11 @@
 # Ubermoc Forever
 
-Play World of Warcraft: Forever and Midnight with only a controller. Built around the Steam Deck and Steam Controller, using the game's own art and fonts.
+Play World of Warcraft: Forever with only a controller. Built around the Steam Deck and Steam Controller, using the game's own art and fonts.
 
 Status: early scaffold (0.0.1). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Install
-Download the latest zip from Releases and extract `UbermocForever` into the `Interface/AddOns` folder of your `_forever_` or `_retail_` game folder.
+Download the latest zip from Releases and extract `UbermocForever` into the `_forever_/Interface/AddOns` folder of your WoW installation.
 
 ## Commands
 - `/ubf debug`: toggle debug logging
