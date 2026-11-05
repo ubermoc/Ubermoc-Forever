@@ -1,0 +1,238 @@
+local _, ns = ...
+
+-- Checkpont 3: Native Binding Hints — shows gamepad key names on Blizzard UI frames
+-- using WoW's own binding text system (no custom art).  Works by writing to SetOverrideBinding
+-- and then refreshing the target frame's built-in hotkey / keybind display.
+--
+-- Pattern per-frame type:
+--   • Action buttons — already get hint from Blizzard via $parentHotKey / GetBindingText()
+--     The Layout module sets bindings; action-bar templates auto-refresh HotKey text.
+--     Nothing extra needed here — just call Actions_UpdateAllActionBars() after Apply()/Remove().
+--
+--   • SpellBookFrame spell slots — no native hotkey slot.  We create a small overlay Text using
+--     SystemFont_Shadow_Small (inherits user font/color/scale) with GetBindingText() for the
+--     spell's BindName key, shown/hidden according to Context.Current().
+--
+--   • Quest/NPC/Gossip buttons — same pattern as spellbook; show "talk" / "accept quest" key.
+--
+-- Core API:
+--   BindingHint.HookActionBars()  — refresh HotKey text on all action bar buttons (one-shot)
+--   BindingHint.Start(context)     — begin showing hints for the given context string
+--   BindingHint.Stop()             — hide all hint overlays
+
+-- ─── Globals used by Blizzard templates ──────────────────────────────────────
+
+local SPELLBOOK_LEFT_PAGE, SPELLBOOK_RIGHT_PAGE = BookPane and BookPane:GetID(), nil  -- may not exist yet at load
+local SPELL_SLOTS_PER_PAGE = 8     -- standard on most spellbook pages; verified per-page below
+
+-- ─── SpellBook hint overlays ────────────────────────────────────────────────
+
+local hints = {}               -- per-frame hints collected by context
+local hintMap = {}             -- frame → hint entry (for teardown)
+local idCounter = 0            -- unique hint IDs for Context listeners
+
+-- A single overlay binding hint: FontString + optional texture on a parent frame.
+-- Uses native Blizzard font strings that inherit player font/color/scale settings.
+local function newHint(parent, anchorFrame, offsetX, offsetY)
+    idCounter = idCounter + 1
+    local fs = parent:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    if not fs then return end  -- fallback if CreateFontString fails
+    fs:SetAnchorPoint("LEFT", anchorFrame, "RIGHT", offsetX, offsetY)
+    fs:SetText("")
+    fs:SetPoint("LEFT", anchorFrame, "RIGHT", offsetX or 0, offsetY or 0)
+    local entry = { frame = fs, parent = parent, id = nil }
+    hintMap[parent] = entry
+    hints[#hints + 1] = entry
+    return entry
+end
+
+-- ─── Action bar HotKey refresh ──────────────────────────────────────────────
+
+local BAR_COUNT = 2     -- primary bars; matches Layout SETS[1] and SETS[2] or however many layout bars exist
+local SLOT_COUNT = 12   -- action buttons per bar (layout default)
+
+-- Call once after Layout.Apply() / Layout.Remove() to force action bars to re-read binding text.
+function BindingHint.HookActionBars()
+    for bar = 1, BAR_COUNT do
+        local basePrefix = bar == 1 and "ActionButton" or ("MultiActionButton" .. bar)
+        for slot = 1, SLOT_COUNT do
+            local btnName = (basePrefix .. slot)
+            local btn = _G[btnName]
+            if btn then
+                -- Blizzard's UpdateBinding() / action button mixin updates HotKey via:
+                --   self.HotKey:SetText(GetBindingText(bindingAction))
+                -- Forcing Update will re-read the binding chain including our overrides.
+                pcall(function()
+                    if btn.Update and type(btn.Update) == "function" then
+                        btn:Update()  -- mixin-based update (modern WoW)
+                    end
+                    if btn.HotKey then
+                        local bindingAction = (bar == 1 and "ACTIONBUTTON" or ("MULTIACTIONBAR" .. (bar - 1) .. "BUTTON")) .. slot
+                        local key = GetBindingKeyForAction(bindingAction)
+                        if key then
+                            btn.HotKey:SetText(GetBindingText(key, 1))
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end
+
+-- ─── Context listener: show hints when entering a hintable context ──────────
+
+local function onEnterContext(_, ctx)   -- params from Context onContextChange(oldCtx, newCtx)
+    local oldCtx = ...                 -- Context fires (oldCtx, newCtx) via listeners
+    if not oldCtx or ctx == "NONE" then return end
+
+    -- On ENTER: create overlays for the new context's hint targets
+    hints = {}
+    idCounter = 0
+
+    if ctx == "SPELLBOOK" then
+        local spellBtn = BookPane and BookPane.SpellButton1
+        if not spellBtn or not spellBtn:IsShown() then return end
+
+        -- Each visible slot gets a small text hint showing the assigned key
+        for i = 1, BOOK_SLOTS_PER_PAGE do   -- BOOK_SLOTS_PER_PAGE is Blizzard's constant (typically 8)
+            local btn = _G["SpellButton" .. i]
+            if btn and btn:IsShown() then
+                local entry = newHint(btn, btn, -2, 20)
+                if not entry then return end
+                entry.idx = i
+                hints[#hints + 1] = entry
+
+                -- Get the bind name for the spell at this slot
+                local spellName = select(6,	GetSpellInfo(btn.spellID or btn.SpellID or 0))
+                if spellName and spellName ~= "" then
+                    local bindingKey = GetBindingKey("BINDING_NAME_" .. bindingAction)
+                    if bindingKey then
+                        entry.frame:SetText(GetBindingText(bindingKey, 1))
+                        entry.frame:SetTextColor(1, 1, 1, 0.9)
+                        entry.frame:Show()
+                    end
+                end
+            end
+        end
+
+    elseif ctx == "NPC" or ctx == "PROFESSIONS" then
+        -- For NPC / gossip frames, show "press button to interact" hint on the active frame
+        local targetFrame = nil
+        if ctx == "NPC" then
+            targetFrame = GossipFrame and GossipFrame:IsShown() and GossipFrame
+                or QuestgiverFrame and QuestgiverFrame:IsShown() and QuestgiverFrame
+        else
+            targetFrame = ProfessionFrame and ProfessionFrame:IsShown() and ProfessionFrame
+                or (ProfessionFrameContainer and ProfessionFrameContainer:IsShown() and ProfessionFrameContainer)
+        end
+
+        if not targetFrame then return end
+
+        local entry = newHint(targetFrame, targetFrame, 0, -30)
+        if not entry then return end
+
+        -- Get the primary interaction key for this frame type
+        local keybind = "INTERACTWITHTARGET"          -- bind name for default interact key
+        local bindingKey = GetBindingKey(keybind)
+        if bindingKey and bindingKey ~= "" then
+            entry.frame:SetFontObject("SystemFont_Shadow_Small")
+            entry.frame:SetText(GetBindingText(bindingKey, 1))
+            entry.frame:SetTextColor(1, 1, 0.8, 0.9)
+            entry.frame:Show()
+        end
+
+    elseif ctx == "BAGS" then
+        -- Bag slots: show the bag-drop key (typically number keys or F key)
+        local count = MAX_BAG_FRAMES
+        if ContainerFrameCombinedBags and ContainerFrameCombinedBags:IsShown() then
+            count = 1
+        end
+        for i = 1, max(count, 6) do      -- at least 6 bag slots visible
+            local slotName = ("ContainerFrame%iItem%dButton"):format(i, 1)
+            local btn = _G[slotName]       -- or ContainerFrame..i..Slot1 etc.
+            if not btn and ContainerFrame and ContainerFrame:IsShown() then
+                btn = _G[("ContainerFrame"..i.."Slot1Button")]:(i)]    -- fallback: ContainerFrame1Slot1Button, etc.
+            end
+            if btn and btn:IsShown() then
+                local entry = newHint(btn, btn, -2, 20)
+                if not entry then return end
+                hints[#hints + 1] = entry
+
+                local bagDropKey = GetBindingKey("PICKUPBACKPACKITEM")
+                if bagDropKey then
+                    entry.frame:SetText(GetBindingText(bagDropKey, 1))
+                    entry.frame:SetTextColor(0.7, 0.9, 1, 0.8)
+                    entry.frame:Show()
+                end
+            end
+        end
+
+    elseif ctx == "MENU" then
+        -- Show the menu-trigger key on the Esc button or pad button hint text
+        local entry = newHint(UIParent, UIParent, -50, -30)
+        if not entry then return end
+        hints[#hints + 1] = entry
+        entry.frame:SetFontObject("SystemFont_Shadow_Large")
+        entry.frame:SetText(GetBindingText(GetBindingKey("TOGGLEGAMEMENU"), 1))
+        entry.frame:SetTextColor(1, 1, 0.6, 1)
+        entry.frame:Show()
+
+    end
+end
+
+-- ─── Context listener: hide hints when leaving a hintable context ────────────
+
+local function onLeaveContext(oldCtx)
+    -- Tear down any hint overlays we created for the old context.
+    for _, entry in ipairs(hints) do
+        if entry and entry.frame then
+            entry.frame:SetText("")
+            entry.frame:Hide()
+        end
+    end
+    hints = {}
+    idCounter = 0
+end
+
+-- ─── Public API ─────────────────────────────────────────────────────────────
+
+local listenerIds = {}     -- store to unregister on Stop()
+
+function BindingHint.Start(context)
+    -- Clear any existing overlay hints first
+    for _, entry in ipairs(hints) do
+        if entry and entry.frame then
+            entry.frame:SetText("")
+            entry.frame:Hide()
+        end
+    end
+    hints = {}
+    idCounter = 0
+
+    -- Register listener for the current context — fires immediately (onContextChange pattern).
+    listenerIds[#listenerIds + 1] = Context.Register(onEnterContext)
+
+    -- We also need to fire once now since Context.Current() is already set.
+    onEnterContext(nil, Context.Current())  -- passes () as first arg (oldCtx), then ctx
+
+    -- Always refresh action bar hotkeys regardless of context.
+    BindingHint.HookActionBars()
+end
+
+function BindingHint.Stop()
+    for _, id in ipairs(listenerIds) do
+        Context.Un.register(id)
+    end
+    listenerIds = {}
+
+    -- Clear all overlay hints
+    onLeaveContext(nil)
+    BindingHint.HookActionBars()  -- re-read bindings with Layout removed (if applicable).
+end
+
+function BindingHint.Refresh()
+    BindingHint.HookActionBars()
+    if Context.Current() ~= "NONE" then
+        onEnterContext(nil, Context.Current())
+    end
+end

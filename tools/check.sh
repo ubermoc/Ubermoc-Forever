@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "== TOC / file list"
-python3 -I tools/check.py | tee /dev/stderr | grep -q "TOC check passed"
+python3 -I tools/check.py 2>&1 | grep -q "TOC check passed"
 
 echo "== Lua syntax"
 for f in $(find Core Input Locales UI -name '*.lua'); do

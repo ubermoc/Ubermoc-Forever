@@ -7,6 +7,9 @@ globals = {
     "UbermocForeverDB",
     "SLASH_UBERMOCFOREVER1",
     "SlashCmdList",
+    -- Module namespace globals (each module assigns to its own key)
+    "BindingHint",
+    "Layout",
 }
 
 read_globals = {
@@ -69,6 +72,14 @@ read_globals = {
     "QuestgiverFrame",
     "GossipFrame",
     "SettingsPanel",
-    -- Game functions (Blizzard API)
+    -- Frame globals (Blizzard UI) — additional
+    "ContainerFrame",
+    "BagContainerFrame",
+    -- Binding APIs
+    "GetBindingText",
+    "GetBindingKeyForAction",
+    "GetBindingKey",
+    -- Module namespaces
+    "Layout",
     "UnitAffectingCombat",
 }
