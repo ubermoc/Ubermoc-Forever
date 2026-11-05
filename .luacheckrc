@@ -59,4 +59,16 @@ read_globals = {
     "seterrorhandler",
     "time",
     "C_Timer",
+    -- Frame globals (Blizzard UI)
+    "BookPane",
+    "SpellBookFrame",
+    "MAX_BAG_FRAMES",
+    "ContainerFrameCombinedBags",
+    "ProfessionFrame",
+    "ProfessionFrameContainer",
+    "QuestgiverFrame",
+    "GossipFrame",
+    "SettingsPanel",
+    -- Game functions (Blizzard API)
+    "UnitAffectingCombat",
 }
