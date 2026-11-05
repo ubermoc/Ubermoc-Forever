@@ -31,6 +31,10 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         local active = ns.Pad.GetActive()
         ns.Log("active controller: " .. (active and active.name or "none"))
         print(ns.L.LOADED:format(getVersion(), ns.gameType))
+        -- Auto-enable layout bindings once combat lock-in is lifted.
+        if ns.Context and ns.Context.OnPlayerLogin then
+            ns.Context.OnPlayerLogin()
+        end
         if isLoaded("UbermocUI") then
             print(ns.L.CONFLICT)
         end
@@ -80,6 +84,12 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         ns.PrintLog()
     elseif cmd == "version" then
         print(("Ubermoc Forever %s (%s, toc %d)"):format(getVersion(), ns.gameType, ns.toc))
+    elseif cmd == "context" then
+        if ns.Context and ns.Context.PrintState then
+            ns.Context.PrintState()
+        else
+            print("Context engine not loaded yet.")
+        end
     else
         print(ns.L.HELP)
     end
