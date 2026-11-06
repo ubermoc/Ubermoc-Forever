@@ -296,6 +296,8 @@ local function buildRows()
             onLeft = toggleAutoTest, onRight = toggleAutoTest, onActivate = toggleAutoTest }
         rows[#rows + 1] = { label = L.OPT_SELFTEST, value = "", onActivate = ns.RunSelfTest }
         rows[#rows + 1] = { label = L.OPT_RELOAD, value = "", onActivate = function() ReloadUI() end }
+        -- Version line (read from TOC metadata)
+        rows[#rows + 1] = { label = "Version", value = ns.version or "?" }
         rows[#rows + 1] = { label = L.OPT_CLOSE, value = "", onActivate = function() Options.Hide() end }
     end
     return rows

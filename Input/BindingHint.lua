@@ -82,7 +82,8 @@ end
 function ns.BindingHint.HookActionBars()
     if InCombatLockdown() then return end
 
-    local BAR_COUNT = #Layout.SETS or 2
+    -- ns.Layout (this addon's module table) — the global name was never defined.
+    local BAR_COUNT = (ns.Layout and ns.Layout.SETS and #ns.Layout.SETS) or 2
     local SLOT_COUNT = 12
 
     for bar = 1, BAR_COUNT do
@@ -179,25 +180,30 @@ end
 local function showBagHints()
     if InCombatLockdown() then return end
 
-    local count = ContainerFrame and ContainerFrame:IsShown() and #BagContainerFrame or MAX_BAG_FRAMES
-    if not count or count < 1 then count = 6 end
-
-    -- Bag button naming varies by game version:
-    --   Forever (retail): BagContainerFrameButton{i} for combined bags
-    --   Old style:     ContainerFrameNSlotMButton  per-bag
-    for i = 1, math.min(count, 6) do
-        local btnNm = ("BagContainerFrameButton%d"):format(i)
-        local btn   = _G[btnNm]
-
-        if not btn or not btn:IsShown() then break end
-
-        hideHint(btn)
-
-        local bagPickKey = GetBindingKey("PICKUPBACKPACKITEM")
-        if bagPickKey and bagPickKey ~= "" then
-            showHint(btn, GetBindingText(bagPickKey, 1), "NumberFontNormalSmall", 0.7, 0.9, 1, 0.8, -2, -20)
+    -- Bag frame names verified in the forever branch
+    -- (Blizzard_UIPanels_Game/Mainline/ContainerFrame.xml):
+    -- ContainerFrameCombinedBags plus ContainerFrame1 and up.
+    local targetFrame
+    local candidates = { ContainerFrameCombinedBags }
+    for i = 1, 7 do
+        candidates[#candidates + 1] = _G["ContainerFrame" .. i]
+    end
+    for _, f in ipairs(candidates) do
+        if type(f) == "table" and f.IsShown and f:IsShown() then
+            targetFrame = f
+            break
         end
     end
+    if not targetFrame then return end
+
+    hideHint(targetFrame)
+
+    -- Picking an item up is a cursor click; the cursor's left-click button is the
+    -- game's own cvar (see Input/Cursor.lua). Fall back to A when it is unbound.
+    local key = C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("GamePadCursorLeftClick")
+    if not key or key == "NONE" then key = "PAD1" end
+    local ok, text = pcall(GetBindingText, key, 1)
+    showHint(targetFrame, (ok and text) or "", "NumberFontNormalSmall", 0.7, 0.9, 1, 0.8, -2, -20)
 end
 
 -- ─── Game Menu hint ─────────────────────────────────────────────────────────
@@ -283,7 +289,7 @@ end
 -- ─── Slash command helper: /ubf bindings (debug) ────────────────────────────
 
 local function printBindings()
-    local barCount = #Layout.SETS or 2
+    local barCount = (ns.Layout and ns.Layout.SETS and #ns.Layout.SETS) or 2
     for bar = 1, barCount do
         -- No prefix needed — we build action names directly below.
         print(("=== ActionBar %d ==="):format(bar))
@@ -302,18 +308,3 @@ end
 -- Debug helper for slash commands — registered at line 5 of this module.
 ns.PrintBindings = printBindings     -- callable from /ubf bindings via Init.lua
 
--- ─── Binding display screen (context=NONE) ─────────────────────────────────
--- Shows a unified layout grid of every controller button mapped by the
--- current modifier page, with START/SELECT/L3/R3 always on top across all 4.
-
-local displayFrame    = nil   -- master panel frame
-local extraSlots      = {}    -- {frame (FontString), label} for Start/Select/L3/R3
-local barCards        = {}    -- panels per modifier page with action button rows inside
-local pageIndicator   = nil   -- "Page X / 4" text
-local currentDisplayPage = 1  -- which modifier page is shown
-local displayListenerId = nil -- back to Context listener
-
--- Frame pool for reusing overlay hints without GC churn.
-local hintOverlays = {}   -- entries: { frame, anchor }
-local hintIdCounter  = 0
-local listenerId     = nil   -- Context.Register return value

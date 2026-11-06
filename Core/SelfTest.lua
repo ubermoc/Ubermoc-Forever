@@ -3,18 +3,17 @@ local _, ns = ...
 -- Runs checks inside the game and stores the results in the saved variables,
 -- so they can be read from disk after /reload without a screenshot.
 -- Runs checks inside the game and stores results in saved variables for disk read
--- after /reload. Atlas names checked here are ones Blizzard's own binding text uses.
+-- after /reload. Atlas names in ATLASES must exist in this build (verified against
+-- in-game self test results); the legend does its own existence check at runtime.
 local ATLASES = {
     "gamepad-xbox1-trigger-lt-normal",
     "gamepad-symbols-plus",
     "Gamepad_Gen_1_32",
     "Gamepad_Ltr_A_32",
     "Gamepad_Ltr_A_64",
-    "Gamepad_Ltr_LTrigger_32",
     "Gamepad_Ltr_B_64", "Gamepad_Ltr_X_64", "Gamepad_Ltr_Y_64",
     "Gamepad_Ltr_LShoulder_64", "Gamepad_Ltr_RShoulder_64", "Gamepad_Ltr_RTrigger_64",
     "Gamepad_Ltr_Up_64", "Gamepad_Ltr_Menu_64",
-    "Gamepad_Gen_DPad_64", "Gamepad_Ltr_DPad_64", "Gamepad_DPad_64", "Gamepad_Gen_Dpad_64",
     "gamepad-xbox1-buttona-normal", "gamepad-xbox1-dpadall-normal", "gamepad-footer-slot-bg",
 }
 
@@ -49,8 +48,9 @@ function ns.RunSelfTest()
     if type(IsGamePadCursorControlEnabled) == "function" then
         add(results, "cursor control is on right now", true, tostring(IsGamePadCursorControlEnabled()))
     end
+    -- Only cvars confirmed to exist in this build (build 70790); GamePadEmulateEsc is not one of them.
     for _, name in ipairs({ "GamePadCursorLeftClick", "GamePadCursorRightClick", "GamePadCursorCentering",
-        "GamePadCursorForTargeting", "GamePadEmulateEsc" }) do
+        "GamePadCursorForTargeting" }) do
         local value = C_CVar.GetCVar(name)
         add(results, "cvar " .. name .. " exists", value ~= nil, value)
     end
@@ -86,6 +86,36 @@ function ns.RunSelfTest()
             end
         end
         add(results, "layout other buttons bound", extraOk == extraTotal, extraOk .. " of " .. extraTotal)
+    end
+
+    -- What the action bar hotkey display actually sees. The bar computes exactly
+    -- this (Blizzard_ActionBar/Shared/ActionButton.lua, UpdateHotkeys):
+    --   key = GetBindingKey("ACTIONBUTTONn"); text = GetBindingText(key, 1)
+    -- and shows the pad glyph only when IsBindingForGamePad(key).
+    if type(IsBindingForGamePad) == "function" then
+        local key1 = GetBindingKey("ACTIONBUTTON1") or ""
+        add(results, "display: ACTIONBUTTON1 key", key1 ~= "", key1)
+        add(results, "display: ACTIONBUTTON1 is a gamepad key", IsBindingForGamePad(key1), key1)
+        local ok, text = pcall(GetBindingText, key1, 1)
+        add(results, "display: ACTIONBUTTON1 hotkey text non-empty", ok and text ~= "", ok and text or "error")
+        if C_KeyBindings and C_KeyBindings.IsBindingContextActive then
+            add(results, "display: GamepadModeInGameCore context active",
+                C_KeyBindings.IsBindingContextActive("GamepadModeInGameCore") and true or false)
+        end
+    end
+
+    -- Checkpoint 5: the class layout (Layouts/<Class>/default.lua) loaded for this
+    -- character, with the spells it keeps after the "does the character know it" filter.
+    local layoutDb = ns.db and ns.db.layout
+    local spells = layoutDb and layoutDb.spells
+    if spells then
+        local total = #spells.primary + #spells.secondary + #spells.tertiary
+        add(results, "class layout loaded (" .. tostring(spells.spec_label) .. ")", total > 0,
+            ("spec %s: %d primary, %d secondary, %d tertiary"):format(
+                tostring(spells.spec_id), #spells.primary, #spells.secondary, #spells.tertiary))
+    else
+        add(results, "class layout loaded", false,
+            "ns.db.layout.spells missing - check the log for a 'layout loaded for' line")
     end
 
     for _, id in ipairs({ {}, { vendorID = 10462, productID = 4607 } }) do

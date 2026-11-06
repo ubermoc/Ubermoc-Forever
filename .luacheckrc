@@ -32,6 +32,14 @@ read_globals = {
     "CloseMenus",
     "AreAllPanelsDisallowed",
     "UnitExists",
+    -- Spell/spec APIs (Layout spells, checkpoint 5)
+    "C_Spell",
+    "GetSpellInfo",
+    "C_SpecializationInfo",
+    -- Bar display diagnostics (SelfTest) and class lookup (Init.lua)
+    "IsBindingForGamePad",
+    "C_KeyBindings",
+    "UnitClass",
     "UnitCastingInfo",
     "UnitChannelInfo",
     "GameMenuFrame",
@@ -75,6 +83,16 @@ read_globals = {
     -- Frame globals (Blizzard UI) — additional
     "ContainerFrame",
     "BagContainerFrame",
+    -- Profession frames not in the main list above
+    "ProfessionMacroFrame",
+    "ProfessionSkillFrame",
+    "TradeSkillFrame",
+    "EngineerBox",
+    "EnchantingWindow",
+    "CookingFrame",
+    "QuestFrame",
+    "_MENU_EXCLUDE",
+    "_PROF_FRAMES",
     -- Binding APIs
     "GetBindingText",
     "GetBindingKeyForAction",
@@ -82,4 +100,10 @@ read_globals = {
     -- Module namespaces
     "Layout",
     "UnitAffectingCombat",
+}
+write_globals = {
+    -- Context engine context-query functions (set as module globals)
+    "inProfessions",
+    "nearNPC",
+    "inMenu",
 }
