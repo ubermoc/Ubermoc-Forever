@@ -11,6 +11,9 @@ local function getVersion()
     return getMeta(ADDON, "Version") or "?"
 end
 
+-- Exposed for other modules (Options, etc.) to display the addon version.
+ns.version = getVersion()
+
 local function isLoaded(name)
     local check = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
     return check(name)
@@ -30,10 +33,22 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         ns.Log("login, game type " .. ns.gameType .. ", toc " .. ns.toc)
         local active = ns.Pad.GetActive()
         ns.Log("active controller: " .. (active and active.name or "none"))
+        -- Load per-class layout defaults when the player character is available.
+        -- UnitClass("player") returns (class name, file token, ID) — verified in the
+        -- forever branch (Blizzard_ClassMenu.lua line 7, Blizzard_BoostTutorial.lua line 26).
+        local class = UnitClass("player")
+        if class then
+            ns.Layout.Load(class)
+        end
         print(ns.L.LOADED:format(getVersion(), ns.gameType))
         -- Auto-enable layout bindings once combat lock-in is lifted.
         if ns.Context and ns.Context.OnPlayerLogin then
             ns.Context.OnPlayerLogin()
+        end
+        -- Start the context-driven binding hints (spellbook, NPC, bags, menu).
+        if ns.BindingHint and ns.BindingHint.Start then
+            local ok, err = pcall(ns.BindingHint.Start)
+            if not ok then ns.Log("BindingHint.Start failed: " .. tostring(err)) end
         end
         if isLoaded("UbermocUI") then
             print(ns.L.CONFLICT)

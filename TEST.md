@@ -163,6 +163,24 @@ Comments: ____________________________________
 - Uses only native Blizzard FrameString objects (`NumberFontNormalSmall`, `SystemFont_Shadow_Small/Large2`)
 - Zero custom textures, zero `CreateFrame("FRAME")` art — purely text overlays that inherit player's font/color/scale
 
+### Checkpoint 5 (v1.0.1, this pass) — Rogue layouts + fixes found in the restart
+- `Layouts/Rogue/default.lua` (Lua, never JSON): per-spec spell lists, three-bar template,
+  `show_only_active_bar` on. Spell IDs and spec IDs (259 Assassination, 260 Outlaw, 261 Subtlety)
+  taken from the forever branch's own `TrackedCooldowns.lua` — no guessed IDs.
+- Layout load is fixed: it now runs on `PLAYER_LOGIN` (it was silently skipped before),
+  detects the active spec with `C_SpecializationInfo.GetSpecialization`, and keeps only spells
+  the character knows (`C_Spell.GetSpellInfo`). The log line after login says how many
+  spells matched and which spec was used.
+- `/ubf layout spells` prints the verified list with the names the game resolves them to.
+- Binding hints now start on login (they were dead code — the reason the hints never appeared).
+  Bag hints use the branch's real bag frames (`ContainerFrameCombinedBags`, `ContainerFrame1+`).
+
+**Open question (not implemented, no verified API in this branch):**
+- Assigning the layout's spells to action-bar slots: `SetActionBarSlotAction` and
+  `C_ActionBars` do not exist in the forever branch; the only verified slot API is
+  `C_ActionBar.PutActionInSlot(slotID)` (quick-keybind reorder). Until a verified
+  assignment API is found, place the spells from `/ubf layout spells` on your bars by hand.
+
 ---
 
 ## Notes for Testing

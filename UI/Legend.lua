@@ -53,7 +53,7 @@ function Legend.Style()
 end
 
 -- False when a style's art is not in this game build, so the legend falls back to the other.
-function Legend.Available(style)
+function Legend.Available(_)
     return true  -- both presets always exist on this build
 end
 

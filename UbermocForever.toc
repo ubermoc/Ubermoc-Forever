@@ -23,6 +23,7 @@ Input\BindingHint.lua
 Input\Cursor.lua
 Input\Binds.lua
 Core\Report.lua
+Layouts\Rogue\default.lua
 Input\Tabs.lua
 UI\Legend.lua
 UI\Options.lua

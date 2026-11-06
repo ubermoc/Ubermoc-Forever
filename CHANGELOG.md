@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1
+- Rogue default layout (checkpoint 5). The class layout is now a Lua data file, `Layouts/Rogue/default.lua` (the old `Layouts/Rouge/` JSON is gone — the game cannot read JSON anyway). It lists the abilities for all three specs in a three-bar set: primary, secondary and tertiary bars, with "show only the active bar" on by default.
+- Every spell and spec ID in that layout is taken from the game's own data on this build (spec 260 = Outlaw, 261 = Subtlety, 259 = Assassination, plus the abilities each one tracks). The addon checks each one against your character at login and keeps only the spells you actually have, so a wrong ID can never reach a bar.
+- The layout now actually loads. Before this build the load step was broken and silently skipped, so the class layout never took effect. You will see a "layout loaded for Rogue: … known spells" line in the log after login.
+- The action bar buttons now show your pad buttons. The game only shows a pad glyph on a bar slot when that slot's binding is registered in the gamepad binding context (the same way the game's own pad bindings are set), and the addon was only using frame-local overrides, which the bar display cannot see. The main bar's keys and the other buttons are now registered there too, and taken away again with `/ubf layout off`.
+- Your spec is now detected correctly. The spec lookup was using the wrong number (the spec's position instead of its ID), so the wrong spec's ability list could be picked. It now resolves the active spec properly, and the self test reports which one it found.
+- New command `/ubf layout spells`: prints the layout's ability list for your active spec, with the names the game resolves them to, so you can place them on your action bars.
+- The binding hints are back. They were never being started, which is why they did not show. They now start on login: spellbook, NPC dialogs, bags and the game menu each show the button that does the job, in the game's own binding text. Bag hints now use the bag frames this build actually has.
+- Self test passes clean: removed six probe names (five gamepad glyph atlas names and the `GamePadEmulateEsc` cvar) that do not exist in this build. The legend checks each glyph at runtime and falls back to the letter art, so nothing is lost.
+
 ## 1.0.0
 - Dropped all support for World of Warcraft: Midnight (TOC 120105). The addon now ships only on TOC 16001 (Forever). Removed `isForever`/gameType dual-path logic from Compat.lua (`gameType` is always "Forever", no more `toc == 120105` checks). Legend picture style picker reduced to Auto / Letters / Forever with Auto defaulting to Forever. Options window template name changed from "Midnight" to "Plain". CLAUDE.md rules updated: API verification only against the `forever` branch of Gethe/wow-ui-source; installation only into `_forever_` folder (no more dual-game-path). tools/check.py no longer enforces 120105 in TOC. CHANGELOG history entries documenting past releases are preserved as-is; no Midnight references remain in live code or player-facing strings.
 

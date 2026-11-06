@@ -58,6 +58,18 @@ end
 local DEFAULT_SHIFT_BUTTON = "PADPADDLE1"
 local DEFAULT_CTRL_BUTTON = "PADPADDLE3"
 
+-- The game binds its pad buttons in the "GamepadModeInGameCore" context
+-- (Blizzard_Gamepad/Bindings.xml, Blizzard_GamepadActionBars/Bindings.xml),
+-- and action buttons show their hotkey from GetBindingKey(action), which sees
+-- global bindings, not frame overrides. So the plain pad key for each main bar
+-- slot is also set as a global binding in that context: the button then shows
+-- the pad glyph (IsBindingForGamePad / GetBindingText in
+-- Blizzard_ActionBar/Shared/ActionButton.lua). The game's own keybinding
+-- settings use the same calls to bind and unbind
+-- (Blizzard_Settings_Shared/Blizzard_Keybindings.lua):
+--   SetBinding(key, action, context) / SetBinding(key, nil, context)
+local GAMEPAD_CONTEXT = "GamepadModeInGameCore"
+
 local FRIENDLY = {
     PAD1 = "A", PAD2 = "B", PAD3 = "X", PAD4 = "Y",
     PADDUP = "D-pad up", PADDRIGHT = "D-pad right", PADDDOWN = "D-pad down", PADDLEFT = "D-pad left",
@@ -65,6 +77,105 @@ local FRIENDLY = {
     PADPADDLE1 = "R4", PADPADDLE2 = "L4", PADPADDLE3 = "R5", PADPADDLE4 = "L5",
     PADFORWARD = "Start", PADBACK = "Select", PADLSTICK = "L3", PADRSTICK = "R3",
 }
+
+-- Per-class layout data: ns.LAYOUTS["Class"] populated by Layouts/*/default.lua files.
+-- Load() merges the class defaults into db.layout for any field not yet customized,
+-- and filters the layout's per-spec spells down to the ones the character knows.
+local DEFAULTS_LOADED = false
+
+-- Keep only spells the character knows. C_Spell.GetSpellInfo(spellID) returns
+-- nil for spells the character does not have (SpellDocumentation.lua:
+-- "Returns nil if spell is not found"; same call in Blizzard_BoostTutorial.lua).
+local function knownSpells(list)
+    local get = C_Spell and C_Spell.GetSpellInfo or GetSpellInfo
+    if type(get) ~= "function" then return {} end
+    local out = {}
+    for _, id in ipairs(list or {}) do
+        local ok, info = pcall(get, id)
+        if ok and info then out[#out + 1] = id end
+    end
+    return out
+end
+
+-- Current spec ID and name, or nil/nil. In this branch
+-- C_SpecializationInfo.GetSpecialization() returns the specialization INDEX (1-3)
+-- (SpecializationInfoDocumentation.lua: return is "specializationIndex"), and
+-- GetSpecializationInfo(index) returns the spec ID as its FIRST value and the
+-- spec name as its SECOND (game usage:
+--   local specID = C_SpecializationInfo.GetSpecializationInfo(C_SpecializationInfo.GetSpecialization());
+--   Blizzard_AzeriteUI/AzeriteEmpoweredItemTierMixin.lua line 187
+--   local specName = select(2, C_SpecializationInfo.GetSpecializationInfo(specIndex, ...));
+--   Blizzard_CooldownViewer/CooldownViewerUtil.lua line 73).
+local function currentSpec()
+    local ok, specID, specName = pcall(function()
+        local si = C_SpecializationInfo
+        if not (si and si.GetSpecialization and si.GetSpecializationInfo) then return nil, nil end
+        local index = si.GetSpecialization()
+        if not index then return nil, nil end
+        return si.GetSpecializationInfo(index)
+    end)
+    if not ok then return nil, nil end
+    return specID, specName
+end
+
+function Layout.Load(class)
+    if not class then return false, "no class" end
+    if not ns.db then return false, "db not initialized" end
+    if not ns.LAYOUTS then return false, "no layout files loaded" end
+    local src = ns.LAYOUTS[class]
+    if not src then
+        -- Case-insensitive fallback in case the class name differs (localization).
+        local lower = class:lower()
+        for name, data in pairs(ns.LAYOUTS) do
+            if name:lower() == lower then src = data break end
+        end
+    end
+    local c = ns.db.layout or {}
+    if src then
+        if src.slots then for i = 1, #src.slots do c.slots = c.slots or {}; c.slots[i] = src.slots[i] end end
+        if src.extras then for k, v in pairs(src.extras) do if not (c.extras and c.extras[k]) then c.extras = c.extras or {}; c.extras[k] = v end end end
+        if src.modifier_sets then for name, def in pairs(src.modifier_sets) do local bs = c.bars_by_name or {}; bs[name] = def; c.bars_by_name = bs end end
+        -- Per-spec spells (checkpoint 5): pick the active spec and keep only
+        -- spells the character knows, so unverified IDs can never reach a bar.
+        if src.specs then
+            local specID = currentSpec()
+            local def = specID and src.specs[specID]
+            if not def then
+                -- No spec match: use whichever spec the layout defines.
+                for _, d in pairs(src.specs) do
+                    if def == nil then def = d end
+                end
+            end
+            if def then
+                c.show_only_active_bar = src.show_only_active_bar ~= false
+                c.spells = {
+                    spec_id = specID,
+                    spec_label = def.label,
+                    primary = knownSpells(def.primary),
+                    secondary = knownSpells(def.secondary),
+                    tertiary = knownSpells(def.tertiary),
+                }
+            end
+        end
+    end
+    ns.db.layout = c
+    DEFAULTS_LOADED = true
+    local spellCount = 0
+    if c.spells then
+        for _, list in pairs(c.spells) do
+            if type(list) == "table" then spellCount = spellCount + #list end
+        end
+    end
+    ns.Log(("layout loaded for %s: %d slots, %d bars, %d known spells (spec %s)"):format(
+        class, (c.slots and #c.slots) or 0, (c.bars and #c.bars) or 0,
+        spellCount, tostring(c.spells and c.spells.spec_id or "none")))
+    return true, class
+end
+
+-- Whether class defaults have been applied at least once.
+function Layout.DefaultsLoaded()
+    return DEFAULTS_LOADED
+end
 
 local owner = CreateFrame("Frame")
 local pending = false
@@ -158,6 +269,48 @@ local function bindAll(c)
     return count
 end
 
+-- Expose every bar's pad keys in the gamepad binding context, so the action
+-- buttons' hotkey text can show the pad glyph. This mirrors bindAll exactly
+-- (same keys, same actions, same modifier prefixes) — the difference is that
+-- these are global context bindings the bar display can read.
+local function bindGamepadDisplay(c)
+    local count = 0
+    for set, def in ipairs(SETS) do
+        local command = barCommand(c.bars[set])
+        for slot = 1, SLOT_COUNT do
+            local key = c.slots[slot]
+            if key then
+                local ok = pcall(SetBinding, def.prefix .. key, command .. slot, GAMEPAD_CONTEXT)
+                if ok then count = count + 1 end
+            end
+        end
+        for _, key in ipairs(EXTRA_ORDER) do
+            if c.extras[key] and c.extras[key] ~= "NONE" then
+                local ok = pcall(SetBinding, def.prefix .. key, bindingFor(c.extras[key]), GAMEPAD_CONTEXT)
+                if ok then count = count + 1 end
+            end
+        end
+    end
+    pcall(SaveBindings)
+    return count
+end
+
+-- Undo bindGamepadDisplay: unbind exactly the keys we bound, in that context.
+-- (SetBinding(key, nil, context) is the game's own unbind form —
+-- Blizzard_Settings_Shared/Blizzard_Keybindings.lua, ClearBindingsForKeys.)
+local function unbindGamepadDisplay(c)
+    for _, def in ipairs(SETS) do
+        for slot = 1, SLOT_COUNT do
+            local key = c.slots[slot]
+            if key then pcall(SetBinding, def.prefix .. key, nil, GAMEPAD_CONTEXT) end
+        end
+        for _, key in ipairs(EXTRA_ORDER) do
+            pcall(SetBinding, def.prefix .. key, nil, GAMEPAD_CONTEXT)
+        end
+    end
+    pcall(SaveBindings)
+end
+
 -- Returns true if applied, or false and a reason.
 function Layout.Apply()
     if InCombatLockdown() then
@@ -171,8 +324,9 @@ function Layout.Apply()
     local ctrlOk = setModifierCVar(EMULATE_CTRL, c.ctrlButton, c.backup, "ctrl")
     ClearOverrideBindings(owner)
     local count = bindAll(c)
-    ns.Log(("layout applied: %d bindings, shift cvar %s, ctrl cvar %s"):format(
-        count, tostring(shiftOk), tostring(ctrlOk)))
+    local displayCount = bindGamepadDisplay(c)
+    ns.Log(("layout applied: %d bindings, %d pad-display bindings, shift cvar %s, ctrl cvar %s"):format(
+        count, displayCount, tostring(shiftOk), tostring(ctrlOk)))
     return true, count, shiftOk, ctrlOk
 end
 
@@ -185,6 +339,7 @@ function Layout.Remove()
     pending = false
     local c = config()
     ClearOverrideBindings(owner)
+    unbindGamepadDisplay(c)
     if c.backup then
         if c.backup.shift ~= nil then pcall(C_CVar.SetCVar, EMULATE_SHIFT, c.backup.shift) end
         if c.backup.ctrl ~= nil then pcall(C_CVar.SetCVar, EMULATE_CTRL, c.backup.ctrl) end
@@ -403,8 +558,36 @@ function Layout.Command(args)
     elseif word == "reset" then
         Layout.ResetDefaults()
         say("LAYOUT_RESET")
+    elseif word == "spells" then
+        Layout.PrintSpells()
     else
         say("LAYOUT_HELP")
+    end
+end
+
+-- /ubf layout spells: the class layout's spell list for the active spec, with
+-- the names the game resolves them to (C_Spell.GetSpellInfo).
+function Layout.PrintSpells()
+    local c = config()
+    local s = c.spells
+    if not s then
+        print("no layout spells loaded (class layout missing, or no matching spec)")
+        return
+    end
+    local nameOf = function(id)
+        local ok, info = pcall(function()
+            return C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(id)
+        end)
+        return ok and info and info.name or ("spell " .. tostring(id))
+    end
+    print(("layout spells (%s, spec %s):"):format(tostring(s.spec_label), tostring(s.spec_id)))
+    for _, bar in ipairs({ "primary", "secondary", "tertiary" }) do
+        local list = s[bar] or {}
+        local names = {}
+        for i, id in ipairs(list) do
+            names[#names + 1] = ("%d. %s (%d)"):format(i, nameOf(id), id)
+        end
+        print(("  %s (%d): %s"):format(bar, #list, (next(list) and table.concat(names, ", ")) or "-"))
     end
 end
 

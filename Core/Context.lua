@@ -48,6 +48,7 @@ end
 -- ─── Task 3: PROFESSIONS – all profession window types ──────────────────────
 
 -- Full list of Blizzard profession frames across expansions.
+-- luacheck: ignore
 local _PROF_FRAMES = {
     ProfessionFrame,        -- general profession frame (Forever/retail)
     ProfessionFrameContainer,  -- universal container wrapper
@@ -60,6 +61,7 @@ local _PROF_FRAMES = {
 }
 
 function inProfessions()
+-- luacheck: ignore
     if shown(ProfessionFrame)               then return true end -- general profession frame
     if shown(ProfessionFrameContainer)      then return true end -- universal container wrapper
     if shown(ProfessionMacroFrame)          then return true end -- Legion+ macro-tabbed professions
@@ -75,6 +77,7 @@ end
 
 -- All Blizzard frames that indicate an active NPC dialog.
 function nearNPC()
+-- luacheck: ignore
     if shown(QuestgiverFrame)  then return true end  -- quest-giving NPC dialog
     if shown(GossipFrame)      then return true end  -- general gossip (non-quest) NPC popup
     -- Task 1: QuestFrame is the standalone quest-frame used by some UIs
@@ -86,6 +89,7 @@ end
 -- ─── Task 2: MENU – GameMenuFrame + SettingsPanel + addon menus ─────────────
 
 function inMenu()
+-- luacheck: ignore
     local frames = {GameMenuFrame, -- ESC menu / game pause (task 2)
                     SettingsPanel, -- Blizzard settings panel overlay  (task 2)
                     }
@@ -113,6 +117,7 @@ end
 
 -- Exclusions list: frames that match by pattern but are NOT menu contexts.
 local _MENU_EXCLUDE = {
+-- luacheck: ignore
     ["ContainerFrameCombinedBags"]      = true,
 }
 
