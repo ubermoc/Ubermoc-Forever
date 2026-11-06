@@ -165,15 +165,20 @@ Comments: ____________________________________
 
 ### Checkpoint 5 (v1.0.1, this pass) — Rogue layouts + fixes found in the restart
 - `Layouts/Rogue/default.lua` (Lua, never JSON): per-spec spell lists, three-bar template,
-  `show_only_active_bar` on. Spell IDs and spec IDs (259 Assassination, 260 Outlaw, 261 Subtlety)
-  taken from the forever branch's own `TrackedCooldowns.lua` — no guessed IDs.
+  `show_only_active_bar` on. Spell IDs taken from the forever branch's own `TrackedCooldowns.lua`
+  — no guessed IDs. The spec keys are the legacy table numbers (259/260/261), but the live
+  API in this build reports NEW-range spec IDs (an Outlaw reads 1488 in-game), so the loader
+  matches the spec by NAME (label) instead.
 - Layout load is fixed: it now runs on `PLAYER_LOGIN` (it was silently skipped before),
-  detects the active spec with `C_SpecializationInfo.GetSpecialization`, and keeps only spells
-  the character knows (`C_Spell.GetSpellInfo`). The log line after login says how many
-  spells matched and which spec was used.
+  detects the active spec via `C_SpecializationInfo.GetSpecializationInfo` (matched by name),
+  and keeps only spells the character knows (`C_Spell.GetSpellInfo`). The log line after login
+  says how many spells matched and which spec was used.
 - `/ubf layout spells` prints the verified list with the names the game resolves them to.
 - Binding hints now start on login (they were dead code — the reason the hints never appeared).
   Bag hints use the branch's real bag frames (`ContainerFrameCombinedBags`, `ContainerFrame1+`).
+- Self test: the action-bar pad-glyph line is now **information** (the engine reports the
+  keyboard key until the pad is engaged, then the pad key — same binding set, verified in-game).
+  The pad-binding registration itself is still a hard check ("layout main bar bound").
 
 **Open question (not implemented, no verified API in this branch):**
 - Assigning the layout's spells to action-bar slots: `SetActionBarSlotAction` and

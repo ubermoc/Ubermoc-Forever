@@ -97,15 +97,16 @@ local function knownSpells(list)
     return out
 end
 
--- Current spec ID and name, or nil/nil. In this branch
--- C_SpecializationInfo.GetSpecialization() returns the specialization INDEX (1-3)
--- (SpecializationInfoDocumentation.lua: return is "specializationIndex"), and
--- GetSpecializationInfo(index) returns the spec ID as its FIRST value and the
--- spec name as its SECOND (game usage:
---   local specID = C_SpecializationInfo.GetSpecializationInfo(C_SpecializationInfo.GetSpecialization());
---   Blizzard_AzeriteUI/AzeriteEmpoweredItemTierMixin.lua line 187
---   local specName = select(2, C_SpecializationInfo.GetSpecializationInfo(specIndex, ...));
---   Blizzard_CooldownViewer/CooldownViewerUtil.lua line 73).
+-- Current spec ID and name, or nil/nil. Same call Blizzard itself uses
+-- (Blizzard_SharedXML/UnitUtil.lua, PlayerUtil.GetCurrentSpecID):
+--   GetSpecializationInfo(GetSpecialization()) -> (specId, specName, ...)
+-- IMPORTANT (verified in-game, build 70790): the spec ID the live API returns
+-- is in the NEW range — an Outlaw Rogue reports 1488, NOT the legacy 259/260/261
+-- keys of TrackedCooldownsBySpec. New specs take 1467+ IDs (1480 Devourer DH in
+-- TrackedCooldowns.lua) and this branch's Camelot talent data is keyed per-class
+-- (1488 Rogue, Blizzard_PlayerSpells/Camelot/ClassTalents/Blizzard_ClassTalentUtil.lua).
+-- So the spec NAME (second return) is the stable identifier: specByName()
+-- matches on it, and the numeric key is only a secondary lookup.
 local function currentSpec()
     local ok, specID, specName = pcall(function()
         local si = C_SpecializationInfo
@@ -116,6 +117,17 @@ local function currentSpec()
     end)
     if not ok then return nil, nil end
     return specID, specName
+end
+
+-- Match a layout spec entry by its label (the spec name the game reports),
+-- case-insensitive.
+local function specByName(specs, name)
+    if not name then return nil end
+    local target = name:lower()
+    for _, def in pairs(specs or {}) do
+        if def.label and def.label:lower() == target then return def end
+    end
+    return nil
 end
 
 function Layout.Load(class)
@@ -138,8 +150,11 @@ function Layout.Load(class)
         -- Per-spec spells (checkpoint 5): pick the active spec and keep only
         -- spells the character knows, so unverified IDs can never reach a bar.
         if src.specs then
-            local specID = currentSpec()
-            local def = specID and src.specs[specID]
+            local specID, specName = currentSpec()
+            -- Match by spec name first (this build's live spec IDs are in the
+            -- new range, e.g. 1488, not the layout's legacy table keys), then
+            -- fall back to the numeric key if it happens to match.
+            local def = specByName(src.specs, specName) or (specID and src.specs[specID])
             if not def then
                 -- No spec match: use whichever spec the layout defines.
                 for _, d in pairs(src.specs) do

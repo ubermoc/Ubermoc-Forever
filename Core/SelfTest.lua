@@ -92,15 +92,22 @@ function ns.RunSelfTest()
     -- this (Blizzard_ActionBar/Shared/ActionButton.lua, UpdateHotkeys):
     --   key = GetBindingKey("ACTIONBUTTONn"); text = GetBindingText(key, 1)
     -- and shows the pad glyph only when IsBindingForGamePad(key).
+    -- Which key the engine reports is engine slot priority, not registration:
+    -- right after login the keyboard default ("1") is reported, and once the
+    -- gamepad is engaged the pad key is reported (an in-game session with the
+    -- identical binding set reported the pad key). The pad binding registration
+    -- itself — what we control — is asserted above in "layout main bar bound".
+    -- So report what the bar currently shows, but do not fail on it.
     if type(IsBindingForGamePad) == "function" then
         local key1 = GetBindingKey("ACTIONBUTTON1") or ""
         add(results, "display: ACTIONBUTTON1 key", key1 ~= "", key1)
-        add(results, "display: ACTIONBUTTON1 is a gamepad key", IsBindingForGamePad(key1), key1)
         local ok, text = pcall(GetBindingText, key1, 1)
         add(results, "display: ACTIONBUTTON1 hotkey text non-empty", ok and text ~= "", ok and text or "error")
+        add(results, "info: main bar slot 1 currently shows", true,
+            (IsBindingForGamePad(key1) and "pad " or "keyboard ") .. key1)
         if C_KeyBindings and C_KeyBindings.IsBindingContextActive then
-            add(results, "display: GamepadModeInGameCore context active",
-                C_KeyBindings.IsBindingContextActive("GamepadModeInGameCore") and true or false)
+            add(results, "info: GamepadModeInGameCore context active", true,
+                tostring(C_KeyBindings.IsBindingContextActive("GamepadModeInGameCore")))
         end
     end
 
