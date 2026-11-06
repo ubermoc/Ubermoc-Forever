@@ -342,6 +342,11 @@ function Layout.Apply()
     local displayCount = bindGamepadDisplay(c)
     ns.Log(("layout applied: %d bindings, %d pad-display bindings, shift cvar %s, ctrl cvar %s"):format(
         count, displayCount, tostring(shiftOk), tostring(ctrlOk)))
+    -- Show the pad button names on the main bar slots (see Input/BarLabels.lua).
+    if ns.BarLabels then
+        local ok, err = pcall(ns.BarLabels.Apply)
+        if not ok then ns.Log("BarLabels.Apply failed: " .. tostring(err)) end
+    end
     return true, count, shiftOk, ctrlOk
 end
 
@@ -355,6 +360,10 @@ function Layout.Remove()
     local c = config()
     ClearOverrideBindings(owner)
     unbindGamepadDisplay(c)
+    if ns.BarLabels then
+        local ok, err = pcall(ns.BarLabels.Remove)
+        if not ok then ns.Log("BarLabels.Remove failed: " .. tostring(err)) end
+    end
     if c.backup then
         if c.backup.shift ~= nil then pcall(C_CVar.SetCVar, EMULATE_SHIFT, c.backup.shift) end
         if c.backup.ctrl ~= nil then pcall(C_CVar.SetCVar, EMULATE_CTRL, c.backup.ctrl) end
