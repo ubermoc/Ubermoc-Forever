@@ -179,6 +179,13 @@ Comments: ____________________________________
 - Self test: the action-bar pad-glyph line is now **information** (the engine reports the
   keyboard key until the pad is engaged, then the pad key — same binding set, verified in-game).
   The pad-binding registration itself is still a hard check ("layout main bar bound").
+- **Bar labels** (`Input/BarLabels.lua`): the pad name (X, A, B, Y, ...) is written into each
+  main-bar button's own `HotKey` FontString (the game's native pad-glyph box: top-right, tall)
+  and re-applied from a hook on the button's `UpdateHotkeys`, so it survives game re-renders.
+  Same net effect as Ubermoc UI's per-slot labels, on the game's own buttons. Removed with
+  `/ubf layout off` (the button's own hotkey, e.g. "1", comes back).
+- Self test now prints the class layout to chat: spec name + ID and each bar's resolved
+  spell names (the player asked to see it without digging through files).
 
 **Open question (not implemented, no verified API in this branch):**
 - Assigning the layout's spells to action-bar slots: `SetActionBarSlotAction` and
