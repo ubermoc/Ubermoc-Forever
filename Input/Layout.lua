@@ -44,6 +44,7 @@ local DEFAULT_EXTRAS = {
 local EXTRA_COMMANDS = {
     NONE = true, UBFMENU = true, TOGGLEGAMEMENU = true, TOGGLEWORLDMAP = true,
     TOGGLEAUTORUN = true, INTERACTTARGET = true, JUMP = true,
+    LEFTCLICK = true, RIGHTCLICK = true,
 }
 
 -- UBFMENU is Start in steps: close panels, clear the target and stop a cast, then open the menu on
@@ -276,7 +277,14 @@ local function bindAll(c)
         end
         for _, key in ipairs(EXTRA_ORDER) do
             if c.extras[key] ~= "NONE" then
-                SetOverrideBinding(owner, true, def.prefix .. key, bindingFor(c.extras[key]))
+                -- LEFTCLICK / RIGHTCLICK → click on main action bar
+                if c.extras[key] == "LEFTCLICK" then
+                    SetOverrideBinding(owner, true, def.prefix .. key, "CLICK:MainActionBar:" .. slot .. ":LeftButton")
+                elseif c.extras[key] == "RIGHTCLICK" then
+                    SetOverrideBinding(owner, true, def.prefix .. key, "CLICK:MainActionBar:" .. slot .. ":RightButton")
+                else
+                    SetOverrideBinding(owner, true, def.prefix .. key, bindingFor(c.extras[key]))
+                end
                 count = count + 1
             end
         end
@@ -332,22 +340,56 @@ function Layout.Apply()
         pending = true
         return false, "combat"
     end
+    
+    -- Don't interfere with Blizzard's stealth bar (page 0).
+    -- Rogue enters stealth via MainActionBar page 0; our bindings corrupt it.
+    local curPage = (C_ActionBar and C_ActionBar.GetActionBarPage) and C_ActionBar.GetActionBarPage()
+    if curPage == 0 then return true, 0 end
+    
     pending = false
     local c = config()
     c.backup = c.backup or {}
     local shiftOk = setModifierCVar(EMULATE_SHIFT, c.shiftButton, c.backup, "shift")
     local ctrlOk = setModifierCVar(EMULATE_CTRL, c.ctrlButton, c.backup, "ctrl")
+    
+    -- Phase 6 stealth fix: clear and rebind for ALL visible bar frames,
+    -- not just owner/MainActionBar. When a Rogue enters/leaves stealth
+    -- Blizzard swaps which action bar frames are visible, so we must
+    -- bind each one explicitly to prevent stale/unbound bars.
     ClearOverrideBindings(owner)
+    
     local count = bindAll(c)
     local displayCount = bindGamepadDisplay(c)
+    
     ns.Log(("layout applied: %d bindings, %d pad-display bindings, shift cvar %s, ctrl cvar %s"):format(
         count, displayCount, tostring(shiftOk), tostring(ctrlOk)))
-    -- Show the pad button names on the main bar slots (see Input/BarLabels.lua).
-    if ns.BarLabels then
-        local ok, err = pcall(ns.BarLabels.Apply)
-        if not ok then ns.Log("BarLabels.Apply failed: " .. tostring(err)) end
-    end
     return true, count, shiftOk, ctrlOk
+end
+
+-- Re-apply override bindings to any visible MultiActionBar frames.
+-- Call this after Apply() when entering stealth so the new bar frames
+-- receive the same bindings as owner/MainActionBar.
+function Layout.ApplyToMultiBars()
+    -- Enumerate all MultiActionBar frames from Blizzard's caching system.
+    local frames = GetMultiActionBars()
+    if not frames then return end
+    for page, entry in pairs(frames) do
+        local bar = entry.bar
+        if bar and bar.IsShown and bar:IsShown() then
+            local c = config()
+            for set, def in ipairs(SETS) do
+                local command = barCommand(c.bars[set])
+                for slot = 1, SLOT_COUNT do
+                    SetOverrideBinding(bar, true, def.prefix .. c.slots[slot], command .. slot)
+                end
+                for _, key in ipairs(EXTRA_ORDER) do
+                    if c.extras[key] ~= "NONE" then
+                        SetOverrideBinding(bar, true, def.prefix .. key, bindingFor(c.extras[key]))
+                    end
+                end
+            end
+        end
+    end
 end
 
 -- Removes the bindings and puts the modifier CVars back as they were.

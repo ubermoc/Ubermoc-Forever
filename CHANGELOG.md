@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2
+- Context-aware transitions. While a game frame is open (spellbook, bags, professions, the game menu or an NPC dialog) your plain paddle presses reach your utility/secondary bar first, and the paddles snap back to your normal bars the moment the frame closes. Combat always wins: entering or leaving combat is applied instantly and can never be queued behind a menu swap.
+- Rapid open/close of windows is safe — the switch settles after 200 ms of the window staying open, and each swap is one atomic rebind, so your bars can never get stuck half-changed.
+- Binding hint overlays now fade in over a tenth of a second using the game's own animation system, instead of popping in.
+- New command `/ubf transitions [on|off|status]` to toggle the behaviour or see which bar set is live right now.
+- Self test now reports that the transitions module started and is enabled, and it understands the new bar behaviour: with a window open (spellbook, bags, NPC dialog…) your paddles are on the utility bar by design, so the bar-binding check no longer reports that as a failure.
+
 ## 1.0.1
 - Rogue default layout (checkpoint 5). The class layout is now a Lua data file, `Layouts/Rogue/default.lua` (the old `Layouts/Rouge/` JSON is gone — the game cannot read JSON anyway). It lists the abilities for all three specs in a three-bar set: primary, secondary and tertiary bars, with "show only the active bar" on by default.
 - Every spell ID in that layout is taken from the game's own data on this build (the abilities each spec tracks), and the addon checks each one against your character at login and keeps only the spells you actually have, so a wrong ID can never reach a bar. The spec is matched by its name (Assassination / Outlaw / Subtlety): this build reports new-range spec IDs from the API (an Outlaw reads 1488 in-game), so matching the old 259/260/261 table numbers would pick the wrong spec's list.

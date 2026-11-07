@@ -50,6 +50,12 @@ frame:SetScript("OnEvent", function(_, event, arg1)
             local ok, err = pcall(ns.BindingHint.Start)
             if not ok then ns.Log("BindingHint.Start failed: " .. tostring(err)) end
         end
+        -- Start context-aware bar transitions (Phase 06: utility bar first
+        -- while a game frame is open, instant return to combat bars).
+        if ns.Transitions and ns.Transitions.Start then
+            local ok, err = pcall(ns.Transitions.Start)
+            if not ok then ns.Log("Transitions.Start failed: " .. tostring(err)) end
+        end
         if isLoaded("UbermocUI") then
             print(ns.L.CONFLICT)
         end
@@ -91,6 +97,12 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         ReloadUI()
     elseif cmd == "layout" then
         ns.Layout.Command(rest)
+    elseif cmd == "transitions" then
+        if ns.Transitions and ns.Transitions.Command then
+            ns.Transitions.Command(rest)
+        else
+            print("Transitions module not loaded.")
+        end
     elseif cmd == "padmap" then
         ns.PrintPadMap()
     elseif cmd == "padtest" then

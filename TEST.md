@@ -195,6 +195,40 @@ Comments: ____________________________________
 
 ---
 
+## Section G: Checkpoint 6 (v1.0.2) — Context-Aware Transitions
+
+**What changed:** while a game frame is open (spellbook, bags, professions, menu,
+NPC dialog) your plain paddle presses reach the **utility/secondary bar first** and
+the paddles snap back to your normal (combat) bars the moment the frame closes.
+Combat always wins — entering or leaving combat applies instantly, never debounced.
+Rapid open/close is debounced 200 ms so bindings never land half-applied.
+Binding-hint overlays fade in over 0.1 s using the game's own animation API
+(verified: `CreateAnimationGroup` + `Alpha` animation exist on this build;
+`TweenFrame` does NOT — do not use it). New command:
+`/ubf transitions [on|off|status]`.
+
+**Tests (out of combat unless noted):**
+| # | Action | Expected |
+|---|--------|----------|
+| G1 | Note which bar your plain paddle reaches, then open the SpellBook and wait ~1 s | Paddle now reaches the SECONDARY bar (spells/utility) first; no lua errors |
+| G2 | Close the SpellBook | Paddle reaches your normal primary/combat bar again, immediately |
+| G3 | Open SpellBook and close it 4–5 times fast within ~2 s | No stuck/mixed bindings — ends on the normal bars; `/ubf transitions status` shows a consistent live bar set |
+| G4 | Open the SpellBook, then start combat (attack something), then leave combat | Combat bars apply instantly on entering combat; normal bars restored on leaving |
+| G5 | `/ubf transitions off`, open SpellBook, close it | Paddle bar does NOT change while transitions are off; `/ubf transitions on` restores behaviour |
+| G6 | Open SpellBook / Bags / Gossip NPC / Game menu | Hint overlays appear with a quick fade-in (not a hard pop) and look native |
+
+**Open questions (recorded, not implemented):**
+- **Steam Overlay / Big Picture:** no API on the `forever` branch reports overlay
+  or Big Picture state (checked — every "overlay" hit is spell activation,
+  portraits or minimap insets). Per the main spec we do NOT guess Steam APIs and
+  do NOT hide addon UI on an overlay. Revisit if a verified reporting API appears.
+- **Outlaw tertiary bar showed 0 spells** in the 2026-11-06 baseline (combat
+  state during the test run, per the user — not a layout gap). Re-verify the
+  tertiary count for Outlaw OUT of combat: `/ubf selftest` prints the per-bar
+  spell lists.
+
+---
+
 ## Notes for Testing
 1. **Check `/ebuf debug` first** to see if anything crashes silently. If `/ubf debug` toggles on and you see lua errors in chat, note which ones and when they occur.
 2. **Overlays are lightweight `FONTSTRING` objects — they should look like part of the game UI**, not glued-on (no border, same font as action button text).
