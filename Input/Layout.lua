@@ -646,8 +646,10 @@ function Layout.ResetDefaults()
     reapplyIfOn()
 end
 
--- Restore Blizzard's saved key bindings, clear remaining overrides on our pad keys,
--- and reset Ubermoc's internal config. This gives a completely fresh start.
+-- Step 1: Restore the game's saved key bindings (if any backup exists).
+-- Step 2: Clear remaining overrides on every valid pad key × modifier combo.
+-- Step 3: Reset Ubermoc's internal config to defaults.
+-- This gives a completely fresh start — do this first when troubleshooting, before "Reset Ubermoc Forever Binds".
 function Layout.RestoreBlizzardDefaults()
     -- First, restore the game's saved backups (if any).
     if ns.Binds and ns.Binds.Restore then

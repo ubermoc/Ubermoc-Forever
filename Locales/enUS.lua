@@ -55,6 +55,7 @@ ns.L = {
     OPT_RESET = "Reset to defaults",
     OPT_RESTORE_BLIZZARD_BINDS = "Restore Default Key Bindings",
     OPT_RESET_UBERMOC = "Reset Ubermoc Forever Binds",
+    OPT_RESET_INFO = "Recommended: use Restore Default Key Bindings first to reset Blizzard bindings and Ubermoc config together. Then use Reset Ubermoc Forever Binds if you only need to clear the addon's internal config (in which case Blizzard bindings will still need manual reconfiguration).",
     OPT_SHIFT_PADDLE = "Shift paddle",
     OPT_CTRL_PADDLE = "Ctrl paddle",
     OPT_SET = "Hold %s: action bar",
