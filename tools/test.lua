@@ -142,7 +142,7 @@ C_GamePad = {
 }
 
 local ns = {}
-for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/Context.lua", "Core/SelfTest.lua", "Core/AutoTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/BarLabels.lua", "Input/BindingHint.lua", "Layouts/Rogue/default.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "Input/Tabs.lua", "UI/Legend.lua", "UI/Options.lua", "UI/GameMenu.lua" }) do
+for _, f in ipairs({ "Locales/enUS.lua", "Core/Init.lua", "Core/Compat.lua", "Core/Debug.lua", "Core/Context.lua", "Core/SelfTest.lua", "Core/AutoTest.lua", "Input/GamePad.lua", "Input/Labels.lua", "Input/PadTest.lua", "Input/Layout.lua", "Input/BindingHint.lua", "Layouts/Rogue/default.lua", "Input/Cursor.lua", "Input/Binds.lua", "Core/Report.lua", "Input/Tabs.lua", "UI/Legend.lua", "UI/Options.lua", "UI/GameMenu.lua" }) do
     assert(loadfile(f))("UbermocForever", ns)
 end
 local function fire(event, arg, arg2, from)

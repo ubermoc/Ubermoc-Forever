@@ -19,7 +19,6 @@ Input\GamePad.lua
 Input\Labels.lua
 Input\PadTest.lua
 Input\Layout.lua
-Input\BarLabels.lua
 Input\Transitions.lua
 Input\BindingHint.lua
 Input\Cursor.lua

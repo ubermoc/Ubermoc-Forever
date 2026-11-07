@@ -134,27 +134,9 @@ function ns.RunSelfTest()
         add(results, "class layout loaded (" .. tostring(spells.spec_label) .. ")", total > 0,
             ("spec %s: %d primary, %d secondary, %d tertiary"):format(
                 tostring(spells.spec_id), #spells.primary, #spells.secondary, #spells.tertiary))
-        -- Chat detail: the spec and the spells it kept, with the names the
-        -- game resolves them to.
-        local function namesOf(list)
-            local out = {}
-            for _, id in ipairs(list) do
-                local ok, info = pcall(function()
-                    return C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(id)
-                end)
-                out[#out + 1] = (ok and info and info.name) or tostring(id)
-            end
-            return table.concat(out, ", ")
-        end
-        print(("  class layout: %s (spec %s)"):format(tostring(spells.spec_label), tostring(spells.spec_id)))
-        for _, bar in ipairs({ "primary", "secondary", "tertiary" }) do
-            local list = spells[bar] or {}
-            print(("  %s (%d): %s"):format(bar, #list, (next(list) and namesOf(list)) or "-"))
-        end
     else
         add(results, "class layout loaded", false,
             "ns.db.layout.spells missing - check the log for a 'layout loaded for' line")
-        print("  class layout: NOT LOADED (see the self test detail)")
     end
 
     -- Phase 06: context transitions module started (bar profile switching +
