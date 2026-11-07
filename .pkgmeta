@@ -11,3 +11,4 @@ ignore:
   - .agent-workflow
   - AGENTS.md
   - .dsh
+  - START-PROMPT.md
