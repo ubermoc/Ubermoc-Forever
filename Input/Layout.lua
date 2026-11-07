@@ -10,6 +10,10 @@ local SLOT_COUNT = 12
 local EMULATE_SHIFT = "GamePadEmulateShift"
 local EMULATE_CTRL = "GamePadEmulateCtrl"
 
+-- WoW APIs (external globals, see Gethe/wow-ui-source)
+local C_ActionBar = C_ActionBar  -- nil in offline test; guarded at use site
+local GetMultiActionBars = GetMultiActionBars
+
 -- Pad key for each main bar slot, in slot order.
 local DEFAULT_SLOTS = {
     "PAD3", "PAD1", "PAD2", "PAD4",
@@ -44,7 +48,9 @@ local DEFAULT_EXTRAS = {
 local EXTRA_COMMANDS = {
     NONE = true, UBFMENU = true, TOGGLEGAMEMENU = true, TOGGLEWORLDMAP = true,
     TOGGLEAUTORUN = true, INTERACTTARGET = true, JUMP = true,
-    LEFTCLICK = true, RIGHTCLICK = true,
+    -- TODO (Phase 07): implement proper multi-slot click bindings.
+    -- LEFTCLICK/RIGHTCLICK currently iterate SLOT_COUNT times per modifier set,
+    -- leaving only the last slot bound — not useful as-is.
 }
 
 -- UBFMENU is Start in steps: close panels, clear the target and stop a cast, then open the menu on
@@ -277,14 +283,15 @@ local function bindAll(c)
         end
         for _, key in ipairs(EXTRA_ORDER) do
             if c.extras[key] ~= "NONE" then
-                -- LEFTCLICK / RIGHTCLICK → click on main action bar
-                if c.extras[key] == "LEFTCLICK" then
-                    SetOverrideBinding(owner, true, def.prefix .. key, "CLICK:MainActionBar:" .. slot .. ":LeftButton")
-                elseif c.extras[key] == "RIGHTCLICK" then
-                    SetOverrideBinding(owner, true, def.prefix .. key, "CLICK:MainActionBar:" .. slot .. ":RightButton")
-                else
-                    SetOverrideBinding(owner, true, def.prefix .. key, bindingFor(c.extras[key]))
-                end
+            -- LEFTCLICK / RIGHTCLICK → click on main action bar
+            -- TODO (Phase 07): implement proper multi-slot click bindings.
+            if c.extras[key] == "LEFTCLICK" then
+                ns.Log("LEFTCLICK binding removed (incomplete — see Phase 07)")
+            elseif c.extras[key] == "RIGHTCLICK" then
+                ns.Log("RIGHTCLICK binding removed (incomplete — see Phase 07)")
+            else
+                SetOverrideBinding(owner, true, def.prefix .. key, bindingFor(c.extras[key]))
+            end
                 count = count + 1
             end
         end
