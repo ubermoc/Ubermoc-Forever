@@ -11,8 +11,8 @@ local EMULATE_SHIFT = "GamePadEmulateShift"
 local EMULATE_CTRL = "GamePadEmulateCtrl"
 
 -- WoW APIs (external globals, see Gethe/wow-ui-source)
-local C_ActionBar = C_ActionBar  -- nil in offline test; guarded at use site
-local GetMultiActionBars = GetMultiActionBars
+local C_ActionBar = _G and _G.C_ActionBar  -- nil in offline test; guarded at use site
+local GetMultiActionBars = _G and _G.GetMultiActionBars
 
 -- Pad key for each main bar slot, in slot order.
 local DEFAULT_SLOTS = {
@@ -347,27 +347,27 @@ function Layout.Apply()
         pending = true
         return false, "combat"
     end
-    
+
     -- Don't interfere with Blizzard's stealth bar (page 0).
     -- Rogue enters stealth via MainActionBar page 0; our bindings corrupt it.
     local curPage = (C_ActionBar and C_ActionBar.GetActionBarPage) and C_ActionBar.GetActionBarPage()
     if curPage == 0 then return true, 0 end
-    
+
     pending = false
     local c = config()
     c.backup = c.backup or {}
     local shiftOk = setModifierCVar(EMULATE_SHIFT, c.shiftButton, c.backup, "shift")
     local ctrlOk = setModifierCVar(EMULATE_CTRL, c.ctrlButton, c.backup, "ctrl")
-    
+
     -- Phase 6 stealth fix: clear and rebind for ALL visible bar frames,
     -- not just owner/MainActionBar. When a Rogue enters/leaves stealth
     -- Blizzard swaps which action bar frames are visible, so we must
     -- bind each one explicitly to prevent stale/unbound bars.
     ClearOverrideBindings(owner)
-    
+
     local count = bindAll(c)
     local displayCount = bindGamepadDisplay(c)
-    
+
     ns.Log(("layout applied: %d bindings, %d pad-display bindings, shift cvar %s, ctrl cvar %s"):format(
         count, displayCount, tostring(shiftOk), tostring(ctrlOk)))
     return true, count, shiftOk, ctrlOk
@@ -380,7 +380,7 @@ function Layout.ApplyToMultiBars()
     -- Enumerate all MultiActionBar frames from Blizzard's caching system.
     local frames = GetMultiActionBars()
     if not frames then return end
-    for page, entry in pairs(frames) do
+    for _, entry in pairs(frames) do
         local bar = entry.bar
         if bar and bar.IsShown and bar:IsShown() then
             local c = config()
