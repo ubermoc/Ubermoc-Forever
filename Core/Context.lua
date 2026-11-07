@@ -12,6 +12,7 @@ local _, ns = ...
 --     PROFESSIONS – profession window (Trainer, Blacksmithing…) is shown
 --     NPC         – Questgiver or Gossip dialog active
 --     MENU        – GameMenuFrame / SettingsPanel / addon menus
+--     STEALTH     – UnitStealthed("player") == true (rogue/dh stealth)
 --
 -- Listeners: Context.Register(fn) calls fn(contextEntered, contextLeft)
 
@@ -123,10 +124,11 @@ local _MENU_EXCLUDE = {
 
 -- ─── Classification logic ──────────────────────────────────────────────────
 
--- Priority order matters: SpellBook and Profession may overlap, but each player
--- sees only one at a time.  Combat is always highest priority.
+-- Priority order matters: Combat is always highest priority (bindings are locked).
+-- Stealth takes precedence over normal gameplay since it triggers frame swaps.
 local function classify()
     if UnitAffectingCombat("player")         then return "COMBAT"       end
+    if type(IsStealthed) == "function" and IsStealthed()            then return "STEALTH"      end
     if inSpellBook()                         then return "SPELLBOOK"    end
     if nearNPC()                             then return "NPC"          end
     if inProfessions()                       then return "PROFESSIONS"  end
@@ -257,6 +259,7 @@ function Context.IsInBags()         return currentContext == "BAGS"          end
 function Context.IsProfessions()    return currentContext == "PROFESSIONS"   end
 function Context.IsNearNPC()        return currentContext == "NPC"           end
 function Context.IsMenu()           return currentContext == "MENU"          end
+function Context.IsStealthed()      return currentContext == "STEALTH"        end
 
 -- ─── Slash command: /ubf context ──────────────────────────────────────────
 

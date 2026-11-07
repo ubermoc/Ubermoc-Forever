@@ -75,7 +75,21 @@ function ns.RunSelfTest()
                 ok = ok + 1
             end
         end
-        add(results, "layout main bar bound", ok == 12, ok .. " of 12")
+        -- Phase 06: while a rotated context is live (spellbook/bags/NPC/menu
+        -- with transitions on) the plain keys intentionally reach the
+        -- utility bar, so a live mismatch is the designed state — report it
+        -- the way v1.0.1 reports the hotkey display, instead of failing.
+        -- In base contexts (COMBAT/NONE) the base profile must be live.
+        local ctx = ns.Context and ns.Context.Current() or "NONE"
+        local rotated = ns.Transitions ~= nil
+            and ns.Transitions.Enabled()
+            and ctx ~= "COMBAT" and ctx ~= "NONE"
+        if rotated then
+            add(results, "layout main bar bound (rotated profile live in " .. ctx .. ")", true,
+                ok .. " of 12 under base profile; expected while context is " .. ctx)
+        else
+            add(results, "layout main bar bound", ok == 12, ok .. " of 12")
+        end
         local extraOk, extraTotal = 0, 0
         for key, command in pairs(c.extras or {}) do
             if command ~= "NONE" then
@@ -141,6 +155,16 @@ function ns.RunSelfTest()
         add(results, "class layout loaded", false,
             "ns.db.layout.spells missing - check the log for a 'layout loaded for' line")
         print("  class layout: NOT LOADED (see the self test detail)")
+    end
+
+    -- Phase 06: context transitions module started (bar profile switching +
+    -- hint fade-in). Enabled by default; /ubf transitions off switches it off.
+    if ns.Transitions then
+        add(results, "transitions module started", ns.Transitions.Enabled(),
+            "enabled=" .. tostring(ns.Transitions.Enabled()))
+        add(results, "transitions FadeIn available", type(ns.Transitions.FadeIn) == "function")
+    else
+        add(results, "transitions module started", false, "ns.Transitions missing")
     end
 
     for _, id in ipairs({ {}, { vendorID = 10462, productID = 4607 } }) do

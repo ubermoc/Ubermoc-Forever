@@ -51,6 +51,10 @@ local function showHint(anchorFrame, text, fontStr, colorR, colorG, colorB, colo
     fs:ClearAllPoints()
     fs:SetPoint("LEFT", anchorFrame, "RIGHT", offsetX or -2, offsetY or 0)
     fs:Show()
+    -- Phase 06: fade in with the game's own animation API when available.
+    if ns.Transitions and ns.Transitions.FadeIn then
+        pcall(ns.Transitions.FadeIn, fs)
+    end
 end
 
 -- Hide and remove one overlay by its FontString object.
@@ -172,6 +176,10 @@ local function showInteractionHint()
         fs:SetText(GetBindingText(interactKey, 1))
         fs:SetTextColor(1, 1, 0.8, 1)
         fs:Show()
+        -- Phase 06: fade in with the game's own animation API when available.
+        if ns.Transitions and ns.Transitions.FadeIn then
+            pcall(ns.Transitions.FadeIn, fs)
+        end
     end
 end
 
@@ -222,6 +230,10 @@ local function showMenuHint()
     fs:SetText(GetBindingText(menuKey, 1))
     fs:SetTextColor(1, 1, 0.6, 1)
     fs:Show()
+    -- Phase 06: fade in with the game's own animation API when available.
+    if ns.Transitions and ns.Transitions.FadeIn then
+        pcall(ns.Transitions.FadeIn, fs)
+    end
 end
 
 -- ─── Context listener (registered with ns.Context) ──────────────────────────
