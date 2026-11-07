@@ -8,3 +8,5 @@ dist/
 *.bak
 *.bak2
 *.orig
+.agent-workflow/startup/
+.agent-workflow/PATHS.md
