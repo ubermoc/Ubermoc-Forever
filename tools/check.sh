@@ -20,6 +20,9 @@ if command -v luacheck >/dev/null 2>&1; then
     luacheck . --no-color
 elif [ -x tools/bin/luacheck ]; then
     tools/bin/luacheck . --no-color
+elif MAIN_ROOT=$(cd "$(git rev-parse --git-common-dir 2>/dev/null)/.." 2>/dev/null && pwd) && [ -x "$MAIN_ROOT/tools/bin/luacheck" ]; then
+    # Feature worktrees do not get the git-ignored tools/bin; use the main folder's copy.
+    "$MAIN_ROOT/tools/bin/luacheck" . --no-color
 else
     echo "luacheck not installed, skipped (this is NOT a pass)"
     exit 2
