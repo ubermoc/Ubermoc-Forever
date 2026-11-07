@@ -5,3 +5,6 @@ dist/
 # Agent workflow state and worktrees
 .agent-workflow/state/
 .agent-workflow/work/
+*.bak
+*.bak2
+*.orig

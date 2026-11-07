@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.4
+- Two reset options on the Buttons page of the settings menu. **Restore Default Key Bindings** puts back your original controller bindings from the backup the addon keeps, clears any other controller binding it set, and resets the Ubermoc Forever layout to its defaults. **Reset Ubermoc Forever Binds** resets only the Ubermoc Forever layout to its defaults, like the old single reset button.
+
 ## 1.0.3
 - Fixed stale action bar mapping: Set 1 (no modifier) now correctly maps to the main action bar (bar 1) instead of bar 2 when saved config contains outdated values. Added automatic correction logic in `config()` that detects and fixes stale mappings with log messages, while preserving user customizations.
 
