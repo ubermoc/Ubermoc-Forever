@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.3
+- Fixed stale action bar mapping: Set 1 (no modifier) now correctly maps to the main action bar (bar 1) instead of bar 2 when saved config contains outdated values. Added automatic correction logic in `config()` that detects and fixes stale mappings with log messages, while preserving user customizations.
+
 ## 1.0.2
 - Context-aware transitions. While a game frame is open (spellbook, bags, professions, the game menu or an NPC dialog) your plain paddle presses reach your utility/secondary bar first, and the paddles snap back to your normal bars the moment the frame closes. Combat always wins: entering or leaving combat is applied instantly and can never be queued behind a menu swap.
 - Rapid open/close of windows is safe — the switch settles after 200 ms of the window staying open, and each swap is one atomic rebind, so your bars can never get stuck half-changed.

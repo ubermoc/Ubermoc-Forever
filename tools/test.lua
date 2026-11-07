@@ -238,7 +238,8 @@ layout.Command("bind 1 PAD5")
 assert(bindings["PAD5"] == "ACTIONBUTTON1" and bindings["PAD4"] == "ACTIONBUTTON4", "swap back")
 layout.Command("bind 1 NOPE")  -- unknown
 layout.Command("bar 2 5")
-assert(bindings["SHIFT-PAD5"] == "MULTIACTIONBAR4BUTTON1", "custom slot and bar")
+    -- Custom bar value set by user is preserved (defaultsCorrected flag prevents re-correction).
+    assert(bindings["SHIFT-PAD5"] == "MULTIACTIONBAR4BUTTON1", "custom bar 5 persists, not re-corrected")
 
 inCombat = true
 layout.Command("reset")

@@ -8,3 +8,5 @@ ignore:
   - .luacheckrc
   - assets
   - CLAUDE.md
+  - .agent-workflow
+  - AGENTS.md

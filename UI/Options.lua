@@ -108,7 +108,8 @@ local function buildRows()
             rows[#rows + 1] = { label = L.OPT_SLOT:format(slot), value = Layout.Friendly(c.slots[slot]),
                 onActivate = function() captureSlot = slot end }
         end
-        rows[#rows + 1] = { label = L.OPT_RESET, value = "", onActivate = Layout.ResetDefaults }
+        rows[#rows + 1] = { label = L.OPT_RESTORE_BLIZZARD_BINDS, value = "", onActivate = Layout.RestoreBlizzardDefaults }
+        rows[#rows + 1] = { label = L.OPT_RESET_UBERMOC, value = "", onActivate = Layout.ResetDefaults }
 
     elseif page == 2 then
         local function modifierRow(which, field, step)

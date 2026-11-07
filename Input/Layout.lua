@@ -240,6 +240,35 @@ local function config()
     for set = 1, #SETS do
         c.bars[set] = c.bars[set] or DEFAULT_BARS[set]
     end
+    -- Correct stale saved config (e.g., old defaults from a prior version).
+    -- Only applies once via a flag like menuDirect, so user customizations
+    -- set with /ubf layout bar persist across reloads.
+    if not c.defaultsCorrected then
+        for set = 1, #SETS do
+            if c.bars[set] ~= DEFAULT_BARS[set] then
+                ns.Log(("config: correcting bar mapping for set %d (%s): %d → %d"):format(
+                    set, SETS[set].label, c.bars[set], DEFAULT_BARS[set]))
+                c.bars[set] = DEFAULT_BARS[set]
+            end
+        end
+        -- Correct modifier paddles if they point to unknown keys (via validKeys).
+        local vk = nil
+        do local ok, result = pcall(validKeys) if ok then vk = result end end
+        if vk and type(vk) == "table" then
+            if not vk[c.shiftButton] and c.shiftButton ~= DEFAULT_SHIFT_BUTTON then
+                ns.Log(("config: correcting shift button %s → %s"):format(
+                    tostring(c.shiftButton), DEFAULT_SHIFT_BUTTON))
+                c.shiftButton = DEFAULT_SHIFT_BUTTON
+            end
+            if not vk[c.ctrlButton] and c.ctrlButton ~= DEFAULT_CTRL_BUTTON then
+                ns.Log(("config: correcting ctrl button %s → %s"):format(
+                    tostring(c.ctrlButton), DEFAULT_CTRL_BUTTON))
+                c.ctrlButton = DEFAULT_CTRL_BUTTON
+            end
+        end
+        c.defaultsCorrected = true
+    end
+    -- Fill missing extras (runs every time).
     c.extras = c.extras or {}
     for _, key in ipairs(EXTRA_ORDER) do
         c.extras[key] = c.extras[key] or DEFAULT_EXTRAS[key]
@@ -251,8 +280,13 @@ local function config()
         end
         c.menuDirect = true
     end
-    c.shiftButton = c.shiftButton or DEFAULT_SHIFT_BUTTON
-    c.ctrlButton = c.ctrlButton or DEFAULT_CTRL_BUTTON
+    -- Fill missing modifier paddles (only nil/missing, never correct away from user choice).
+    if not c.shiftButton then
+        c.shiftButton = DEFAULT_SHIFT_BUTTON
+    end
+    if not c.ctrlButton then
+        c.ctrlButton = DEFAULT_CTRL_BUTTON
+    end
     return c
 end
 
@@ -566,11 +600,84 @@ function Layout.SetModifier(which, key)
 end
 
 function Layout.ResetDefaults()
-    local c = config()
-    ns.db.layout = { enabled = c.enabled, backup = c.backup }
+    -- Capture raw saved values BEFORE any processing (config() modifies in-place).
+    local c = ns.db.layout
+    local oldBars = {}
+    if c and c.bars then
+        for s = 1, #SETS do
+            oldBars[s] = c.bars[s]
+        end
+    else
+        for s = 1, #SETS do
+            oldBars[s] = nil
+        end
+    end
+    local oldShift = c and c.shiftButton or nil
+    local oldCtrl = c and c.ctrlButton or nil
+    -- Wipe layout so config() refills from defaults, preserving enabled state.
+    local wasEnabled = c and c.enabled
+    local backup = c and c.backup
+    ns.db.layout = { enabled = wasEnabled, backup = backup }
     config()
+    -- Report any corrections applied during reset.
+    local corrected = false
+    for set = 1, #SETS do
+        if oldBars[set] ~= nil and oldBars[set] ~= DEFAULT_BARS[set] then
+            ns.Log(("reset: bar set %d (%s) corrected from %d to %d"):format(
+                set, SETS[set].label, oldBars[set], DEFAULT_BARS[set]))
+            corrected = true
+        end
+    end
+    if oldShift and oldShift ~= DEFAULT_SHIFT_BUTTON then
+        ns.Log(("reset: shift button corrected from %s to %s"):format(
+            tostring(oldShift), DEFAULT_SHIFT_BUTTON))
+        corrected = true
+    end
+    if oldCtrl and oldCtrl ~= DEFAULT_CTRL_BUTTON then
+        ns.Log(("reset: ctrl button corrected from %s to %s"):format(
+            tostring(oldCtrl), DEFAULT_CTRL_BUTTON))
+        corrected = true
+    end
+    if corrected then
+        say("LAYOUT_RESET_CORRECTED")
+    else
+        say("LAYOUT_RESET")
+    end
     reapplyIfOn()
 end
+
+-- Restore Blizzard's saved key bindings, clear remaining overrides on our pad keys,
+-- and reset Ubermoc's internal config. This gives a completely fresh start.
+function Layout.RestoreBlizzardDefaults()
+    -- First, restore the game's saved backups (if any).
+    if ns.Binds and ns.Binds.Restore then
+        ns.Binds.Restore()
+    end
+    -- Then clear all remaining Blizzard bindings on every valid pad key × modifier combo.
+    local MODIFIERS = { "", "SHIFT-", "CTRL-", "ALT-", "CTRL-SHIFT-", "ALT-SHIFT-", "ALT-CTRL-", "ALT-CTRL-SHIFT-" }
+    local vk = nil
+    do local ok, result = pcall(validKeys) if ok then vk = result end end
+    if vk then
+        for key in pairs(vk) do
+            for _, prefix in ipairs(MODIFIERS) do
+                local combo = prefix .. key
+                local action = GetBindingAction(combo)
+                if action and action ~= "" then
+                    SetBinding(combo, nil)
+                end
+            end
+        end
+        pcall(SaveBindings)
+    end
+    -- Then reset our internal config (same as ResetDefaults).
+    local wasEnabled = ns.db.layout and ns.db.layout.enabled
+    ns.db.layout = {}
+    config()
+    if wasEnabled then reapplyIfOn() end
+    say("LAYOUT_RESTORED")
+end
+
+Layout.RestoreBlizzardDefaults = Layout.RestoreBlizzardDefaults
 
 -- /ubf layout <args>
 function Layout.Command(args)

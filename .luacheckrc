@@ -1,6 +1,6 @@
 std = "lua51"
 max_line_length = false
-exclude_files = { "tools/bin" }
+exclude_files = { "tools/bin", ".agent-workflow" }
 files["tools/test.lua"] = { ignore = { "1", "21" } }
 
 globals = {
