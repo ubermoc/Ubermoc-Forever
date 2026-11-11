@@ -1,0 +1,21 @@
+package-as: UbermocForever
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+ignore:
+  - tools
+  - releases
+  - dist
+  - bin
+  - README.md
+  - .luacheckrc
+  - assets
+  - CLAUDE.md
+  - AGENTS.md
+  - .agent-workflow
+  - .agents
+  - .dsh
+  - START-PROMPT.md
+  - RESEARCH.md
+  - spec.md
+  - brief.md
