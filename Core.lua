@@ -290,14 +290,15 @@ end
 -- ---------------------------------------------------------------------------
 -- Controller buttons on the addon's bindings (diagnostics)
 -- Blizzard's gamepad key names (Blizzard_SharedXML/Shared/GamepadConstants.lua):
--- PAD1-PAD4 are face buttons, PADDUP/PADD_DOWN etc. the d-pad, PADLSHOULDER /
--- PADRSHOULDER the bumpers, PADLTRIGGER / PADRTRIGGER the triggers. The addon's
--- own actions use the NUMPAD keys (NUMPAD0-9, NUMPADENTER, NUMPADDECIMAL) bound
--- with SetBindingClick on secure buttons; looking those bindings up tells us
--- which controller button is wired to which action.
+-- PAD1-PAD4 are face buttons, PADDUP/PADDDOWN etc. the d-pad, PADLSHOULDER /
+-- PADRSHOULDER the bumpers, PADLTRIGGER / PADRTRIGGER the triggers. To see
+-- which controller button a key is wired to, look up the key with
+-- GetBindingAction(key) — the key-to-action direction, the same way Blizzard
+-- uses it in StackSplitFrame.lua and Blizzard_Keybindings.lua:129.
+-- (C_KeyBindings.GetBindingByKey goes the other way: action -> key.)
 -- ---------------------------------------------------------------------------
 
-local BINDING_KEYS = {
+local WATCH_KEYS = {
     "NUMPAD0", "NUMPAD1", "NUMPAD2", "NUMPAD3", "NUMPAD4",
     "NUMPAD5", "NUMPAD6", "NUMPAD7", "NUMPAD8", "NUMPAD9",
     "NUMPADENTER", "NUMPADDECIMAL",
@@ -309,34 +310,47 @@ local GAMEPAD_BUTTON_NAMES = {
     "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER",
 }
 
-function ns:GetControllerBindings()
+function ns:GetBindingsForKeys(keys)
     local found = {}
-    if not C_KeyBindings or not C_KeyBindings.GetBindingByKey then return found end
-    for _, key in ipairs(BINDING_KEYS) do
-        local binding = select(1, pcall(C_KeyBindings.GetBindingByKey, key))
-        if type(binding) == "string" and binding ~= "" then
-            table.insert(found, { key = key, binding = binding })
+    if not GetBindingAction then return found end
+    for _, key in ipairs(keys) do
+        local ok, action = pcall(GetBindingAction, key)
+        if ok and type(action) == "string" and action ~= "" then
+            table.insert(found, { key = key, action = action })
         end
     end
     return found
 end
 
 function ns:PrintControllerBindings()
-    local bindings = self:GetControllerBindings()
-    if #bindings == 0 then
-        self:Print("No controller buttons are bound to Ubermoc actions yet.")
-        return
-    end
-    -- Which of the bound keys is actually a gamepad button?
     local padKeys = {}
-    for _, name in ipairs(GAMEPAD_BUTTON_NAMES) do padKeys[name] = true end
-    local count = 0
-    for _, entry in ipairs(bindings) do
-        if padKeys[entry.binding:upper()] then count = count + 1 end
+    for _, name in ipairs(GAMEPAD_BUTTON_NAMES) do padKeys[name:upper()] = true end
+
+    -- 1. Controller buttons bound to something (any action).
+    local padBindings = self:GetBindingsForKeys(GAMEPAD_BUTTON_NAMES)
+    if #padBindings == 0 then
+        self:Print("No controller button is bound to anything right now.")
+    else
+        self:Print(("Controller buttons in use: %d"):format(#padBindings))
+        for _, entry in ipairs(padBindings) do
+            self:Print(("  %s -> %s"):format(entry.key, entry.action))
+        end
     end
-    self:Print(("Controller buttons bound to Ubermoc actions: %d"):format(count))
-    for _, entry in ipairs(bindings) do
-        self:Print(("  %s -> %s"):format(entry.key, entry.binding))
+
+    -- 2. Of those, how many point at an Ubermoc action (CLICK on one of the
+    -- addon's secure buttons)? Once the binding feature ships these match up.
+    local ubermocCount = 0
+    for _, entry in ipairs(padBindings) do
+        if entry.action:find("UBERMOC", 1, true) then ubermocCount = ubermocCount + 1 end
+    end
+    self:Print(("Controller buttons bound to Ubermoc actions: %d"):format(ubermocCount))
+
+    -- 3. What the addon's reserved numpad keys are bound to, for reference.
+    local keyBindings = self:GetBindingsForKeys(WATCH_KEYS)
+    for _, entry in ipairs(keyBindings) do
+        if not padKeys[entry.key:upper()] then
+            self:Print(("  (key) %s -> %s"):format(entry.key, entry.action))
+        end
     end
 end
 

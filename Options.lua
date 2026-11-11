@@ -61,7 +61,10 @@ local function BuildSettings()
             function(value) return string.format("%.0f%%", value * 100) end)
         return container
     end
-    Settings.CreateSlider(category, scaleSetting, GetOptions(), "Scale of the UbermocForever window.")
+    -- Pass the function, not its result: Blizzard accepts either
+    -- (Blizzard_Settings.lua CreateSlider), and the function form lets the
+    -- options be rebuilt when the row refreshes.
+    Settings.CreateSlider(category, scaleSetting, GetOptions, "Scale of the UbermocForever window.")
 
     -- Blizzard's own Keybindings page is where controller and keyboard binds
     -- live. There is no button widget in the Settings API, so this acts like a
