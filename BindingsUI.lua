@@ -166,22 +166,16 @@ local function GetActionButton(actionID)
 			SettingsPanel.SearchBox:SetShown(not isActive)
 		end
 
-		-- While capturing, our own gamepad listener drives the live preview
-		-- (Bindings.lua: ArmCapturePreview). The native button's pad listener
-		-- stays off during that window so each press is seen exactly once.
-		if isActive then
-			ns:ArmCapturePreview(button)
-		else
-			ns:DisarmCapturePreview()
-		end
+		-- The native template listens for gamepad presses itself (its XML
+		-- routes OnGamePadButtonDown/Up into its own capture handler). Since
+		-- 0.2.3 we let it do exactly that - earlier versions replaced it with
+		-- a listener of our own, and pad presses never reached it.
 
 		ns:RefreshCaptureHint()
 		ns:UpdatePanelOutputText()
 	end)
 
 	handler:SetOnBindingCompletedCallback(function(completedSuccessfully, keys)
-		ns:ClearPreviewBinding()
-
 		if not completedSuccessfully or type(keys) ~= "table" then
 			return
 		end
@@ -215,7 +209,6 @@ function ns:ReleaseBindingButtons()
 		if button:IsBindingModeActive() then
 			button:CancelBinding()
 		end
-		ns:DisarmCapturePreview()
 		CustomBindingManager:SetHandlerRegistered(button, false)
 		local host = GetButtonHost()
 		if host then
@@ -443,7 +436,6 @@ function UbermocForeverBindingRowMixin:Release()
 		if button:IsBindingModeActive() then
 			button:CancelBinding()
 		end
-		ns:DisarmCapturePreview()
 		CustomBindingManager:SetHandlerRegistered(button, false)
 		local host = GetButtonHost()
 		if host then
@@ -646,4 +638,45 @@ ns.SlashSubcommands["unbind"] = function(args)
 	end
 	ns:SetActionBinding(actionID, nil)
 	ns:Print((L.CLEARED):format(GetActionName(actionID)))
+end
+
+-- Free slots (SLICE1-SLICE6): put a spell on one. The slot's button then
+-- casts it through a plain /cast macro the client expands itself.
+--   /ubermoc bindspell SLICE1 Fireball
+ns.SlashSubcommands["bindspell"] = function(args)
+	local actionID, spell = args and args:match("^(%S+)%s+(.+)$")
+	if not actionID or not spell then
+		ns:Print("Usage: /ubermoc bindspell <SLICE1-SLICE6> <spell name>")
+		return
+	end
+
+	actionID = actionID:upper()
+	if not (ns.actionByID[actionID] and actionID:find("^SLICE")) then
+		ns:Print("Pick one of the Action slots, SLICE1 through SLICE6.")
+		return
+	end
+
+	spell = spell:trim()
+	if not spell:match("^/?(%a[%w%' ,%-]*)$") then
+		ns:Print("That name contains characters a macro cannot use. Type the plain spell name, for example: /ubermoc bindspell SLICE1 Fireball")
+		return
+	end
+
+	ns.db[actionID] = spell
+	ns:ApplyBindings()
+	self:RefreshBindingRows()
+	ns:Print(("Action %d is now %s. Bind it on the Controller Bindings page or with /ubermoc bind %s <button>."):format(
+		actionID:sub(6), spell, actionID))
+end
+
+ns.SlashSubcommands["clearspell"] = function(args)
+	local actionID = args and (args:upper())
+	if not (actionID and ns.actionByID[actionID] and actionID:find("^SLICE")) then
+		ns:Print("Usage: /ubermoc clearspell <SLICE1-SLICE6>")
+		return
+	end
+	ns.db[actionID] = nil
+	ns:ApplyBindings()
+	self:RefreshBindingRows()
+	ns:Print(("Action %d is empty again."):format(actionID:sub(6)))
 end

@@ -367,6 +367,23 @@ end
 -- are configured.
 -- ---------------------------------------------------------------------------
 
+local function OpenSettingsDeferred()
+    -- Settings.OpenToCategory is protected: calling it straight from a click
+    -- handler (or anything else running inside Blizzard's protected flow) is
+    -- rejected ("ADDON_ACTION_FORBIDDEN"). One frame later we are back in our
+    -- own untainted code and the call is allowed - this is what /ubermoc
+    -- config does every time it works.
+    C_Timer.After(0, function()
+        if not ns.db then
+            ns:Print("Addon not fully loaded yet. Use /reload after login.")
+            return false
+        end
+        ns:OpenSettings()
+    end)
+end
+
+ns.OpenSettingsDeferred = OpenSettingsDeferred
+
 function ns:OpenSettings()
     if not Settings then
         ns:Print("Settings UI not available in this client.")
@@ -572,7 +589,7 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     end
 
     if command == "" or command == "config" then
-        ns:OpenSettings()
+        OpenSettingsDeferred()
         if ns.controllerConnected then
             local detected = ns:GetControllerType() or "Unknown"
             local name = ns.controllerName and (ns.controllerName .. " - ") or ""
@@ -582,7 +599,7 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
             ns:Print("On Steam Deck the game must receive real controller buttons: in the game's Controller settings use a plain Gamepad layout (Steam Input), not one that sends keyboard keys. /ubermoc devices lists what the game sees.")
         end
     elseif command == "keybinds" then
-        ns:OpenKeybinds()
+        C_Timer.After(0, function() ns:OpenKeybinds() end)
     elseif command == "bindings" then
         ns:PrintControllerBindings()
     elseif command == "devices" then
@@ -606,6 +623,6 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         local args = msg:match("^%S+%s*(.*)")
         ns.SlashSubcommands[command](args)
     else
-        ns:Print("commands: config, keybinds, bindings, devices, debug, setstyle, bind, unbind, bindlist, bindreset")
+        ns:Print("commands: config, keybinds, bindings, devices, debug, setstyle, bind, unbind, bindspell, clearspell, bindlist, bindreset")
     end
 end

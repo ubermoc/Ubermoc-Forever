@@ -28,10 +28,11 @@ local pendingAction = nil
 local GAME_MENU_CONTEXT_KEY = "GameMenuFrame"
 
 local function OpenUbermocSettings()
-    if ns.settingsCategory and Settings then
-        Settings.OpenToCategory(ns.settingsCategory:GetID())
-    else
-        ns:Print("Settings not ready yet. Use /reload after login.")
+    -- Same deferral as everywhere else: Settings.OpenToCategory is protected,
+    -- so the open happens one frame later in our own untainted code (the
+    -- shared helper from Core.lua).
+    if ns.OpenSettingsDeferred then
+        ns.OpenSettingsDeferred()
     end
 end
 
@@ -48,12 +49,10 @@ end
 -- Deferring with C_Timer.After(0) runs our open AFTER Blizzard's dispatch has
 -- finished and its executingEvents bookkeeping is flushed, so the re-entrant
 -- hide/re-show loop no longer happens.
-local function RunDeferred(action)
+local function RunDeferred()
     C_Timer.After(0, function()
-        if action == "settings" then
+        if pendingAction == "settings" then
             OpenUbermocSettings()
-        elseif action == "keybinds" then
-            ns:OpenKeybinds()
         end
     end)
 end
@@ -90,11 +89,5 @@ hooksecurefunc(GameMenuFrame, "AddButton", function(self, text)
 
     self:AddButton("Ubermoc", function()
         pendingAction = "settings"
-    end)
-
-    -- Keybinds entry, so controller bindings are reachable straight from the
-    -- pause menu (Blizzard's Options panel is mouse/keyboard first).
-    self:AddButton("Ubermoc Keybinds", function()
-        pendingAction = "keybinds"
     end)
 end)

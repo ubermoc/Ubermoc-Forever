@@ -317,14 +317,19 @@ local function ReassertOurBindings(owner, key)
 			end
 		end
 	end
-	if IsBindingForGamePad and IsBindingForGamePad(key) and ns.previewToken == key then
-		ns:PreviewBoundAction(key)
+	if IsBindingForGamePad and IsBindingForGamePad(key) then
+		ns:RefreshBindingRows()
 	end
 end
 
 hooksecurefunc("SetOverrideBinding", ReassertOurBindings)
 hooksecurefunc("SetOverrideBindingClick", ReassertOurBindings)
 
+-- Hidden secure buttons for the few actions whose behaviour is hand-written
+-- Lua rather than a client command or macro (currently just mount/dismount).
+-- The click runs through Blizzard's own SecureActionButtonTemplate code,
+-- which stays legal even when other addons have tainted the execution; it
+-- was only OUR lua running inside a press that got blocked.
 local function EnsureActionButtons()
 	if InCombatLockdown() then
 		return false
@@ -334,7 +339,7 @@ local function EnsureActionButtons()
 
 	for _, action in ipairs(ns.ACTIONS) do
 		local buttonName = "UbermocForeverButton" .. action.id
-		if not _G[buttonName] then
+		if ns.ExecutionPath and ns.ExecutionPath(action.id) == "button" and not _G[buttonName] then
 			local button = CreateFrame("Button", buttonName, nil, "SecureActionButtonTemplate")
 			button:Hide()
 			button:RegisterForClicks("AnyUp", "AnyDown")
@@ -376,6 +381,7 @@ end
 -- the client restricts when addon code calls them (targeting, jump, stop
 -- casting). JUMP also gets its key-release half this way, so holding the
 -- button ascends. Actions without a game command keep the click path.
+
 local NATIVE_COMMANDS = {
 	TARGET_ENEMY = "TARGETNEARESTENEMY",
 	TARGET_FRIEND = "TARGETNEARESTFRIEND",
@@ -395,12 +401,13 @@ local NATIVE_COMMANDS = {
 	QUEST_LOG = "TOGGLEQUESTLOG",
 	SOCIAL = "TOGGLESOCIAL",
 	MOUNT_JOURNAL = "TOGGLECOLLECTIONSMOUNTJOURNAL",
+	TARGET_PARTY = "TARGETNEARESTFRIENDPLAYER",
 }
 
--- The command to bind for an action, or nil to use the click path. A command
+-- The command to bind for an action, or nil to use the macro path. A command
 -- is only used when this client confirms it knows it (GetBindingIndex returns
 -- its place in the binding table), so a build that renames one falls back to
--- the click path instead of binding a button to nothing.
+-- the macro path instead of binding a button to nothing.
 local function NativeCommandFor(actionID)
 	local command = NATIVE_COMMANDS[actionID]
 	if command and C_KeyBindings and C_KeyBindings.GetBindingIndex and C_KeyBindings.GetBindingIndex(command) then
@@ -408,6 +415,77 @@ local function NativeCommandFor(actionID)
 	end
 	return nil
 end
+
+-- The macro text for actions the client has no binding command for (attack,
+-- ping, menu, free slots...). A macro is expanded by the CLIENT when the
+-- button is pressed and its commands run with normal keybind rights - no
+-- addon code executes in the press path at all. That matters: whenever
+-- another addon taints an execution (UbermocUI does this constantly on this
+-- install), anything our Lua tried to do during a press was rejected
+-- ("ADDON_ACTION_FORBIDDEN ... RunBinding()"). A client-expanded macro is not
+-- affected by that, the same way a stock keybind bound to a macro always
+-- works no matter how many addons are installed.
+--
+-- Actions with a hand-written Lua body (mount/dismount) instead get a hidden
+-- secure button below: the click path runs through Blizzard's own secure
+-- template code, which stays legal even while other addons taint everything
+-- else - it was only OUR lua inside the press that got blocked.
+local MACRO_COMMANDS = {
+	CLEAR_TARGET = "/cleartarget",
+	ATTACK = "/startattack",
+	READY_CHECK = "/readycheck",
+	PING_TARGET = "/ping",
+	MENU = "/ubermoc click MENU",
+	SLICE1 = "/cast ", SLICE2 = "/cast ", SLICE3 = "/cast ",
+	SLICE4 = "/cast ", SLICE5 = "/cast ", SLICE6 = "/cast ",
+}
+
+-- Free slots: the player types the spell to put on them. The text is
+-- whitelisted (letters, digits, space, apostrophe, comma and a leading "/")
+-- so a stored string can never inject extra slash commands into the macro.
+-- /ubermoc bind SLICE1 Fireball  (or /ubermoc bind SLICE1 Fire Blast)
+local function SliceSpellText(actionID)
+	if not (ns.db and type(ns.db[actionID]) == "string") then
+		return nil
+	end
+	local spell = ns.db[actionID]:match("^/?(%a[%w%' ,%-]*)$")
+	if not spell or spell == "" then
+		return nil
+	end
+	return spell
+end
+
+local function MacroTextFor(actionID)
+	local base = MACRO_COMMANDS[actionID]
+	if base == nil then
+		return nil
+	end
+	if actionID:find("^SLICE") then
+		local spell = SliceSpellText(actionID)
+		if not spell then
+			return nil
+		end
+		return base .. spell
+	end
+	return base
+end
+
+-- Which execution path an action takes when bound. Mirrors ApplyBindings:
+-- native command, else the hidden secure button whose macrotext is the
+-- client-expanded macro (a set free slot), else the button runs our click
+-- handler (button - only hand-written Lua actions like mount/dismount and
+-- unset free slots remain).
+local function ExecutionFor(actionID)
+	if NativeCommandFor(actionID) then
+		return "native"
+	end
+	if MacroTextFor(actionID) or SliceSpellText(actionID) then
+		return "macro"
+	end
+	return "button"
+end
+
+ns.ExecutionPath = ExecutionFor
 
 function ns:ApplyBindings()
 	if not self.bindingsActive then
@@ -433,15 +511,32 @@ function ns:ApplyBindings()
 	for _, action in ipairs(ns.ACTIONS) do
 		local tokens = GetBoundTokens(bindings[action.id])
 		if tokens then
-			for _, token in ipairs(tokens) do
-				if IsTokenBindable(token) then
-					local command = NativeCommandFor(action.id)
-					if command then
+			local command = NativeCommandFor(action.id)
+			if command then
+				for _, token in ipairs(tokens) do
+					if IsTokenBindable(token) then
 						-- The game's own binding command: the press runs exactly
 						-- as a stock keybind does, with no addon code in between.
 						SetOverrideBinding(GetBindingOwner(), PRIORITY, token, command)
-					else
-						SetOverrideBindingClick(GetBindingOwner(), PRIORITY, token, "UbermocForeverButton" .. action.id, "LeftButton")
+					end
+				end
+			else
+				local buttonName = "UbermocForeverButton" .. action.id
+				local button = _G[buttonName]
+				if button and not InCombatLockdown() then
+					-- Set the macro at bind time so a free slot picks up its
+					-- spell, and unbound-by-mistake slots fall back to the
+					-- click handler rather than firing an empty /cast.
+					-- (SetAttribute on a secure button is protected during
+					-- combat; ApplyBindings defers mid-fight anyway.)
+					local macrotext = MacroTextFor(action.id) or ("/ubermoc click " .. action.id)
+					if button:GetAttribute("macrotext") ~= macrotext then
+						button:SetAttribute("macrotext", macrotext)
+					end
+					for _, token in ipairs(tokens) do
+						if IsTokenBindable(token) then
+							SetOverrideBindingClick(GetBindingOwner(), PRIORITY, token, buttonName, "LeftButton")
+						end
 					end
 				end
 			end
@@ -475,130 +570,14 @@ function ns:IsButtonInUse(buttonToken, exceptActionID)
 	return false
 end
 
--- Live preview while a row is capturing: when the player presses a pad
--- button during capture, bind that token to a hidden secure button which
--- runs the capturing action once (so the button visibly "does" the thing it
--- is about to be bound to). The native binding button's own gamepad
--- listener records the token in parallel, so storage still goes through
--- Blizzard's capture flow. The preview override is dropped when the capture
--- ends (ClearPreviewBinding), right before the real binding is applied.
-function ns:PreviewBoundAction(buttonToken)
-	if not buttonToken or self:IsButtonInUse(buttonToken) then
-		return false
-	end
-	if InCombatLockdown() or not EnsureActionButtons() then
-		return false
-	end
-	if not _G["UbermocForeverButtonPREVIEW"] then
-		local button = CreateFrame("Button", "UbermocForeverButtonPREVIEW", nil, "SecureActionButtonTemplate")
-		button:Hide()
-		button:RegisterForClicks("AnyUp", "AnyDown")
-		button:SetAttribute("type", "macro")
-		button:SetAttribute("macrotext", "/ubermoc preview")
-	end
-	SetOverrideBindingClick(GetBindingOwner(), PRIORITY, buttonToken, "UbermocForeverButtonPREVIEW", "LeftButton")
-	self.previewToken = buttonToken
-	return true
-end
-
--- Clear the live-preview override. The client has no single-key clear for
--- overrides (only ClearOverrideBindings for a whole owner), so rebuild ours:
--- that drops the preview token and re-asserts every stored binding, which is
--- exactly the state we want when a capture ends or is cancelled. During
--- combat the clear cannot run, so keep the preview live until capture ends
--- outside combat rather than leaving the action unbound mid-fight.
-function ns:ClearPreviewBinding()
-	if self.previewToken and not InCombatLockdown() then
-		self.previewToken = nil
-		self:ApplyBindings()
-	end
-end
-
--- Our own gamepad listener for the capture window (BindingsUI.lua arms and
--- disarms it around every capture). It never stores bindings - it only
--- drives the live preview above. The native button's EnableGamePadButton is
--- turned off while this is armed so exactly one listener sees each press;
--- the press is then replayed into the native button's own OnInput path,
--- which records the key and completes the capture just like keyboard input
--- does. (The native mixin only enables its gamepad listener after the mouse
--- release that opened capture, which for a touch/mouse-driven UI would mean
--- pad presses during capture are silently ignored.)
---
--- The replay below is not synthetic input: it feeds the key token straight
--- into Blizzard's own capture handler as data, exactly like the keyboard
--- path does; the client itself recorded the press.
-local captureListener = nil
-
-function ns:ArmCapturePreview(button)
-	if InCombatLockdown() then
-		return false
-	end
-
-	if not captureListener then
-		captureListener = CreateFrame("Button", ADDON .. "CaptureListener", UIParent)
-		captureListener:SetSize(1, 1)
-		captureListener:ClearAllPoints()
-		captureListener:SetPoint("CENTER")
-		captureListener:EnableMouse(false)
-		captureListener:SetScript("OnClick", function(self, key, isDown)
-			ns:OnCapturePadInput(key, isDown)
-		end)
-	end
-
-	ns.captureTargetButton = button
-	captureListener:Show()
-	captureListener:RegisterForClicks("AnyDown", "AnyUp")
-	captureListener:EnableGamePadButton(true)
-	if button then
-		button:EnableGamePadButton(false)
-	end
-	return true
-end
-
-function ns:DisarmCapturePreview()
-	if captureListener then
-		captureListener:EnableGamePadButton(false)
-		captureListener:RegisterForClicks()
-		captureListener:Hide()
-	end
-	local button = ns.captureTargetButton
-	ns.captureTargetButton = nil
-	-- The native mixin's method is called IsBindingModeActive with no
-	-- arguments (CustomBindingButtonMixin.lua); call it, don't test for it.
-	if button and button:IsBindingModeActive() then
-		button:EnableGamePadButton(true)
-	end
-end
-
--- key arrives as a raw bindable token (the same values the native mixin
--- stores); keep PAD tokens only, like the completion callback does.
-function ns:OnCapturePadInput(key, isDown)
-	if type(key) ~= "string" or not key:find("^PAD") then
-		return
-	end
-
-	local button = self.captureTargetButton
-	if button and button.OnInput then
-		-- Native capture path first: records the key, updates the pending-
-		-- bind glyph through CustomBindingManager:SetPendingBind, and on
-		-- release fires our completion callback. Doing this before the
-		-- preview rebuild keeps the chord state Blizzard's capture flow is
-		-- tracking intact.
-		button:OnInput(key, isDown)
-	end
-
-	if not button or not button:IsBindingModeActive() then
-		-- Capture already finished through the native path; the completion
-		-- callback stores the binding and rebuilds - no preview to manage.
-		return
-	end
-
-	if isDown then
-		self:PreviewBoundAction(key)
-	else
-		self:ClearPreviewBinding()
-	end
-end
+-- Live preview while a row is capturing, and the private capture listener,
+-- were removed in 0.2.3. The native CustomBindingButtonTemplate already
+-- listens for gamepad presses itself (OnGamePadButtonDown), and the old
+-- preview had to re-run the pressed action through addon code to show it -
+-- which is exactly what got blocked ("ADDON_ACTION_FORBIDDEN ... RunBinding()")
+-- whenever another addon had tainted the execution. With macro-based bindings
+-- (see below) a press never needs addon code at all, so there is nothing left
+-- to preview and no listener to relay presses into.
 
 -- Whether the connected pad reports this button token. (Callers must not
 -- ask when no pad is connected or the client gives no mapped state - use
@@ -713,21 +692,12 @@ local function ToggleAttack()
 end
 
 -- Run a binding command (the exact string from the game's binding table, e.g.
--- "TARGETNEARESTENEMY") through the client's own binding runner. Targeting
--- functions like TargetNearestEnemy are protected when an addon calls them
--- directly ("Interface action failed because of an AddOn"), but running them
--- as a bind command goes down the same path a stock keypress takes and is
--- allowed. RunBinding exists in this client (verified via the API index;
--- Blizzard's own KeyBindingFrame uses it to preview binds).
-local function RunBindCommand(command)
-	if RunBinding then
-		RunBinding(command)
-	end
-end
-
+-- "TARGETNEARESTENEMY") through the client's own binding runner. Removed in
+-- 0.2.3: RunBinding is protected, and calling it from our code during a press
+-- was rejected outright ("ADDON_ACTION_FORBIDDEN ... RunBinding()"). Those
+-- actions are now bound straight to their commands (NATIVE_COMMANDS) or
+-- client-expanded macros (MACRO_COMMANDS), so nothing here needs it.
 local actionHandlers = {
-	TARGET_ENEMY = function() RunBindCommand("TARGETNEARESTENEMY") end,
-	TARGET_FRIEND = function() RunBindCommand("TARGETNEARESTFRIEND") end,
 	TARGET_PARTY = function() TargetNearestPartyMember() end,
 	TARGET_PLAYER = function() TargetNearestEnemyPlayer() end,
 	CLEAR_TARGET = function() ClearTarget() end,
@@ -779,7 +749,13 @@ local actionHandlers = {
 	MOUNT_JOURNAL = function() CallGlobal("ToggleCollectionsJournal", _G.COLLECTIONS_JOURNAL_TAB_INDEX_MOUNTS) end,
 	GROUP_FINDER = function() CallGlobal("PVEFrame_ToggleFrame", "GroupFinderFrame") end,
 
-	MENU = function() ns:OpenSettings() end,
+	MENU = function()
+		if ns.OpenSettingsDeferred then
+			ns.OpenSettingsDeferred()
+		else
+			ns:OpenSettings()
+		end
+	end,
 }
 
 function ns:HandleBoundAction(actionID)
@@ -799,19 +775,16 @@ function ns:HandleBoundAction(actionID)
 	end
 end
 
--- The live-preview button's macrotext ("/ubermoc preview"): while a row is
--- capturing, pressing a pad button runs that action once right away, before
--- the binding is stored.
-ns.SlashSubcommands = ns.SlashSubcommands or {}
-ns.SlashSubcommands["preview"] = function()
-	local actionID = ns.capturingActionID
-	if actionID then
-		ns:HandleBoundAction(actionID)
-	end
-end
+-- The live-preview path ("/ubermoc preview") was removed in 0.2.3: re-running
+-- the capturing action through addon code during a press is exactly what got
+-- blocked by taint, and with command/macro bindings there is nothing to run.
 
--- The secure action buttons fire this through their macrotext
--- ("/ubermoc click <ID>"), which is how a bound pad button reaches the addon.
+-- The hidden secure buttons fire this through their macrotext
+-- ("/ubermoc click <ID>") for the few actions whose behaviour is hand-written
+-- Lua (mount/dismount, unset free slots). The click itself goes through
+-- Blizzard's own SecureActionButtonTemplate code - legal even when other
+-- addons have tainted the execution.
+ns.SlashSubcommands = ns.SlashSubcommands or {}
 ns.SlashSubcommands["click"] = function(args)
 	ns:HandleBoundAction((args or ""):upper())
 end
@@ -875,6 +848,7 @@ local function PrintBindingHelp()
 		ns:Print("UbermocForever binding commands:")
 		ns:Print("  /ubermoc bind <action> <button>  set a binding, e.g. /ubermoc bind TARGET_ENEMY PADRTRIGGER")
 		ns:Print("  /ubermoc unbind <action>    clear an action's binding")
+		ns:Print("  /ubermoc bindspell SLICE1 Fireball   put a spell on a free Action slot")
 		ns:Print("  /ubermoc bindlist           show current bindings")
 		ns:Print("  /ubermoc bindreset          restore default bindings")
 		ns:Print("Actions: TARGET_ENEMY, TARGET_FRIEND, TARGET_PARTY, TARGET_PLAYER, CLEAR_TARGET, FOCUS_TARGET, INTERACT, ATTACK, STOP_CASTING, READY_CHECK, PING_TARGET, JUMP, AUTO_RUN, MOUNT_DISMOUNT, ZOOM_IN, ZOOM_OUT, BAGS, CHARACTER, SPELLBOOK, TALENTS, MAP, QUEST_LOG, SOCIAL, MOUNT_JOURNAL, GROUP_FINDER, MENU, SLICE1-SLICE6")
