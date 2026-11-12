@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.9 (2026-11-12)
+- Fixed "attempt to call a nil value" error that fired when opening the settings page. The binding rows are recycled by Blizzard's scroll list every time the page opens or is searched, and the recycle step asked each stock binding button whether it was "selected" — a method those buttons don't have (they track listening state differently). Rows now ask the button whether it is currently waiting for a binding, which is the real question, so a half-finished capture is still cancelled safely without the error.
+
 ## 0.1.8 (2026-11-12)
 - Fixed the "AddOn 'UbermocForever' tried to call the protected function 'callback()'" popup when clicking an Ubermoc entry in the Esc menu. The pause menu closes through a protected Blizzard call, and anything our button callback did inside that flow was blamed on the addon. The menu entries are now inert: they only record which entry was chosen, and the settings page opens from Blizzard's own "panel hidden" callback once the menu has closed — same result, no protected-call violation.
 

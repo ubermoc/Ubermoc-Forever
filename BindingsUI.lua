@@ -210,7 +210,9 @@ end
 
 function ns:ReleaseBindingButtons()
 	for actionID, button in pairs(rowButtons) do
-		if button:IsSelected() then
+		-- CustomBindingButtonMixin has no IsSelected method; the capture state
+		-- lives in isBindingModeActive and is read via IsBindingModeActive().
+		if button:IsBindingModeActive() then
 			button:CancelBinding()
 		end
 		ns:DisarmCapturePreview()
@@ -436,7 +438,9 @@ end
 function UbermocForeverBindingRowMixin:Release()
 	local button = self.button
 	if button then
-		if button:IsSelected() then
+		-- CustomBindingButtonMixin has no IsSelected method; the capture state
+		-- lives in isBindingModeActive and is read via IsBindingModeActive().
+		if button:IsBindingModeActive() then
 			button:CancelBinding()
 		end
 		ns:DisarmCapturePreview()
