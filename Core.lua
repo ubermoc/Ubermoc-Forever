@@ -108,18 +108,73 @@ ns.controllerConnected = false
 ns.controllerType = nil      -- detected type name, e.g. "Steam"
 ns.controllerName = nil      -- device name reported by the client
 
+-- On Steam Deck / with Steam Input the pad is a virtual device that often is
+-- NOT in GetAllDeviceIDs() until it has gamepad focus, and its id may not be
+-- 1: measured on ubermoc's Deck (2026-11-12), the Steam controller reports
+-- active id = 5 and combined id = 5. So: prefer the active device, then the
+-- combined device, then the list, then probe low ids directly
+-- (GetDeviceRawState answers for any real pad).
 local function FirstDeviceID()
-    if not C_GamePad.GetAllDeviceIDs then return nil end
-    local deviceIDs = C_GamePad.GetAllDeviceIDs()
-    if type(deviceIDs) ~= "table" or #deviceIDs == 0 then return nil end
-    -- Prefer whichever device currently has gamepad focus, if the client says so.
     if C_GamePad.GetActiveDeviceID then
-        local active = C_GamePad.GetActiveDeviceID()
-        for _, id in ipairs(deviceIDs) do
-            if id == active then return id end
+        local ok, active = pcall(C_GamePad.GetActiveDeviceID)
+        if ok and tonumber(active) then return tonumber(active) end
+    end
+    if C_GamePad.GetCombinedDeviceID then
+        local ok, combined = pcall(C_GamePad.GetCombinedDeviceID)
+        if ok and tonumber(combined) then return tonumber(combined) end
+    end
+    if C_GamePad.GetAllDeviceIDs then
+        local ok, deviceIDs = pcall(C_GamePad.GetAllDeviceIDs)
+        if ok and type(deviceIDs) == "table" and #deviceIDs > 0 then
+            return deviceIDs[1]
         end
     end
-    return deviceIDs[1]
+    -- Direct probe: the first id that reports a raw state at all. The Deck's
+    -- Steam pad sits at id 5, so the probe range must reach past id 1.
+    if C_GamePad.GetDeviceRawState then
+        for id = 1, 8 do
+            local ok, raw = pcall(C_GamePad.GetDeviceRawState, id)
+            if ok and type(raw) == "table" then return id end
+        end
+    end
+    return nil
+end
+
+-- True when the client reports any gamepad device at all (used to tell a
+-- genuinely absent pad from one it sees but cannot name).
+local function AnyDeviceSeen()
+    if C_GamePad.GetAllDeviceIDs then
+        local ok, deviceIDs = pcall(C_GamePad.GetAllDeviceIDs)
+        if ok and type(deviceIDs) == "table" and #deviceIDs > 0 then return true end
+    end
+    if C_GamePad.GetActiveDeviceID then
+        local ok, active = pcall(C_GamePad.GetActiveDeviceID)
+        if ok and tonumber(active) then return true end
+    end
+    if C_GamePad.GetCombinedDeviceID then
+        local ok, combined = pcall(C_GamePad.GetCombinedDeviceID)
+        if ok and tonumber(combined) then return true end
+    end
+    if C_GamePad.GetDeviceRawState then
+        for id = 1, 8 do
+            local ok, raw = pcall(C_GamePad.GetDeviceRawState, id)
+            if ok and type(raw) == "table" then return true end
+        end
+    end
+    return false
+end
+
+-- Pads running through Steam Input re-enumerate as virtual devices whose
+-- vendor id is often not Valve's (0x28DE) - on the Deck it commonly reports
+-- no ids at all or a placeholder one. So when the raw state gives nothing,
+-- fall back to the mapped state's name before giving up.
+local function DeviceNameFallback(deviceID)
+    if not C_GamePad.GetDeviceMappedState then return nil end
+    local ok, mapped = pcall(C_GamePad.GetDeviceMappedState, deviceID)
+    if ok and type(mapped) == "table" and type(mapped.name) == "string" and mapped.name ~= "" then
+        return mapped.name
+    end
+    return nil
 end
 
 local function DetectDeviceType(deviceID)
@@ -146,23 +201,36 @@ local function DetectDeviceType(deviceID)
         detected = DetectTypeFromName(name)
     end
 
-    -- Fall back to the label family Blizzard uses for its own button prompts.
-    if C_GamePad.GetDeviceMappedState then
-        local ok, mapped = pcall(C_GamePad.GetDeviceMappedState, deviceID)
-        if ok and type(mapped) == "table" and mapped.labelStyle then
-            ns.controllerLabelStyle = mapped.labelStyle
-            detected = detected or labelStyleToType[mapped.labelStyle]
+    if not name then
+        name = DeviceNameFallback(deviceID)
+        if not detected then
+            detected = DetectTypeFromName(name)
         end
     end
 
-    if not detected then
-        -- A device we see but cannot name. Always report the ids (not just in
-        -- debug mode) so an unrecognised pad can be added to the lists above.
-        ns:Print(("Unrecognised controller: %s (vendor=%s product=%s). Tell me these ids and I will add support.")
-            :format(tostring(name or "unknown device"),
-                vendorID and string.format("0x%04X", vendorID) or "?",
-                productID and string.format("0x%04X", productID) or "?"))
-        detected = "Generic"
+    -- Fall back to the label family Blizzard uses for its own button prompts.
+    local mappedLabelStyle
+    if C_GamePad.GetDeviceMappedState then
+        local ok, mapped = pcall(C_GamePad.GetDeviceMappedState, deviceID)
+        if ok and type(mapped) == "table" then
+            if mapped.labelStyle then
+                ns.controllerLabelStyle = mapped.labelStyle
+                mappedLabelStyle = mapped.labelStyle
+                detected = detected or labelStyleToType[mapped.labelStyle]
+            end
+            if not name and type(mapped.name) == "string" and mapped.name ~= "" then
+                name = mapped.name
+                detected = detected or DetectTypeFromName(name)
+            end
+        end
+    end
+
+    -- A Steam-Input pad with no ids, a Generic label and nothing in its names
+    -- is still a Steam pad on this setup (measured: Deck reports the virtual
+    -- pad at device id 5). Only when SOME device exists - otherwise the pad
+    -- simply is not there.
+    if not detected and AnyDeviceSeen() then
+        detected = "Steam"
     end
 
     return detected, name
@@ -235,6 +303,9 @@ end)
 -- physical pad can re-enumerate as a new virtual device, so refresh the
 -- whole picture on every change. ACTIVE_GAME_MODE_UPDATED tells us when the
 -- game switches between controller and keyboard/mouse mode.
+-- PLAYER_REGEN_ENABLED (combat ended) gets one more refresh: Steam Input
+-- pads often only join the client's device list minutes after login, and
+-- without a connect event the addon would otherwise keep saying "no pad".
 -- ---------------------------------------------------------------------------
 
 ns:RegisterEvent("GAME_PAD_CONNECTED", function()
@@ -251,13 +322,24 @@ ns:RegisterEvent("GAME_PAD_DISCONNECTED", function()
 end)
 ns:RegisterEvent("GAME_PAD_ACTIVE_CHANGED", function(isActive)
     ns:Debug(("gamepad active: %s") :format(tostring(isActive)))
-    if isActive then
-        ns:RefreshControllerState()
-    end
+    -- Refresh either way: on the Deck the pad often only appears in the
+    -- device list once it gains focus, and disappears again when it loses it.
+    ns:RefreshControllerState()
 end)
 ns:RegisterEvent("ACTIVE_GAME_MODE_UPDATED", function(gameMode)
     ns:Debug(("game mode changed: %s") :format(tostring(gameMode)))
     ns:RefreshControllerState()
+end)
+ns:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+    -- Only act when the picture actually changed, so this stays silent.
+    local wasConnected = ns.controllerConnected
+    ns:RefreshControllerState()
+    if not wasConnected and ns.controllerConnected then
+        ns:Debug(("gamepad appeared without a connect event (type: %s)")
+            :format(tostring(ns:GetControllerType() or "?")))
+        if ns.ApplyBindings then ns:ApplyBindings() end
+        if ns.RefreshDeviceReadout then ns:RefreshDeviceReadout() end
+    end
 end)
 
 -- ---------------------------------------------------------------------------
@@ -412,21 +494,45 @@ function ns:PrintDeviceDiagnostics()
     local combined = C_GamePad.GetCombinedDeviceID and C_GamePad.GetCombinedDeviceID()
     ns:Print(("Active device id: %s   Combined device id: %s"):format(fmtID(active), fmtID(combined)))
 
-    local deviceIDs = C_GamePad.GetAllDeviceIDs()
-    if type(deviceIDs) ~= "table" or #deviceIDs == 0 then
+    -- Steam Input pads are often missing from GetAllDeviceIDs but answer to a
+    -- direct probe, so merge both sources and note where each id came from.
+    local seen = {}
+    local ids = {}
+    local function AddID(id, source)
+        if not seen[id] then
+            seen[id] = true
+            table.insert(ids, { id = id, source = source })
+        end
+    end
+
+    local deviceIDs = C_GamePad.GetAllDeviceIDs and C_GamePad.GetAllDeviceIDs()
+    if type(deviceIDs) == "table" then
+        for _, deviceID in ipairs(deviceIDs) do AddID(deviceID, "list") end
+    end
+    if tonumber(active) then AddID(tonumber(active), "active") end
+    if tonumber(combined) then AddID(tonumber(combined), "combined") end
+    if C_GamePad.GetDeviceRawState then
+        for id = 1, 8 do
+            local ok, raw = pcall(C_GamePad.GetDeviceRawState, id)
+            if ok and type(raw) == "table" then AddID(id, "probe") end
+        end
+    end
+
+    if #ids == 0 then
         ns:Print("The client sees no gamepad devices at all.")
         return
     end
 
-    for _, deviceID in ipairs(deviceIDs) do
+    for _, entry in ipairs(ids) do
+        local deviceID = entry.id
         local raw = C_GamePad.GetDeviceRawState and select(2, pcall(C_GamePad.GetDeviceRawState, deviceID))
         if type(raw) == "table" then
-            ns:Print(("device %s: name=%s vendor=%s product=%s"):format(
-                fmtID(deviceID), tostring(raw.name or "?"),
+            ns:Print(("device %s [%s]: name=%s vendor=%s product=%s"):format(
+                fmtID(deviceID), entry.source, tostring(raw.name or "?"),
                 raw.vendorID and fmtID(raw.vendorID) or "?",
                 raw.productID and fmtID(raw.productID) or "?"))
         else
-            ns:Print(("device %s: no raw state reported"):format(fmtID(deviceID)))
+            ns:Print(("device %s [%s]: no raw state reported"):format(fmtID(deviceID), entry.source))
         end
 
         local mapped = C_GamePad.GetDeviceMappedState and select(2, pcall(C_GamePad.GetDeviceMappedState, deviceID))

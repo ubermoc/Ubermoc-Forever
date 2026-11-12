@@ -1,10 +1,20 @@
 -- UbermocForever/DefaultBinds.lua
 -- Offers the default controller key bindings once, in a confirmation popup.
 --
--- The layout below is taken from the Ubermoc UI add-on's saved bindings (2026-11-11): face buttons on action
--- buttons 1-4, D-pad on 8/7/6/5, triggers on 10/12, bumpers target the nearest enemy/friend, and the Shift, Ctrl
--- and Ctrl+Shift layers reach the extra action bars. Entries that only work with Ubermoc UI's own frames, and
--- keyboard keys, are left out on purpose.
+-- The layout follows the clock, like a gamepad ring around the character:
+--   * main bar first (no modifier);
+--   * then action bar 2 (Shift), bar 3 (Ctrl) and bar 4 (Ctrl+Shift);
+--   * each button starts at its own slot on the MAIN bar - A/Cross is always
+--     the A-slot, never a different slot on another bar.
+-- On the main bar the face buttons sit in their natural diamond (X bottom, Y
+-- top, A right, B left), the D-pad takes 8/7/6/5 clockwise from up, and the
+-- triggers/bumpers group takes 10/9/12/11 clockwise from 3:00. On every other
+-- bar the same four buttons take that bar's own 3:00/6:00/9:00/12:00 slots,
+-- verified against Blizzard's own binding table (Bindings_Camelot.xml): slot
+-- 1 is 3:00, 2 is 6:00, 3 is 9:00 and 4 is 12:00 on the side bars.
+-- Bumpers target the nearest enemy/friend instead of a bar slot. Entries that
+-- only work with Ubermoc UI's own frames, and keyboard keys, are left out on
+-- purpose.
 --
 -- Nothing changes until the player answers "Use defaults". Their previous bindings for those keys are saved
 -- first, so "/ubermocbinds restore" puts them back. Bindings are never changed during combat: the change waits
@@ -12,87 +22,117 @@
 local ADDON, ns = ...
 
 -- Raise this number to ask again after the default layout changes.
-local LAYOUT_VERSION = 1
+local LAYOUT_VERSION = 2
 
-local DEFAULTS = {
-    -- X / Square
-    { "PAD3", "ACTIONBUTTON1" },
-    { "SHIFT-PAD3", "MULTIACTIONBAR1BUTTON1" },
-    { "CTRL-PAD3", "MULTIACTIONBAR2BUTTON1" },
-    { "CTRL-SHIFT-PAD3", "MULTIACTIONBAR3BUTTON1" },
-    -- A / Cross
-    { "PAD1", "ACTIONBUTTON2" },
-    { "SHIFT-PAD1", "MULTIACTIONBAR1BUTTON2" },
-    { "CTRL-PAD1", "MULTIACTIONBAR2BUTTON2" },
-    { "CTRL-SHIFT-PAD1", "MULTIACTIONBAR3BUTTON2" },
-    -- B / Circle
-    { "PAD2", "ACTIONBUTTON3" },
-    { "SHIFT-PAD2", "MULTIACTIONBAR1BUTTON3" },
-    { "CTRL-PAD2", "MULTIACTIONBAR2BUTTON3" },
-    { "CTRL-SHIFT-PAD2", "MULTIACTIONBAR3BUTTON3" },
-    -- Y / Triangle
-    { "PAD4", "ACTIONBUTTON4" },
-    { "SHIFT-PAD4", "MULTIACTIONBAR1BUTTON4" },
-    { "CTRL-PAD4", "MULTIACTIONBAR2BUTTON4" },
-    { "CTRL-SHIFT-PAD4", "MULTIACTIONBAR3BUTTON4" },
-    -- D-pad up
-    { "PADDUP", "ACTIONBUTTON8" },
-    { "SHIFT-PADDUP", "MULTIACTIONBAR1BUTTON8" },
-    { "CTRL-PADDUP", "MULTIACTIONBAR2BUTTON8" },
-    { "CTRL-SHIFT-PADDUP", "MULTIACTIONBAR3BUTTON8" },
-    -- D-pad right
-    { "PADDRIGHT", "ACTIONBUTTON7" },
-    { "SHIFT-PADDRIGHT", "MULTIACTIONBAR1BUTTON7" },
-    { "CTRL-PADDRIGHT", "MULTIACTIONBAR2BUTTON7" },
-    { "CTRL-SHIFT-PADDRIGHT", "MULTIACTIONBAR3BUTTON7" },
-    -- D-pad down
-    { "PADDDOWN", "ACTIONBUTTON6" },
-    { "SHIFT-PADDDOWN", "MULTIACTIONBAR1BUTTON6" },
-    { "CTRL-PADDDOWN", "MULTIACTIONBAR2BUTTON6" },
-    { "CTRL-SHIFT-PADDDOWN", "MULTIACTIONBAR3BUTTON6" },
-    -- D-pad left
-    { "PADDLEFT", "ACTIONBUTTON5" },
-    { "SHIFT-PADDLEFT", "MULTIACTIONBAR1BUTTON5" },
-    { "CTRL-PADDLEFT", "MULTIACTIONBAR2BUTTON5" },
-    { "CTRL-SHIFT-PADDLEFT", "MULTIACTIONBAR3BUTTON5" },
-    -- right trigger
-    { "PADRTRIGGER", "ACTIONBUTTON10" },
-    { "SHIFT-PADRTRIGGER", "MULTIACTIONBAR1BUTTON10" },
-    { "CTRL-PADRTRIGGER", "MULTIACTIONBAR2BUTTON10" },
-    { "CTRL-SHIFT-PADRTRIGGER", "MULTIACTIONBAR3BUTTON10" },
-    -- left trigger
-    { "PADLTRIGGER", "ACTIONBUTTON12" },
-    { "SHIFT-PADLTRIGGER", "MULTIACTIONBAR1BUTTON12" },
-    { "CTRL-PADLTRIGGER", "MULTIACTIONBAR2BUTTON12" },
-    { "CTRL-SHIFT-PADLTRIGGER", "MULTIACTIONBAR3BUTTON12" },
-    -- right bumper
-    { "PADRSHOULDER", "TARGETNEARESTENEMY" },
-    { "SHIFT-PADRSHOULDER", "TARGETNEARESTENEMY" },
-    { "CTRL-PADRSHOULDER", "TARGETNEARESTENEMY" },
-    { "CTRL-SHIFT-PADRSHOULDER", "TARGETNEARESTENEMY" },
-    -- left bumper
-    { "PADLSHOULDER", "TARGETNEARESTFRIEND" },
-    { "SHIFT-PADLSHOULDER", "TARGETNEARESTFRIEND" },
-    { "CTRL-PADLSHOULDER", "TARGETNEARESTFRIEND" },
-    { "CTRL-SHIFT-PADLSHOULDER", "TARGETNEARESTFRIEND" },
-    -- right stick click
-    { "PADRSTICK", "MULTIACTIONBAR4BUTTON1" },
-    { "SHIFT-PADRSTICK", "MULTIACTIONBAR4BUTTON2" },
-    { "CTRL-PADRSTICK", "MULTIACTIONBAR4BUTTON3" },
-    { "CTRL-SHIFT-PADRSTICK", "MULTIACTIONBAR4BUTTON4" },
-    -- left stick click
-    { "PADLSTICK", "TOGGLEAUTORUN" },
-    { "SHIFT-PADLSTICK", "MULTIACTIONBAR1BUTTON9" },
-    { "CTRL-PADLSTICK", "MULTIACTIONBAR1BUTTON11" },
-    { "CTRL-SHIFT-PADLSTICK", "MULTIACTIONBAR2BUTTON9" },
-    -- paddle 4
-    { "PADPADDLE4", "JUMP" },
-    { "SHIFT-PADPADDLE4", "JUMP" },
-    { "CTRL-PADPADDLE4", "JUMP" },
-    { "CTRL-SHIFT-PADPADDLE4", "JUMP" },
-    -- Back / View
-    { "PADBACK", "TOGGLEWORLDMAP" },
-}
+-- Bar order for the modifier layers, clockwise from the main bar:
+--   none        -> main bar (ACTIONBUTTON1-12)
+--   SHIFT-      -> action bar 2 (MULTIACTIONBAR1* = MultiBarBottomLeft)
+--   CTRL-       -> action bar 3 (MULTIACTIONBAR2* = MultiBarBottomRight)
+--   CTRL-SHIFT- -> action bar 4 (MULTIACTIONBAR3* = MultiBarRight)
+-- (verified against Blizzard's Bindings_Camelot.xml, which maps each
+-- MULTIACTIONBARn to its bar frame).
+local LAYERS = { "", "SHIFT-", "CTRL-", "CTRL-SHIFT-" }
+
+-- The four clock positions on a bar, per layer: slot 1 is at 3:00, 2 at 6:00,
+-- 3 at 9:00, 4 at 12:00 (side bars run top-to-bottom; the main bar numbers
+-- left-to-right). On the MAIN bar the face buttons instead use their natural
+-- diamond so A is always the A-slot.
+local FACE_SLOTS = { 3, 4, 2, 1 } -- PAD3 X bottom, PAD4 Y top, PAD1 A right, PAD2 B left
+
+-- Build "<layer prefix><bar command>" for one button and layer index.
+local function BarCommand(layerIndex, slot)
+    if layerIndex == 1 then
+        return "ACTIONBUTTON" .. slot
+    end
+    return "MULTIACTIONBAR" .. (layerIndex - 1) .. "BUTTON" .. slot
+end
+
+-- Bind one button across all four layers: the same clock position on each bar.
+local function ClockBinds(key, mainSlot, sideSlot)
+    local binds = {}
+    for layerIndex, prefix in ipairs(LAYERS) do
+        local slot = (layerIndex == 1 and mainSlot) or sideSlot
+        table.insert(binds, { prefix .. key, BarCommand(layerIndex, slot) })
+    end
+    return binds
+end
+
+-- Bind one button across all four layers onto one fixed command (targeting).
+local function SameBind(key, command)
+    local binds = {}
+    for _, prefix in ipairs(LAYERS) do
+        table.insert(binds, { prefix .. key, command })
+    end
+    return binds
+end
+
+local DEFAULTS = {}
+
+-- Face buttons: main-bar diamond, then the 3:00/6:00/9:00/12:00 slots of the
+-- next three bars. X (PAD3) is bottom on the main bar and 6:00 elsewhere, and
+-- so on for every button.
+for _, entry in ipairs({
+    { key = "PAD3", mainSlot = FACE_SLOTS[1], sideSlot = 2 }, -- X / Square (bottom)
+    { key = "PAD4", mainSlot = FACE_SLOTS[2], sideSlot = 4 }, -- Y / Triangle (top)
+    { key = "PAD1", mainSlot = FACE_SLOTS[3], sideSlot = 1 }, -- A / Cross (right, 3:00)
+    { key = "PAD2", mainSlot = FACE_SLOTS[4], sideSlot = 3 }, -- B / Circle (left, 9:00)
+}) do
+    for _, bind in ipairs(ClockBinds(entry.key, entry.mainSlot, entry.sideSlot)) do
+        table.insert(DEFAULTS, bind)
+    end
+end
+
+-- D-pad: 8/7/6/5 on the main bar (clockwise from up), and each side bar's own
+-- ring clockwise from its top: 4 (12:00), 1 (3:00), 3 (9:00), 2 (6:00).
+for _, entry in ipairs({
+    { key = "PADDUP", mainSlot = 8, sideSlot = 4 },
+    { key = "PADDRIGHT", mainSlot = 7, sideSlot = 1 },
+    { key = "PADDDOWN", mainSlot = 6, sideSlot = 2 },
+    { key = "PADDLEFT", mainSlot = 5, sideSlot = 3 },
+}) do
+    for _, bind in ipairs(ClockBinds(entry.key, entry.mainSlot, entry.sideSlot)) do
+        table.insert(DEFAULTS, bind)
+    end
+end
+
+-- Triggers and bumpers: one clockwise group on the main bar - right trigger
+-- at 3:00 (10), right bumper at 6:00 (9), left trigger at 9:00 (12), left
+-- bumper at 12:00 (11) - and each side bar's own clock slots. The bumpers
+-- instead target the nearest enemy/friend on every layer.
+for _, entry in ipairs({
+    { key = "PADRTRIGGER", mainSlot = 10, sideSlot = 1 }, -- right trigger, 3:00
+    { key = "PADLSHOULDER", command = "TARGETNEARESTFRIEND" }, -- left bumper
+    { key = "PADLTRIGGER", mainSlot = 12, sideSlot = 3 }, -- left trigger, 9:00
+    { key = "PADRSHOULDER", command = "TARGETNEARESTENEMY" }, -- right bumper
+}) do
+    if entry.command then
+        for _, bind in ipairs(SameBind(entry.key, entry.command)) do
+            table.insert(DEFAULTS, bind)
+        end
+    else
+        for _, bind in ipairs(ClockBinds(entry.key, entry.mainSlot, entry.sideSlot)) do
+            table.insert(DEFAULTS, bind)
+        end
+    end
+end
+
+-- Right stick click: its own little clock on bar 5 (MULTIACTIONBAR4*), so it
+-- never overlaps the face-button bars.
+for index, key in ipairs({ "PADRSTICK", "SHIFT-PADRSTICK", "CTRL-PADRSTICK", "CTRL-SHIFT-PADRSTICK" }) do
+    table.insert(DEFAULTS, { key, "MULTIACTIONBAR4BUTTON" .. index })
+end
+
+-- Left stick click: auto run; its modified layers reach bar 2's free slots.
+table.insert(DEFAULTS, { "PADLSTICK", "TOGGLEAUTORUN" })
+table.insert(DEFAULTS, { "SHIFT-PADLSTICK", "MULTIACTIONBAR1BUTTON9" })
+table.insert(DEFAULTS, { "CTRL-PADLSTICK", "MULTIACTIONBAR1BUTTON11" })
+table.insert(DEFAULTS, { "CTRL-SHIFT-PADLSTICK", "MULTIACTIONBAR2BUTTON9" })
+
+-- Paddle 4 (only pads with paddles report it) and Back / View.
+for _, prefix in ipairs(LAYERS) do
+    table.insert(DEFAULTS, { prefix .. "PADPADDLE4", "JUMP" })
+end
+table.insert(DEFAULTS, { "PADBACK", "TOGGLEWORLDMAP" })
 
 local function State()
     local db = ns.db
@@ -114,18 +154,30 @@ function ns:ApplyDefaultBinds()
         return false
     end
     state.backup = state.backup or {}
-    local changed = 0
+    local changed, cleared = 0, 0
     for _, bind in ipairs(DEFAULTS) do
         local key, action = bind[1], bind[2]
         if state.backup[key] == nil then
             state.backup[key] = GetBindingAction(key) or ""
         end
-        if SetBinding(key, action) then changed = changed + 1 end
+        if action == "" then
+            -- Button the previous layout version used but this one no longer
+            -- binds: clear it so a stale action cannot hide behind a key the
+            -- new layout leaves free.
+            SetBinding(key)
+            cleared = cleared + 1
+        elseif SetBinding(key, action) then
+            changed = changed + 1
+        end
     end
     SaveBindings(GetCurrentBindingSet())
     state.applied = true
     state.askedVersion = LAYOUT_VERSION
-    self:Print(string.format("Default key bindings applied (%d). Put your old ones back with /ubermocbinds restore.", changed))
+    local suffix = ""
+    if cleared > 0 then
+        suffix = (" Cleared %d key(s) from the old layout."):format(cleared)
+    end
+    self:Print(string.format("Default key bindings applied (%d).%s Put your old ones back with /ubermocbinds restore.", changed, suffix))
     return true
 end
 
@@ -197,6 +249,13 @@ local function AskIfNeeded()
     local state = State()
     if not state then return end
     if state.askedVersion == LAYOUT_VERSION then return end
+    -- A player who already applied an older version: their untouched original
+    -- keys are still in the backup, so re-applying is safe - but it goes
+    -- through the same confirmation popup rather than changing bindings on
+    -- its own. If they decline, nothing changes and the old layout stays.
+    if state.applied then
+        ns:Print("The default controller layout changed (it now starts on the main bar and runs clockwise). Type /ubermocbinds to update it, or /ubermocbinds restore to go back first.")
+    end
     local isShown = _G["StaticPopup_IsCustomGenericConfirmationShown"]
     if isShown and isShown("UbermocForeverDefaultBinds") then return end
     ShowPrompt()
