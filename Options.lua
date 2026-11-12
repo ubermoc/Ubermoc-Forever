@@ -66,57 +66,6 @@ local function BuildSettings()
     -- options be rebuilt when the row refreshes.
     Settings.CreateSlider(category, scaleSetting, GetOptions, "Scale of the UbermocForever window.")
 
-    -- Blizzard's own Keybindings page is where controller and keyboard binds
-    -- live. There is no button widget in the Settings API, so this acts like a
-    -- link: a proxy setting whose SetValue runs immediately when you tick it,
-    -- jumping to that page. GetValue always reports "off" so it never looks
-    -- stuck on.
-    local function GetAlwaysOff() return false end
-    local function JumpToKeybinds() ns:OpenKeybinds() end
-    local jumpSetting = Settings.RegisterProxySetting(
-        category, addonName .. "_JumpToKeybinds",
-        Settings.VarType.Boolean, "Open the Keybindings page", false,
-        GetAlwaysOff, JumpToKeybinds)
-    Settings.CreateCheckbox(category, jumpSetting,
-        "Opens the game's Keybindings settings, where you can bind keys and controller buttons.")
-
-    -- Controller bindings. Same link trick as above: ticking a row starts
-    -- capture for that action (press any controller button to bind it), and
-    -- the row never stays checked. The current binding for each action is
-    -- shown by /ubermoc bindlist, with icons for the connected pad's buttons.
-    local function BindAction(actionID)
-        return function()
-            if ns.StartCapture then
-                ns:StartCapture(actionID)
-                ns:Print(("Press a controller button for %s.")
-                    :format(ns.actionByID[actionID].name))
-            end
-        end
-    end
-
-    local function ClearAllBindings()
-        if ns.ResetBindingsToDefault then
-            ns:ResetBindingsToDefault()
-            ns:Print("controller bindings reset to defaults.")
-        end
-    end
-
-    for _, action in ipairs(ns.ACTIONS or {}) do
-        local bindSetting = Settings.RegisterProxySetting(
-            category, addonName .. "_Bind_" .. action.id,
-            Settings.VarType.Boolean, "Bind: " .. action.name, false,
-            GetAlwaysOff, BindAction(action.id))
-        Settings.CreateCheckbox(category, bindSetting,
-            "Tick this row, then press the controller button you want to use for this action.")
-    end
-
-    local resetSetting = Settings.RegisterProxySetting(
-        category, addonName .. "_BindReset",
-        Settings.VarType.Boolean, "Reset controller bindings", false,
-        GetAlwaysOff, ClearAllBindings)
-    Settings.CreateCheckbox(category, resetSetting,
-        "Restores the default controller bindings (shoulder buttons and face/trigger buttons).")
-
     -- Live device readout. This client's Settings API has no text-label row,
     -- so the current pad is mirrored to a CVar: its value shows as the
     -- dropdown's selection (the options themselves are inert). The CVar is
@@ -164,6 +113,18 @@ local function BuildSettings()
     ns:RegisterEvent("GAME_PAD_ACTIVE_CHANGED", ns.RefreshDeviceReadout)
 
     Settings.RegisterAddOnCategory(category)
+
+    -- Controller Bindings section: real settings-list rows (native binding
+    -- buttons, see BindingsUI.lua), appended below the regular options in the
+    -- same vertical layout so they scroll and search like stock settings.
+    if ns.AppendBindingSectionToLayout then
+        ns:AppendBindingSectionToLayout(layout)
+    end
+
+    -- Small hint line under the rows (shown only while our page is open).
+    if SettingsPanel and ns.BuildBindingPageExtras then
+        ns:BuildBindingPageExtras(SettingsPanel:GetSettingsList())
+    end
 end
 
 local function tryBuild()

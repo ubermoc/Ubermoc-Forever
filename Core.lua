@@ -273,22 +273,16 @@ function ns:OpenKeybinds()
         ns:Print("Settings UI not available in this client.")
         return false
     end
-    local categoryID = Settings.KEYBINDINGS_CATEGORY_ID
-    if not categoryID then
-        -- Blizzard's settings definitions register the Keybindings category
-        -- lazily; opening the panel once forces them to load, then retry.
-        SettingsPanel:Open()
-        C_Timer.After(0.1, function()
-            local id = Settings.KEYBINDINGS_CATEGORY_ID
-            if id then
-                Settings.OpenToCategory(id)
-            else
-                ns:Print("The Keybindings page is not available in this client.")
-            end
-        end)
-        return true
+    if not ns.settingsCategory then
+        ns:Print("Settings not ready yet. Use /reload after login.")
+        return false
     end
-    Settings.OpenToCategory(categoryID)
+    -- The controller bindings live on our own settings page now (native
+    -- binding rows, see BindingsUI.lua). OpenToCategory's second argument
+    -- scrolls the vertical list to that element, so the button lands right on
+    -- the "Controller Bindings" section header.
+    local scrollTarget = ns.GetBindingScrollTargetName and ns:GetBindingScrollTargetName() or nil
+    Settings.OpenToCategory(ns.settingsCategory:GetID(), scrollTarget)
     return true
 end
 

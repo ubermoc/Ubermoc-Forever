@@ -56,7 +56,6 @@ local typeToLabelStyle = {
 }
 
 ns.bindingsActive = false
-ns.capturingAction = nil
 
 local actionByID = {}
 for _, action in ipairs(ns.ACTIONS) do
@@ -229,98 +228,10 @@ function ns:IsButtonSupported(button)
 end
 
 ------------------------------------------------------------------------
--- Capturing a button for an action (same pattern as the stock keybind
--- listener: enable OnGamePadButtonDown while listening, then store the token)
+-- Capturing a button for an action now lives in BindingsUI.lua: the rows
+-- use Blizzard's native CustomBindingButtonTemplate capture flow instead of
+-- a private listener frame. Storage stays in db.bindings (this file).
 ------------------------------------------------------------------------
-
-local captureFrame = nil
-
-local function StopCapture()
-	if not ns.capturingAction then
-		return
-	end
-
-	ns.capturingAction = nil
-	if captureFrame then
-		captureFrame:SetScript("OnKeyDown", nil)
-		captureFrame:SetScript("OnGamePadButtonDown", nil)
-		captureFrame:EnableKeyboard(false)
-		captureFrame:EnableGamePadButton(false)
-	end
-
-	if ns.RefreshBindingRows then
-		ns:RefreshBindingRows()
-	end
-end
-
-ns.StopCapture = StopCapture
-
-local function CommitCapturedButton(button)
-	local actionID = ns.capturingAction
-	if not actionID then
-		return
-	end
-
-	local bindings = GetBindingTable()
-	for _, action in ipairs(ns.ACTIONS) do
-		if action.id ~= actionID and bindings[action.id] == button then
-			bindings[action.id] = nil
-		end
-	end
-
-	bindings[actionID] = button
-	ns:ApplyBindings()
-	StopCapture()
-end
-
--- Gamepad tokens only: keyboard capture would collide with the stock
--- keybinding UI, so anything that is not a PAD* token is ignored.
-local function OnCapturedInput(self, input)
-	local button = input
-
-	if type(button) ~= "string" or button:find("^PAD") == nil then
-		return
-	end
-
-	CommitCapturedButton(button)
-end
-
-function ns:StartCapture(actionID)
-	if not actionByID[actionID] then
-		return
-	end
-
-	if not captureFrame then
-		captureFrame = CreateFrame("Button", "UbermocForeverCaptureListener")
-		captureFrame:SetPropagateKeyboardInput(true)
-	end
-
-	ns.capturingAction = actionID
-	captureFrame:SetScript("OnGamePadButtonDown", OnCapturedInput)
-	captureFrame:SetScript("OnKeyDown", OnCapturedInput)
-	-- Input scripts only fire on frames explicitly enabled for that input
-	-- (both default to false). Blizzard does the same before relying on them
-	-- (Blizzard_GamepadSharedUtility CustomBindingButtonMixin).
-	captureFrame:EnableKeyboard(true)
-	captureFrame:EnableGamePadButton(true)
-
-	if ns.RefreshBindingRows then
-		ns:RefreshBindingRows()
-	end
-end
-
-function ns:ClearBinding(actionID)
-	if not actionByID[actionID] then
-		return
-	end
-
-	GetBindingTable()[actionID] = nil
-	ns:ApplyBindings()
-
-	if ns.RefreshBindingRows then
-		ns:RefreshBindingRows()
-	end
-end
 
 function ns:ResetBindingsToDefault()
 	ns.db.bindings = self:BindingDefaults()
@@ -410,7 +321,7 @@ ns:RegisterEvent("GAME_PAD_CONFIGS_CHANGED", OnPadChanged)
 
 local function PrintBindingHelp()
 		ns:Print("UbermocForever binding commands:")
-		ns:Print("  /ubermoc bind <action>      press a controller button to bind it")
+		ns:Print("  /ubermoc bind <action> <button>  set a binding, e.g. /ubermoc bind SLICE1 PAD1")
 		ns:Print("  /ubermoc unbind <action>    clear an action's binding")
 		ns:Print("  /ubermoc bindlist           show current bindings")
 		ns:Print("  /ubermoc bindreset          restore default bindings")
@@ -431,25 +342,9 @@ local function PrintBindingList()
 end
 
 ns.SlashSubcommands = ns.SlashSubcommands or {}
-ns.SlashSubcommands["bind"] = function(args)
-	local actionID = args and (args:upper())
-	if not actionID or not actionByID[actionID] then
-		PrintBindingHelp()
-		return
-	end
-	ns:StartCapture(actionID)
-		ns:Print(("UbermocForever: press a controller button for %s."):format(actionID))
-end
 
-ns.SlashSubcommands["unbind"] = function(args)
-	local actionID = args and (args:upper())
-	if not actionID or not actionByID[actionID] then
-		PrintBindingHelp()
-		return
-	end
-	ns:ClearBinding(actionID)
-		ns:Print(("UbermocForever: cleared %s."):format(actionID))
-end
+-- /ubermoc bind and /ubermoc unbind are defined in BindingsUI.lua (they go
+-- through the same SetActionBinding path as the options UI).
 
 ns.SlashSubcommands["bindlist"] = PrintBindingList
 ns.SlashSubcommands["bindreset"] = function()

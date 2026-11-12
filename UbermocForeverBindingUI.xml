@@ -1,0 +1,33 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\Blizzard_SharedXML\UI.xsd">
+
+	<!-- Row in the addon's controller binding list. Same shape as Blizzard's
+	     own settings rows (SettingsListElementTemplate controls are 280x26),
+	     so it lines up with every other option on the page. The Button child
+	     is a placeholder: the native CustomBindingButtonTemplate button gets
+	     reparented into it while the row is displayed. -->
+	<Frame name="UbermocForeverBindingRowTemplate" virtual="true" mixin="UbermocForeverBindingRowMixin">
+		<Size x="280" y="26"/>
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString parentKey="Text" inherits="GameFontNormal" justifyH="LEFT" wordwrap="false">
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.Button" relativePoint="RIGHT" x="-8"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Frame parentKey="Button">
+				<Size x="150" y="26"/>
+				<Anchors>
+					<Anchor point="RIGHT"/>
+				</Anchors>
+			</Frame>
+		</Frames>
+		<Scripts>
+			<OnMouseUp method="OnMouseUp"/>
+		</Scripts>
+	</Frame>
+
+</Ui>

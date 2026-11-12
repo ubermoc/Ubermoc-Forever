@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6 (2026-11-12)
+- Controller Bindings are now a real section on the addon's own settings page: each action gets a stock Blizzard binding button (`CustomBindingButtonTemplate` through `CustomBindingManager`, the game's own system for add-on-owned bindings), sitting in the same scrolling, searchable list as every other option. Nothing is custom-drawn — button art, fonts and selection highlight are all stock.
+- Click a binding button (mouse or controller) to listen, then press a controller button to bind it; chords of two buttons work. Non-controller input is rejected with a message. Right-click the row's label to clear a binding. The panel's bottom status line shows the "press a button" prompt while listening, like the stock keybinding page.
+- The Esc-menu "Ubermoc Keybinds" entry now opens the addon's settings page scrolled straight to the Controller Bindings section instead of jumping to the generic Keybindings page.
+- New slash commands: `/ubermoc bind <action> <PADBUTTON[-PADBUTTON]>` and `/ubermoc unbind <action>` (the old fake "Bind:" checkbox rows are gone; `bindlist` and `bindreset` unchanged).
+
 ## 0.1.5 (2026-11-11)
 - Controller button bindings now work: each action is bound through the game's own binding system (override click bindings on hidden secure buttons that run `/ubermoc click <action>`), so no synthetic input is produced and Blizzard's bindings stay untouched.
 - Default bindings: left bumper = toggle controller mode, right bumper = open settings, face buttons and triggers = Actions 1–6 (placeholders for now).
