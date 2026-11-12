@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.1 (2026-11-12)
+- Fixed the error popup when clicking **Exit Game** (or Logout) in the Esc menu. Opening the settings page from an "Ubermoc" menu entry used to happen inside Blizzard's own "panel hidden" dispatch; the settings window's open path hides the pause menu again, which re-entered that same dispatch and made the game try to re-show the menu while it was being torn down for quit/logout. The settings open now happens one frame later, outside Blizzard's dispatch, and a recorded menu choice is cancelled if a quit or logout starts.
+
 ## 0.2.0 (2026-11-12)
 - Controller button bindings now actually fire. The addon used to place its button claims on the game's shared top-level frame and wipe that whole frame every time bindings were rebuilt — which also erased the game's own controller bindings, and the game then re-placed its claims over ours, so our buttons did nothing. Claims now live on a frame of the addon's own: rebuilding only ever touches the addon's bindings, and whenever anything else re-claims a button the addon owns, it quietly puts its claim back on top.
 - Default bindings moved off the triggers and bumpers (right/left trigger, right/left shoulder): while the game's controller cursor mode is on, the client itself uses those buttons for mouse clicks and Ctrl/Shift emulation, so defaults there fought the client. New defaults sit on the face buttons, d-pad and stick clicks; your own rebinds are kept. Buttons your pad does not physically have (e.g. back paddles) are no longer bound or claimed at all — they drop out while an unsuitable pad is connected and return when a suitable one connects.
