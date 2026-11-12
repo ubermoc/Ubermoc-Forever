@@ -367,6 +367,48 @@ function ns:GetBoundButton(actionID)
 	return bindings[actionID]
 end
 
+-- Actions the game already has a binding command for (names from Blizzard's
+-- Interface/AddOns/Blizzard_FrameXML/Bindings_Camelot.xml). For these the pad
+-- button is bound straight to that command, the way Blizzard's own gamepad
+-- code binds keys (Blizzard_GamepadSharedUtility/InputBindingStack/
+-- InputActionBinding.lua:22: SetOverrideBinding(UIParent, true, key, action)).
+-- That keeps addon code out of the press entirely: several of these do things
+-- the client restricts when addon code calls them (targeting, jump, stop
+-- casting). JUMP also gets its key-release half this way, so holding the
+-- button ascends. Actions without a game command keep the click path.
+local NATIVE_COMMANDS = {
+	TARGET_ENEMY = "TARGETNEARESTENEMY",
+	TARGET_FRIEND = "TARGETNEARESTFRIEND",
+	TARGET_PLAYER = "TARGETNEARESTENEMYPLAYER",
+	FOCUS_TARGET = "FOCUSTARGET",
+	INTERACT = "INTERACTTARGET",
+	STOP_CASTING = "STOPCASTING",
+	JUMP = "JUMP",
+	AUTO_RUN = "TOGGLEAUTORUN",
+	ZOOM_IN = "CAMERAZOOMIN",
+	ZOOM_OUT = "CAMERAZOOMOUT",
+	BAGS = "OPENALLBAGS",
+	CHARACTER = "TOGGLECHARACTER0",
+	SPELLBOOK = "TOGGLESPELLBOOK",
+	TALENTS = "TOGGLETALENTS",
+	MAP = "TOGGLEWORLDMAP",
+	QUEST_LOG = "TOGGLEQUESTLOG",
+	SOCIAL = "TOGGLESOCIAL",
+	MOUNT_JOURNAL = "TOGGLECOLLECTIONSMOUNTJOURNAL",
+}
+
+-- The command to bind for an action, or nil to use the click path. A command
+-- is only used when this client confirms it knows it (GetBindingIndex returns
+-- its place in the binding table), so a build that renames one falls back to
+-- the click path instead of binding a button to nothing.
+local function NativeCommandFor(actionID)
+	local command = NATIVE_COMMANDS[actionID]
+	if command and C_KeyBindings and C_KeyBindings.GetBindingIndex and C_KeyBindings.GetBindingIndex(command) then
+		return command
+	end
+	return nil
+end
+
 function ns:ApplyBindings()
 	if not self.bindingsActive then
 		return
@@ -393,7 +435,14 @@ function ns:ApplyBindings()
 		if tokens then
 			for _, token in ipairs(tokens) do
 				if IsTokenBindable(token) then
-					SetOverrideBindingClick(GetBindingOwner(), PRIORITY, token, "UbermocForeverButton" .. action.id, "LeftButton")
+					local command = NativeCommandFor(action.id)
+					if command then
+						-- The game's own binding command: the press runs exactly
+						-- as a stock keybind does, with no addon code in between.
+						SetOverrideBinding(GetBindingOwner(), PRIORITY, token, command)
+					else
+						SetOverrideBindingClick(GetBindingOwner(), PRIORITY, token, "UbermocForeverButton" .. action.id, "LeftButton")
+					end
 				end
 			end
 		end
@@ -415,7 +464,8 @@ function ns:IsButtonInUse(buttonToken, exceptActionID)
 	local bindings = GetBindingTable()
 	for id, binding in pairs(bindings) do
 		if id ~= exceptActionID then
-			for _, token in (binding or ""):gmatch("[A-Z0-9_]+") do
+			-- gmatch yields one value per match here (the pattern has no captures).
+			for token in (binding or ""):gmatch("[A-Z0-9_]+") do
 				if token == buttonToken then
 					return true
 				end
