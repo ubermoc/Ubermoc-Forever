@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5 (2026-11-11)
+- Controller button bindings now work: each action is bound through the game's own binding system (override click bindings on hidden secure buttons that run `/ubermoc click <action>`), so no synthetic input is produced and Blizzard's bindings stay untouched.
+- Default bindings: left bumper = toggle controller mode, right bumper = open settings, face buttons and triggers = Actions 1–6 (placeholders for now).
+- Rebind from the addon's settings page: each action has a "Bind:" row — tick it, then press any controller button to capture it (`OnGamePadButtonDown` listener, enabled only while capturing). `/ubermoc bind <action>`, `unbind`, `bindlist`, `bindreset` do the same from chat.
+- Button labels follow the connected pad: the client reports a label style per device (Generic / Letters / Shapes / Reverse) and Blizzard's own icon strings are used, so Steam Deck, Steam Controller, PlayStation, Xbox and Switch pads show their native button art. The "Controller Type" dropdown also overrides the label style; `/ubermoc setstyle auto|playstation|xbox|switch`.
+- Settings page now shows a live "Controller detected" readout (device name and label style) that updates on connect/disconnect.
+- Binding changes attempted during combat are deferred and replayed when you leave combat (`InCombatLockdown` guard).
+
 ## 0.1.4 (2026-11-11)
 - Controller type detection: the addon now reads the connected gamepad's USB vendor id and Blizzard's own button-label style (`C_GamePad.GetDeviceRawState` / `GetDeviceMappedState`) to identify PlayStation, Xbox, Nintendo Switch and Valve/Steam Deck pads; unknown pads report their ids in `/ubermoc debug`.
 - New "Controller Type" dropdown on the addon's settings page (Auto-detect / PlayStation / Xbox / Nintendo Switch / Steam Controller / Generic), a native Blizzard dropdown control.

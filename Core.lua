@@ -17,6 +17,9 @@ local defaults = {
     -- then 1..5 in the settings dropdown order below.
     controllerType = 0,
     debug = false,
+    -- action id -> gamepad button token (e.g. MODE = "PADLSHOULDER").
+    -- Filled with defaults by Bindings.lua on first login.
+    bindings = {},
 }
 local events = CreateFrame("Frame")
 
@@ -149,11 +152,13 @@ function ns:RefreshControllerState()
     local deviceID = FirstDeviceID()
     if not deviceID then
         ns.controllerConnected = false
+        ns.controllerDeviceID = nil
         ns.controllerType = nil
         ns.controllerName = nil
         return
     end
     ns.controllerConnected = true
+    ns.controllerDeviceID = deviceID
     local detected, name = DetectDeviceType(deviceID)
     ns.controllerType = detected
     ns.controllerName = name
@@ -387,7 +392,22 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     elseif command == "debug" then
         ns.db.debug = not ns.db.debug
         ns:Print("debug " .. (ns.db.debug and "on" or "off") .. ".")
+    elseif command == "setstyle" then
+        -- Manual button-label style, shared with the Controller Type dropdown.
+        local styles = { auto = 0, playstation = 1, xbox = 2, switch = 3 }
+        local arg = (msg:match("^%S+%s*(.*)") or ""):lower()
+        if styles[arg] then
+            ns.db.controllerType = styles[arg]
+            if ns.RefreshDeviceReadout then ns:RefreshDeviceReadout() end
+            if ns.ApplyBindings then ns:ApplyBindings() end
+            ns:Print("button style set to " .. arg .. ".")
+        else
+            ns:Print("usage: /ubermoc setstyle auto|playstation|xbox|switch")
+        end
+    elseif ns.SlashSubcommands and ns.SlashSubcommands[command] then
+        local args = msg:match("^%S+%s*(.*)")
+        ns.SlashSubcommands[command](args)
     else
-        ns:Print("commands: config, keybinds, bindings, toggle, debug")
+        ns:Print("commands: config, keybinds, bindings, toggle, debug, setstyle, bind, unbind, bindlist, bindreset")
     end
 end

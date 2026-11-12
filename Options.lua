@@ -80,6 +80,89 @@ local function BuildSettings()
     Settings.CreateCheckbox(category, jumpSetting,
         "Opens the game's Keybindings settings, where you can bind keys and controller buttons.")
 
+    -- Controller bindings. Same link trick as above: ticking a row starts
+    -- capture for that action (press any controller button to bind it), and
+    -- the row never stays checked. The current binding for each action is
+    -- shown by /ubermoc bindlist, with icons for the connected pad's buttons.
+    local function BindAction(actionID)
+        return function()
+            if ns.StartCapture then
+                ns:StartCapture(actionID)
+                ns:Print(("Press a controller button for %s.")
+                    :format(ns.actionByID[actionID].name))
+            end
+        end
+    end
+
+    local function ClearAllBindings()
+        if ns.ResetBindingsToDefault then
+            ns:ResetBindingsToDefault()
+            ns:Print("controller bindings reset to defaults.")
+        end
+    end
+
+    for _, action in ipairs(ns.ACTIONS or {}) do
+        local bindSetting = Settings.RegisterProxySetting(
+            category, addonName .. "_Bind_" .. action.id,
+            Settings.VarType.Boolean, "Bind: " .. action.name, false,
+            GetAlwaysOff, BindAction(action.id))
+        Settings.CreateCheckbox(category, bindSetting,
+            "Tick this row, then press the controller button you want to use for this action.")
+    end
+
+    local resetSetting = Settings.RegisterProxySetting(
+        category, addonName .. "_BindReset",
+        Settings.VarType.Boolean, "Reset controller bindings", false,
+        GetAlwaysOff, ClearAllBindings)
+    Settings.CreateCheckbox(category, resetSetting,
+        "Restores the default controller bindings (shoulder buttons and face/trigger buttons).")
+
+    -- Live device readout. This client's Settings API has no text-label row,
+    -- so the current pad is mirrored to a CVar: its value shows as the
+    -- dropdown's selection (the options themselves are inert). The CVar is
+    -- registered at load time, before the Settings rows are ever built.
+    local DEVICE_CVAR = "UBERMOC_DEVICE_INFO"
+
+    function ns:RefreshDeviceReadout()
+        if not C_CVar.GetCVarDefault(DEVICE_CVAR) then
+            C_CVar.RegisterCVar(DEVICE_CVAR)
+        end
+        local text
+        if ns.controllerConnected then
+            text = ns:GetDeviceSummary()
+        else
+            text = "no gamepad detected"
+        end
+        if C_CVar.GetCVar(DEVICE_CVAR) ~= text then
+            C_CVar.SetCVar(DEVICE_CVAR, text)
+        end
+    end
+
+    local function GetDeviceInfoValue() return C_CVar.GetCVar(DEVICE_CVAR) or "" end
+    local function IgnoreDeviceOption(value)
+        -- Informational row: never store a choice, put the live value back.
+        C_CVar.SetCVar(DEVICE_CVAR, GetDeviceInfoValue())
+    end
+    local deviceSetting = Settings.RegisterProxySetting(
+        category, addonName .. "_DeviceInfo",
+        Settings.VarType.String, "Controller detected", "",
+        GetDeviceInfoValue, IgnoreDeviceOption)
+    local function GetDeviceOptions()
+        local container = Settings.CreateControlTextContainer()
+        -- The current pad is the only real entry; the dummy keeps the dropdown
+        -- functional so its label can show the live device name.
+        local text = C_CVar.GetCVar(DEVICE_CVAR) or "no gamepad detected"
+        container:Add(text, text)
+        container:Add("UBERMOC_DEVICE_INFO_NONE", "(this row only shows information)")
+        return container:GetData()
+    end
+    Settings.CreateDropdown(category, deviceSetting, GetDeviceOptions,
+        "The controller the game currently sees and its button-label style. Also shown by /ubermoc bindlist.")
+
+    ns:RegisterEvent("GAME_PAD_CONNECTED", ns.RefreshDeviceReadout)
+    ns:RegisterEvent("GAME_PAD_DISCONNECTED", ns.RefreshDeviceReadout)
+    ns:RegisterEvent("GAME_PAD_ACTIVE_CHANGED", ns.RefreshDeviceReadout)
+
     Settings.RegisterAddOnCategory(category)
 end
 
