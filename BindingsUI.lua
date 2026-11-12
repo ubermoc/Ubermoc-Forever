@@ -279,10 +279,15 @@ local function AddRowNavigation(row, button)
 	end
 
 	markFocusable(row)
-	-- The cursor anchor is a plain data table (AnchorUtil's CreateAnchor just
-	-- builds {point, relativeTo, relativePoint, x, y}); built inline so the
-	-- call stays obvious and lint-checkable.
-	setCursorAnchor(row, { point = "RIGHT", relativeTo = row, relativePoint = "LEFT", x = 30, y = 0 })
+	-- The cursor anchor must be a real Anchor object: Blizzard's own
+	-- SmartNavigation_SetCustomCursorAnchorPointForFrame calls
+	-- cursorAnchor:Get() (Utility.lua:173), so a plain table crashes. Build it
+	-- with AnchorUtil's CreateAnchor, reached through _G like the other
+	-- UI-package globals here.
+	local createAnchor = _G.CreateAnchor
+	if createAnchor then
+		setCursorAnchor(row, createAnchor("RIGHT", row, "LEFT", 30, 0))
+	end
 	addBidirectional(row, SMART_NAV_INPUT_DIRECTION.RIGHT, button)
 	addIgnoreInput(button, SMART_NAV_INPUT_DIRECTION.RIGHT)
 	SetNavigateCallback(SMART_NAV_INPUT_DIRECTION.UP)
