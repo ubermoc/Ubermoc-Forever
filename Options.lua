@@ -55,16 +55,14 @@ local function BuildSettings()
     local scaleSetting = Settings.RegisterAddOnSetting(
         category, addonName .. "_Scale", "scale", db,
         Settings.VarType.Number, "Scale", 1.0)
-    local function GetOptions()
-        local container = Settings.CreateSliderOptions(0.5, 2.0, 0.05)
-        container:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right,
-            function(value) return string.format("%.0f%%", value * 100) end)
-        return container
-    end
-    -- Pass the function, not its result: Blizzard accepts either
-    -- (Blizzard_Settings.lua CreateSlider), and the function form lets the
-    -- options be rebuilt when the row refreshes.
-    Settings.CreateSlider(category, scaleSetting, GetOptions, "Scale of the UbermocForever window.")
+    -- Slider options must be the table itself: the slider row reads
+    -- initializer:GetOptions() and indexes it directly
+    -- (Blizzard_SettingControls.lua:746-747). Only dropdown rows accept a
+    -- function that builds their options.
+    local scaleOptions = Settings.CreateSliderOptions(0.5, 2.0, 0.05)
+    scaleOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right,
+        function(value) return string.format("%.0f%%", value * 100) end)
+    Settings.CreateSlider(category, scaleSetting, scaleOptions, "Scale of the UbermocForever window.")
 
     -- Live device readout. This client's Settings API has no text-label row,
     -- so the current pad is mirrored to a CVar: its value shows as the
