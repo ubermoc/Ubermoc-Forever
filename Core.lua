@@ -15,7 +15,7 @@ local defaults = {
     -- then 1..5 in the settings dropdown order below.
     controllerType = 0,
     debug = false,
-    -- action id -> gamepad button token (e.g. TARGET_ENEMY = "PADRSHOULDER").
+    -- action id -> gamepad button token (e.g. TARGET_ENEMY = "PAD3").
     -- Filled with defaults by Bindings.lua on first login.
     bindings = {},
 }
@@ -384,6 +384,74 @@ function ns:PrintControllerBindings()
 end
 
 -- ---------------------------------------------------------------------------
+-- Device diagnostics: /ubermoc devices
+-- Prints exactly what the client sees, so a pad that "is not picked up" can
+-- be told apart from a pad that is seen but mislabelled or missing buttons.
+-- ---------------------------------------------------------------------------
+
+function ns:PrintDeviceDiagnostics()
+    if not C_GamePad then
+        ns:Print("This client has no gamepad API.")
+        return
+    end
+
+    if not C_GamePad.GetAllDeviceIDs then
+        ns:Print("This client has no gamepad device list.")
+        return
+    end
+
+    local function fmtID(value)
+        value = tonumber(value)
+        if not value then return "?" end
+        return ("%d (0x%04X)"):format(value, value)
+    end
+
+    ns:Print("Gamepad support enabled: " .. tostring(C_GamePad.IsEnabled and C_GamePad.IsEnabled()))
+
+    local active = C_GamePad.GetActiveDeviceID and C_GamePad.GetActiveDeviceID()
+    local combined = C_GamePad.GetCombinedDeviceID and C_GamePad.GetCombinedDeviceID()
+    ns:Print(("Active device id: %s   Combined device id: %s"):format(fmtID(active), fmtID(combined)))
+
+    local deviceIDs = C_GamePad.GetAllDeviceIDs()
+    if type(deviceIDs) ~= "table" or #deviceIDs == 0 then
+        ns:Print("The client sees no gamepad devices at all.")
+        return
+    end
+
+    for _, deviceID in ipairs(deviceIDs) do
+        local raw = C_GamePad.GetDeviceRawState and select(2, pcall(C_GamePad.GetDeviceRawState, deviceID))
+        if type(raw) == "table" then
+            ns:Print(("device %s: name=%s vendor=%s product=%s"):format(
+                fmtID(deviceID), tostring(raw.name or "?"),
+                raw.vendorID and fmtID(raw.vendorID) or "?",
+                raw.productID and fmtID(raw.productID) or "?"))
+        else
+            ns:Print(("device %s: no raw state reported"):format(fmtID(deviceID)))
+        end
+
+        local mapped = C_GamePad.GetDeviceMappedState and select(2, pcall(C_GamePad.GetDeviceMappedState, deviceID))
+        if type(mapped) == "table" then
+            local buttonCount, axisCount = 0, 0
+            if type(mapped.buttons) == "table" then
+                for index in pairs(mapped.buttons) do
+                    buttonCount = buttonCount + 1
+                    if ns.db.debug and C_GamePad.ButtonIndexToBinding then
+                        ns:Debug(("  button %s -> %s"):format(tostring(index), tostring(C_GamePad.ButtonIndexToBinding(index))))
+                    end
+                end
+            end
+            if type(mapped.axes) == "table" then
+                for _ in pairs(mapped.axes) do axisCount = axisCount + 1 end
+            end
+            ns:Print(("   mapped: labelStyle=%s buttons=%d axes=%d stickCount=%s")
+                :format(tostring(mapped.labelStyle or "?"), buttonCount, axisCount, tostring(mapped.stickCount or "?")))
+        else
+            ns:Print("   no mapped state reported")
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Slash command
 -- ---------------------------------------------------------------------------
 
@@ -405,11 +473,14 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
             ns:Print(("Controller connected: %s%s"):format(name, detected))
         else
             ns:Print("Controller connected: no gamepad device seen.")
+            ns:Print("On Steam Deck the game must receive real controller buttons: in the game's Controller settings use a plain Gamepad layout (Steam Input), not one that sends keyboard keys. /ubermoc devices lists what the game sees.")
         end
     elseif command == "keybinds" then
         ns:OpenKeybinds()
     elseif command == "bindings" then
         ns:PrintControllerBindings()
+    elseif command == "devices" then
+        ns:PrintDeviceDiagnostics()
     elseif command == "debug" then
         ns.db.debug = not ns.db.debug
         ns:Print("debug " .. (ns.db.debug and "on" or "off") .. ".")
@@ -429,6 +500,6 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         local args = msg:match("^%S+%s*(.*)")
         ns.SlashSubcommands[command](args)
     else
-        ns:Print("commands: config, keybinds, bindings, debug, setstyle, bind, unbind, bindlist, bindreset")
+        ns:Print("commands: config, keybinds, bindings, devices, debug, setstyle, bind, unbind, bindlist, bindreset")
     end
 end

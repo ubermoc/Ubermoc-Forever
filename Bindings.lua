@@ -68,12 +68,8 @@ ns.PAD_BUTTONS = {
 	"PADPADDLE1", "PADPADDLE2", "PADPADDLE3", "PADPADDLE4",
 }
 
--- Buttons that Blizzard's gamepad UI already uses in core contexts.
--- They stay bindable, but the row is marked so conflicts are expected.
-local SHARED_BUTTONS = {
-	PADLSTICK = true, PADRSTICK = true,
-	PADFORWARD = true, PADBACK = true,
-}
+-- Buttons Blizzard's gamepad UI already uses in core contexts (stick clicks,
+-- Start/Back). They stay bindable by hand; the defaults avoid them.
 
 local STYLE_SUFFIX = {
 	Generic = "",
@@ -122,21 +118,28 @@ function ns:BindingDefaults()
 	-- Only buttons Blizzard's gamepad UI leaves free by default. The left
 	-- stick, right stick, Start (PADFORWARD) and Back (PADBACK) are used by
 	-- the stock gamepad interface itself, so they stay unbound here and can
-	-- still be bound manually. PADPADDLE1/2 exist on pads that have paddles.
+	-- still be bound manually.
+	--
+	-- Deliberately NOT defaulted onto:
+	--  * PADRTRIGGER / PADLTRIGGER / PADRSHOULDER / PADLSHOULDER - while the
+	--    game's controller cursor mode is on, the client itself uses these
+	--    for mouse clicks and Ctrl/Shift emulation (the GamePadCursor* and
+	--    GamePadEmulate* settings), so a default there fights the client.
+	--  * PADPADDLE1/2 - only pads that physically have paddles report those
+	--    buttons; on most pads a default would bind a button that does not
+	--    exist. Bind them by hand if your pad has them.
 	return {
-		TARGET_ENEMY = "PADRSHOULDER",
-		TARGET_FRIEND = "PADLSHOULDER",
-		INTERACT = "PAD3",
-		JUMP = "PADPADDLE1",
-		AUTO_RUN = "PAD2",
-		MOUNT_DISMOUNT = "PADPADDLE2",
-		BAGS = "PAD4",
+		TARGET_ENEMY = "PAD3",
+		TARGET_FRIEND = "PAD4",
+		INTERACT = "PADDRIGHT",
+		JUMP = "PAD2",
+		AUTO_RUN = "PAD1",
+		MOUNT_DISMOUNT = "PADLSTICK",
+		BAGS = "PADRSTICK",
 		CHARACTER = "PADDUP",
-		SPELLBOOK = "PADDRIGHT",
-		MAP = "PADDDOWN",
-		QUEST_LOG = "PADDLEFT",
-		STOP_CASTING = "PADLTRIGGER",
-		ATTACK = "PADRTRIGGER",
+		SPELLBOOK = "PADDDOWN",
+		MAP = "PADDLEFT",
+		PING_TARGET = "PADPADDLE1",
 	}
 end
 
@@ -145,6 +148,83 @@ local function GetBindingTable()
 		ns.db.bindings = {}
 	end
 	return ns.db.bindings
+end
+
+-- One-time move off the old defaults: the previous set put actions on the
+-- triggers and bumpers, which the client itself uses for cursor clicks and
+-- Ctrl/Shift emulation in controller mode. A stored binding that still holds
+-- its exact old button is replaced by the new default for that action (the
+-- player's own rebinds are left alone).
+local OLD_DEFAULTS = {
+	TARGET_ENEMY = "PADRSHOULDER",
+	TARGET_FRIEND = "PADLSHOULDER",
+	INTERACT = "PAD3",
+	JUMP = "PADPADDLE1",
+	AUTO_RUN = "PAD2",
+	MOUNT_DISMOUNT = "PADPADDLE2",
+	BAGS = "PAD4",
+	CHARACTER = "PADDUP",
+	SPELLBOOK = "PADDRIGHT",
+	MAP = "PADDDOWN",
+	QUEST_LOG = "PADDLEFT",
+	STOP_CASTING = "PADLTRIGGER",
+	ATTACK = "PADRTRIGGER",
+}
+
+local function MigrateOldDefaults()
+	if ns.db.defaultsVersion == 2 then
+		return
+	end
+	ns.db.defaultsVersion = 2
+
+	local bindings = GetBindingTable()
+	local newDefaults = ns:BindingDefaults()
+	for id, oldButton in pairs(OLD_DEFAULTS) do
+		if bindings[id] == oldButton then
+			bindings[id] = newDefaults[id]
+		end
+	end
+end
+
+-- True when the client can tell us which buttons the connected pad has.
+local function HasButtonSupportProbe()
+	return C_GamePad and C_GamePad.GetDeviceMappedState and C_GamePad.ButtonBindingToIndex
+end
+
+-- A stored binding may name a button the currently connected pad does not
+-- have (paddles on a pad without paddles, stick clicks when the client has
+-- stick buttons switched off). Keep those in storage - they come back when a
+-- suitable pad connects - but never hand them to the binding system.
+local function IsTokenBindable(token)
+	if not ns.controllerConnected or not HasButtonSupportProbe() then
+		return true
+	end
+	return ns:IsButtonSupported(token)
+end
+
+-- Drop stored bindings that name buttons this pad cannot produce, so they
+-- cannot shadow (or be shadowed by) the client's own uses of those keys.
+local function PruneUnsupportedBindings()
+	if not ns.controllerConnected or not HasButtonSupportProbe() then
+		return false
+	end
+	local bindings = GetBindingTable()
+	local changed = false
+	for id, binding in pairs(bindings) do
+		local tokens = GetBoundTokens(binding)
+		if tokens then
+			local kept = {}
+			for _, token in ipairs(tokens) do
+				if IsTokenBindable(token) then
+					table.insert(kept, token)
+				else
+					changed = true
+				end
+			end
+			bindings[id] = #kept > 0 and table.concat(kept, "-") or nil
+		end
+	end
+	return changed
 end
 
 ------------------------------------------------------------------------
@@ -194,12 +274,63 @@ end
 
 ------------------------------------------------------------------------
 -- Secure click targets + override bindings
+--
+-- The override bindings live on an owner frame of our own, not on UIParent.
+-- That matters twice over:
+--  * ClearOverrideBindings(owner) removes only that owner's bindings, so
+--    rebuilding ours never wipes the game's own controller bindings (the
+--    stock gamepad interface binds its buttons through UIParent too).
+--  * Our claims sit on their own line in the binding stack and are not
+--    tangled with the game's claims.
 ------------------------------------------------------------------------
+
+local bindingOwner = nil
+
+local function GetBindingOwner()
+	if not bindingOwner then
+		bindingOwner = CreateFrame("Frame", "UbermocForeverBindingOwner", UIParent, "SecureHandlerStateTemplate")
+	end
+	return bindingOwner
+end
+
+-- Re-assert our claims whenever another addon (or the game's own controller
+-- interface) overrides a controller button we claimed. The hook sees the
+-- call after it ran, so re-setting ours puts it back on top of the stack.
+-- Only keys that are actually ours trigger the rebuild, and the rebuild
+-- itself sets no new claims, so this cannot loop.
+local function ReassertOurBindings(owner, key)
+	if owner == bindingOwner or type(key) ~= "string" then
+		return
+	end
+	if InCombatLockdown() then
+		return
+	end
+	key = key:upper()
+	local bindings = GetBindingTable()
+	for _, binding in pairs(bindings) do
+		if type(binding) == "string" then
+			for token in (binding .. "-"):gmatch("[A-Z0-9_]+") do
+				if token == key then
+					ns:ApplyBindings()
+					return
+				end
+			end
+		end
+	end
+	if IsBindingForGamePad and IsBindingForGamePad(key) and ns.previewToken == key then
+		ns:PreviewBoundAction(key)
+	end
+end
+
+hooksecurefunc("SetOverrideBinding", ReassertOurBindings)
+hooksecurefunc("SetOverrideBindingClick", ReassertOurBindings)
 
 local function EnsureActionButtons()
 	if InCombatLockdown() then
 		return false
 	end
+
+	GetBindingOwner()
 
 	for _, action in ipairs(ns.ACTIONS) do
 		local buttonName = "UbermocForeverButton" .. action.id
@@ -216,18 +347,18 @@ end
 
 local pendingApply = false
 
--- ClearOverrideBindings removes every override set on UIParent, ours included.
--- It must run OUTSIDE combat lockdown, otherwise the old click bindings can be
--- dropped without the new ones being put back (the rows would show a binding
--- that does nothing). Changes attempted mid-fight are remembered and replayed
--- when combat ends.
-local function ClearAllOverrideBindings()
+-- ClearOverrideBindings removes every override owned by our owner frame,
+-- ours only. It must run OUTSIDE combat lockdown, otherwise the old click
+-- bindings can be dropped without the new ones being put back (the rows
+-- would show a binding that does nothing). Changes attempted mid-fight are
+-- remembered and replayed when combat ends.
+local function ClearOurOverrideBindings()
 	if InCombatLockdown() then
 		pendingApply = true
 		return
 	end
-	if UIParent and ClearOverrideBindings then
-		ClearOverrideBindings(UIParent)
+	if bindingOwner then
+		ClearOverrideBindings(bindingOwner)
 	end
 end
 
@@ -247,7 +378,7 @@ function ns:ApplyBindings()
 	end
 	pendingApply = false
 
-	ClearAllOverrideBindings()
+	ClearOurOverrideBindings()
 	if pendingApply then
 		return
 	end
@@ -261,8 +392,8 @@ function ns:ApplyBindings()
 		local tokens = GetBoundTokens(bindings[action.id])
 		if tokens then
 			for _, token in ipairs(tokens) do
-				if not self.controllerConnected or self:IsButtonSupported(token) then
-					SetOverrideBindingClick(UIParent, PRIORITY, token, "UbermocForeverButton" .. action.id, "LeftButton")
+				if IsTokenBindable(token) then
+					SetOverrideBindingClick(GetBindingOwner(), PRIORITY, token, "UbermocForeverButton" .. action.id, "LeftButton")
 				end
 			end
 		end
@@ -315,7 +446,7 @@ function ns:PreviewBoundAction(buttonToken)
 		button:SetAttribute("type", "macro")
 		button:SetAttribute("macrotext", "/ubermoc preview")
 	end
-	SetOverrideBindingClick(UIParent, PRIORITY, buttonToken, "UbermocForeverButtonPREVIEW", "LeftButton")
+	SetOverrideBindingClick(GetBindingOwner(), PRIORITY, buttonToken, "UbermocForeverButtonPREVIEW", "LeftButton")
 	self.previewToken = buttonToken
 	return true
 end
@@ -323,9 +454,11 @@ end
 -- Clear the live-preview override. The client has no single-key clear for
 -- overrides (only ClearOverrideBindings for a whole owner), so rebuild ours:
 -- that drops the preview token and re-asserts every stored binding, which is
--- exactly the state we want when a capture ends or is cancelled.
+-- exactly the state we want when a capture ends or is cancelled. During
+-- combat the clear cannot run, so keep the preview live until capture ends
+-- outside combat rather than leaving the action unbound mid-fight.
 function ns:ClearPreviewBinding()
-	if self.previewToken then
+	if self.previewToken and not InCombatLockdown() then
 		self.previewToken = nil
 		self:ApplyBindings()
 	end
@@ -340,6 +473,10 @@ end
 -- does. (The native mixin only enables its gamepad listener after the mouse
 -- release that opened capture, which for a touch/mouse-driven UI would mean
 -- pad presses during capture are silently ignored.)
+--
+-- The replay below is not synthetic input: it feeds the key token straight
+-- into Blizzard's own capture handler as data, exactly like the keyboard
+-- path does; the client itself recorded the press.
 local captureListener = nil
 
 function ns:ArmCapturePreview(button)
@@ -390,28 +527,33 @@ function ns:OnCapturePadInput(key, isDown)
 		return
 	end
 
+	local button = self.captureTargetButton
+	if button and button.OnInput then
+		-- Native capture path first: records the key, updates the pending-
+		-- bind glyph through CustomBindingManager:SetPendingBind, and on
+		-- release fires our completion callback. Doing this before the
+		-- preview rebuild keeps the chord state Blizzard's capture flow is
+		-- tracking intact.
+		button:OnInput(key, isDown)
+	end
+
+	if not button or not button:IsBindingModeActive() then
+		-- Capture already finished through the native path; the completion
+		-- callback stores the binding and rebuilds - no preview to manage.
+		return
+	end
+
 	if isDown then
 		self:PreviewBoundAction(key)
 	else
 		self:ClearPreviewBinding()
 	end
-
-	local button = self.captureTargetButton
-	if button and button.OnInput then
-		-- Native capture path: records the key, updates the pending-bind
-		-- glyph through CustomBindingManager:SetPendingBind, and on release
-		-- fires our completion callback.
-		button:OnInput(key, isDown)
-	end
 end
 
--- Whether the active pad reports this button token. Falls back to allowing
--- every listed token when the client gives no mapped state.
+-- Whether the connected pad reports this button token. (Callers must not
+-- ask when no pad is connected or the client gives no mapped state - use
+-- IsTokenBindable above, which allows everything in that case.)
 function ns:IsButtonSupported(button)
-	if not C_GamePad or not C_GamePad.GetDeviceMappedState or not C_GamePad.ButtonBindingToIndex then
-		return true
-	end
-
 	local ok, mapped = pcall(C_GamePad.GetDeviceMappedState)
 	if not ok or not mapped or type(mapped.buttons) ~= "table" then
 		return true
@@ -633,7 +775,9 @@ ns:RegisterEvent("ADDON_LOADED", function(loadedAddon)
     if type(ns.db) ~= "table" then return end
 
     -- First run: seed the default controller bindings. Existing users keep
-    -- whatever they configured (only missing actions get a default).
+    -- whatever they configured (only missing actions get a default); stored
+    -- copies of the *old* defaults are migrated once to the new set.
+    MigrateOldDefaults()
     local bindings = GetBindingTable()
     for id, button in pairs(ns:BindingDefaults()) do
         if bindings[id] == nil then
@@ -642,6 +786,7 @@ ns:RegisterEvent("ADDON_LOADED", function(loadedAddon)
     end
 
     ns:RefreshControllerState()
+    PruneUnsupportedBindings()
     ns.bindingsActive = true
     ns:ApplyBindings()
     if ns.RefreshDeviceReadout then
@@ -655,6 +800,9 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
 end)
 
 local function OnPadChanged()
+    -- A different pad may have (or lack) paddles and stick clicks, so drop
+    -- bindings for buttons this pad cannot produce before re-asserting.
+    PruneUnsupportedBindings()
     ns:ApplyBindings()
     if ns.RefreshDeviceReadout then
         ns:RefreshDeviceReadout()

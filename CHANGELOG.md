@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 (2026-11-12)
+- Controller button bindings now actually fire. The addon used to place its button claims on the game's shared top-level frame and wipe that whole frame every time bindings were rebuilt — which also erased the game's own controller bindings, and the game then re-placed its claims over ours, so our buttons did nothing. Claims now live on a frame of the addon's own: rebuilding only ever touches the addon's bindings, and whenever anything else re-claims a button the addon owns, it quietly puts its claim back on top.
+- Default bindings moved off the triggers and bumpers (right/left trigger, right/left shoulder): while the game's controller cursor mode is on, the client itself uses those buttons for mouse clicks and Ctrl/Shift emulation, so defaults there fought the client. New defaults sit on the face buttons, d-pad and stick clicks; your own rebinds are kept. Buttons your pad does not physically have (e.g. back paddles) are no longer bound or claimed at all — they drop out while an unsuitable pad is connected and return when a suitable one connects.
+- New diagnostic: `/ubermoc devices` prints exactly what the game sees — every gamepad device with its name, vendor/product ids, button and axis counts. If your Steam Deck pad "is not picked up", run this and check the list: if it's empty, the game is not receiving controller buttons at all (the game's Controller settings in Steam must use a plain Gamepad layout, not one that sends keyboard keys).
+- When no controller is seen, `/ubermoc` now points at that setting instead of just saying "no gamepad device seen".
+
 ## 0.1.9 (2026-11-12)
 - Fixed "attempt to call a nil value" error that fired when opening the settings page. The binding rows are recycled by Blizzard's scroll list every time the page opens or is searched, and the recycle step asked each stock binding button whether it was "selected" — a method those buttons don't have (they track listening state differently). Rows now ask the button whether it is currently waiting for a binding, which is the real question, so a half-finished capture is still cancelled safely without the error.
 
