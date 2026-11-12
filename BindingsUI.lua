@@ -202,8 +202,17 @@ function ns:ReleaseBindingButtons()
 			button:CancelBinding()
 		end
 		CustomBindingManager:SetHandlerRegistered(button, false)
-		button:SetParent(nil)
-		button:ClearAllPoints()
+		local host = GetButtonHost()
+		if host then
+			-- Same rule as Release(): never SetParent(nil) on these buttons, it
+			-- destroys the Blizzard template textures. Park in the hidden host.
+			button:SetParent(host)
+			button:ClearAllPoints()
+			button:SetPoint("CENTER", host, "CENTER")
+		else
+			button:SetParent(nil)
+			button:ClearAllPoints()
+		end
 		button:Hide()
 	end
 	rowButtons = {}
@@ -355,11 +364,6 @@ function UbermocForeverBindingRowMixin:UpdateButtonWidth()
 end
 
 function UbermocForeverBindingRowMixin:Release()
-	if self.cbrHandles then
-		self.cbrHandles:Unregister()
-		self.cbrHandles = nil
-	end
-
 	local button = self.button
 	if button then
 		if button:IsSelected() then
@@ -368,13 +372,23 @@ function UbermocForeverBindingRowMixin:Release()
 		CustomBindingManager:SetHandlerRegistered(button, false)
 		local host = GetButtonHost()
 		if host then
+			-- Park inside the 1x1 host. SetParent(nil) would destroy Blizzard's
+			-- template textures (the frame leaves the SecureHelper canvas), so
+			-- the host stays parented under SettingsPanel and just hidden.
 			button:SetParent(host)
+			button:ClearAllPoints()
+			button:SetPoint("CENTER", host, "CENTER")
 		else
 			button:SetParent(nil)
+			button:ClearAllPoints()
 		end
-		button:ClearAllPoints()
 		button:Hide()
 		self.button = nil
+	end
+
+	if self.cbrHandles then
+		self.cbrHandles:Unregister()
+		self.cbrHandles = nil
 	end
 
 	self.actionID = nil
