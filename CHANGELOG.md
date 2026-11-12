@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.8 (2026-11-12)
+- Fixed the "AddOn 'UbermocForever' tried to call the protected function 'callback()'" popup when clicking an Ubermoc entry in the Esc menu. The pause menu closes through a protected Blizzard call, and anything our button callback did inside that flow was blamed on the addon. The menu entries are now inert: they only record which entry was chosen, and the settings page opens from Blizzard's own "panel hidden" callback once the menu has closed — same result, no protected-call violation.
+
 ## 0.1.7 (2026-11-12)
 - The bindable action list grew from 8 to 31 actions, grouped like the stock keybinding page: targeting (next enemy / friend / party member / enemy player, clear target, focus, interact), combat (attack toggle, stop casting, ready check, ping target), movement (jump, auto run, mount/dismount, camera zoom) and windows (bags, character, spells, talents, map, quest log, social, mount journal, group finder). Every window toggle calls exactly the function Blizzard's own binding table runs for that key, so a bound pad button behaves like the stock keyboard shortcut.
 - Right-click now clears a binding everywhere on the row — on the label and on the binding button itself (the old handler never received the click because the stock button consumed it).
