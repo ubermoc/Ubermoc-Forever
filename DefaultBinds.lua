@@ -192,12 +192,10 @@ local function ShowPrompt()
 end
 ns.ShowDefaultBindsPrompt = ShowPrompt
 
--- Ask once per layout version, a few seconds after the first login, and never while the add-on or its
--- controller support is switched off.
+-- Ask once per layout version, a few seconds after the first login.
 local function AskIfNeeded()
     local state = State()
     if not state then return end
-    if ns.db.enabled == false or ns.db.controllerEnabled == false then return end
     if state.askedVersion == LAYOUT_VERSION then return end
     local isShown = _G["StaticPopup_IsCustomGenericConfirmationShown"]
     if isShown and isShown("UbermocForeverDefaultBinds") then return end

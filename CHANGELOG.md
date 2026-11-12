@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.7 (2026-11-12)
+- The bindable action list grew from 8 to 31 actions, grouped like the stock keybinding page: targeting (next enemy / friend / party member / enemy player, clear target, focus, interact), combat (attack toggle, stop casting, ready check, ping target), movement (jump, auto run, mount/dismount, camera zoom) and windows (bags, character, spells, talents, map, quest log, social, mount journal, group finder). Every window toggle calls exactly the function Blizzard's own binding table runs for that key, so a bound pad button behaves like the stock keyboard shortcut.
+- Right-click now clears a binding everywhere on the row — on the label and on the binding button itself (the old handler never received the click because the stock button consumed it).
+- While a row is listening, pressing a controller button performs that action immediately as a live preview before the binding is stored, so you can confirm what the button does.
+- Removed the "Enable UbermocForever" and "Enable controller input" checkboxes: with the addon installed, both are always on. `/ubermoc toggle` is gone too.
+- Better device naming: pads routed through Steam Input (Steam Controller / Steam Deck virtual gamepads) are now recognised by device name when their USB vendor id is missing or unknown; a pad that still can't be named prints its vendor/product ids in chat so support can be added.
+- Searching the bindings page for a button name (e.g. "paddle") now also matches rows that could take that button, not just rows already bound to it.
+
 ## 0.1.6 (2026-11-12)
 - Controller Bindings are now a real section on the addon's own settings page: each action gets a stock Blizzard binding button (`CustomBindingButtonTemplate` through `CustomBindingManager`, the game's own system for add-on-owned bindings), sitting in the same scrolling, searchable list as every other option. Nothing is custom-drawn — button art, fonts and selection highlight are all stock.
 - Click a binding button (mouse or controller) to listen, then press a controller button to bind it; chords of two buttons work. Non-controller input is rejected with a message. Right-click the row's label to clear a binding. The panel's bottom status line shows the "press a button" prompt while listening, like the stock keybinding page.

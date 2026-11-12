@@ -160,9 +160,19 @@ local function GetActionButton(actionID)
 
 	handler:SetOnBindingModeActivatedCallback(function(isActive)
 		capturingActionID = isActive and actionID or nil
+		ns.capturingActionID = capturingActionID
 
 		if SettingsPanel and SettingsPanel.SearchBox then
 			SettingsPanel.SearchBox:SetShown(not isActive)
+		end
+
+		-- While capturing, our own gamepad listener drives the live preview
+		-- (Bindings.lua: ArmCapturePreview). The native button's pad listener
+		-- stays off during that window so each press is seen exactly once.
+		if isActive then
+			ns:ArmCapturePreview(button)
+		else
+			ns:DisarmCapturePreview()
 		end
 
 		ns:RefreshCaptureHint()
@@ -170,6 +180,8 @@ local function GetActionButton(actionID)
 	end)
 
 	handler:SetOnBindingCompletedCallback(function(completedSuccessfully, keys)
+		ns:ClearPreviewBinding()
+
 		if not completedSuccessfully or type(keys) ~= "table" then
 			return
 		end
@@ -201,6 +213,7 @@ function ns:ReleaseBindingButtons()
 		if button:IsSelected() then
 			button:CancelBinding()
 		end
+		ns:DisarmCapturePreview()
 		CustomBindingManager:SetHandlerRegistered(button, false)
 		local host = GetButtonHost()
 		if host then
@@ -238,6 +251,19 @@ function ns:CreateBindingRowInitializer(action)
 	local oldMatchesSearchTags = initializer.MatchesSearchTags
 
 	initializer.MatchesSearchTags = function(self, words)
+		-- Rows with no binding still match the controller buttons they could
+		-- take, so searching "paddle" finds every row a paddle can go on.
+		if not ns:GetActionBinding(self.data.actionID) then
+			for _, word in ipairs(words) do
+				for _, token in ipairs(ns.PAD_BUTTONS) do
+					local first = string.find(token, word:upper(), nil, true)
+					if first then
+						return #token - first
+					end
+				end
+			end
+		end
+
 		local result = oldMatchesSearchTags(self, words)
 		if result then
 			return result
@@ -263,6 +289,42 @@ end
 ------------------------------------------------------------------------
 -- Row frame mixin (template: UbermocForeverBindingUI.xml)
 ------------------------------------------------------------------------
+
+-- actionID for one of our binding buttons (rowButtons maps actionID -> button).
+local function GetActionIDForButton(button)
+	for actionID, candidate in pairs(rowButtons) do
+		if candidate == button then
+			return actionID
+		end
+	end
+	return nil
+end
+
+-- Right-click on the native binding button itself also clears the row. The
+-- mixin's OnClick consumes the click and never forwards it to the row frame,
+-- so wrap it per instance (the shared Blizzard template methods stay
+-- untouched): clear on a right release outside capture mode, then hand off
+-- to the original handler so left-click capture keeps working unchanged.
+-- Defined here, before RowMixin:Init calls it.
+local function WrapButtonRightClick(button)
+	if button.ubermocRightClickWrapped then
+		return
+	end
+
+	local originalOnClick = button.OnClick
+	button.OnClick = function(self, clickedButton, isDown)
+		if clickedButton == "RightButton" and not isDown and not self:IsBindingModeActive() then
+			local actionID = GetActionIDForButton(self)
+			if actionID and ns:GetActionBinding(actionID) then
+				ns:SetActionBinding(actionID, nil)
+				ns:Print((L.CLEARED):format(GetActionName(actionID)))
+			end
+		end
+		originalOnClick(self, clickedButton, isDown)
+	end
+
+	button.ubermocRightClickWrapped = true
+end
 
 -- Gamepad cursor routing. The SmartNavigation helpers are globals from
 -- Blizzard's own gamepad-navigation package (defined in
@@ -310,6 +372,7 @@ function UbermocForeverBindingRowMixin:Init(initializer)
 
 	self.Text:SetText(initializer.data.label)
 	self.Text:SetPoint("LEFT", self, "LEFT", 10, 0)
+	self.Text:SetJustifyH("LEFT")
 
 	-- While a binding is being captured the settings list raises an input
 	-- blocker; Blizzard's keybind rows reparent their buttons into it so the
@@ -320,9 +383,16 @@ function UbermocForeverBindingRowMixin:Init(initializer)
 	self.cbrHandles:RegisterCallback(EventRegistry, "Settings.UnparentBindingsToInputBlocker",
 		self.UnparentButtonFromInputBlocker, self)
 
+	-- Right-click on the row clears its binding. The row is a plain Frame, so
+	-- mouse input has to be enabled explicitly (the native binding button on
+	-- top still handles left-click capture; clicks landing on the row's own
+	-- area reach OnMouseUp below).
+	self:EnableMouse(true)
+
 	local button = GetActionButton(self.actionID)
 	if button then
 		self.button = button
+		WrapButtonRightClick(button)
 		CustomBindingManager:SetHandlerRegistered(button, true)
 		button:SetParent(self.Button)
 		button:ClearAllPoints()
@@ -369,6 +439,7 @@ function UbermocForeverBindingRowMixin:Release()
 		if button:IsSelected() then
 			button:CancelBinding()
 		end
+		ns:DisarmCapturePreview()
 		CustomBindingManager:SetHandlerRegistered(button, false)
 		local host = GetButtonHost()
 		if host then
@@ -391,6 +462,7 @@ function UbermocForeverBindingRowMixin:Release()
 		self.cbrHandles = nil
 	end
 
+	self:EnableMouse(false)
 	self.actionID = nil
 end
 
@@ -402,8 +474,10 @@ function UbermocForeverBindingRowMixin:OnMouseUp(buttonName)
 	if not actionID then
 		return
 	end
-	ns:SetActionBinding(actionID, nil)
-	ns:Print((L.CLEARED):format(GetActionName(actionID)))
+	if ns:GetActionBinding(actionID) then
+		ns:SetActionBinding(actionID, nil)
+		ns:Print((L.CLEARED):format(GetActionName(actionID)))
+	end
 end
 
 ------------------------------------------------------------------------
@@ -543,7 +617,7 @@ ns.SlashSubcommands["bind"] = function(args)
 
 	actionID = actionID:upper()
 	if not ns.actionByID[actionID] then
-		ns:Print("Unknown action. Actions: MODE, MENU, SLICE1-SLICE6")
+		ns:Print("Unknown action. See /ubermoc bindlist for the full list.")
 		return
 	end
 

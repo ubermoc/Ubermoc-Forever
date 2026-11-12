@@ -10,14 +10,12 @@ ns.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "dev"
 -- Defaults are kept separate from saved data so new settings appear for
 -- existing users without wiping what they already configured.
 local defaults = {
-    enabled = true,
     scale = 1.0,
-    controllerEnabled = true,
     -- Controller type: 0 = auto-detect from the device itself (default),
     -- then 1..5 in the settings dropdown order below.
     controllerType = 0,
     debug = false,
-    -- action id -> gamepad button token (e.g. MODE = "PADLSHOULDER").
+    -- action id -> gamepad button token (e.g. TARGET_ENEMY = "PADRSHOULDER").
     -- Filled with defaults by Bindings.lua on first login.
     bindings = {},
 }
@@ -78,6 +76,31 @@ local labelStyleToType = {
     Reverse = "Switch",
 }
 
+-- Device-name patterns, checked when the USB vendor id is missing or unknown.
+-- Pads routed through Steam Input re-enumerate as virtual devices whose
+-- vendor id often does not match Valve's (0x28DE), but the name the client
+-- reports still carries the pad's identity ("Steam Controller", "Steam
+-- Deck Virtual Gamepad", "Controller (Gamepad for Xbox 360)" ...).
+local namePatterns = {
+    { pattern = "steam",           type = "Steam" },
+    { pattern = "deck",            type = "Steam" },
+    { pattern = "duals?hock",      type = "DualShock" },
+    { pattern = "playstation",     type = "DualShock" },
+    { pattern = "xbox",            type = "Xbox" },
+    { pattern = "nintendo|switch", type = "Switch" },
+}
+
+local function DetectTypeFromName(name)
+    if type(name) ~= "string" then return nil end
+    local lower = name:lower()
+    for _, entry in ipairs(namePatterns) do
+        if lower:find(entry.pattern) then
+            return entry.type
+        end
+    end
+    return nil
+end
+
 -- Dropdown order shared with Options.lua: stored value -> type name.
 local typeNamesByValue = { "DualShock", "Xbox", "Switch", "Steam", "Generic" }
 
@@ -117,6 +140,12 @@ local function DetectDeviceType(deviceID)
         detected = knownVendors[vendorID]
     end
 
+    -- Pads running through Steam Input re-enumerate as virtual devices whose
+    -- vendor id is often not Valve's, so match the device name as well.
+    if not detected then
+        detected = DetectTypeFromName(name)
+    end
+
     -- Fall back to the label family Blizzard uses for its own button prompts.
     if C_GamePad.GetDeviceMappedState then
         local ok, mapped = pcall(C_GamePad.GetDeviceMappedState, deviceID)
@@ -127,12 +156,12 @@ local function DetectDeviceType(deviceID)
     end
 
     if not detected then
-        -- A device we see but cannot name. Report the ids so the user can tell
-        -- us which pad it is and we can add it to the list above.
-        if vendorID and productID then
-            ns:Debug(("unrecognised gamepad: vendor=%s product=%s")
-                :format(string.format("0x%04X", vendorID), string.format("0x%04X", productID)))
-        end
+        -- A device we see but cannot name. Always report the ids (not just in
+        -- debug mode) so an unrecognised pad can be added to the lists above.
+        ns:Print(("Unrecognised controller: %s (vendor=%s product=%s). Tell me these ids and I will add support.")
+            :format(tostring(name or "unknown device"),
+                vendorID and string.format("0x%04X", vendorID) or "?",
+                productID and string.format("0x%04X", productID) or "?"))
         detected = "Generic"
     end
 
@@ -185,17 +214,18 @@ ns:RegisterEvent("ADDON_LOADED", function(loadedAddon)
 
     UbermocForeverDB = ApplyDefaults(UbermocForeverDB or {}, defaults)
     ns.db = UbermocForeverDB
-    -- Drop the old saved key: connection state is live runtime state, not config.
+    -- Drop obsolete saved keys: connection state is live runtime state, and
+    -- the old enable switches were removed (the addon is always on).
     ns.db.controllerConnected = nil
+    ns.db.enabled = nil
+    ns.db.controllerEnabled = nil
     ns:RefreshControllerState()
 
     events:UnregisterEvent("ADDON_LOADED")
 end)
 
 ns:RegisterEvent("PLAYER_LOGIN", function()
-    if ns.db.enabled then
-        ns:Print("loaded. Type /ubermoc for options.")
-    end
+    ns:Print("loaded. Type /ubermoc for options.")
 end)
 
 -- ---------------------------------------------------------------------------
@@ -380,9 +410,6 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         ns:OpenKeybinds()
     elseif command == "bindings" then
         ns:PrintControllerBindings()
-    elseif command == "toggle" then
-        ns.db.enabled = not ns.db.enabled
-        ns:Print("now " .. (ns.db.enabled and "enabled" or "disabled") .. ".")
     elseif command == "debug" then
         ns.db.debug = not ns.db.debug
         ns:Print("debug " .. (ns.db.debug and "on" or "off") .. ".")
@@ -402,6 +429,6 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         local args = msg:match("^%S+%s*(.*)")
         ns.SlashSubcommands[command](args)
     else
-        ns:Print("commands: config, keybinds, bindings, toggle, debug, setstyle, bind, unbind, bindlist, bindreset")
+        ns:Print("commands: config, keybinds, bindings, debug, setstyle, bind, unbind, bindlist, bindreset")
     end
 end

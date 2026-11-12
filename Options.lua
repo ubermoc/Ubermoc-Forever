@@ -14,17 +14,9 @@ local function BuildSettings()
     local category, layout = Settings.RegisterVerticalLayoutCategory("UbermocForever")
     ns.settingsCategory = category
 
-    -- Enable toggle
-    local enableSetting = Settings.RegisterAddOnSetting(
-        category, addonName .. "_Enabled", "enabled", db,
-        Settings.VarType.Boolean, "Enable UbermocForever", true)
-    Settings.CreateCheckbox(category, enableSetting, "Turn UbermocForever on or off.")
-
-    -- Controller enable toggle
-    local ctrlSetting = Settings.RegisterAddOnSetting(
-        category, addonName .. "_ControllerEnabled", "controllerEnabled", db,
-        Settings.VarType.Boolean, "Enable controller input", true)
-    Settings.CreateCheckbox(category, ctrlSetting, "Turn controller input on or off.")
+    -- No on/off toggles: if the addon is installed, it runs. Controller input
+    -- is its whole purpose, so a switch to turn it off only creates the kind
+    -- of "why is nothing bound" confusion the settings page should prevent.
 
     -- Controller type. The game reports every pad through C_GamePad; we read
     -- its USB vendor id and Blizzard's own button-label family to name it
