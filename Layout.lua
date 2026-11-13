@@ -1,9 +1,13 @@
 -- Layout.lua: Blizzard's own default controller layout (REQUIREMENTS.md line 3) and the code that applies it.
 --
--- WHAT THE LAYOUT IS: exactly the 15 gamepad keys recorded from the RUNNING game by /ubermoc dumpdefaults
--- on 2026-11-12 (WTF/Account/FAQJOO/SavedVariables/UbermocForever.lua, DefaultsDump.bindings, count=15).
--- The addon invents no key of its own; every action below is copied from Blizzard's shipped binding bodies
--- (cites on each line). No action is remembered or made up.
+-- WHAT THE LAYOUT IS: every controller button named by the user (d-pad, face buttons A/B/X/Y, L1 L2 R1 R2,
+-- stick clicks, Start, Select, back paddles L3/L4/R3/R4) bound to Blizzard's own NORMAL-context actions.
+-- The KEY NAMES are Blizzard's: the game translates every controller (Steam Deck, Steam Controller, Xbox,
+-- PlayStation 3/4/5, Switch) into one fixed set of PAD key names and display strings - see
+-- Blizzard_SharedXML/SharedConstants.lua:61-92 (KEY_PADPADDLE1..4 = the back paddles, KEY_PADLSTICK/RSTICK
+-- = stick clicks, KEY_PADFORWARD = Start/menu, KEY_PADBACK = Select/view, KEY_PADSYSTEM, KEY_PADSOCIAL) and
+-- Blizzard_SharedXML/Shared/GamepadConstants.lua (GAMEPAD_FACE_BOTTOM = "PAD1", GAMEPAD_FACE_RIGHT = "PAD2").
+-- The addon invents no key names; every one below is spelled in those two files.
 --
 -- WHY NOT THE RECORDED GAMEPAD ACTIONS (the first attempt, and why it failed): dump 1 recorded actions like
 -- GAMEPADACTIONBUTTON1/OPENRADIAL with Blizzard's gamepad UI ON (contextActive=true). With the UI off those
@@ -14,26 +18,27 @@
 -- context is inactive never runs (rule from REQUIREMENTS.md / harness lesson). So claiming those actions on
 -- our frame could never work for a player who does not switch Blizzard's gamepad UI on.
 --
--- WHAT THIS LAYOUT USES INSTEAD: the same 15 keys, bound to Blizzard's own NORMAL-context actions - actions
--- from Blizzard's always-on Bindings.xml whose bodies we READ and verified do something in plain keyboard
--- mode (the user approved using Blizzard's recorded bindings, 2026-11-13; this keeps their keys and Blizzard's
--- own actions, only the context-off-dead ones are replaced by Blizzard's normal equivalents). The four
--- shoulder/trigger keys still carry the gamepad mod actions dump 1 recorded for them - KNOWN RISK: those
--- actions live in the SAME inactive GamepadModeInGameCore context (Blizzard_Gamepad/Bindings.xml:14-25), so by
--- the lesson above they very likely stay dead with Blizzard's gamepad UI off. They are kept only because dump 1
--- recorded exactly these actions on exactly those keys; if the user's button test shows them dead, replace
--- them with normal-context actions in the next change (candidates already looked up: TARGETNEARESTENEMY
--- Bindings_Camelot.xml:989, OPENCHATSLASH :115, INTERACTTARGET :1140).
+-- WHAT THIS LAYOUT USES INSTEAD: Blizzard's own NORMAL-context actions - actions from Blizzard's always-on
+-- Bindings.xml whose bodies we READ and verified do something in plain mode (cites on each entry below).
+-- The user approved (2026-11-13): replace the four dead GAMEPAD*MOD shoulder/trigger entries with working
+-- normal-context actions, and cover ALL controller buttons including the back paddles.
+--
+-- NO CHORD DEFAULTS ON PURPOSE: modifier-prefixed gamepad keys ("SHIFT-PAD1") are NOT claimed anywhere -
+-- whether the C++ binding layer matches such chords against gamepad keys is unproven offline, so we do not
+-- ship them as defaults (the user's press test in Phase 2 will decide whether chords work at all).
 --
 -- HOW IT IS APPLIED: OVERRIDE bindings on an addon-owned frame (the mechanism Blizzard's own gamepad UI uses,
 -- InputActionBinding.lua:22 SetOverrideBinding(owner, true, key, action); cleared with
 -- SetOverrideBinding(owner, false, key, "") at InputBindingManager.lua:29). Overrides are temporary, need no
--- SaveBindings and work whatever the binding context is. Never UIParent as owner (Blizzard's stack owns that;
+-- SaveBindings (BindingUtil.lua:66,90) and work whatever the binding context is. Never UIParent as owner
+-- (Blizzard's own binding stack sets its overrides on UIParent, InputActionBinding.lua:22;
 -- ClearOverrideBindings wipes ALL of an owner's claims - known-mistakes rule). Re-applied every PLAYER_LOGIN.
 local addonName, ns = ...
 
--- The 15 keys verbatim from dump 1. Action sources are Blizzard's own shipped binding bodies (file:line):
+-- The default layout: key -> action. Every key name appears in Blizzard_SharedXML/SharedConstants.lua:61-92
+-- or GamepadConstants.lua. Action sources are Blizzard's own shipped binding bodies (file:line):
 --   ACTIONBUTTONn        Blizzard_FrameXML/Bindings_Camelot.xml:155-207 (ActionButtonDown(n)/ActionButtonUp(n))
+--   MULTIACTIONBAR1BTNn  Blizzard_FrameXML/Bindings_Camelot.xml:396-407 (MultiActionButtonDown("MultiBarBottomLeft", n))
 --   OPENALLBAGS          Blizzard_FrameXML/Bindings_Camelot.xml:1190-1192 (ToggleAllBags(); defined ContainerFrame.lua:2173)
 --   TOGGLECHARACTER0     Blizzard_FrameXML/Bindings_Camelot.xml:1194-1195 (ToggleCharacter("PaperDollFrame"); CharacterFrame.lua:3)
 --   JUMP                 Blizzard_FrameXML/Bindings_Camelot.xml:53-57    (JumpOrAscendStart())
@@ -41,40 +46,85 @@ local addonName, ns = ...
 --   TARGETNEARESTENEMY   Blizzard_FrameXML/Bindings_Camelot.xml:989-995   (TargetNearestEnemy())
 --   OPENCHATSLASH        Blizzard_FrameXML/Bindings_Camelot.xml:115-116   (ChatFrameUtil.OpenChat("/"); ChatFrameUtil.lua:448)
 --   TOGGLEGAMEMENU       Blizzard_FrameXML/Bindings_Camelot.xml:1169-1170 (ToggleGameMenu(); Blizzard_GameMenuEsc.lua:109)
---   GAMEPADLEFTMOD / RIGHTMOD / LEFTTARGETMODIFIER / RIGHTTARGETMODIFIER: exactly as recorded in dump 1,
---     declared at Blizzard_Gamepad/Bindings.xml:14,17,21,25 - SAME context as the dead ones above, so these
---     four are EXPECTED DEAD with Blizzard's gamepad UI off (see KNOWN RISK in the header; user's test decides).
-ns.BlizzardLayout = {
+-- The 15 keys the game recorded in dump 1 keep their actions from the previous version; everything else is a
+-- new default for a button that previously had none.
+ns.DefaultLayout = {
+	-- d-pad (the four keys dump 1 recorded)
 	PADDLEFT     = "ACTIONBUTTON1",
 	PADDUP       = "ACTIONBUTTON2",
 	PADDRIGHT    = "ACTIONBUTTON3",
 	PADDDOWN     = "ACTIONBUTTON4",
+	-- face buttons: PAD1 = bottom, PAD2 = right, PAD3 = left, PAD4 = top (GamepadConstants.lua GAMEPAD_FACE_*)
 	PAD3         = "ACTIONBUTTON5",
 	PAD4         = "ACTIONBUTTON6",
 	PAD2         = "ACTIONBUTTON7",
 	PAD1         = "ACTIONBUTTON8",
+	-- middle buttons: dump 1 recorded PADFORWARD/PADBACK (Start/Select on every pad)
 	PADFORWARD   = "OPENALLBAGS",
 	PADBACK      = "TOGGLEGAMEMENU",
+	-- stick clicks: PADRSTICK carried JUMP in dump 1; PADLSTICK is new
 	PADRSTICK    = "JUMP",
-	PADLTRIGGER  = "GAMEPADLEFTMOD",
-	PADRTRIGGER  = "GAMEPADRIGHTMOD",
-	PADLSHOULDER = "GAMEPADLEFTTARGETMODIFIER",
-	PADRSHOULDER = "GAMEPADRIGHTTARGETMODIFIER",
+	PADLSTICK    = "INTERACTTARGET",
+	-- shoulders and triggers (the four the user's test proved dead as GAMEPAD*MOD - replaced with working
+	-- actions, approved 2026-11-13)
+	PADLSHOULDER = "INTERACTTARGET",
+	PADRSHOULDER = "TARGETNEARESTENEMY",
+	PADLTRIGGER  = "OPENCHATSLASH",
+	PADRTRIGGER  = "ACTIONBUTTON9",
+	-- back paddles (Steam Deck L3/L4/R3/R4, Xbox Elite paddles): key names KEY_PADPADDLE1..4,
+	-- SharedConstants.lua:85-88. UNVERIFIED in game whether a plain pad reports them at all - the user's
+	-- press test decides; on pads without paddles these overrides simply never trigger.
+	PADPADDLE1   = "ACTIONBUTTON10",
+	PADPADDLE2   = "ACTIONBUTTON11",
+	PADPADDLE3   = "ACTIONBUTTON12",
+	PADPADDLE4   = "MULTIACTIONBAR1BUTTON1",
 }
 
--- The frame that OWNS our override claims. Never UIParent (see header).
-local claimFrame = CreateFrame("Frame", addonName .. "ClaimFrame")
+-- Chords the player may bind by hand in Phase 2 (rows exist for them), but NOTHING is claimed by default:
+-- whether a "CTRL-" / "SHIFT-" prefix ever fires on a gamepad key is unproven offline (see header).
+ns.ChordRows = {
+	["SHIFT-PAD3"]        = "ACTIONBUTTON6",       -- spare slot for the top face button's action
+	["SHIFT-PAD2"]        = "ACTIONBUTTON8",       -- spare slot for the bottom face button's action
+	["CTRL-PADLSTICK"]    = "TOGGLECHARACTER0",
+	["CTRL-PADRSHOULDER"] = "MULTIACTIONBAR1BUTTON1",
+}
 
+-- Every row the rebinder shows: default keys plus the chord rows. Row name == its own key by default.
+function ns.AllDefaultKeys()
+	local keys = {}
+	for key in pairs(ns.DefaultLayout) do keys[#keys + 1] = key end
+	for key in pairs(ns.ChordRows) do keys[#keys + 1] = key end
+	return keys
+end
+
+-- The frame that OWNS our override claims. Never UIParent: Blizzard's binding stack sets overrides on
+-- UIParent itself (Blizzard_GamepadSharedUtility/InputBindingStack/InputActionBinding.lua:22), so that owner is taken.
+local claimFrame = CreateFrame("Frame", addonName .. "ClaimFrame")
+ns.claimFrame = claimFrame
+
+-- What is currently claimed on our frame, row -> key (kept so the rebinder knows the truth without
+-- trusting GetBindingAction's override argument).
+local claims = {}
+ns.claims = claims
+
+-- Re-claim the whole set from what the player chose (Bind.lua:46 RebuildClaims / :35 claimedKey).
+-- The claim list is rebuilt from db.binds FIRST, then our frame's overrides are dropped wholesale and
+-- rewritten - a moved or cleared row frees its old key automatically, no ghost claims. Only rows that
+-- HAVE a key appear in the list, so the action argument is never nil (RebuildClaims skips keyless rows).
 function ns.ApplyLayout()
-	for key, action in pairs(ns.BlizzardLayout) do
-		SetOverrideBinding(claimFrame, true, key, action)
+	local live = ns.RebuildClaims()   -- rebuilt from db.binds, independent of the override state
+	ClearOverrideBindings(claimFrame)   -- removes every override owned by our frame; Blizzard itself calls it this way on a frame (RestrictedFrames.lua:538); Blizzard's stack owns UIParent (InputActionBinding.lua:22)
+	for row, key in pairs(live) do
+		local action = ns.DefaultLayout[row] or ns.ChordRows[row]
+		if action then   -- belt and braces: a row name never in our tables (stale saved data) is skipped, never passed as a nil action
+			SetOverrideBinding(claimFrame, true, key, action)
+		end
 	end
 end
 
 function ns.ClearLayout()
-	for key in pairs(ns.BlizzardLayout) do
-		SetOverrideBinding(claimFrame, false, key, "")
-	end
+	ClearOverrideBindings(claimFrame)   -- drop every override this frame set (Blizzard calls it on a frame at RestrictedFrames.lua:538)
+	ns.claims = {}
 end
 
 -- R-1.2: one popup on the first login; nothing bound before the player says yes; after "No" the
@@ -113,6 +163,10 @@ ns.SlashSubcommands["binds"] = function()
 	StaticPopup_Show(POPUP)
 end
 ns.SlashSubcommands["unbind"] = function()
+	if InCombatLockdown() then   -- ClearOverrideBindings is restricted /nocombat (community docs; Blizzard guards its own use at RestrictedFrames.lua:24,538)
+		ns:Print("in combat - bindings unchanged.")
+		return
+	end
 	ns.ClearLayout()
 	ns.db.bindsAsked = "no"
 	ns:Print("controller layout removed (until you accept again).")

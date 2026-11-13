@@ -53,13 +53,16 @@ end)
 -- errors on it this test says so instead of failing silently). NOTE: answering here only proves the key
 -- LOOKUP - dump 2 (2026-11-12 23:45) proved a lookup can answer while the button still does nothing,
 -- which is why the actions claimed must be normal-context ones (Layout.lua header).
-ns.Selftest.add("overrides-answer-in-game", "R-1.3", "the 15 PAD keys carry our applied actions via overrides", function()
+ns.Selftest.add("overrides-answer-in-game", "R-1.3", "every default row carries its action via an override on its current key", function()
 	if not (ns.db and ns.db.bindsAsked == "yes") then return false, "layout not accepted yet: /ubermoc binds, accept, then /ubermoc selftest" end
 	local bad = {}
-	for key, action in pairs(ns.BlizzardLayout) do
-		local ok, got = pcall(GetBindingAction, key, true)
-		if not ok then return false, "GetBindingAction(key, true) errored: " .. tostring(got) end
-		if got ~= action then bad[#bad + 1] = ("%s=%s"):format(key, tostring(got)) end
+	for row in pairs(ns.DefaultLayout) do
+		local key = ns.claimedKey(row)
+		if key then
+			local ok, got = pcall(GetBindingAction, key, true)
+			if not ok then return false, "GetBindingAction(key, true) errored: " .. tostring(got) end
+			if got ~= ns.DefaultLayout[row] then bad[#bad + 1] = ("%s(%s)=%s"):format(row, key, tostring(got)) end
+		end
 	end
 	if #bad > 0 then return false, "wrong or missing override on: " .. table.concat(bad, ", ") end
 	return true
@@ -74,10 +77,10 @@ end)
 ns.Selftest.add("actions-declared-in-game", "R-1.3", "every action we claim is declared by this client (GetBindingIndex answers)", function()
 	if not (C_KeyBindings and C_KeyBindings.GetBindingIndex) then return false, "C_KeyBindings.GetBindingIndex unavailable" end
 	local bad = {}
-	for key, action in pairs(ns.BlizzardLayout) do
+	for row, action in pairs(ns.DefaultLayout) do
 		local ok, idx = pcall(C_KeyBindings.GetBindingIndex, action)
 		if not ok then return false, ("GetBindingIndex(%s) errored: %s"):format(action, tostring(idx)) end
-		if not idx then bad[#bad + 1] = key .. "=" .. action end
+		if not idx then bad[#bad + 1] = row .. "=" .. action end
 	end
 	if #bad > 0 then return false, "action not declared by the client: " .. table.concat(bad, ", ") end
 	return true

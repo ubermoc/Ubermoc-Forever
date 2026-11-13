@@ -3,26 +3,9 @@
 -- popup does not return; a slash command asks again.
 -- The fake game models popups (behavior.lua:80-86) and override bindings (behavior.lua:76-78).
 
--- The layout Layout.lua applies: the 15 keys recorded from the user's game by /ubermoc dumpdefaults,
--- with the actions Layout.lua ships (Blizzard's own; see Layout.lua header for why the context-off-dead
--- ones were replaced). Kept in sync with ns.BlizzardLayout.
-BLIZZARD_LAYOUT = {
-    PADDLEFT    = "ACTIONBUTTON1",
-    PADDRIGHT   = "ACTIONBUTTON3",
-    PADDDOWN    = "ACTIONBUTTON4",
-    PADDUP      = "ACTIONBUTTON2",
-    PAD1        = "ACTIONBUTTON8",
-    PAD2        = "ACTIONBUTTON7",
-    PAD3        = "ACTIONBUTTON5",
-    PAD4        = "ACTIONBUTTON6",
-    PADFORWARD  = "OPENALLBAGS",
-    PADBACK     = "TOGGLEGAMEMENU",
-    PADRSTICK   = "JUMP",
-    PADLTRIGGER = "GAMEPADLEFTMOD",
-    PADRTRIGGER = "GAMEPADRIGHTMOD",
-    PADLSHOULDER= "GAMEPADLEFTTARGETMODIFIER",
-    PADRSHOULDER= "GAMEPADRIGHTTARGETMODIFIER",
-}
+-- The layout Layout.lua applies is read from the addon itself (g.ns.DefaultLayout) so this file can
+-- never drift out of sync with it (the user approved the full-button layout 2026-11-13; see Layout.lua
+-- header for why each action).
 
 local function loginFresh()
     local g = World{ saved = nil, pads = {5}, commands = {}, bindings = {} }
@@ -54,7 +37,7 @@ end)
 test("accept-applies-layout", "R-1.2", "accepting the popup applies Blizzard's recorded layout", function()
     local g = loginFresh()
     g.acceptPopup()
-    for key, action in pairs(BLIZZARD_LAYOUT) do
+    for key, action in pairs(g.ns.DefaultLayout) do
         local got = (g.overrides[key] and g.overrides[key].action) or g.bindings[key]
         eq(got, action, "after accepting, " .. key .. " must carry Blizzard's action")
     end
@@ -103,7 +86,7 @@ test("no-double-ask", "R-1.2", "a second login after Yes does not show the popup
     g2.login(false)
     eq(#g2.popups, 0, "already accepted: no popup on later logins")
     -- and the layout is re-applied automatically (overrides are temporary in the real game)
-    for key, action in pairs(BLIZZARD_LAYOUT) do
+    for key, action in pairs(g2.ns.DefaultLayout) do
         local got = (g2.overrides[key] and g2.overrides[key].action) or g2.bindings[key]
         eq(got, action, "after an earlier Yes, later logins must re-apply the layout")
     end

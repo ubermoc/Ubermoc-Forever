@@ -8,6 +8,7 @@ local DB_NAME = "UbermocForeverDB"   -- must match "## SavedVariables:" in the .
 local defaults = {
     enabled = true,
     debug = false,
+    binds = {},   -- row -> the key the player pressed ("" = cleared on purpose); read/written by Bind.lua claimedKey/BindPress
 }
 
 local function ApplyDefaults(target, source)
