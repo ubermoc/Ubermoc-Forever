@@ -216,6 +216,10 @@ end
 --------------------------------------------------------------
 
 local navigating = {}          -- window -> map currently navigated
+-- Probe support (Probe.lua reads these; they change nothing): how often our NavOpen ran for a window,
+-- and whether that window is being navigated right now.
+ns.NavOpenCount = ns.NavOpenCount or {}
+function ns.NavIsNavigating(window) return navigating[window] ~= nil end
 local topOrder = {}            -- insertion order of opened windows (the last shown one is on top)
 
 local function topOrderSeen(name)
@@ -276,12 +280,27 @@ end
 ns.NavTopWindow = topWindow
 
 function ns.NavOpen(window)
+	-- Navigation in windows is ALWAYS on (user 2026-11-13: "that should happen automatically"): there is
+	-- no navWindows setting any more; a stale saved value is deleted by Options.lua on load.
 	local maker = ns.NAV_MAKERS[window]
 	if not maker or InCombatLockdown() then return end   -- unmapped window / combat: change nothing
-	if window ~= addonName .. "BindFrame" and ns.db and ns.db.navWindows == false then return end
-	-- ^ the options-page checkbox (R-2.3 setting) turns WINDOW navigation off; our own bind screen stays
-	--   navigable regardless, so turning it off can never leave the player without a controller path back.
-	local map = maker()
+	-- The probe wraps maker calls in pcall to record the game's real errors; our own call is wrapped too,
+	-- so a failing map can never leave the watcher half-done or spam the error log.
+	local ok, map = pcall(maker)
+	if not ok then
+		ns:Debug("nav map failed for", window, tostring(map))
+		ns.NAV_MAPS[window] = nil
+		navigating[window] = nil
+		ns.ClearNavClaims(window)
+		return
+	end
+	if not map then
+		ns.NAV_MAPS[window] = nil
+		navigating[window] = nil
+		ns.ClearNavClaims(window)
+		return   -- the maker declined to map this window right now: change nothing
+	end
+	ns.NavOpenCount[window] = (ns.NavOpenCount[window] or 0) + 1
 	ns.NAV_MAPS[window] = map
 	navigating[window] = map
 	topOrderSeen(window)              -- remove any stale entry, then re-add at the top

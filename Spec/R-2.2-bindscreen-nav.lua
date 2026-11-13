@@ -77,13 +77,13 @@ test("bind-screen-close-via-pad2", "R-2.2", "clicking Close (PAD2's target) hide
     falsy(g.overrides.PAD2, "PAD2 claim gone after Close")
 end)
 
-test("nav-off-setting-skips-windows-not-our-screen", "R-2.3", "with the options checkbox off, vendor/gossip windows get no claims but our bind screen stays navigable (never trapped)", function()
+test("nav-automatic-no-toggle", "R-2.3", "window navigation is automatic: a stale saved navWindows=false changes nothing (user 2026-11-13)", function()
     local g = World{ saved = nil, pads = {5}, commands = {}, bindings = {} }
     g.login(true); g.acceptPopup()
-    g.saved.navWindows = false
-    g.show(g.env["MerchantFrame"])   -- a Blizzard window opens with the setting off
-    eq(count(g.overrides), 0, "no claims in windows while the setting is off")
+    g.saved.navWindows = false   -- leftover from an older build; the toggle is gone
+    g.show(g.env["MerchantFrame"])   -- a Blizzard window opens
+    truthy(g.overrides.PAD1, "claims exist in windows regardless of any saved flag")
     g.ns.ShowBindUI()
     g.show(g.env["UbermocForeverBindFrame"])
-    truthy(g.overrides.PAD1, "our own bind screen is still navigable with the setting off")
+    truthy(g.overrides.PAD1, "our own bind screen is navigable too")
 end)

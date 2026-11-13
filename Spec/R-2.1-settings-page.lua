@@ -49,16 +49,15 @@ test("old-enable-flag-deleted", "R-2.1", "an upgrading install has db.enabled re
     falsy(g.ns.db.enabled, "db.enabled must be nil after load (redundant flag deleted)")
 end)
 
-test("nav-setting-row", "R-2.1", "window navigation is a real setting row with a checkbox (default on)", function()
+test("no-nav-toggle-setting", "R-2.1", "there is NO navWindows checkbox: window navigation happens automatically (user 2026-11-13)", function()
     local g = loginWithSaved(nil)
-    local found
     for _, s in ipairs(g.settingsRegistered or {}) do
-        if s.key == "navWindows" then found = s end
+        if s.key == "navWindows" then error("a navWindows setting row must not exist") end
+        falsy((s.label or ""):find("navigation"), "no navigation toggle row: " .. tostring(s.label))
     end
-    truthy(found, "a navWindows setting is registered")
-    eq(found.label, "Controller navigation in windows", "the row's label")
-    local boxed
-    for _, name in ipairs(g.settingsCheckboxes or {}) do if name == found.uniqueName then boxed = true end end
-    truthy(boxed, "the navWindows setting gets a Blizzard checkbox widget")
-    eq(g.ns.db.navWindows, true, "navigation is on by default (plug and play)")
+end)
+
+test("stale-nav-flag-deleted", "R-2.1", "an upgrading install has a stale db.navWindows deleted from saved data", function()
+    local g = loginWithSaved({ navWindows = false, bindsAsked = "yes" })   -- saved by an older build
+    falsy(g.ns.db.navWindows, "db.navWindows must be nil after load (the toggle is gone for good)")
 end)

@@ -16,18 +16,15 @@ local addonName, ns = ...
 ns:RegisterEvent("ADDON_LOADED", function(loadedAddon)
     if loadedAddon ~= addonName or ns.settingsCategory then return end
 
-    -- drop the old redundant enable flag (R-2.1)
-    if ns.db then ns.db.enabled = nil end
+    -- drop the old redundant enable flag (R-2.1) and the navWindows checkbox (user 2026-11-13: window
+    -- navigation happens automatically, no toggle). A stale saved value from an earlier build is deleted.
+    if ns.db then
+        ns.db.enabled = nil
+        ns.db.navWindows = nil
+    end
 
     local category = Settings.RegisterVerticalLayoutCategory(addonName)
     ns.settingsCategory = category
-
-    -- Controller navigation of windows (R-2.3), a real Blizzard setting row: checkbox + tooltip, saved
-    -- in our SavedVariables like every other add-on setting. On by default (plug and play).
-    local nav = Settings.RegisterAddOnSetting(category, addonName .. "_NavWindows", "navWindows", ns.db,
-        Settings.VarType.Boolean, "Controller navigation in windows", true)
-    Settings.CreateCheckbox(category, nav,
-        "D-pad moves the highlight between a window's buttons, PAD1 selects, PAD2 closes. Works in vendor and talk-to-NPC windows too.")
 
     -- The binding rows live on their own subpage of ours (R-2.2): Bind.lua registers its Blizzard-style
     -- setting rows into it when the addon loads.

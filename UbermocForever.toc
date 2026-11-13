@@ -6,9 +6,11 @@
 ## SavedVariables: UbermocForeverDB
 Core.lua
 Options.lua
+EscMenu.lua
 Layout.lua
 Nav.lua
 Bind.lua
 DefaultsDump.lua
+Probe.lua
 Selftest.lua
 Tests.lua

@@ -7,11 +7,12 @@ local DB_NAME = "UbermocForeverDB"   -- must match "## SavedVariables:" in the .
 
 local defaults = {
     debug = false,
-    navWindows = true,   -- R-2.3: d-pad navigation of windows; a real setting row on the options page
     binds = {},   -- row -> the key the player pressed ("" = cleared on purpose); read/written by Bind.lua claimedKey/BindPress
 }
 -- NOTE: there is deliberately NO "enabled" flag any more (R-2.1, user 2026-11-13): while the addon is
 -- installed it is on. Options.lua deletes the old flag from saved data; nothing here reads it.
+-- NOTE: navWindows is GONE too (user 2026-11-13: "that should happen automatically"): window navigation
+-- is always on, no checkbox. Options.lua deletes a stale saved navWindows from earlier builds.
 
 local function ApplyDefaults(target, source)
     for key, value in pairs(source) do
