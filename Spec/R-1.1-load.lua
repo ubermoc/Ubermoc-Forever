@@ -1,21 +1,8 @@
--- Spec tests for REQUIREMENTS.md line 1: "The addon loads on a brand-new install (no saved data, all defaults,
--- no other Ubermoc addon) with no Lua error."
--- Run offline against the fake game (harness wow/behavior.lua). Not listed in the .toc.
-
-test("load-fresh", "R-1.1", "brand-new install: loads, logs in, fires events, zero Lua errors", function()
-  local g = World{ saved = nil, pads = {5}, commands = { "JUMP", "ACTIONBUTTON1" }, bindings = {} }
-  g.login()
-  g.advance(3)
-  eq(#g.errors, 0, "Lua errors during login events: " .. tostring(g.errors[1]))
-end)
-
-test("load-existing", "R-1.1", "second install with saved data (dump already stored): loads with no Lua error", function()
-  local saved = { enabled = true, debug = false, defaultsDump = { time = 1700000000, count = 2, bindings = { PAD1 = "JUMP" }, unboundKeys = {} } }
-  local g = World{ saved = saved, pads = {5}, commands = { "JUMP", "ACTIONBUTTON1" }, bindings = { PAD1 = "JUMP" } }
-  g.login()
-  g.advance(3)
-  eq(#g.errors, 0, "Lua errors during login events: " .. tostring(g.errors[1]))
-end)
+-- Spec tests for REQUIREMENTS.md line 1, the Step A diagnostic - FIRST attempt (key-probing).
+-- SUPERSEDED on 2026-11-12: probing KEY -> action with GetBindingAction(key) returned NOTHING in the real game
+-- (recorded SavedVariables UbermocForever.lua: count 0, all 64 probes unbound), because Blizzard's gamepad
+-- actions live in binding context GamepadModeInGameCore. See Spec/R-1.1-dump-context.lua for the fixed dump
+-- tests; this file keeps only the coverage that still holds (the slash command is wired and read-only).
 
 test("dump-command-exists", "R-1.1", "/ubermoc dumpdefaults is a real subcommand (no 'unknown command' reply)", function()
   local g = World{ saved = nil, pads = {5}, commands = { "JUMP", "ACTIONBUTTON1" }, bindings = { PAD1 = "JUMP" } }

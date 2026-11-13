@@ -35,7 +35,8 @@ ns.Selftest.add("dump-finds-defaults", "R-1.1", "the dump is non-empty: Blizzard
 	local dump = ns.DumpDefaults()
 	if not dump then return false, "DumpDefaults returned nothing" end
 	if dump.count < 1 then
-		return false, "0 bound gamepad keys found - all unbound; report this to the AI (line 3 needs another source)"
+		return false, ("0 bound gamepad keys found (context active: %s, Blizzard gamepad UI on: %s) - report this line to the AI")
+			:format(tostring(dump.contextActive), tostring(dump.gamepadUIEnabled))
 	end
 	return true
 end)
