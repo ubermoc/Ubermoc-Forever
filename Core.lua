@@ -72,6 +72,8 @@ SlashCmdList["UBERMOC"] = function(msg)
     elseif command == "debug" then
         ns.db.debug = not ns.db.debug
         ns:Print("debug " .. (ns.db.debug and "on" or "off"))
+    elseif ns.SlashSubcommands and ns.SlashSubcommands[command] then
+        ns.SlashSubcommands[command]()
     else
         ns:Print("commands: config, toggle, debug")
     end

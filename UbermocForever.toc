@@ -6,3 +6,6 @@
 ## SavedVariables: UbermocForeverDB
 Core.lua
 Options.lua
+DefaultsDump.lua
+Selftest.lua
+Tests.lua
