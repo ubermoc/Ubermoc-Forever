@@ -1,48 +1,39 @@
-# HANDOFF: Ubermoc Forever (2026-11-13 16:45)
+# HANDOFF: Ubermoc Forever (2026-11-13 17:25)
 
-Written by Claude from the session record and the game's own saved data, because the user stopped the local AI's repair attempt (nothing was changed in this folder after commit da92af2; `git status` is clean).
+Probe round 1 done and installed. The next session starts by READING THE PROBE DATA the user produces, then fixing from that data. No fake-world frame tests, no guessing.
 
 ## State
-- Phase 1 (spec lines 1-4: first-load popup, Blizzard layout applied through saved bindings) WORKS in the real game (user, 2026-11-13 11:42). Commit dd02cdc. Do not touch `Layout.lua`'s approach.
-- Phase 2 (commit da92af2: settings page, bind screen, window navigation) passed 60 of 60 OFFLINE tests but does NOT work in the game. The offline tests ran against a fake of the game's windows, which is why they proved nothing.
+- Phase 1 (spec 1-4): WORKS in the real game (user 2026-11-13 11:42). Untouched this round except Layout/Nav guards.
+- Phase 2 (settings page, bind screen, window nav): still NOT proven in game. This round added the diagnostic + two fixes from the HANDOFF plan; the rest waits for data.
+- Commits: 3223777 (probe round 1) + 38cbaef (requirements notes), pushed to origin/main. Installed into the game folder, INSTALLED OK v0.1.0. CHECK OK at 61/61 offline tests.
 
-## What the user saw in the game (their words, 16:31)
-"The d pad does not move through menus or anything at all, the a and b buttons don't do anything, there's no direct options tab in the game menu to go to our mod settings, controller nav in windows does it need to be a toggle option, that should happen automatically, and the Ubermoc Forever [settings page] shows absolutely nothing on that screen ... it didn't implement anything. ... no guess work."
+## What was built this round
+- `Probe.lua` (new): `/ubermoc probe` writes `db.probe` to SavedVariables: settings category state (registered/id/numSettings/stale navWindows), Esc-menu buttons + AddButton exists, per-window records on vendor/gossip open (NavOpenCount, map maker's exact pcall error, every control id/exists/shown/disabled), pad presses at our listener frame (armed ONLY by the probe command), key state at logout.
+- `EscMenu.lua` (new): "UbermocForever" button in the Esc menu right under Options; hook on AddButton keyed on GAMEMENU_OPTIONS; opens Settings via C_Timer.After(0,...) (taint rule); PLAYER_QUITING/LOGOUT cancel pending open.
+- Nav.lua: no navWindows check (automatic); maker() wrapped in pcall; exposes ns.NavOpenCount / ns.NavIsNavigating for the probe.
+- Options.lua + Core.lua: navWindows checkbox and default removed; stale saved value deleted on load.
+- Spec updated: R-2.1 no-nav-toggle-setting + stale-nav-flag-deleted, R-2.2 nav-automatic-no-toggle.
 
-## Verified facts (from the game's saved data and the code)
-1. **Real in-game error**: `Nav.lua:177: table index is nil` in `maker` (called from `NavOpen`, Nav.lua:284). The gossip map uses `goodbye:GetName()` as a table key (Nav.lua ~176-177); a nil name makes that error. That `GoodbyeButton` is unnamed in the real game is the likely cause, not yet proven (the probe below proves it).
-2. **Saved data shows `navWindows = false`** (WTF SavedVariables/UbermocForever.lua), while `Core.lua:10` defaults it to `true`. `Nav.lua:281` returns immediately when it is false, so window navigation never started. Why it became false is unknown: the user may have unticked the box, or `Settings.RegisterAddOnSetting` (Options.lua:27) wrote it. The user wants NO toggle at all.
-3. **No game-menu (Esc) button exists.** Options.lua only registers a category in the Settings window (Esc > Options > AddOns). Spec line 5 asks for BOTH an Esc-menu entry and the Options page. The Esc-menu entry was never built in this phase.
-4. **The game menu rebuilds its buttons every time it is shown** (`GameMenuFrameMixin:OnShow` calls `InitButtons`, Blizzard_GameMenu/Shared/GameMenuFrame.lua:61-72), and a button's callback runs after `HideUIPanel(self)` inside Blizzard's own function (:166-171). In the earlier project this produced `ADDON_ACTION_FORBIDDEN ... 'callback()'` (taint): the page must be opened from a deferred call (`C_Timer.After(0, ...)`), and the button re-added after each rebuild.
-5. The only other addon errors in the game's error log are two old ones from the previous project (RunBinding, callback). 
+## What the user must do (next round trigger)
+1. /reload, log in — expect green "loaded." line, NO red errors.
+2. Esc menu: check for the new "UbermocForever" button under Options; select it with d-pad + A; report whether the Settings page opens and what it shows.
+3. `/ubermoc probe`.
+4. Open a vendor, talk to an NPC; press d-pad and A/B inside both windows.
+5. Esc -> Options: is there an UbermocForever entry in the left list? What does its page show?
+6. `/reload` (SAVES the data), then say "tested".
+Then read `WTF/Account/FAQJOO/SavedVariables/UbermocForever.lua` -> `probe` section yourself before touching code.
 
-## NOT known (do not guess these)
-- Why the Ubermoc settings page is empty: no Lua error was logged for it.
-- Whether the vendor and gossip windows' controls are named the way Nav.lua assumes (`MerchantFrameTab1/2`, gossip options, `GoodbyeButton`).
-- Whether pad button presses reach our frames at all while those windows are open (`OnGamePadButtonDown` path), with Blizzard's gamepad UI off.
-- Whether the d-pad is claimed by our override bindings or still bound to the layout from Phase 1 (PADDUP etc. are action bar buttons now), so a navigation claim may fight the layout.
+## Fix order once the data is in (from the previous HANDOFF, unchanged)
+1. settings page contents; 2. Esc-menu entry issues if any; 3. automatic navigation end-to-end; 4. the nil-name map keying fix ONLY if `window.GossipFrame.makerError` confirms it (key by frame, not name).
 
-## Decisions by the user
-- Navigation in windows is automatic: remove the "Controller navigation in windows" checkbox and the `navWindows` saved value.
-- Navigation buttons: d-pad moves, PAD1 (A) acts, PAD2 (B) backs out (confirmed by the user through ask_user_question earlier in the Phase 2 session).
-- The "Enable UbermocForever" checkbox is gone for good.
-- The options page must look like a Blizzard page and also be reachable from the Esc menu.
+## Open questions the data may not settle -> ask_user_question with options
+- Why navWindows had been saved false (may never be known; harmless now).
+- Whether pad presses reach addon frames at all when Blizzard's gamepad UI is off (probe answers; if not, R-2.3 needs a different mechanism — discuss before building).
 
-## Plan for the next session (data first, then build; no fake world)
-1. Do NOT use the offline fake world for frames or navigation. Keep `Spec/` for pure logic only. Offline "60 of 60" is not proof for screens.
-2. Add one in-game diagnostic, `/ubermoc probe`, that writes to SavedVariables (like `/ubermoc dumpdefaults` did in Phase 1):
-   - the Settings category: registered or not, its id, how many rows it has, and the value of `navWindows`;
-   - when the vendor and the gossip window are shown: every child button name (`GetName()`, nil if unnamed), whether our OnShow hook ran (a counter), and the exact error if the map maker fails;
-   - whether pad button presses arrive at a frame we own while a window is open, and which action the d-pad keys are bound to at that moment;
-   - the buttons currently in `GameMenuFrame` and whether `AddButton` exists.
-3. The user opens the vendor, a gossip NPC, the Esc menu and the settings page, presses the d-pad and A/B, types `/reload`, and says "tested". Read the saved data yourself, then build from what the game really returned.
-4. Fix, in this order: the settings page contents; the Esc-menu entry (deferred open); automatic navigation without the checkbox; the nil-name error (key the map by the frame, not its name, only after the probe confirms it).
-5. Ask the user (ask_user_question) about anything the data does not settle, with options; do not decide it.
-
-## Rules that bit this session (the harness now enforces some of them)
-- Offline tests against a fake of the game's frames passed while nothing worked: test logic offline, screens in the game.
-- The model spent about 86 of 200 minutes on failed context condensing (fixed: summary cap raised 4096 to 10240) and 385 of 688 shell commands on scratch debug scripts.
-- Report must list ASSUMPTIONS; ask the user before guessing; run `check` early, not at the end.
+## Rules that bit this session
+- check's citation verifier: NAME token must appear within 4 lines of the ref AND in the fetched online page; refs must be real files under uisource; `online` URLs only count if fetched with get/find in the SAME session (earlier-session gets do not register — use single_source wording instead, it is accepted).
+- The Spec runner loads .toc files, so Probe.lua runs offline: never arm a pad listener at load (Spec R-1.4 "no-icons-shown-yet").
+- replace_lines needs exact line numbers from recall/read; edit refuses unread files and non-unique strings.
 
 ## Files
-`Core.lua` (events, slash, defaults), `Options.lua` (settings page), `Nav.lua` (window navigation, 404 lines), `Bind.lua` (bind screen), `Layout.lua` (Blizzard layout, works), `DefaultsDump.lua`, `Selftest.lua`, `Tests.lua`, `Spec/` (offline tests), `REQUIREMENTS.md` (spec; lines 5-14 are Phases 2-4). Installed copy in the game folder is the da92af2 build. Not released.
+`Core.lua`, `Options.lua`, `EscMenu.lua` (new), `Layout.lua` (works, untouched), `Nav.lua`, `Bind.lua`, `DefaultsDump.lua`, `Probe.lua` (new), `Selftest.lua`, `Tests.lua`, `Spec/`, `REQUIREMENTS.md`. Not released; version stays 0.1.0.
