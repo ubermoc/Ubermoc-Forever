@@ -19,3 +19,6 @@ ignore:
   - RESEARCH.md
   - spec.md
   - brief.md
+  - REQUIREMENTS.md
+  - HANDOFF.md
+  - Spec

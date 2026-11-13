@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: UbermocForever
+## Notes: Play World of Warcraft Forever with only a controller.
+## Author: ubermoc
+## Version: 0.1.0
+## SavedVariables: UbermocForeverDB
+Core.lua
+Options.lua
