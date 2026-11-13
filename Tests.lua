@@ -50,8 +50,10 @@ end)
 
 -- R-1.3: in the REAL game, after accepting the popup, our override claims answer for the PAD keys.
 -- GetBindingAction(key, true) checks overrides (community-documented second argument; if the game
--- errors on it this test says so instead of failing silently).
-ns.Selftest.add("overrides-answer-in-game", "R-1.3", "the 15 PAD keys carry Blizzard's recorded actions via our overrides", function()
+-- errors on it this test says so instead of failing silently). NOTE: answering here only proves the key
+-- LOOKUP - dump 2 (2026-11-12 23:45) proved a lookup can answer while the button still does nothing,
+-- which is why the actions claimed must be normal-context ones (Layout.lua header).
+ns.Selftest.add("overrides-answer-in-game", "R-1.3", "the 15 PAD keys carry our applied actions via overrides", function()
 	if not (ns.db and ns.db.bindsAsked == "yes") then return false, "layout not accepted yet: /ubermoc binds, accept, then /ubermoc selftest" end
 	local bad = {}
 	for key, action in pairs(ns.BlizzardLayout) do
@@ -60,6 +62,24 @@ ns.Selftest.add("overrides-answer-in-game", "R-1.3", "the 15 PAD keys carry Bliz
 		if got ~= action then bad[#bad + 1] = ("%s=%s"):format(key, tostring(got)) end
 	end
 	if #bad > 0 then return false, "wrong or missing override on: " .. table.concat(bad, ", ") end
+	return true
+end)
+
+-- R-1.3 (the real proof): does an override claim FIRE with Blizzard's gamepad UI off? The context-off-dead
+-- actions are listed from dump 2's recorded data; we do NOT call them (no automated input). This test only
+-- records what the game reports about each claimed action: whether it is declared at all
+-- (C_KeyBindings.GetBindingIndex -> index, nil if unknown; KeyBindings namespace, Blizzard uses it at
+-- Blizzard_Tutorials_Frame_Tutorials.lua:11) and whether its context answers. The user's button presses
+-- remain the final proof.
+ns.Selftest.add("actions-declared-in-game", "R-1.3", "every action we claim is declared by this client (GetBindingIndex answers)", function()
+	if not (C_KeyBindings and C_KeyBindings.GetBindingIndex) then return false, "C_KeyBindings.GetBindingIndex unavailable" end
+	local bad = {}
+	for key, action in pairs(ns.BlizzardLayout) do
+		local ok, idx = pcall(C_KeyBindings.GetBindingIndex, action)
+		if not ok then return false, ("GetBindingIndex(%s) errored: %s"):format(action, tostring(idx)) end
+		if not idx then bad[#bad + 1] = key .. "=" .. action end
+	end
+	if #bad > 0 then return false, "action not declared by the client: " .. table.concat(bad, ", ") end
 	return true
 end)
 

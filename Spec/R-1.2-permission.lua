@@ -3,21 +3,21 @@
 -- popup does not return; a slash command asks again.
 -- The fake game models popups (behavior.lua:80-86) and override bindings (behavior.lua:76-78).
 
--- The REAL layout recorded from the user's game by /ubermoc dumpdefaults (15 bindings,
--- contextActive=true). Copied verbatim from
--- WTF/Account/FAQJOO/SavedVariables/UbermocForever.lua Defaults.bindings.
+-- The layout Layout.lua applies: the 15 keys recorded from the user's game by /ubermoc dumpdefaults,
+-- with the actions Layout.lua ships (Blizzard's own; see Layout.lua header for why the context-off-dead
+-- ones were replaced). Kept in sync with ns.BlizzardLayout.
 BLIZZARD_LAYOUT = {
-    PADDLEFT    = "GAMEPADACTIONBUTTON1",
-    PADDRIGHT   = "GAMEPADACTIONBUTTON3",
-    PADDDOWN    = "GAMEPADACTIONBUTTON4",
-    PADDUP      = "GAMEPADACTIONBUTTON2",
-    PAD1        = "GAMEPADACTIONBUTTON8",
-    PAD2        = "GAMEPADACTIONBUTTON7",
-    PAD3        = "GAMEPADACTIONBUTTON5",
-    PAD4        = "GAMEPADACTIONBUTTON6",
-    PADFORWARD  = "OPENRADIAL",
-    PADBACK     = "TOGGLEUIFOCUS",
-    PADRSTICK   = "TOGGLEPINGSYSTEM",
+    PADDLEFT    = "ACTIONBUTTON1",
+    PADDRIGHT   = "ACTIONBUTTON3",
+    PADDDOWN    = "ACTIONBUTTON4",
+    PADDUP      = "ACTIONBUTTON2",
+    PAD1        = "ACTIONBUTTON8",
+    PAD2        = "ACTIONBUTTON7",
+    PAD3        = "ACTIONBUTTON5",
+    PAD4        = "ACTIONBUTTON6",
+    PADFORWARD  = "OPENALLBAGS",
+    PADBACK     = "TOGGLEGAMEMENU",
+    PADRSTICK   = "JUMP",
     PADLTRIGGER = "GAMEPADLEFTMOD",
     PADRTRIGGER = "GAMEPADRIGHTMOD",
     PADLSHOULDER= "GAMEPADLEFTTARGETMODIFIER",
