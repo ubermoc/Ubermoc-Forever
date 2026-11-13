@@ -1,5 +1,10 @@
 # HANDOFF — UbermocForever (last update: commit 3c40130 on main, 2026-11-13)
 
+UPDATE 2026-11-13: add-on INSTALLED locally and verified (verify_install.sh = INSTALLED OK, 8 files
+identical, version 0.1.0) in .../World of Warcraft/_forever_/Interface/AddOns/UbermocForever; old copy
+kept as UbermocForever.old. 40/40 offline tests pass, no code changed. Waiting on the user's in-game
+press test below before Phase 2 (line 9) starts.
+
 Read this FIRST, then REQUIREMENTS.md (Spec lines + Design decisions), then start.
 
 ## Where we are
