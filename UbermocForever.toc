@@ -7,6 +7,7 @@
 Core.lua
 Options.lua
 Layout.lua
+Nav.lua
 Bind.lua
 DefaultsDump.lua
 Selftest.lua

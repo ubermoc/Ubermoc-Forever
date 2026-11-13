@@ -13,15 +13,14 @@ Phase 1, foundation and default binds
 3. The layout that gets applied is Blizzard's own default controller layout for Forever (the same assignments Blizzard's gamepad UI puts on the bars), applied WITHOUT the player switching on Blizzard's gamepad UI. The addon invents no actions and no layout of its own.
 4. It works with the Steam Deck and Steam Controller first and also with Xbox, PlayStation and Switch controllers; button names and icons shown match the connected controller.
 
-Phase 2, options and rebinding
-5. An "Ubermoc Forever" entry in the game's Esc menu opens the options page; the same page is in the game's Options. Both are built from Blizzard templates and art.
-6. The options page lists every controller binding the addon applied, in rows that look and work like Blizzard's own key-binding rows: choose a row, press a controller button, it is bound. A clear action clears ONLY that row. A button never silently ends up on two actions: the conflict is shown and resolved. "Reset to default" restores Blizzard's layout.
-7. Changing one binding never changes any other binding. /reload and a new login keep exactly what the player set.
-8. Every failure path (no controller, in combat, unknown action) leaves the bindings as they were and says so in chat.
+Phase 2, options + controller navigation of windows (user's wording 2026-11-13; approved same day)
+R-2.1. The game's Settings window (Esc menu -> Options) has an "UbermocForever" page built ONLY from Blizzard settings templates and widgets - it must look like a page Blizzard made. There is NO "Enable UbermocForever" checkbox anywhere (the addon is on while installed); the old one is removed from the page AND from saved data.
+R-2.2. That same page lists every controller binding as rows like Blizzard's own key-binding rows: pick a row, press a controller button, it is bound and shown with the button's name; Clear clears ONLY that row; a conflict is shown and not silently applied; Reset restores Blizzard's default layout. The page works with the controller alone (d-pad moves between rows, PAD1 picks, PAD2 leaves).
+R-2.3. With a window open (bags, character, map, vendor, NPC gossip, popups, our options page), d-pad moves a visible highlight between its controls, PAD1 activates the highlighted control, PAD2 closes or backs out, and the bottom of the window shows that legend. It works in a vendor window and an NPC gossip window - where Blizzard's own gamepad UI does not navigate.
+R-2.4. Nothing this phase adds ever needs a mouse or keyboard to reach any option or binding row; nothing sends automated keyboard/mouse input (the right-stick mouse option, old line 10, is NOT in this phase).
 
-Phase 3, moving around windows
-9. When a game window is open (bags, character, quest log, vendor, popups, the options page), the d-pad moves a visible highlight between its buttons, one face button activates the highlighted button and another closes or backs out. No mouse is needed in any standard Blizzard window.
-10. An option (off by default) lets the right stick move the mouse cursor, using the game's own gamepad cursor feature.
+Phase 3, moving around windows (SUPERSEDED by Phase 2 R-2.3 above, 2026-11-13: window navigation was pulled forward into this phase)
+(10. An option (off by default) lets the right stick move the mouse cursor, using the game's own gamepad cursor feature. - NOT in Phase 2, deferred.)
 
 Phase 4, talking to NPCs and quests
 11. In NPC gossip, quest offer, quest progress and quest completion windows, one face button accepts / continues / completes and another declines / goes back / closes; the window shows which button does what.

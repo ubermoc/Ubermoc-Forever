@@ -6,10 +6,12 @@ ns.name = addonName
 local DB_NAME = "UbermocForeverDB"   -- must match "## SavedVariables:" in the .toc
 
 local defaults = {
-    enabled = true,
     debug = false,
+    navWindows = true,   -- R-2.3: d-pad navigation of windows; a real setting row on the options page
     binds = {},   -- row -> the key the player pressed ("" = cleared on purpose); read/written by Bind.lua claimedKey/BindPress
 }
+-- NOTE: there is deliberately NO "enabled" flag any more (R-2.1, user 2026-11-13): while the addon is
+-- installed it is on. Options.lua deletes the old flag from saved data; nothing here reads it.
 
 local function ApplyDefaults(target, source)
     for key, value in pairs(source) do
@@ -58,7 +60,7 @@ ns:RegisterEvent("ADDON_LOADED", function(loadedAddon)
 end)
 
 ns:RegisterEvent("PLAYER_LOGIN", function()
-    if ns.db and ns.db.enabled then ns:Print("loaded. Type /ubermoc for options.") end
+    if ns.db then ns:Print("loaded. Type /ubermoc for options.") end
 end)
 
 SLASH_UBERMOC1 = "/ubermoc"
@@ -66,16 +68,18 @@ SlashCmdList["UBERMOC"] = function(msg)
     if not ns.db then ns:Print("not ready yet."); return end
     local command = (msg or ""):match("^(%S*)"):lower()
     if command == "" or command == "config" then
-        if ns.settingsCategory then Settings.OpenToCategory(ns.settingsCategory:GetID()) end
-    elseif command == "toggle" then
-        ns.db.enabled = not ns.db.enabled
-        ns:Print(ns.db.enabled and "enabled" or "disabled")
+        -- R-2.1: the options page is OUR PAGE IN THE GAME'S SETTINGS WINDOW (Esc -> Options).
+        if ns.settingsCategory then
+            Settings.OpenToCategory(ns.settingsCategory:GetID())
+        else
+            ns:Print("options not ready yet.")
+        end
     elseif command == "debug" then
         ns.db.debug = not ns.db.debug
         ns:Print("debug " .. (ns.db.debug and "on" or "off"))
     elseif ns.SlashSubcommands and ns.SlashSubcommands[command] then
         ns.SlashSubcommands[command]()
     else
-        ns:Print("commands: config, toggle, debug")
+        ns:Print("commands: config, binds, unbind, debug")
     end
 end

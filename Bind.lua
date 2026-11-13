@@ -172,47 +172,92 @@ end
 local frame
 ns.bindFrame = function() return frame end
 
+-- Rows are NAMED Buttons (UbermocForeverBindRowN) so Nav.lua can claim them with
+-- SetOverrideBindingClick - the same secure-click path as every other navigated window (R-2.2: the page
+-- works with the controller alone). Labels show row + current key, refreshed after every change.
 local function makeRow(parent, index, row)
-	local button = CreateFrame("Button", addonName .. "BindRow" .. index, parent)
+	local button = CreateFrame("Button", addonName .. "BindRow" .. index, parent, "UIPanelButtonTemplate")
 	button.__row = row
 	button:SetScript("OnClick", function() ns.BindListen(row); ns:Print(("press a button for %s"):format(row)) end)
 	return button
+end
+
+function ns.UpdateRowLabels()
+	if not frame or not ns.rowList then return end
+	for i, button in ipairs(ns.rowList) do
+		local row = button.__row
+		local key = ns.claimedKey(row)
+		button:SetText(row .. "  |cffffd100" .. (key or CLEAR or "none") .. "|r")
+	end
 end
 
 function ns.ShowBindUI()
 	if not ns.db then return end
 	if not frame then
 		frame = CreateFrame("Frame", addonName .. "BindFrame", UIParent)   -- Blizzard chrome template: see header note
-		frame:SetScript("OnHide", ns.BindStop)
+		frame:SetScript("OnHide", function() ns.BindStop(); if ns.NavClose then ns.NavClose(addonName .. "BindFrame") end end)
 		local rows = {}
 		ns.rowList = rows
 		for i, row in ipairs(ns.AllDefaultKeys()) do
 			rows[i] = makeRow(frame, i, row)
 		end
-		local clear = CreateFrame("Button", addonName .. "BindClear", frame)
+		local clear = CreateFrame("Button", addonName .. "BindClear", frame, "UIPanelButtonTemplate")
 		frame.clearButton = clear
+		clear:SetText(CLEAR or "Clear")
 		clear:SetScript("OnClick", function()
 			if ns.db.pendingRow then
 				ns.ClearOne(ns.db.pendingRow)
+				ns.UpdateRowLabels()
 				ns:Print(("cleared %s only."):format(ns.db.pendingRow))
 			else
 				ns:Print("pick a row first, then press Clear.")
 			end
 		end)
-		local reset = CreateFrame("Button", addonName .. "BindReset", frame)
+		local reset = CreateFrame("Button", addonName .. "BindReset", frame, "UIPanelButtonTemplate")
 		frame.resetButton = reset
+		reset:SetText(DEFAULTS or "Defaults")
 		reset:SetScript("OnClick", function()
 			ns.ResetToDefault()
+			ns.UpdateRowLabels()
 			ns:Print("reset to Blizzard's default layout.")
 		end)
-		local close = CreateFrame("Button", addonName .. "BindClose", frame)
+		local close = CreateFrame("Button", addonName .. "BindClose", frame, "UIPanelButtonTemplate")
 		frame.closeButton = close
+		close:SetText(CLOSE or "Close")
 		close:SetScript("OnClick", function() ns.BindStop(); frame:Hide() end)
+		-- R-2.2: this screen is created AFTER PLAYER_LOGIN, so we hand it to Nav.lua ourselves: the
+		-- d-pad/PAD1/PAD2 claims attach and the controls are asked directly (it is our own frame).
+		if ns.NavWatchOwn then ns.NavWatchOwn(addonName .. "BindFrame") end
 	end
+	ns.UpdateRowLabels()
 	frame:Show()
+	-- R-2.2: opening the screen must arm navigation. In the real game frame:Show() fires the OnShow
+	-- watcher Nav attached; here we also call NavOpen directly - it is idempotent (it rebuilds the map
+	-- and re-points the claims at the current highlight), so the screen is navigable in both worlds.
+	if ns.NavOpen then ns.NavOpen(addonName .. "BindFrame") end
+end
+
+-- The map Nav.lua uses for this screen (R-2.2): every row button, then Clear, Defaults, Close.
+function ns.BindNavMap()
+	local controls = {}
+	for i = 1, #ns.AllDefaultKeys() do
+		local name = addonName .. "BindRow" .. i
+		if _G[name] then controls[#controls + 1] = { id = name } end
+	end
+	for _, name in ipairs({ addonName .. "BindClear", addonName .. "BindReset", addonName .. "BindClose" }) do
+		if _G[name] then controls[#controls + 1] = { id = name } end
+	end
+	return { title = addonName, controls = controls, close = addonName .. "BindClose" }
 end
 
 ns.SlashSubcommands = ns.SlashSubcommands or {}
 ns.SlashSubcommands["bind"] = function()
 	ns.ShowBindUI()
 end
+
+-- Register this screen with Nav.lua (R-2.2). Bind.lua loads AFTER Nav.lua, so Nav's own PLAYER_LOGIN
+-- handler has already run; registering here is late but complete: the map only matters once the frame
+-- exists, and ShowBindUI shows it. The OnShow/OnHide hooks attach when the frame is first created.
+ns:RegisterEvent("PLAYER_LOGIN", function()
+	if ns.RegisterNavWindow then ns.RegisterNavWindow(addonName .. "BindFrame", ns.BindNavMap) end
+end)
