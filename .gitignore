@@ -1,6 +1,0 @@
-# Backup copies made while editing (git keeps the history, so these are never committed)
-*.bak*
-
-# Build output
-dist/
-releases/
