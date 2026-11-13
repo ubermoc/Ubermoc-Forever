@@ -30,4 +30,10 @@ Phase 4, talking to NPCs and quests
 14. Nothing in lines 1-13 ever requires a mouse or keyboard.
 
 ## Open fact (do not guess it)
-Blizzard's real default key for each gamepad action is not in the UI source; it must be read from the running game (a diagnostic that records it to SavedVariables) before line 3 can be built.
+RESOLVED 2026-11-12: /ubermoc dumpdefaults on the user's game recorded Blizzard's real default controller layout — 15 bindings, saved in WTF/Account/FAQJOO/SavedVariables/UbermocForever.lua and copied verbatim into Layout.lua (ns.BlizzardLayout) and the Spec tests.
+
+## Design decisions and lessons (learned the hard way; read before touching bindings)
+- The gamepad defaults only EXIST while Blizzard's gamepad UI is on: with it off, the recorded actions answer nothing (first dump: count 0). They live in bindingContext "GamepadModeInGameCore", which only Blizzard's own gamepad code activates (Blizzard_Gamepad/Core.lua:48-56). So reading them needed the context passed to GetBindingKey; applying them must NOT touch that context.
+- Applying the layout uses OVERRIDE bindings on an addon-owned frame (the same mechanism Blizzard's gamepad UI itself uses, InputActionBinding.lua:22), never SetBinding/SaveBindings and never UIParent as owner. Overrides are temporary — re-applied every PLAYER_LOGIN. No popup answer means no binding.
+- The user approved (2026-11-13, "just get the binds in there that are the blizzard ones"): apply Blizzard's own 15 action names exactly as recorded; do not substitute standard actions.
+- Whether an override-bound GamepadModeInGameCore action actually FIRES with Blizzard's gamepad UI off is NOT proven offline — the user tests it in game (WHAT TO TEST list). If it does not fire, that finding goes here and line 3 needs a different mechanism.

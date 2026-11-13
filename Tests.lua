@@ -48,6 +48,28 @@ ns.Selftest.add("loaded-clean", "R-1.1", "the addon is loaded and its dump subco
 	return true
 end)
 
+-- R-1.3: in the REAL game, after accepting the popup, our override claims answer for the PAD keys.
+-- GetBindingAction(key, true) checks overrides (community-documented second argument; if the game
+-- errors on it this test says so instead of failing silently).
+ns.Selftest.add("overrides-answer-in-game", "R-1.3", "the 15 PAD keys carry Blizzard's recorded actions via our overrides", function()
+	if not (ns.db and ns.db.bindsAsked == "yes") then return false, "layout not accepted yet: /ubermoc binds, accept, then /ubermoc selftest" end
+	local bad = {}
+	for key, action in pairs(ns.BlizzardLayout) do
+		local ok, got = pcall(GetBindingAction, key, true)
+		if not ok then return false, "GetBindingAction(key, true) errored: " .. tostring(got) end
+		if got ~= action then bad[#bad + 1] = ("%s=%s"):format(key, tostring(got)) end
+	end
+	if #bad > 0 then return false, "wrong or missing override on: " .. table.concat(bad, ", ") end
+	return true
+end)
+
+-- R-1.2 invariant: the recorded answer is one of the allowed values.
+ns.Selftest.invariant("binds-asked-flag", "db.bindsAsked is nil, 'yes' or 'no'", function()
+	local v = ns.db and ns.db.bindsAsked
+	if v == nil or v == "yes" or v == "no" then return true end
+	return false, "unexpected db.bindsAsked: " .. tostring(v)
+end)
+
 -- Invariant: the dump, once stored, is well-formed (a table of key -> non-empty action).
 ns.Selftest.invariant("dump-shape", "db.defaultsDump.bindings only holds key = non-empty action strings", function()
 	local d = ns.db and ns.db.defaultsDump
