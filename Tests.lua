@@ -48,23 +48,21 @@ ns.Selftest.add("loaded-clean", "R-1.1", "the addon is loaded and its dump subco
 	return true
 end)
 
--- R-1.3: in the REAL game, after accepting the popup, our override claims answer for the PAD keys.
--- GetBindingAction(key, true) checks overrides (community-documented second argument; if the game
--- errors on it this test says so instead of failing silently). NOTE: answering here only proves the key
--- LOOKUP - dump 2 (2026-11-12 23:45) proved a lookup can answer while the button still does nothing,
--- which is why the actions claimed must be normal-context ones (Layout.lua header).
-ns.Selftest.add("overrides-answer-in-game", "R-1.3", "every default row carries its action via an override on its current key", function()
+-- R-1.3: in the REAL game, after accepting the popup, every row's current key carries its action in the
+-- SAVED bindings (GetBindingAction goes KEY -> saved action; dump 3 proved addon-frame override claims
+-- never answer for a plain lookup nor fire in plain mode - the layout is written with SetBinding instead).
+ns.Selftest.add("bindings-answer-in-game", "R-1.3", "every default row carries its action as a saved binding on its current key", function()
 	if not (ns.db and ns.db.bindsAsked == "yes") then return false, "layout not accepted yet: /ubermoc binds, accept, then /ubermoc selftest" end
 	local bad = {}
 	for row in pairs(ns.DefaultLayout) do
 		local key = ns.claimedKey(row)
 		if key then
-			local ok, got = pcall(GetBindingAction, key, true)
-			if not ok then return false, "GetBindingAction(key, true) errored: " .. tostring(got) end
+			local ok, got = pcall(GetBindingAction, key)
+			if not ok then return false, "GetBindingAction errored: " .. tostring(got) end
 			if got ~= ns.DefaultLayout[row] then bad[#bad + 1] = ("%s(%s)=%s"):format(row, key, tostring(got)) end
 		end
 	end
-	if #bad > 0 then return false, "wrong or missing override on: " .. table.concat(bad, ", ") end
+	if #bad > 0 then return false, "wrong or missing saved binding on: " .. table.concat(bad, ", ") end
 	return true
 end)
 

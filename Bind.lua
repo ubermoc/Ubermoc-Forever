@@ -3,14 +3,14 @@
 -- HOW CAPTURE WORKS: Blizzard's own key-binding UI listens for a controller button with a plain Button's
 -- OnGamePadButtonDown script (Blizzard_Settings_Shared/Blizzard_Keybindings.lua:1-9 KeybindListener,
 -- :26-38 SetListening installs exactly OnKeyDown/OnGamePadButtonDown scripts). We do the same on our own
--- listener button. The pressed key is stored in db.binds[row]; applying uses OVERRIDE bindings on our
--- frame (SetOverrideBinding, the mechanism Blizzard's own binding stack uses on its frame,
--- Blizzard_GamepadSharedUtility/InputBindingStack/InputActionBinding.lua:22), never SetBinding/SaveBindings - the player's saved binding file is never
--- touched and everything survives /reload because it lives in SavedVariables.
+-- listener button. The pressed key is stored in db.binds[row]; applying uses SAVED bindings -
+-- SetBinding(key, action) + SaveBindings(GetCurrentBindingSet()) - exactly like the Key Bindings screen
+-- (2026-11-13: the user's in-game test PROVED override claims on an addon frame never fire in plain mode;
+-- their own bindings-cache.wtf with SetBinding-style PAD binds is what works). The player's saved binding
+-- file IS written on purpose now, and that is also why choices survive /reload even without us.
 --
--- A row is UNBOUND until the player binds it: ns.RowAction returns nil for an unbound row, so only the
--- defaults Layout.lua ships (ns.DefaultLayout) are claimed on login; the chord rows (ns.ChordRows) exist
--- as rows but carry nothing until pressed.
+-- A row is UNBOUND until the player binds it: ns.RowAction returns nil for an unbound row; every default
+-- Layout.lua ships (ns.DefaultLayout, plain keys AND chord rows) is written on login.
 --
 -- CONFLICT RULE (Spec line 6, our own rule enforced in code): ns.ApplyOne refuses to claim a
 -- key another of our rows already carries and says which row; the player clears that row first.
@@ -33,23 +33,18 @@ local addonName, ns = ...
 -- ns.claims is only a CACHE of claimedKey, rebuilt by RebuildClaims after any change.
 
 function ns.claimedKey(row)
-	if not ns.DefaultLayout[row] and not ns.ChordRows[row] then return nil end   -- unknown row
+	if not ns.DefaultLayout[row] then return nil end   -- unknown row
 	local b = ns.db and ns.db.binds
 	if b and b[row] ~= nil then
 		if b[row] == "" then return nil end   -- cleared on purpose: no key at all
 		return b[row]                         -- the player's pressed key
 	end
-	if ns.DefaultLayout[row] then return row end           -- default rows live on their own name
-	return nil                                             -- chord rows: unbound until pressed
+	return row                                -- default rows live on their own name (chords included)
 end
 
 function ns.RebuildClaims()
 	local c = {}
 	for row in pairs(ns.DefaultLayout) do
-		local k = ns.claimedKey(row)
-		if k then c[row] = k end
-	end
-	for row in pairs(ns.ChordRows) do
 		local k = ns.claimedKey(row)
 		if k then c[row] = k end
 	end
@@ -69,11 +64,10 @@ end
 ------------------------------------------------------------
 
 -- The action a row should carry: the player's own choice if they set one, else Blizzard's default for that
--- row; nil when the row has no default and nothing was bound (unbound). Row names are exactly the keys of
--- ns.DefaultLayout / ns.ChordRows.
+-- row; nil when the row was cleared on purpose. Row names are exactly the keys of ns.DefaultLayout.
 function ns.RowAction(row)
-	if not ns.claimedKey(row) then return nil end   -- cleared on purpose, or a chord row never pressed
-	return ns.DefaultLayout[row] or ns.ChordRows[row]
+	if not ns.claimedKey(row) then return nil end   -- cleared on purpose
+	return ns.DefaultLayout[row]
 end
 
 -- The key a row currently lives on: the player's choice if set, else its own name (its default key).
@@ -106,7 +100,7 @@ end
 -- Clear ONLY this row: its claim is removed and the row goes back to unbound (its default key no longer
 -- claimed until "reset to default" or rebind). Changes nothing else (line 7).
 function ns.ClearOne(row)
-	if not ns.DefaultLayout[row] and not ns.ChordRows[row] then return false end
+	if not ns.DefaultLayout[row] then return false end
 	ns.db.binds = ns.db.binds or {}
 	ns.db.binds[row] = ""      -- cleared ON PURPOSE: claimedKey returns nil, reload keeps it cleared
 	ns.ApplyLayout()           -- re-claims every other row; this row's key is released
@@ -148,15 +142,18 @@ function ns.BindStop()
 end
 
 -- What a press does: record the pressed key for the pending row, then apply it (conflict-checked).
--- On conflict the OLD claim stays (line 8: failure leaves bindings as they were) - the row keeps its
--- previous key because ApplyOne refused to write.
+-- On conflict or combat refusal the OLD choice stays (line 8: failure leaves bindings as they were).
 function ns.BindPress(key)
 	if not ns.db then return end
 	local row = ns.db.pendingRow
 	ns.BindStop()
 	if not row then return end   -- press with no row selected: nothing happens
-	if type(key) ~= "string" or not key:match("^PAD") then
+	if type(key) ~= "string" or not (key:match("^PAD") or key:match("^SHIFT%-PAD") or key:match("^CTRL%-PAD") or key:match("^CTRL%-SHIFT%-PAD")) then
 		ns:Print("press a controller button to bind this row.")
+		return
+	end
+	if InCombatLockdown() then
+		ns:Print("in combat - bindings unchanged.")
 		return
 	end
 	ns.db.binds = ns.db.binds or {}
@@ -166,9 +163,8 @@ function ns.BindPress(key)
 		if had then ns.db.binds[row] = oldKey else ns.db.binds[row] = nil end   -- refused: as it was
 		return
 	end
-ns:Print(("%s -> %s bound."):format(key, row))
+	ns:Print(("%s -> %s bound."):format(key, row))
 end
-
 ------------------------------------------------------------
 -- The screen (glue): one row per binding we applied (line 6).
 ------------------------------------------------------------

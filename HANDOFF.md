@@ -1,55 +1,23 @@
-# HANDOFF — UbermocForever (last update: commit 3c40130 on main, 2026-11-13)
+# HANDOFF — Ubermoc Forever (2026-11-13)
 
-UPDATE 2026-11-13: add-on INSTALLED locally and verified (verify_install.sh = INSTALLED OK, 8 files
-identical, version 0.1.0) in .../World of Warcraft/_forever_/Interface/AddOns/UbermocForever; old copy
-kept as UbermocForever.old. 40/40 offline tests pass, no code changed. Waiting on the user's in-game
-press test below before Phase 2 (line 9) starts.
+## Done
+- ROOT CAUSE of "the vines are wrong": override bindings on an addon-owned frame never FIRE in plain mode (user's dump 3: keyProbe count=0). The working mechanism, proven by the user's own `WTF/Account/FAQJOO/bindings-cache.wtf`, is SAVED bindings: `SetBinding(key, action)` + `SaveBindings(GetCurrentBindingSet())`.
+- Layout.lua rewritten: 58 rows (54 bound + PADFORWARD/PADPADDLE1/2/3 kept free), Blizzard PAD key names only, chord pages SHIFT->MultiBarBottomLeft / CTRL->MultiBarRight / CTRL-SHIFT->bar3, chord copies of TARGETNEARESTFRIEND/ENEMY/JUMP exactly as in the user's file. d-pad order fixed (PADDLEFT=AB5, PADDUP=8, PADDRIGHT=7, PADDDOWN=6).
+- Bind.lua: press-to-bind accepts chord spellings ("SHIFT-PAD2"); combat guard; conflict check; ClearOne/Reset operate on saved bindings only, never touch keys outside our layout.
+- Harness fake world (`ubermoc-harness-v2/wow/behavior.lua`) fixed: an action holds ANY number of keys (the old two-keys eviction was wrong — user's JUMP = 7 keys).
+- Offline spec suite: **41 of 41 PASS** (`luajit .../behavior.lua UbermocForever.toc Spec`, run from the folder with the .toc).
+- Installed into the real game: install.sh + verify_install.sh print INSTALLED OK (8 files, version 0.1.0).
 
-Read this FIRST, then REQUIREMENTS.md (Spec lines + Design decisions), then start.
+## What to test (in game — the only real proof left)
+1. `/reload` → accept the popup ("changes your SAVED key bindings"). Your existing binds are identical, so applying is idempotent.
+2. Press every button: d-pad casts 5/8/7/6, face buttons 1-4, shoulders target friend/enemy, triggers AB12/AB10, PADPADDLE4 jumps, PADBACK opens world map. SHIFT+shoulder should also target (chord page).
+3. `/ubermoc selftest` then `/reload` — all green.
+4. `/ubermoc binds` → pick a row → press a button; `/ubermoc unbind` to clear everything.
 
-## Where we are
-Phase 1 (Spec lines R-1.1..R-1.8) is CODE-COMPLETE and passes `check` (CHECK OK, 40/40 offline tests).
-NOTHING is proven in game yet — every spec line for Phase 1 is "offline PASS (fake game only)".
-Lines R-1.9..R-1.14 (window navigation, mouse emulation option, quest dialogs) are NOT started: NO TEST.
+## Known problems / not verified
+- In-game firing of every row is NOT proven yet (needs the user's pad).
+- `check` could not verify its citation bookkeeping this session (it only trusts URLs fetched in the same check round); code, specs and install all pass. Last full check: 41/41 tests, base checks OK.
 
-## Done (commit 3c40130, pushed to github.com:ubermoc/Ubermoc-Forever.git main)
-- 20-key default layout (Layout.lua ns.DefaultLayout): every PAD key the user listed — d-pad, face,
-  shoulders, triggers, stick clicks, Start/Select, back paddles — bound to Blizzard's always-on
-  NORMAL-context actions. The 4 dead GAMEPAD*MOD entries were replaced (user approved 2026-11-13).
-- Bind.lua: press-to-bind screen (/ubermoc bind) + conflict/clear/reset/combat rules.
-  db.binds[row]=key is the single source of truth ("" = cleared on purpose);
-  claimedKey/RebuildClaims (Bind.lua ~:35/:46) derive everything; ApplyLayout clears our claimFrame
-  with ClearOverrideBindings and re-claims every login — no ghost claims.
-- Spec/R-1.5..R-1.8 test files; REQUIREMENTS.md Design decisions updated.
-
-## WHAT THE USER MUST TEST IN GAME (the next session starts here)
-Blizzard's gamepad UI stays OFF (that is the whole point).
-1. /reload, accept popup, press each button -> its action fires. Back paddles (PADPADDLE1-4 =
-   Steam Deck L4/L5/R4/R5) are UNVERIFIED: if they do nothing, that pad may not report them —
-   record the result either way into REQUIREMENTS.md Design decisions.
-2. /ubermoc bind -> pick row, press button -> chat "KEY -> ROW bound", new key works, old goes quiet.
-3. Clear one row -> only it goes quiet. Reset -> defaults back. In combat -> refuses, changes nothing.
-4. /ubermoc selftest then /reload -> records in-game evidence (check reads it). Empty result = the
-   selftest did not run, not that bindings broke.
-
-## Known problems / open facts
-- Chord rows (SHIFT-/CTRL-) exist but are NOT claimed by default: chord firing on PAD keys unproven.
-  If the user's press test shows chords fire, claim them and update R-1.3 (it currently forbids "-" in
-  default claims).
-- Bind screen look = plain Buttons + ButtonFrameTemplate chrome; Blizzard binding-row template was NOT
-  FOUND in Forever source — visual check is the user's.
-- The git repo root is UbermocForever/ (the addon folder), NOT the parent.
-
-## How to work (harness rules that bit us)
-- First call: recall project=UbermocForever; run specs with
-  luajit /home/ubermoc/Downloads/ubermoc-harness-v2/wow/behavior.lua UbermocForever.toc Spec
-- Never sed the "local addonName, ns = ..." header (known-mistakes.json entry sed-addon-header).
-- A SET binding is not a FIRE: only NORMAL-context actions work with the gamepad UI off. Never ship
-  GamepadModeInGameCore actions. R-1.3 test enforces this.
-- Overrides live on our own claimFrame, never UIParent; ClearOverrideBindings is /nocombat restricted —
-  every path that clears must check InCombatLockdown() first.
-- ConsolePort was studied as reference only; never name it in code/comments/docs.
-
-## Next steps (suggested order)
-1. Get the user's in-game results -> mark spec lines "in game: PASS" or fix what broke.
-2. Then Phase 2: Spec line 9 (window navigation), one feature at a time, tests first.
+## Next steps
+- After the user's press test passes: mark R-1.1..R-1.8 "in game: PASS" in REQUIREMENTS.md notes; then start phase 2 (spec lines R-1.9+ window navigation — no tests written yet).
+- Commit + push once CHECK OK is achieved (check keeps rejecting citations on bookkeeping grounds; see Known problems).
