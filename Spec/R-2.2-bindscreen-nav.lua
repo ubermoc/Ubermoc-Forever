@@ -17,15 +17,16 @@ end
 test("bind-screen-registered-late", "R-2.2", "the maker registers at login; watchers attach when the frame is created; opening claims the keys", function()
     local g = World{ saved = nil, pads = {5}, commands = {}, bindings = {} }
     g.login(true); g.acceptPopup()
+    -- the page now exists from login on: Options.lua builds it (CreateBindUI) to register it as our
+    -- canvas category. It stays HIDDEN until opened, so nothing is claimed yet.
     eq(count(g.overrides), 0, "no claims while the screen is closed")
     truthy(g.ns.NAV_MAKERS["UbermocForeverBindFrame"], "the maker registered at PLAYER_LOGIN")
-    -- in the fake world an unknown Capital name reads as a truthy stub; a REAL frame answers GetName:
     local pre = g.env["UbermocForeverBindFrame"]
-    eq(tostring(pre:GetName()), "<stub>", "the frame does not exist before it is first shown (still a stub)")
+    eq(tostring(pre:GetName()), "UbermocForeverBindFrame", "a REAL frame (not the stub) exists after login")
+    falsy(pre:IsShown(), "and it is still hidden - opening is what shows it")
+    truthy(pre.__scripts and pre.__scripts.OnShow, "watchers attached at creation time")
     g.ns.ShowBindUI()
     local f = g.env["UbermocForeverBindFrame"]
-    truthy(f.__scripts and f.__scripts.OnShow, "watchers attached at creation time")
-    g.show(f)
     truthy(g.overrides.PAD1, "PAD1 claimed once the screen is open")
     eq(g.overrides.PAD2 and g.overrides.PAD2.action, "CLICK UbermocForeverBindClose", "PAD2 clicks our Close button")
 end)

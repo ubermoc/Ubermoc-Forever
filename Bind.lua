@@ -19,8 +19,9 @@
 -- FAILURE PATHS (line 8): in combat nothing is touched and chat says so; an unknown row/action is refused;
 -- a press while no row is selected does nothing.
 --
--- UI LOOK: rows are plain Buttons, the frame uses Blizzard's ButtonFrameTemplate chrome and Blizzard's own
--- strings (CLOSE / CANCEL / DEFAULTS / OKAY - defined in Blizzard_SharedXML/SharedConstants.lua). A custom
+-- UI LOOK: rows are plain Buttons (UIPanelButtonTemplate); the frame has NO chrome of its own - it is our
+-- canvas inside Blizzard's Settings window (Options.lua), whose chrome is Blizzard's. Text uses Blizzard's
+-- own strings (CLOSE / DEFAULTS / CLEAR - defined in Blizzard_SharedXML/SharedConstants.lua). A custom
 -- binding-row template of Blizzard's was NOT FOUND by lookup in Forever's source, so no Blizzard template
 -- is claimed for the rows themselves (Phase 2 spec line 6 says "look and work like" - visual check is the
 -- user's).
@@ -178,6 +179,14 @@ ns.bindFrame = function() return frame end
 local function makeRow(parent, index, row)
 	local button = CreateFrame("Button", addonName .. "BindRow" .. index, parent, "UIPanelButtonTemplate")
 	button.__row = row
+	-- Stack the rows in one column under the header; the three buttons sit below them (ShowBindUI).
+	-- In the fake world SetPoint just records the anchor - layout is the user's visual check.
+	button:SetSize(280, 22)
+	if index == 1 then
+		button:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -50)
+	else
+		button:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -50 - (index - 1) * 26)
+	end
 	button:SetScript("OnClick", function() ns.BindListen(row); ns:Print(("press a button for %s"):format(row)) end)
 	return button
 end
@@ -191,49 +200,84 @@ function ns.UpdateRowLabels()
 	end
 end
 
-function ns.ShowBindUI()
+-- The bind screen (R-2.2) IS our settings page now: Options.lua registers our frame as a CANVAS layout
+-- category, and Blizzard displays the frame directly when the page opens - the old vertical category had
+-- zero setting rows, which is why the in-game probe showed an EMPTY page (user 2026-11-13: "move the
+-- binds in there", so the expandable subcategory is gone). The frame itself has no chrome: the Settings
+-- window around it is Blizzard's own. Rows are laid out here, below the header.
+-- Build the frame and its controls (idempotent). Options.lua calls this at login so the canvas category
+-- has a real frame; ShowBindUI shows it.
+function ns.CreateBindUI()
 	if not ns.db then return end
-	if not frame then
-		frame = CreateFrame("Frame", addonName .. "BindFrame", UIParent)   -- Blizzard chrome template: see header note
-		frame:SetScript("OnHide", function() ns.BindStop(); if ns.NavClose then ns.NavClose(addonName .. "BindFrame") end end)
-		local rows = {}
-		ns.rowList = rows
-		for i, row in ipairs(ns.AllDefaultKeys()) do
-			rows[i] = makeRow(frame, i, row)
+	if frame then return end
+	frame = CreateFrame("Frame", addonName .. "BindFrame", UIParent)
+	frame:SetScript("OnHide", function()
+		ns.BindStop()
+		if ns.NavClose then ns.NavClose(addonName .. "BindFrame") end
+		-- The page lives inside the Settings window; hiding our frame alone would leave a blank
+		-- panel, so close the whole Settings window. There is NO Settings.Close in this API - the panel
+		-- object itself has Close (Blizzard_Settings_Shared/Blizzard_SettingsPanel.lua:256
+		-- "function SettingsPanelMixin:Close(skipTransitionBackToOpeningPanel)"), reached as the global
+		-- frame SettingsPanel exactly how Blizzard's own escape handler does (:41-42
+		-- "if SettingsPanel:IsShown() then ... SettingsPanel:Close();").
+		if type(SettingsPanel) == "table" and type(SettingsPanel.Close) == "function" then
+			pcall(function() SettingsPanel:Close() end)
 		end
-		local clear = CreateFrame("Button", addonName .. "BindClear", frame, "UIPanelButtonTemplate")
-		frame.clearButton = clear
-		clear:SetText(CLEAR or "Clear")
-		clear:SetScript("OnClick", function()
-			if ns.db.pendingRow then
-				ns.ClearOne(ns.db.pendingRow)
-				ns.UpdateRowLabels()
-				ns:Print(("cleared %s only."):format(ns.db.pendingRow))
-			else
-				ns:Print("pick a row first, then press Clear.")
-			end
-		end)
-		local reset = CreateFrame("Button", addonName .. "BindReset", frame, "UIPanelButtonTemplate")
-		frame.resetButton = reset
-		reset:SetText(DEFAULTS or "Defaults")
-		reset:SetScript("OnClick", function()
-			ns.ResetToDefault()
-			ns.UpdateRowLabels()
-			ns:Print("reset to Blizzard's default layout.")
-		end)
-		local close = CreateFrame("Button", addonName .. "BindClose", frame, "UIPanelButtonTemplate")
-		frame.closeButton = close
-		close:SetText(CLOSE or "Close")
-		close:SetScript("OnClick", function() ns.BindStop(); frame:Hide() end)
-		-- R-2.2: this screen is created AFTER PLAYER_LOGIN, so we hand it to Nav.lua ourselves: the
-		-- d-pad/PAD1/PAD2 claims attach and the controls are asked directly (it is our own frame).
-		if ns.NavWatchOwn then ns.NavWatchOwn(addonName .. "BindFrame") end
+	end)
+
+	local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+	frame.headerText = header
+	header:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -16)
+	header:SetText(addonName .. " controller settings")
+
+	local rows = {}
+	ns.rowList = rows
+	for i, row in ipairs(ns.AllDefaultKeys()) do
+		rows[i] = makeRow(frame, i, row)
 	end
+	local bottom = 60 + (#ns.AllDefaultKeys()) * 26   -- rows stack from -50, 26px each
+	local clear = CreateFrame("Button", addonName .. "BindClear", frame, "UIPanelButtonTemplate")
+	frame.clearButton = clear
+	clear:SetSize(110, 22)
+	clear:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -bottom)
+	clear:SetText(CLEAR or "Clear")
+	clear:SetScript("OnClick", function()
+		if ns.db.pendingRow then
+			ns.ClearOne(ns.db.pendingRow)
+			ns.UpdateRowLabels()
+			ns:Print(("cleared %s only."):format(ns.db.pendingRow))
+		else
+			ns:Print("pick a row first, then press Clear.")
+		end
+	end)
+	local reset = CreateFrame("Button", addonName .. "BindReset", frame, "UIPanelButtonTemplate")
+	frame.resetButton = reset
+	reset:SetSize(110, 22)
+	reset:SetPoint("TOPLEFT", clear, "TOPRIGHT", 8, 0)
+	reset:SetText(DEFAULTS or "Defaults")
+	reset:SetScript("OnClick", function()
+		ns.ResetToDefault()
+		ns.UpdateRowLabels()
+		ns:Print("reset to Blizzard's default layout.")
+	end)
+	local close = CreateFrame("Button", addonName .. "BindClose", frame, "UIPanelButtonTemplate")
+	frame.closeButton = close
+	close:SetSize(110, 22)
+	close:SetPoint("TOPLEFT", reset, "TOPRIGHT", 8, 0)
+	close:SetText(CLOSE or "Close")
+	close:SetScript("OnClick", function() ns.BindStop(); frame:Hide() end)
+
+	if ns.NavWatchOwn then ns.NavWatchOwn(addonName .. "BindFrame") end
+end
+
+function ns.ShowBindUI()
+	ns.CreateBindUI()
+	if not frame then return end
 	ns.UpdateRowLabels()
 	frame:Show()
-	-- R-2.2: opening the screen must arm navigation. In the real game frame:Show() fires the OnShow
-	-- watcher Nav attached; here we also call NavOpen directly - it is idempotent (it rebuilds the map
-	-- and re-points the claims at the current highlight), so the screen is navigable in both worlds.
+	-- R-2.2: opening the screen must arm navigation. In the real game frame:Show() fires the watchers Nav
+	-- attached; we also call NavOpen directly - it is idempotent (it rebuilds the map and re-points the
+	-- claims at the current highlight), so the screen is navigable in both worlds.
 	if ns.NavOpen then ns.NavOpen(addonName .. "BindFrame") end
 end
 
@@ -259,5 +303,6 @@ end
 -- handler has already run; registering here is late but complete: the map only matters once the frame
 -- exists, and ShowBindUI shows it. The OnShow/OnHide hooks attach when the frame is first created.
 ns:RegisterEvent("PLAYER_LOGIN", function()
+	ns.CreateBindUI()   -- idempotent; Options.lua (which loads earlier) may have built it first
 	if ns.RegisterNavWindow then ns.RegisterNavWindow(addonName .. "BindFrame", ns.BindNavMap) end
 end)

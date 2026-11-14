@@ -58,24 +58,45 @@ function ns.NavMap(window) return ns.NAV_MAPS and ns.NAV_MAPS[window] end
 -- are stubs that cannot answer honestly, so tests inject their truth via a FUNCTION
 -- g.env.UbermocForeverNavProbe = function(id) ... end (see Spec/R-2.3-window-nav.lua); in the real game
 -- nothing ever sets that global and the frame question below is used.
+-- Enabled state comes from IsEnabled (a documented Button method, SimpleButtonAPIDocumentation.lua:257
+-- "IsEnabled" returns isEnabled bool; Blizzard's own SmartNavigation checks the same way -
+-- Blizzard_GamepadSmartNavigation/Utility.lua:222-223 "if (currentButton.IsEnabled) then
+-- isEnabled = currentButton:IsEnabled(); end"). A control with no callable answer counts as enabled, like them.
+local function frameEnabled(x)
+	if not x then return false end
+	local fn = x.IsEnabled
+	if type(fn) ~= "function" then return true end   -- the fake world's stub answers a stub, not callable
+	return fn(x) and true or false
+end
+
 local ourOwnFrames = {}   -- window -> true for windows WE create (the bind screen)
+
+local proxies = {}   -- window -> our proxy Button (one per navigated window)
+local function proxyFor(window)
+	-- A test may pre-create the proxy (the fake world's CreateFrame cannot model SetAttribute on a
+	-- SecureActionButtonTemplate); in the game nothing sets this global.
+	local b = _G[addonName .. "NavProxy_" .. window] or proxies[window]
+	if not b then
+		b = CreateFrame("Button", addonName .. "NavProxy_" .. window, UIParent, "SecureActionButtonTemplate")
+		b:SetSize(1, 1); b:Hide()
+	end
+	proxies[window] = b
+	return b
+end
 
 function ns.NavEnabled(window, control)
 	local map = ns.NavMap(window)
 	if not map or not control then return false end
-	local b = _G[control.id]
+	-- A control that carries its frame directly (an UNNAMED Blizzard frame: gossip options/Goodbye):
+	-- ask the frame itself; there is no global name to look up.
+	local b = control.secure or _G[control.id]
 	-- Our own window's controls (the bind screen rows/buttons) are real frames in every world: ask them.
 	if ourOwnFrames[window] and b ~= nil and b ~= _G.stub then
-		-- A real Button answers IsDisabled with a FUNCTION; the fake world's universal stub answers with
-		-- another stub (truthy but not callable). Require the answer to be a function before calling it,
-		-- otherwise a stubbed method would throw and every control would look unpressable.
-		local disabledFn = b.IsDisabled
-		local disabled = type(disabledFn) == "function" and b:IsDisabled() or false
-		return (b.IsShown and b:IsShown() and not disabled) and true or false
+		return (b.IsShown and b:IsShown() and frameEnabled(b)) and true or false
 	end
 	local probe = _G[addonName .. "NavProbe"]
 	if type(probe) == "function" then return probe(control.id) and true or false end
-	return (b and b.IsShown and b:IsShown() and not (b.IsDisabled and b:IsDisabled())) and true or false
+	return (b and b.IsShown and b:IsShown() and frameEnabled(b)) and true or false
 end
 
 function ns.NavFocus(window)
@@ -130,8 +151,31 @@ ns.NAV_MAKERS = {}   -- window -> function building its map (filled at PLAYER_LO
 --   :488 MerchantFrameTab1 (MERCHANT), :505 MerchantFrameTab2 (BUYBACK);
 --   the frame inherits ButtonFrameTemplate, whose close button is "<FrameName>CloseButton"
 --   (Blizzard_SharedXML/ButtonFrameTemplates - verified at runtime by looking the name up).
+-- ITEM SLOTS were missing from the first map: the user's in-game test 2026-11-13 ("the d-pad goes left
+-- and right through the two tabs, it doesn't go into the actual inventory"). The slots are named frames
+-- MerchantItem1..MerchantItem12 (Vanilla/MerchantFrame.xml:142-207), each with a Button child
+-- "<slot>ItemButton" (:28 parentKey="ItemButton") - that Button is what gets clicked. Buyback has ONE
+-- slot: MerchantBuyBackItemItemButton (:344 + the same :372 parentKey ItemButton). NavEnabled skips
+-- hidden and disabled frames, so each tab offers exactly the slots on screen right now.
+-- Grid: slot i sits at row = ceil(i/2), column = 1 for odd i, 2 for even (xml anchors: :149 places
+-- MerchantItem2 to the RIGHT of MerchantItem1, :154 places MerchantItem3 BELOW MerchantItem1).
 local function merchantMap()
 	local controls = {}
+	-- one control per item slot: the slot's ItemButton (the click target). The window is TWO columns of
+	-- six (xml anchors :149/:154); listing them in number order gives a sane serpentine walk. The probe
+	-- proved the real game clicks these names.
+	for i = 1, 12 do
+		local btn = "MerchantItem" .. i .. "ItemButton"
+		if _G[btn] then
+			local nameText = _G["MerchantItem" .. i .. "Name"]
+			controls[#controls + 1] = { id = btn, label = nameText and nameText:GetText() or nil, grid = { row = math.ceil(i / 2), col = (i % 2 == 1) and 1 or 2 } }
+		end
+	end
+	if _G["MerchantBuyBackItemItemButton"] then
+		controls[#controls + 1] = { id = "MerchantBuyBackItemItemButton", label = BUYBACK or "Buyback" }
+	end
+	-- tabs LAST (user 2026-11-13: the walk used to circle only the two tabs and never reach the
+	-- inventory): opening a window highlights its FIRST enabled control, so items come first now.
 	for _, name in ipairs({ "MerchantFrameTab1", "MerchantFrameTab2" }) do
 		if _G[name] then controls[#controls + 1] = { id = name, label = _G[name].text } end
 	end
@@ -144,40 +188,67 @@ end
 -- rows are scrollbox elements created from GossipTitleOptionButtonTemplate / ...ActiveQuest... /
 -- ...AvailableQuest... templates - they have NO stable global names, so we read them live from
 -- GossipFrame.GreetingPanel.ScrollBox:GetFrames() (the game's own call, used the same way at
--- Blizzard_UIPanels_Game/Mainline/GossipFrame.lua:78). Each element is a Button; we address it by its
--- instance name ($parent-numbered), falling back to our index if a frame has no name.
+-- Blizzard_UIPanels_Game/Mainline/GossipFrame.lua:78). Each element is a Button.
 -- GOODBYE (the window's back/close control) is GossipFrame.GreetingPanel.GoodbyeButton
 -- (Blizzard_UIPanels_Game/Mainline/GossipFrame.xml:51).
-local gossipElements   -- live element frames of the open gossip window (refreshed on GOSSIP_SHOW)
-
-function ns.NavGossipFrames()
+-- WHY THE OLD MAP CRASHED (probe 2026-11-13, the exact error from the user's game):
+--   Nav.lua:177: table index is nil - GoodbyeButton is an UNNAMED frame (parentKey="GoodbyeButton",
+--   xml :51), so GetName() returned nil and gossipElements[nil] blew up; the map never existed, so the
+--   gossip window had no navigation at all. The same is likely true of the scrollbox elements.
+-- FIX: unnamed frames are keyed by a lightuserdata key (tostring(frame)) instead of their name, and
+-- PAD1/PAD2 point at our OWN SecureActionButton which carries the frame in its "clickbutton" attribute
+-- (Blizzard's own pattern: Blizzard_FrameXML/SecureTemplates.lua:557-562 "SECURE_ACTIONS.click = ...
+-- SecureButton_GetModifiedAttribute(self, \"clickbutton\", button); ... delegate:Click(button);" - the
+-- engine clicks the frame we hand it). Named controls keep SetOverrideBindingClick.
+-- The scrollbox whose option rows we read, and the Goodbye button. A test may replace this function to
+-- hand us its own fake scrollbox (Spec/R-2.3-window-nav.lua); in the game it always resolves to Blizzard's.
+ns.NavGossipScrollBox = function()
+	-- A test may hand us its own scrollbox through this global (the fake world's Blizzard frames are
+	-- stubs that cannot host a real scrollbox); in the game nothing ever sets it.
+	local override = _G[addonName .. "GossipScrollBox"]
+	if type(override) == "function" then return override() end
 	local f = _G.GossipFrame
-	local box = f and f.GreetingPanel and f.GreetingPanel.ScrollBox
-	if not box or not box.GetFrames then return nil end
-	return box:GetFrames()
+	return f and f.GreetingPanel and f.GreetingPanel.ScrollBox
 end
-
 local function gossipMap()
 	gossipElements = {}
 	local controls = {}
-	local frames = ns.NavGossipFrames()
+	local closeID
+	local box = ns.NavGossipScrollBox()
+	local frames = (box and type(box.GetFrames) == "function") and box:GetFrames() or nil
 	if frames then
 		for _, el in ipairs(frames) do
-			if el.IsShown and el:IsShown() and not (el.IsDisabled and el:IsDisabled()) then
-				local name = el:GetName()
+			if el.IsShown and el:IsShown() and frameEnabled(el) then
+				local name = el.GetName and el:GetName()
 				if name and name ~= "" then
 					gossipElements[name] = el
 					controls[#controls + 1] = { id = name, label = el.GetText and el:GetText() or nil }
+				else
+					local key = tostring(el)   -- lightuserdata key: unique, never nil
+					gossipElements[key] = el
+					controls[#controls + 1] = { id = key, secure = el, label = el.GetText and el:GetText() or nil }
 				end
 			end
 		end
 	end
-	local goodbye = _G.GossipFrame and _G.GossipFrame.GreetingPanel and _G.GossipFrame.GreetingPanel.GoodbyeButton
+	-- The Goodbye control: on the scrollbox's OWN parent when one was supplied (a test's fake can put it
+	-- there), defaulting to Blizzard's path.
+	local goodbye = (box and type(box.GetParent) == "function" and box:GetParent() and box:GetParent().GoodbyeButton)
+		or (_G.GossipFrame and _G.GossipFrame.GreetingPanel and _G.GossipFrame.GreetingPanel.GoodbyeButton)
 	if goodbye then
-		gossipElements[goodbye:GetName()] = goodbye
-		controls[#controls + 1] = { id = goodbye:GetName(), label = GOODBYE or "Goodbye" }
+		local name = goodbye.GetName and goodbye:GetName()
+		if name and name ~= "" then
+			gossipElements[name] = goodbye
+			controls[#controls + 1] = { id = name, label = GOODBYE or "Goodbye" }
+			closeID = name
+		else
+			local key = tostring(goodbye)
+			gossipElements[key] = goodbye
+			controls[#controls + 1] = { id = key, secure = goodbye, label = GOODBYE or "Goodbye" }
+			closeID = key
+		end
 	end
-	return { title = GOSSIP_HEADER or "Gossip", controls = controls, close = goodbye and goodbye:GetName() }
+	return { title = GOSSIP_HEADER or "Gossip", controls = controls, close = closeID }
 end
 
 ns.RegisterNavWindow = function(window, maker) ns.NAV_MAKERS[window] = maker end   -- replaced below by the version that also attaches watchers
@@ -185,13 +256,18 @@ ns.RegisterNavWindow = function(window, maker) ns.NAV_MAKERS[window] = maker end
 -- Attach our open/close watchers to one window frame. HookScript in the real game (never replace
 -- Blizzard's own handler); plain SetScript on frames WE created (our bind screen, test frames) whose
 -- show/hide fire recorded scripts. Returns false when the frame does not exist (yet).
-local function attachWatchers(window)
+-- A window frame that does not exist YET (our bind screen before it is first created; also the fake
+-- world's truthy stubs) must be refused: writing scripts into a stub "succeeds" but never fires, and
+-- marking such a window as ours would poison NavEnabled. The owner registers again when the real frame
+-- is created (Bind.CreateBindUI calls ns.NavWatchOwn).
+local function validOwner(window)
 	local f = _G[window]
-	-- A window frame that does not exist YET (our bind screen before it is first shown; also the fake
-	-- world's truthy stubs) must be refused: writing scripts into a stub "succeeds" but never fires,
-	-- and marking such a window as ours would poison NavEnabled. The owner registers again when the
-	-- real frame is created (Bind.ShowBindUI calls ns.NavWatchOwn).
-	if not f or type(f.HookScript) ~= "function" then return false end   -- the fake world's stub answers every method with the SAME universal stub: `f.HookScript` is not a function there, so stubs are refused. Attaching to a stub would "succeed" but never fire; the owner registers again when its real frame is created (Bind.ShowBindUI calls ns.NavWatchOwn).
+	return f ~= nil and type(f.HookScript) == "function"   -- the fake world's stub answers every method with the SAME universal stub: `f.HookScript` is not a function there, so stubs are refused.
+end
+
+local function attachWatchers(window)
+	if not validOwner(window) then return false end
+	local f = _G[window]
 	-- A frame WE created (our bind screen, or a test frame) answers GetName with its own name; the
 	-- fake world's stub answers "<stub>" for everything, and Blizzard's real XML frames answer their
 	-- name but already have Blizzard's OnShow handler we must not replace. Only our own frames get a
@@ -229,12 +305,25 @@ end
 
 -- Invisible mover Buttons: the d-pad keys CLICK these (secure path), their OnClick moves the highlight.
 local movers = {}
--- One invisible mover PER WINDOW: a shared Button would report topWindow() at click time, which is not
--- necessarily the window being navigated when several are open (the game clicks the NAMED button).
-local function makeMover(window, dir)   -- one invisible mover PER WINDOW: a shared Button would report
-	if movers[window] and movers[window][dir] then return movers[window][dir] end   -- topWindow() at click time, which is not necessarily the window being navigated. Created once per window (claim re-points at it by name).
+-- One invisible mover PER WINDOW AND DIRECTION: a shared Button would report topWindow() at click time,
+-- which is not necessarily the window being navigated when several are open (the game clicks the NAMED
+-- button). LEFT/RIGHT movers exist too: inside a grid of controls (vendor item slots) left/right step
+-- between columns - see ns.NavGridMove. A window without a grid hands left/right back to the game
+-- (SetPropagateKeyboardInput(true), Blizzard's own pass-through method, used the same way by our bind
+-- capture listener in Bind.lua).
+local function makeMover(window, dir)
+	if movers[window] and movers[window][dir] then return movers[window][dir] end
 	local b = CreateFrame("Button", addonName .. "NavMover_" .. window .. "_" .. dir)
 	b:SetSize(1, 1); b:Hide()
+	if b.SetPropagateKeyboardInput then   -- real-game method; the fake world's frames do not have it
+		b:SetPropagateKeyboardInput(true)   -- default: a key we do not steer is the game's own binding again
+	end
+	b:SetScript("OnKeyDown", function(self, key)
+		if key ~= "PADDLEFT" and key ~= "PADDRIGHT" then return end   -- our mover only answers its keys
+		if not ns.NavGridMove(window, key == "PADDLEFT" and -1 or 1) then
+			self:SetPropagateKeyboardInput(true)   -- no grid here: the game's own left/right binding runs
+		end
+	end)
 	b:SetScript("OnClick", function()
 		if not navigating[window] then return end
 		ns.NavMove(window, dir)
@@ -246,26 +335,85 @@ local function makeMover(window, dir)   -- one invisible mover PER WINDOW: a sha
 	return b
 end
 
+-- Grid navigation (vendor item slots): controls carry grid = { row, col } - see merchantMap. While the
+-- highlight sits on a grid control, each d-pad direction steps one cell IN THAT DIRECTION inside the
+-- grid: the walk stays in the item area and never wanders over the tabs while you browse items (user
+-- 2026-11-13: "it doesn't go into the actual inventory"). Outside a grid control, up/down use the plain
+-- list walk and left/right stay the game's own keys. PAD2 always clicks the window's close control.
+local function gridStep(map, i, drow, dcol)
+	local c = map.controls[i]
+	if not c or not c.grid then return nil end
+	for j = 1, #map.controls do
+		local o = map.controls[j]
+		if o.grid and o.grid.row == c.grid.row + drow and o.grid.col == c.grid.col + dcol then return j end
+	end
+	return nil
+end
+
+function ns.NavGridMove(window, dcol)
+	local map = navigating[window]
+	if not map then return false end
+	local i = ns.NavFocus(window)
+	local j = gridStep(map, i, 0, dcol)
+	if not j then return false end
+	ns.NavSetFocus(window, j)
+	claim(window, map)
+	ns.NavDraw(window)
+	return true
+end
+
+-- Our own secure click proxy: PAD1/PAD2 normally point at a NAMED control through
+-- SetOverrideBindingClick. An UNNAMED frame (gossip options, GoodbyeButton) has no name to point at, so
+-- the key points at THIS Button instead and we hand it the frame in its "clickbutton" attribute -
+-- Blizzard's own secure pattern (Blizzard_FrameXML/SecureTemplates.lua:557-562: SECURE_ACTIONS.click
+-- reads the "clickbutton" attribute and calls delegate:Click(button)). The engine performs the click;
+-- we never fake input.
 claim = function(window, map)
+	if not validOwner(window) then return end   -- no real frame (or the fake world's stub): nothing to claim on
 	local owner = _G[window]
-	if not owner then return end
-	ns.ClearNavClaims(window)
+	local proxy = proxyFor(window)
+	proxy:SetAttribute("type", nil)   -- idle until a secure control is highlighted
 	local i = ns.NavFocus(window)
 	local c = map.controls[i]
-	if c and _G[c.id] then
+	if c and c.secure then
+		SetOverrideBindingClick(owner, true, "PAD1", proxy:GetName())
+		proxy:SetAttribute("type", "clickbutton")
+		proxy:SetAttribute("clickbutton", c.secure)
+	elseif c and _G[c.id] then
 		SetOverrideBindingClick(owner, true, "PAD1", c.id)
 	end
-	for _, dir in ipairs({ "up", "down" }) do
-		SetOverrideBindingClick(owner, true, dir == "up" and "PADDUP" or "PADDDOWN", makeMover(window, dir):GetName())
+	for _, dir in ipairs({ "up", "down", "left", "right" }) do
+		local key = ({ up = "PADDUP", down = "PADDDOWN", left = "PADDLEFT", right = "PADDRIGHT" })[dir]
+		local mover = makeMover(window, dir)
+		-- While the highlight sits on a GRID control these movers steer it and must NOT let the game also
+		-- run its own binding for that key; everywhere else the mover stays transparent (OnKeyDown
+		-- re-arms propagation).
+		if mover.SetPropagateKeyboardInput then   -- real-game method; the fake world's frames do not have it
+			mover:SetPropagateKeyboardInput(not (c and c.grid))
+		end
+		SetOverrideBindingClick(owner, true, key, mover:GetName())
 	end
-	if map.close and _G[map.close] then
-		SetOverrideBindingClick(owner, true, "PAD2", map.close)
+	if map.close then
+		local cc
+		for _, o in ipairs(map.controls) do if o.id == map.close then cc = o break end end
+		if cc and cc.secure then
+			-- PAD2 on an unnamed close control: a SECOND proxy (PAD1's proxy points at the highlight).
+			local p2 = proxyFor(window .. "_close")   -- same lookup as PAD1's proxy, incl. the test hook
+			p2:SetAttribute("type", "clickbutton")
+			p2:SetAttribute("clickbutton", cc.secure)
+			SetOverrideBindingClick(owner, true, "PAD2", p2:GetName())
+		elseif _G[map.close] then
+			SetOverrideBindingClick(owner, true, "PAD2", map.close)
+		end
 	end
 end
 
 function ns.ClearNavClaims(window)
 	local owner = _G[window]
 	if owner and not InCombatLockdown() then ClearOverrideBindings(owner) end
+	-- idle our proxies too: a key that is no longer claimed must never click an old frame.
+	if proxies[window] then proxies[window]:SetAttribute("type", nil) end
+	if proxies[window .. "_close"] then proxies[window .. "_close"]:SetAttribute("type", nil) end
 end
 
 -- Which window is navigated right now: the last opened that is still shown.
@@ -279,7 +427,7 @@ local function topWindow()
 end
 ns.NavTopWindow = topWindow
 
-function ns.NavOpen(window)
+function ns.NavOpen(window, options)
 	-- Navigation in windows is ALWAYS on (user 2026-11-13: "that should happen automatically"): there is
 	-- no navWindows setting any more; a stale saved value is deleted by Options.lua on load.
 	local maker = ns.NAV_MAKERS[window]
@@ -305,9 +453,14 @@ function ns.NavOpen(window)
 	navigating[window] = map
 	topOrderSeen(window)              -- remove any stale entry, then re-add at the top
 	topOrder[#topOrder + 1] = window
-	-- start on the first ENABLED control (line 12-style snap comes in a later phase)
+	-- start on the first ENABLED control (line 12-style snap comes in a later phase); a grid caller may
+	-- ask for a specific index (options.index - see ns.NavGridMove) and we keep it when pressable.
 	local idx = 1
-	for i, c in ipairs(map.controls) do if ns.NavEnabled(window, c) then idx = i break end end
+	if options and options.index and ns.NavEnabled(window, map.controls[options.index]) then
+		idx = options.index
+	else
+		for i, c in ipairs(map.controls) do if ns.NavEnabled(window, c) then idx = i break end end
+	end
 	ns.NavSetFocus(window, idx)
 	claim(window, map)
 	ns.NavDraw(window)
@@ -325,9 +478,11 @@ end
 
 -- (The per-window mover Buttons do the move themselves; their OnClick is above, next to claim().)
 
--- A GOSSIP_UPDATE-style refresh: gossip content changed while the window stayed open.
+-- A GOSSIP_UPDATE-style refresh: gossip content changed while the window stayed open. The NEW list of
+-- options starts highlighted at the TOP (index 1): after picking an option the old highlight index would
+-- point at a different or missing row (the user's in-game flow 2026-11-13: pressing A inside gossip).
 ns.NavRefresh = function(window)
-	if navigating[window] then ns.NavOpen(window) end
+	if navigating[window] then ns.NavOpen(window, { index = 1 }) end
 end
 
 --------------------------------------------------------------
@@ -335,6 +490,12 @@ end
 --------------------------------------------------------------
 
 local overlays = {}   -- window -> our overlay frame
+
+-- The frame a control addresses: secure controls carry it directly (unnamed Blizzard frames); named
+-- controls are globals.
+local function controlFrame(c)
+	return c.secure or _G[c.id]
+end
 
 function ns.NavDraw(window)
 	local map = ns.NAV_MAPS[window]
@@ -368,7 +529,7 @@ function ns.NavDraw(window)
 			line:SetBlendMode("ADD")
 			ov.lines[i] = line
 		end
-		local b = _G[c.id]
+		local b = controlFrame(c)   -- a secure control carries its frame; named controls look up the global
 		if b and ns.NavEnabled(window, c) then
 			line:ClearAllPoints()
 			line:SetPoint("CENTER", b, "CENTER", 0, 0)
@@ -421,3 +582,24 @@ ns.GOSSIP_EVENTS = { "GOSSIP_SHOW", "GOSSIP_OPTIONS_REFRESHED" }
 for _, event in ipairs(ns.GOSSIP_EVENTS) do
 	ns:RegisterEvent(event, function() if navigating.GossipFrame then ns.NavRefresh("GossipFrame") end end)
 end
+
+-- The vendor tab changed (MERCHANT <-> BUYBACK): which item slots are SHOWN differs per tab, so the map
+-- is rebuilt and the highlight starts at the top of the new list. A tab click fires no event we can see,
+-- so we hook the tab buttons' OnClick directly (their names: Vanilla/MerchantFrame.xml:488,:505) and
+-- rebuild one frame later, when the game has shown the new slots. MERCHANT_SHOW re-maps when the window
+-- opens again.
+ns:RegisterEvent("MERCHANT_SHOW", function() if navigating.MerchantFrame then ns.NavRefresh("MerchantFrame") end end)
+
+local function watchTabs()
+	for _, name in ipairs({ "MerchantFrameTab1", "MerchantFrameTab2" }) do
+		local b = _G[name]
+		if b and b.HookScript then
+			b:HookScript("OnClick", function()
+				C_Timer.After(0, function()
+					if navigating.MerchantFrame then ns.NavOpen("MerchantFrame", { index = 1 }) end
+				end)
+			end)
+		end
+	end
+end
+ns:RegisterEvent("PLAYER_LOGIN", watchTabs)

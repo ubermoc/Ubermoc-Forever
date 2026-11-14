@@ -55,7 +55,10 @@ local function recordSettings()
 		registered = cat and true or false,
 		id = cat and cat:GetID() or nil,
 		numSettings = cat and cat.GetNumSettings and cat:GetNumSettings() or nil,
-		subcategoryRegistered = ns.bindsCategory and true or false,
+		-- our canvas page: does the frame exist, is it shown, and where is its parent now?
+		bindFrameExists = ns.bindFrame and ns.bindFrame() and true or false,
+		bindFrameShown = (ns.bindFrame and ns.bindFrame() and ns.bindFrame():IsShown()) and true or false,
+		bindFrameParent = (ns.bindFrame and ns.bindFrame() and tostring((ns.bindFrame():GetParent() or {}).GetName and ns.bindFrame():GetParent():GetName() or "nil")) or "none",
 		navWindowsSavedValue = ns.db and tostring(ns.db.navWindows) or "no db",
 	}
 	ns.ProbeRecord("settings", v)
@@ -93,12 +96,13 @@ local function recordWindow(window)
 			v.title = map.title
 			v.controls = {}
 			for _, c in ipairs(map.controls or {}) do
-				local b = _G[c.id]
+				-- a secure control carries its frame directly (unnamed gossip frames); named ones are globals.
+				local b = c.secure or _G[c.id]
 				v.controls[#v.controls + 1] = {
 					id = tostring(c.id),
 					exists = b and true or false,
 					shown = b and b.IsShown and b:IsShown() or false,
-					disabled = b and b.IsDisabled and b:IsDisabled() or false,
+					enabled = b and (type(b.IsEnabled) ~= "function" or b:IsEnabled()) or false,   -- IsEnabled: SimpleButtonAPIDocumentation.lua:257
 				}
 			end
 			v.closeId = tostring(map.close)
