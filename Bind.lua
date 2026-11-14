@@ -19,12 +19,16 @@
 -- FAILURE PATHS (line 8): in combat nothing is touched and chat says so; an unknown row/action is refused;
 -- a press while no row is selected does nothing.
 --
--- UI LOOK: rows are plain Buttons (UIPanelButtonTemplate); the frame has NO chrome of its own - it is our
--- canvas inside Blizzard's Settings window (Options.lua), whose chrome is Blizzard's. Text uses Blizzard's
--- own strings (CLOSE / DEFAULTS / CLEAR - defined in Blizzard_SharedXML/SharedConstants.lua). A custom
--- binding-row template of Blizzard's was NOT FOUND by lookup in Forever's source, so no Blizzard template
--- is claimed for the rows themselves (Phase 2 spec line 6 says "look and work like" - visual check is the
--- user's).
+-- UI LOOK: the page is our own frame shown inside Blizzard's Settings window (Options.lua registers it as
+-- a CANVAS category). ROWS ARE NOT BUTTONS ANY MORE (user 2026-11-13 round 4, in game: "it's just red bars
+-- everywhere they have no words"): rows are plain Frames carrying two FontStrings - the row NAME and its
+-- KEY - drawn with Blizzard's own fonts. A Button's text is a FONTSTRING, so the words were never the
+-- problem; what changed is that we now draw them OURSELVES instead of trusting a button template inside
+-- someone else's canvas. The row frames are still NAMED (UbermocForeverBindRowN) because Nav.lua claims
+-- PAD1 on them with SetOverrideBindingClick - the engine clicks the frame named by the binding (Nav.lua
+-- header; SimpleFrameAPIDocumentation.lua:1426 SetPropagateKeyboardInput exists for frames, so a Frame is
+-- a legal binding-click target). The three action buttons below keep Blizzard's UIPanelButtonTemplate.
+-- Text uses Blizzard's own strings (CLOSE / DEFAULTS / CLEAR - defined in Blizzard_SharedXML/SharedConstants.lua).
 local addonName, ns = ...
 
 -- Single source of truth for what the player chose: db.binds[row] = key they pressed (nil = use the
@@ -155,7 +159,7 @@ function ns.BindPress(key)
 	end
 	if InCombatLockdown() then
 		ns:Print("in combat - bindings unchanged.")
-		return
+		return false   -- (the OLD choice stays; nothing was written)
 	end
 	ns.db.binds = ns.db.binds or {}
 	local had, oldKey = ns.db.binds[row] ~= nil, ns.db.binds[row]
@@ -164,6 +168,7 @@ function ns.BindPress(key)
 		if had then ns.db.binds[row] = oldKey else ns.db.binds[row] = nil end   -- refused: as it was
 		return
 	end
+	ns.UpdateRowLabels()   -- the row shows its new key immediately (R-2.2: "bound and shown")
 	ns:Print(("%s -> %s bound."):format(key, row))
 end
 ------------------------------------------------------------
@@ -173,32 +178,81 @@ end
 local frame
 ns.bindFrame = function() return frame end
 
--- Rows are NAMED Buttons (UbermocForeverBindRowN) so Nav.lua can claim them with
--- SetOverrideBindingClick - the same secure-click path as every other navigated window (R-2.2: the page
--- works with the controller alone). Labels show row + current key, refreshed after every change.
+-- Rows are NAMED Frames (UbermocForeverBindRowN) with two FontStrings of Blizzard's own fonts: the row
+-- NAME on the left, its KEY on the right. Nav.lua claims PAD1 on the frame itself (the engine clicks the
+-- named target; a Frame is a legal click target - see header). A click arms capture for that row.
 local function makeRow(parent, index, row)
-	local button = CreateFrame("Button", addonName .. "BindRow" .. index, parent, "UIPanelButtonTemplate")
-	button.__row = row
-	-- Stack the rows in one column under the header; the three buttons sit below them (ShowBindUI).
-	-- In the fake world SetPoint just records the anchor - layout is the user's visual check.
-	button:SetSize(280, 22)
+	local f = CreateFrame("Frame", addonName .. "BindRow" .. index, parent)
+	f.__row = row
+	f:SetSize(360, 24)
 	if index == 1 then
-		button:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -50)
+		f:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -50)
 	else
-		button:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -50 - (index - 1) * 26)
+		f:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -50 - (index - 1) * 26)
 	end
-	button:SetScript("OnClick", function() ns.BindListen(row); ns:Print(("press a button for %s"):format(row)) end)
-	return button
+	local name = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	name:SetPoint("LEFT", f, "LEFT", 4, 0)
+	name:SetText(row)
+	f.__nameText = name
+	local key = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")   -- the KEY stands out
+	key:SetPoint("RIGHT", f, "RIGHT", -4, 0)
+	f.__keyText = key
+	f:SetScript("OnClick", function()
+		ns.BindListen(row)
+		ns:Print(("press a button for %s"):format(row))
+	end)
+	return f
 end
+
+-- A row's look comes from HIGHLIGHT TEXTURES we draw ourselves (Blizzard's own highlight art): selected
+-- row = full gold bar, highlighted-by-d-pad = outline. The old build drew rows with UIPanelButtonTemplate
+-- and the user saw "red bars everywhere... no words" - WHY the template's words went missing is not proven
+-- (unverified), so we no longer depend on it: the words are now our own FontStrings on plain Frames.
+local function applyRowLook(f)
+	if not f.__bg then
+		f.__bg = f:CreateTexture(nil, "BACKGROUND")
+		f.__bg:SetTexture("Interface\\Buttons\\ButtonHilight-Square")   -- Blizzard's own highlight art
+		f.__bg:SetBlendMode("ADD")
+		f.__bg:SetAllPoints(f)
+	end
+	if not f.__outline then
+		f.__outline = f:CreateTexture(nil, "BACKGROUND")
+		f.__outline:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight2")   -- Blizzard's own selection art (Blizzard_ChatFrame/Mainline/ChatConfigFrame.xml:22 uses this exact file)
+		f.__outline:SetPoint("TOPLEFT", f, "TOPLEFT", -4, 4)
+		f.__outline:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 4, -4)
+	end
+	local selected = ns.db and ns.db.pendingRow == f.__row
+	local highlighted = false
+	if ns.NavFocus and ns.NAV_MAPS and ns.NAV_MAPS[addonName .. "BindFrame"] then
+		local c = ns.NAV_MAPS[addonName .. "BindFrame"].controls[ns.NavFocus(addonName .. "BindFrame")]
+		highlighted = c ~= nil and _G[c.id] == f
+	end
+	f.__bg:SetShown(selected)
+	f.__outline:SetShown(highlighted and not selected)
+	if highlighted or selected then
+		f.__nameText:SetTextColor(1, 1, 1)   -- white on the highlight bar
+	else
+		f.__nameText:SetTextColor(0.83, 0.83, 0.83)   -- GameFontHighlight's own colour (the font this row inherits; exact RGB is Blizzard's, visual check is the user's)
+	end
+end
+
+-- Forward declaration: BindPress (earlier in this file) calls ns.UpdateRowLabels;
+-- declaring it first removes any doubt about definition order. The real body below
+-- overwrites it at load time, before anything can run.
+function ns.UpdateRowLabels() end
 
 function ns.UpdateRowLabels()
 	if not frame or not ns.rowList then return end
-	for i, button in ipairs(ns.rowList) do
-		local row = button.__row
+	for i, f in ipairs(ns.rowList) do
+		local row = f.__row
 		local key = ns.claimedKey(row)
-		button:SetText(row .. "  |cffffd100" .. (key or CLEAR or "none") .. "|r")
+		f.__nameText:SetText(row)
+		f.__keyText:SetText(key or (CLEAR or "none"))
+		f.__keyText:SetTextColor(key and 1 or 0.5, key and 1 or 0.5, key and 0.56 or 0.56)   -- gold when bound (the old |cffffd100), grey when cleared
+		if applyRowLook then applyRowLook(f) end
 	end
 end
+ns.ApplyRowLook = applyRowLook
 
 -- The bind screen (R-2.2) IS our settings page now: Options.lua registers our frame as a CANVAS layout
 -- category, and Blizzard displays the frame directly when the page opens - the old vertical category had
@@ -286,10 +340,12 @@ function ns.BindNavMap()
 	local controls = {}
 	for i = 1, #ns.AllDefaultKeys() do
 		local name = addonName .. "BindRow" .. i
-		if _G[name] then controls[#controls + 1] = { id = name } end
+		-- label so NAVIGATION CAN NARRATE the row (round-4 feedback: "narrating in menus doesn't work"):
+		-- the row's own name FontString is the source of truth for what it shows on screen.
+		if _G[name] then controls[#controls + 1] = { id = name, label = _G[name].__nameText and _G[name].__nameText:GetText() or nil } end
 	end
-	for _, name in ipairs({ addonName .. "BindClear", addonName .. "BindReset", addonName .. "BindClose" }) do
-		if _G[name] then controls[#controls + 1] = { id = name } end
+	for _, pair in ipairs({ { addonName .. "BindClear", CLEAR }, { addonName .. "BindReset", DEFAULT }, { addonName .. "BindClose", CLOSE } }) do
+		if _G[pair[1]] then controls[#controls + 1] = { id = pair[1], label = pair[2] or "button" } end
 	end
 	return { title = addonName, controls = controls, close = addonName .. "BindClose" }
 end

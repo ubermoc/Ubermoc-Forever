@@ -315,18 +315,21 @@ local function makeMover(window, dir)
 	if movers[window] and movers[window][dir] then return movers[window][dir] end
 	local b = CreateFrame("Button", addonName .. "NavMover_" .. window .. "_" .. dir)
 	b:SetSize(1, 1); b:Hide()
-	if b.SetPropagateKeyboardInput then   -- real-game method; the fake world's frames do not have it
-		b:SetPropagateKeyboardInput(true)   -- default: a key we do not steer is the game's own binding again
-	end
-	b:SetScript("OnKeyDown", function(self, key)
-		if key ~= "PADDLEFT" and key ~= "PADDRIGHT" then return end   -- our mover only answers its keys
-		if not ns.NavGridMove(window, key == "PADDLEFT" and -1 or 1) then
-			self:SetPropagateKeyboardInput(true)   -- no grid here: the game's own left/right binding runs
-		end
-	end)
+	-- ONE move per press (user 2026-11-13 round 4: the d-pad "goes up down left right left right" - one
+	-- press moved the highlight several times). The OLD mover had TWO handlers, OnKeyDown AND OnClick, and
+	-- a single key press could fire BOTH paths = two moves. Now there is exactly ONE handler: OnClick.
 	b:SetScript("OnClick", function()
 		if not navigating[window] then return end
-		ns.NavMove(window, dir)
+		if dir == "left" or dir == "right" then
+			-- Inside a grid of controls (vendor item slots) left/right step BETWEEN COLUMNS; everywhere
+			-- else they move the list highlight like up/down do. NavMove only stops on enabled controls,
+			-- so an edge never strands the highlight and no key is ever "wasted".
+			if not ns.NavGridMove(window, dir == "left" and -1 or 1) then
+				ns.NavMove(window, dir)
+			end
+		else
+			ns.NavMove(window, dir)
+		end
 		claim(window, navigating[window])   -- PAD1 must now point at the NEW highlighted control
 		ns.NavDraw(window)
 	end)
@@ -385,11 +388,12 @@ claim = function(window, map)
 	for _, dir in ipairs({ "up", "down", "left", "right" }) do
 		local key = ({ up = "PADDUP", down = "PADDDOWN", left = "PADDLEFT", right = "PADDRIGHT" })[dir]
 		local mover = makeMover(window, dir)
-		-- While the highlight sits on a GRID control these movers steer it and must NOT let the game also
-		-- run its own binding for that key; everywhere else the mover stays transparent (OnKeyDown
-		-- re-arms propagation).
+		-- The mover STEERS the highlight for every navigated window now (left/right fall back to the list
+		-- walk when there is no grid), so it must never ALSO let the game run its own binding for that key:
+		-- one key press = exactly one move (user 2026-11-13 round 4). SetPropagateKeyboardInput(false) keeps
+		-- the click ours only - Blizzard's own pass-through method (SimpleFrameAPIDocumentation.lua:1426).
 		if mover.SetPropagateKeyboardInput then   -- real-game method; the fake world's frames do not have it
-			mover:SetPropagateKeyboardInput(not (c and c.grid))
+			mover:SetPropagateKeyboardInput(false)
 		end
 		SetOverrideBindingClick(owner, true, key, mover:GetName())
 	end
@@ -497,6 +501,21 @@ local function controlFrame(c)
 	return c.secure or _G[c.id]
 end
 
+-- What a control is CALLED, for the highlight's label/narration: our own label from the map maker first
+-- (merchant item names, gossip option text), else the frame's own text. A control with no name returns
+-- nil - narration says nothing rather than guessing. Defined right after controlFrame because NavDraw
+-- below calls it. The makers fill c.label: merchantMap reads MerchantItem<N>Name, gossipMap reads each
+-- option's GetText (Blizzard_UIPanels_Game/Shared/GossipFrameShared.lua builds those rows).
+local function labelFor(c)
+	if c.label and c.label ~= "" then return c.label end
+	local b = controlFrame(c)
+	if b and b.GetText and type(b.GetText) == "function" then
+		local ok, t = pcall(b.GetText, b)
+		if ok and type(t) == "string" and t ~= "" then return t end
+	end
+end
+ns.NavLabelFor = labelFor
+
 function ns.NavDraw(window)
 	local map = ns.NAV_MAPS[window]
 	if not map then return end
@@ -521,6 +540,7 @@ function ns.NavDraw(window)
 	-- one highlight per control (Blizzard's own button-highlight texture), only the focused one shown.
 	-- Pressability comes from the model (NavEnabled), NOT from IsShown: a tab that is already on the
 	-- shown page is drawn even though the real map only lists pressable controls at open time.
+	local focusName
 	for i, c in ipairs(map.controls) do
 		local line = ov.lines[i]
 		if not line then
@@ -535,11 +555,55 @@ function ns.NavDraw(window)
 			line:SetPoint("CENTER", b, "CENTER", 0, 0)
 			line:SetSize((b.GetWidth and b:GetWidth() or 20) + 6, (b.GetHeight and b:GetHeight() or 16) + 6)
 			line:SetShown(i == ns.NavFocus(window))
+			if i == ns.NavFocus(window) then focusName = labelFor(c) end
 		else
 			line:SetShown(false)
 		end
 	end
 	ov.legend:SetText((PAD1 or "PAD1") .. ": select   " .. (PAD2 or "PAD2") .. ": close   d-pad: move")
+	if focusName and ns.Speak then ns.Speak(focusName) end   -- narration of what is highlighted (see below)
+end
+
+-- NARRATION (user 2026-11-13 round 4: "narrating in menus doesn't work"). Blizzard's own screen
+-- narration CANNOT run here at all: NarrationUtil.ShouldBeEnabled() is TRUE ONLY on glue screens -
+-- Blizzard_Narration/Blizzard_NarrationUtil.lua:122 "return CVarCallbackRegistry:GetCVarValueBool(\"accessibilityScreenNarrationEnabled\") and C_Glue.IsOnGlueScreen();" - so in
+-- the game its Narration.Speak event has no listener and nothing is ever said. We speak the highlighted
+-- control OURSELVES through C_VoiceChat.SpeakText, with the player's own narration settings (the same
+-- CVars Blizzard's NarrationManager reads, Blizzard_Narration/Blizzard_NarrationManager.lua:26-28), but
+-- only when the "Enable Screen Reader" accessibility setting is on. SpeakText's exact shape comes from
+-- Blizzard's own call at NarrationManager.lua:28 "C_VoiceChat.SpeakText(voiceID, text, speechRate,
+-- speechVolume);". Everything is pcall-guarded: if a name or call does not exist in this build, we say
+-- nothing and change nothing else.
+-- Read a narration CVar as a NUMBER. Blizzard's own way is GetCVarNumberOrDefault (used at
+-- Blizzard_NarrationManager.lua:26-28 and AccessibilityTemplates.lua:42); we wrap it so a missing global
+-- or a missing setting falls back to the default instead of erroring.
+local function cvarNumber(name, default)
+	local ok, v = pcall(GetCVarNumberOrDefault, name)
+	if not ok or type(v) ~= "number" then return default end
+	return v
+end
+
+function ns.NarrateEnabled()
+	-- the CVar Blizzard gates narration on (Blizzard_NarrationUtil.lua:122 reads it with GetCVarValueBool;
+	-- the same setting is the "Enable Screen Reader" checkbox, AudioAssist.lua:64). GetCVar returns "1"/"0".
+	local ok, on = pcall(GetCVar, "accessibilityScreenNarrationEnabled")
+	return ok and (on == 1 or on == "1" or on == true)
+end
+
+local lastSpoken
+function ns.Speak(text)
+	if not text or text == "" then return end
+	if not ns.NarrateEnabled() then return end
+	-- the player's own voice/rate/volume settings - the same three CVars Blizzard reads at
+	-- Blizzard_NarrationManager.lua:26-27 before its SpeakText call (:28). Defaults 0,0,0 if one is missing.
+	local voice = cvarNumber("accessibilityScreenNarrationVoice", 0)
+	local rate = cvarNumber("accessibilityScreenNarrationSpeechRate", 0)
+	local volume = cvarNumber("accessibilityScreenNarrationSpeechVolume", 0)
+	text = tostring(text):gsub("|c%x+", ""):gsub("|r", "")   -- strip colour codes so the voice never reads them
+	if text == lastSpoken then return end   -- a held d-pad key may fire fast; never repeat the same word twice in a row
+	lastSpoken = text
+	pcall(C_VoiceChat.StopSpeakingText)    -- interrupt what was being said, exactly like Blizzard_NarrationManager.lua:105
+	pcall(C_VoiceChat.SpeakText, voice, text, rate, volume)   -- the documented 4-arg shape (VoiceChatDocumentation.lua:871-874; overlap defaults false)
 end
 
 function ns.NavErase(window)

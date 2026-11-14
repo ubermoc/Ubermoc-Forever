@@ -136,13 +136,17 @@ end)
 test("grid-step-inside-items", "R-2.3", "while the highlight sits on an item slot, left/right step between columns (the walk goes INTO the inventory, user 2026-11-13)", function()
     local g = opened("MerchantFrame", MERCHANT_IDS)
     eq(g.ns.NavFocus("MerchantFrame"), 1, "opens on the first item")
-    -- right steps to the next column of the SAME row: slot 2 (col+1). The mover's OnKeyDown drives it.
+    -- right steps to the next column of the SAME row: slot 2 (col+1). The mover's OnClick drives it -
+    -- since round 4 a mover has ONE handler only (two handlers = one press, two moves; user feedback).
     local right = g.env["UbermocForeverNavMover_MerchantFrame_right"]
-    truthy(right and right.__scripts.OnKeyDown, "a right mover exists")
-    truthy(g.ns.NavGridMove("MerchantFrame", 1), "grid move right applies inside the grid")
+    truthy(right and right.__scripts.OnClick, "a right mover exists with an OnClick")
+    falsy(right.__scripts.OnKeyDown, "and no second key handler (one press = one move)")
+    right.__scripts.OnClick(right)
+    eq(g.ns.NavFocus("MerchantFrame"), 2, "the click itself moved one cell right (no double move)")
     eq(g.ns.NAV_MAPS["MerchantFrame"].controls[g.ns.NavFocus("MerchantFrame")].id, "MerchantItem2ItemButton", "the highlight moved RIGHT within the item rows")
     -- left steps back:
-    truthy(g.ns.NavGridMove("MerchantFrame", -1))
+    local left = g.env["UbermocForeverNavMover_MerchantFrame_left"]
+    left.__scripts.OnClick(left)
     eq(g.ns.NAV_MAPS["MerchantFrame"].controls[g.ns.NavFocus("MerchantFrame")].id, "MerchantItem1ItemButton", "and back left")
     -- at the edge of what is shown the move refuses (slot to the LEFT of slot 1 does not exist):
     falsy(g.ns.NavGridMove("MerchantFrame", -1), "no cell left of column 1: the key stays the game's own")
