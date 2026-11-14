@@ -27,10 +27,15 @@ local function loginWithSaved(saved)
         RegisterAddOnSetting = function() error("no setting rows: the page is our own canvas frame") end,
         CreateCheckbox = function() error("no checkboxes: the page is our own canvas frame") end,
     }
-    -- Options.lua checks `if Settings.RegisterInitializer then` BEFORE calling it; a plain table has no
-    -- metatable in the fake world, so an unmodelled key really is nil here. Model Blizzard's own shape:
-    -- RegisterInitializer forwards to SettingsInbound (Blizzard_Settings.lua:170-172) - keep that wiring.
-    g.env.Settings.RegisterInitializer = function(cat, fn) g.initializers = g.initializers or {}; g.initializers[cat] = fn end
+    -- NO RegisterInitializer call: the REAL game rejected it 2026-11-13 - Blizzard's own
+    -- Blizzard_SettingsInbound.lua ErrorIfFunctionArgs (:19-26) errors "Function values are not allowed
+    -- for settings APIs" when a plain function reaches SetAttribute (:222 SecureUnpackArgs). Model that
+    -- guard so the mistake cannot come back: any Settings call handed a function blows up here too.
+    g.env.Settings.RegisterInitializer = function(cat, fn)
+        if type(fn) == "function" then error("Function values are not allowed for settings APIs (in-game error 2026-11-13)") end
+        error("we must never call RegisterInitializer at all: the OnShow watcher arms navigation")
+    end
+    -- (the fake world's Settings table is plain: unmodelled keys really are nil)
     g.login(true)
     return g
 end
@@ -46,21 +51,23 @@ test("page-uses-blizzard-api", "R-2.1", "the page is a CANVAS category holding o
     eq(cat.frame, g.env["UbermocForeverBindFrame"], "the canvas IS the bind frame")
     truthy(g.env["UbermocForeverBindRow1"], "the page already has its first bind row built")
     eq(g.registered or 0, 1, "registered with RegisterAddOnCategory exactly once (no subcategory)")
-    truthy(g.initializers and g.initializers[cat], "an initializer shows the frame when the category opens")
+    -- No initializer is registered (the game rejects function args in settings APIs); the OnShow
+    -- watcher Nav attached when the frame was created is what arms navigation:
+    local f0 = g.env["UbermocForeverBindFrame"]
+    truthy(f0.__scripts and f0.__scripts.OnShow, "our frame has an OnShow watcher - showing it arms navigation")
 end)
 
-test("initializer-shows-and-navigates", "R-2.1", "opening our category shows the page and arms controller navigation (R-2.1 + R-2.2 together)", function()
+test("showing-the-page-arms-nav", "R-2.1", "opening the page shows our canvas frame and arms controller navigation (R-2.1 + R-2.2 together) - no initializer involved", function()
     local g = loginWithSaved(nil)
-    local cat = g.canvasCategories[1]
     local f = g.env["UbermocForeverBindFrame"]
     falsy(f:IsShown(), "the frame starts hidden")
     eq(count(g.overrides), 0, "no claims while the page is closed")
-    g.initializers[cat]()   -- Blizzard calls this when the category opens
-    truthy(f:IsShown(), "the initializer showed our page")
+    truthy(f.__scripts and f.__scripts.OnShow, "the OnShow watcher Nav attached arms navigation when the panel shows the canvas - no initializer involved (the game rejects function args in settings APIs, in-game error 2026-11-13)")
+    g.ns.ShowBindUI()   -- frame:Show() fires that watcher -> NavOpen; ShowBindUI calls NavOpen too (idempotent)
+    truthy(f:IsShown(), "showing the page worked")
     truthy(g.overrides.PAD1, "PAD1 claimed: the page works with the controller alone")
     eq(g.ns.NavFocus("UbermocForeverBindFrame"), 1, "the highlight starts on the first control")
 end)
-
 test("no-enable-setting", "R-2.1", "the page registers no Enable checkbox at all", function()
     local g = loginWithSaved(nil)
     eq(g.registered or 0, 1, "only our category is registered - no settings, no checkboxes")

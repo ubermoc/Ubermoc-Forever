@@ -54,13 +54,14 @@ ns:RegisterEvent("ADDON_LOADED", function(loadedAddon)
         -- player leaves the category, ClearCurrentCategoryCanvas (:918-930: frame:SetParent(nil)) hides
         -- our frame again. So the frame simply sits in UIParent until a page opens.
 
-        -- Nav.lua attached the watchers when Bind created the frame (NavWatchOwn). Opening the category
-        -- re-arms the claims so the page works with the controller alone (R-2.1/R-2.2).
-        if Settings.RegisterInitializer then
-            Settings.RegisterInitializer(category, function()
-                local f = ns.bindFrame and ns.bindFrame()
-                if f then f:Show(); if ns.NavOpen then ns.NavOpen(addonName .. "BindFrame") end end
-            end)
-        end
+        -- NO Settings.RegisterInitializer here. PROVEN IN GAME 2026-11-13 (user's Lua error):
+        -- Blizzard_Settings_Shared/Blizzard_SettingsInbound.lua:153 passes { category, initializer } to
+        -- SetAttribute and its OnAttributeChanged (:222) unpacks it with SecureUnpackArgs ->
+        -- ErrorIfFunctionArgs (:19-26 "error(\"Function values are not allowed for settings APIs\")"), so a
+        -- plain function is REJECTED (Blizzard wraps such functions in GenerateClosure first, :43-56, and
+        -- only for the few APIs that opt into UnpackArgs - RegisterInitializer does not).
+        -- We do not need it anyway: opening the page shows our frame (the panel parents and shows the
+        -- canvas itself) and frame:Show() fires our OnShow watcher -> NavOpen re-arms the claims, at the
+        -- moment the player can actually see the highlight.
     end)
 end)
