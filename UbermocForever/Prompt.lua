@@ -18,6 +18,8 @@ StaticPopupDialogs["UBERMOCFOREVER_DEFAULTS"] = {
         local g = UF.guid()
         if g then UF.DB().declined[g] = true end
     end,
+    OnShow = function(self) UF.Nav.TakePopup(self) end,
+    OnHide = function(self) UF.Nav.ReleasePopup(self) end,
     timeout = 0,
     whileDead = 1,
     hideOnEscape = 1,

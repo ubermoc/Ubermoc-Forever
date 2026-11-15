@@ -7,27 +7,27 @@
 local _, UF = ...
 
 UF.SETS = {
-    xbox = { name = "Xbox", labels = {
+    xbox = { name = "Xbox", short = "Xbox", labels = {
         PAD1 = "A", PAD2 = "B", PAD3 = "X", PAD4 = "Y", PADLSHOULDER = "LB", PADRSHOULDER = "RB",
         PADLTRIGGER = "LT", PADRTRIGGER = "RT", PADLSTICK = "Left stick", PADRSTICK = "Right stick",
         PADBACK = "View", PADFORWARD = "Menu", PADSYSTEM = "Xbox", PADSOCIAL = "Share",
         PADDUP = "D-pad up", PADDDOWN = "D-pad down", PADDLEFT = "D-pad left", PADDRIGHT = "D-pad right" } },
-    ps5 = { name = "PlayStation", labels = {
+    ps5 = { name = "PlayStation", short = "PlayStation", labels = {
         PAD1 = "Cross", PAD2 = "Circle", PAD3 = "Square", PAD4 = "Triangle", PADLSHOULDER = "L1", PADRSHOULDER = "R1",
         PADLTRIGGER = "L2", PADRTRIGGER = "R2", PADLSTICK = "L3", PADRSTICK = "R3",
         PADBACK = "Create", PADFORWARD = "Options", PADSYSTEM = "PS button", PADSOCIAL = "Touchpad",
         PADDUP = "D-pad up", PADDDOWN = "D-pad down", PADDLEFT = "D-pad left", PADDRIGHT = "D-pad right" } },
-    ps3 = { name = "PlayStation 3", labels = {
+    ps3 = { name = "PlayStation 3", short = "PS3", labels = {
         PAD1 = "Cross", PAD2 = "Circle", PAD3 = "Square", PAD4 = "Triangle", PADLSHOULDER = "L1", PADRSHOULDER = "R1",
         PADLTRIGGER = "L2", PADRTRIGGER = "R2", PADLSTICK = "L3", PADRSTICK = "R3",
         PADBACK = "Select", PADFORWARD = "Start", PADSYSTEM = "PS button", PADSOCIAL = "-",
         PADDUP = "D-pad up", PADDDOWN = "D-pad down", PADDLEFT = "D-pad left", PADDRIGHT = "D-pad right" } },
-    switch = { name = "Nintendo Switch", labels = {
+    switch = { name = "Nintendo Switch", short = "Switch", labels = {
         PAD1 = "B", PAD2 = "A", PAD3 = "Y", PAD4 = "X", PADLSHOULDER = "L", PADRSHOULDER = "R",
         PADLTRIGGER = "ZL", PADRTRIGGER = "ZR", PADLSTICK = "Left stick", PADRSTICK = "Right stick",
         PADBACK = "Minus", PADFORWARD = "Plus", PADSYSTEM = "Home", PADSOCIAL = "Capture",
         PADDUP = "D-pad up", PADDDOWN = "D-pad down", PADDLEFT = "D-pad left", PADDRIGHT = "D-pad right" } },
-    steam = { name = "Steam Controller / Steam Deck", labels = {
+    steam = { name = "Steam Controller / Steam Deck", short = "Steam Deck", labels = {
         PAD1 = "A", PAD2 = "B", PAD3 = "X", PAD4 = "Y", PADLSHOULDER = "L1", PADRSHOULDER = "R1",
         PADLTRIGGER = "L2", PADRTRIGGER = "R2", PADLSTICK = "L-stick", PADRSTICK = "R-stick",
         PADBACK = "View", PADFORWARD = "Menu", PADSYSTEM = "Steam", PADSOCIAL = "-",

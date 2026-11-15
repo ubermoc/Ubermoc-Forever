@@ -24,6 +24,8 @@ StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
         if UF.applyDefaults(UF.activeSet()) then UF.say("Controller binds reset to the default.") end
         if UF.RefreshOptions then UF.RefreshOptions() end
     end,
+    OnShow = function(self) UF.Nav.TakePopup(self) end,
+    OnHide = function(self) UF.Nav.ReleasePopup(self) end,
     timeout = 0, whileDead = 1, hideOnEscape = 1, preferredIndex = 3,
 }
 
@@ -50,7 +52,9 @@ function UF.RefreshOptions()
     local d = UF.DB()
     local set = UF.SETS[setId]
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)"))
-    win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.name or "?"))
+    -- A short name on the button, sized to fit: the full name is in the line to its left.
+    win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.short or "?"))
+    win.controllerBtn:SetWidth(math.max(110, math.min(190, (win.controllerBtn:GetTextWidth() or 0) + 28)))
 
     -- layer buttons: what to hold
     local okS, sp = pcall(GetCVar, "GamePadEmulateShift")
@@ -61,8 +65,9 @@ function UF.RefreshOptions()
     layerButtons[2]:SetText("Hold " .. sg)
     layerButtons[3]:SetText("Hold " .. cg)
     layerButtons[4]:SetText("Hold " .. sg .. cg)
+    -- the chosen layer shows as a pressed button; the highlight is kept for the button the D-pad is on
     for i, b in ipairs(layerButtons) do
-        if i == layer then b:LockHighlight() else b:UnlockHighlight() end
+        if i == layer then b:SetButtonState("PUSHED", true) else b:SetButtonState("NORMAL", false) end
     end
 
     local y = 0
@@ -158,6 +163,7 @@ local function buildPicker()
                     t:SetPoint("RIGHT", -8, 0)
                     t:SetText(UF.actionName(e.cmd))
                     b:SetFontString(t)
+                    b.navScroll = sf
                     local hl = b:CreateTexture(nil, "HIGHLIGHT")
                     hl:SetAllPoints()
                     hl:SetColorTexture(1, 1, 1, 0.12)
@@ -176,10 +182,17 @@ local function buildPicker()
         self:Show()
         sf:SetVerticalScroll(0)
         legend:Set({ PAD1 = "Select", PAD2 = "Cancel" })
+        UF.Nav.ClearFocus()
+        UF.Nav.SetFocus(self.buttons[2] or self.cancel)
     end
     picker:SetScript("OnHide", function()
         win.scroll:Show()
         for _, b in ipairs(layerButtons) do b:Show() end
+        -- back on the row that was being changed
+        UF.Nav.ClearFocus()
+        for _, r in ipairs(rows) do
+            if r.pad == picker.pad and r:IsShown() then UF.Nav.SetFocus(r.btn); break end
+        end
         if win and win:IsShown() then
             legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset" })
         end
@@ -315,6 +328,8 @@ local function build()
         r.btn:SetSize(92, 22)
         r.btn:SetPoint("RIGHT", -4, 0)
         r.btn:SetText("Change")
+        r.btn.navRow = r
+        r.btn.navScroll = sf
         local function choose()
             if InCombatLockdown() then UF.say("Binds can't be changed in combat."); return end
             picker:Open(pad)
@@ -344,51 +359,44 @@ local function build()
 
     buildPicker()
 
-    -- Moving around: the D-pad jumps the game's own cursor from button to button (Nav.lua), A clicks it for real,
-    -- the bumpers change layer, B goes back, X clears the row the cursor is on, Y resets. These buttons are taken
-    -- only while this window is open.
+    -- Moving around (Nav.lua): the D-pad moves a highlight from button to button, A presses the highlighted button,
+    -- the bumpers change layer, B goes back, X clears the highlighted row, Y resets. While this window is open these
+    -- buttons are taken from the action bars; they are given back when it closes (and by the game when combat starts).
+    local Nav = UF.Nav
     local function pickerOpen() return picker and picker:IsShown() end
-    local function focusable()
-        local list = {}
+    local function navRows()
+        local out = {}
         if pickerOpen() then
-            for _, b in ipairs(picker.buttons) do list[#list + 1] = b end
-            return list
+            out[1] = { picker.cancel }
+            for i = 2, #picker.buttons do out[#out + 1] = { picker.buttons[i] } end
+            return out
         end
-        list[#list + 1] = win.controllerBtn
-        for _, b in ipairs(layerButtons) do list[#list + 1] = b end
-        for _, r in ipairs(rows) do if r:IsShown() then list[#list + 1] = r.btn end end
-        list[#list + 1] = reset
-        list[#list + 1] = checks
-        if win.CloseButton then list[#list + 1] = win.CloseButton end
-        return list
-    end
-    local function step(direction)
-        local scroller = pickerOpen() and picker.scroll or win.scroll
-        return UF.Nav.Step(direction, focusable, scroller)
-    end
-    local function cursorRow()
-        local x, y = GetCursorPosition()
+        local header = { win.controllerBtn }
+        if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
+        out[1] = header
+        out[2] = layerButtons
         for _, r in ipairs(rows) do
-            if r:IsShown() and r:IsVisible() then
-                local l, bt, w, h = r:GetRect()
-                if l then
-                    local s = r:GetEffectiveScale()
-                    if x >= l * s and x <= (l + w) * s and y >= bt * s and y <= (bt + h) * s then return r end
-                end
-            end
+            if r:IsShown() then out[#out + 1] = { r.btn } end
         end
+        out[#out + 1] = { checks, reset }
+        return out
     end
+    local function startRow() return pickerOpen() and 2 or 3 end
     local navMap = {
-        PADDUP = function() step("UP") end,
-        PADDDOWN = function() step("DOWN") end,
-        PADDLEFT = function() step("LEFT") end,
-        PADDRIGHT = function() step("RIGHT") end,
+        PADDUP = function() Nav.Move("UP", navRows, startRow()) end,
+        PADDDOWN = function() Nav.Move("DOWN", navRows, startRow()) end,
+        PADDLEFT = function() Nav.Move("LEFT", navRows, startRow()) end,
+        PADDRIGHT = function() Nav.Move("RIGHT", navRows, startRow()) end,
+        PAD1 = function()
+            if not Nav.Click() then Nav.Move("DOWN", navRows, startRow()) end
+        end,
         PADLSHOULDER = function() if not pickerOpen() and layer > 1 then layer = layer - 1; UF.RefreshOptions() end end,
         PADRSHOULDER = function() if not pickerOpen() and layer < 4 then layer = layer + 1; UF.RefreshOptions() end end,
         PAD2 = function() if pickerOpen() then picker:Hide() else win:Hide() end end,
         PAD3 = function()
             if pickerOpen() then return end
-            local r = cursorRow() or hovered
+            local f = Nav.focus
+            local r = (f and f.navRow) or hovered
             if r then UF.setBind(UF.combo(layer, r.pad), nil); UF.RefreshOptions() end
         end,
         PAD4 = function()
@@ -396,15 +404,19 @@ local function build()
             StaticPopup_Show("UBERMOCFOREVER_RESET", (UF.SETS[UF.activeSet()] or {}).name or "this controller")
         end,
     }
+    local navToken
     win:SetScript("OnShow", function()
         pcall(UF.detect)
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(true) then SetGamePadCursorControl(true) end
-        UF.Nav.Enable(navMap)
         UF.RefreshOptions()
+        navToken = Nav.Push(navMap)
+        Nav.ClearFocus()
+        Nav.Move("DOWN", navRows, 3)   -- highlight the first row
     end)
     win:SetScript("OnHide", function()
         picker:Hide()
-        UF.Nav.Disable()
+        if navToken then Nav.Pop(navToken); navToken = nil end
+        Nav.ClearFocus()
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(false) then SetGamePadCursorControl(false) end
     end)
     local ev = CreateFrame("Frame")

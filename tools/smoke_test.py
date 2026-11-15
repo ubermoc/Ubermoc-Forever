@@ -38,10 +38,29 @@ local function proxy(name)
         if k == "GetRect" then return function() return 100, 100, 50, 20 end end
         if k == "GetCenter" then return function() return 125, 110 end end
         if k == "GetEffectiveScale" then return function() return 1 end end
+        -- child frames a template provides (win.Inset, win.CloseButton) are tables, not methods
+        if k == "Inset" or k == "CloseButton" then local c = proxy(k); rawset(self, k, c); return c end
         if k == "GetStringWidth" then return function() return 40 end end
+        if k == "GetTextWidth" then return function() return 60 end end
+        if k == "Click" then return function(s) local sc = rawget(s, "__scripts"); if sc and sc.OnClick then sc.OnClick(s, "LeftButton", false) end end end
         if k == "GetText" then return function(s) return rawget(s, "__text") end end
         if k == "SetText" then return function(s, v) rawset(s, "__text", v); local o = rawget(s, "__owner"); if o then rawset(o, "__fstext", v) end end end
-        if k == "IsShown" or k == "IsVisible" or k == "IsEnabled" then return function() return true end end
+        if k == "IsEnabled" then return function() return true end end
+        -- a frame is shown until it is hidden, like in the game
+        if k == "IsShown" or k == "IsVisible" then return function(s) return rawget(s, "__hidden") ~= true end end
+        -- Hide and Show run the frame's OnHide / OnShow, but only when the state really changes, as in the game
+        if k == "Hide" then return function(s)
+            if rawget(s, "__hidden") ~= true then
+                rawset(s, "__hidden", true)
+                local sc = rawget(s, "__scripts"); if sc and sc.OnHide then sc.OnHide(s) end
+            end
+        end end
+        if k == "Show" then return function(s)
+            if rawget(s, "__hidden") == true then
+                rawset(s, "__hidden", nil)
+                local sc = rawget(s, "__scripts"); if sc and sc.OnShow then sc.OnShow(s) end
+            end
+        end end
         if k == "GetFrameLevel" then return function() return 1 end end
         if k == "GetVerticalScroll" or k == "GetVerticalScrollRange" or k == "GetTop" or k == "GetBottom" then return function() return 0 end end
         if k == "SetScript" then return function(s, ev, fn) rawset(s, "__scripts", rawget(s, "__scripts") or {}); s.__scripts[ev] = fn end end
@@ -165,20 +184,20 @@ print("chat:", (L("__calls.chat") or "").strip()[:300])
 # show the window the way the game would, then press the D-pad and bumpers
 L("""function()
     local w = UbermocForeverOptions
-    w.__scripts.OnShow(w)
+    w:Hide(); w:Show()
 end""")()
 print("nav overrides after show:", sorted(list(L("__calls.overrides").keys())))
 res = L("""function()
     local out = {}
     for _, key in ipairs({ "PADDDOWN", "PADDUP", "PADDLEFT", "PADDRIGHT", "PADLSHOULDER", "PADRSHOULDER", "PAD3", "PAD4", "PAD2" }) do
         local b = _G["UbermocForeverNav_" .. key]
-        local ok, err = pcall(b.__scripts.OnClick, b)
+        local ok, err = pcall(b.__scripts.OnClick, b, "LeftButton", true)
         out[#out + 1] = key .. "=" .. tostring(ok) .. (ok and "" or (" " .. tostring(err)))
     end
     return table.concat(out, "; ")
 end""")()
 print("nav presses:", res)
-L("""function() local w = UbermocForeverOptions; w.__scripts.OnHide(w) end""")()
+L("""function() local w = UbermocForeverOptions; w:Hide() end""")()
 print("overrides after hide:", len(list(L("__calls.overrides").keys())))
 
 print("combat driver registered:", L("__calls.driver"))
@@ -204,8 +223,95 @@ res = L("""function()
     end
     if not chose then return "picker built no Jump button" end
     chose.__scripts.OnClick(chose)
-    return "picked: PAD3 base is now " .. tostring(__calls.binds["PAD3"])
+    return "picked: PAD3 now " .. tostring(__calls.binds["PAD3"]) .. " / SHIFT-PAD3 now " .. tostring(__calls.binds["SHIFT-PAD3"])
 end""")()
 print("picker:", res)
 assert "JUMP" in res, res
 print("PICKER OK")
+
+# ---- navigation: the D-pad moves a highlight, A presses it, B / X / Y do what the legend says ----
+nav = L("""function()
+    local UF = UbermocForever
+    local w = UbermocForeverOptions
+    w:Hide(); w:Show()
+    local function press(key)
+        local b = _G["UbermocForeverNav_" .. key]
+        b.__scripts.OnClick(b, "LeftButton", true)
+        b.__scripts.OnClick(b, "LeftButton", false)
+    end
+    local function where()
+        local f = UF.Nav.focus
+        if not f then return "none" end
+        if f.navRow then return f.navRow.pad end
+        return "other"
+    end
+    for i = 1, 5 do press("PADLSHOULDER") end                      -- the bumpers: back to the first layer
+    local out = { where() }
+    for i = 1, 40 do press("PADDDOWN"); out[#out + 1] = where() end
+    local walk = table.concat(out, ",")
+
+    -- back up to the third row, then A on it, then B
+    for i = 1, 60 do press("PADDUP") end
+    local top = where()
+    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, layers, first row ... settle on a list row
+    local row = where()
+    press("PAD1")                                                  -- A on a row opens the picker
+    local inPicker = (UF.Nav.focus ~= nil) and (UF.Nav.focus.navRow == nil) and (UF.Nav.focus.navScroll ~= nil)
+    press("PAD2")                                                  -- B closes it
+    local back = where()
+    local pad = back
+    __calls.binds[pad] = "ACTIONBUTTON1"
+    press("PAD3")                                                  -- X clears the highlighted row
+    local cleared = tostring(__calls.binds[pad])
+    __calls.popups = {}
+    press("PAD4")                                                  -- Y asks to reset
+    local asked = tostring(__calls.popups[1])
+    return walk .. "|" .. top .. "|" .. row .. "|" .. tostring(inPicker) .. "|" .. back .. "|" .. cleared .. "|" .. asked
+end""")()
+walk, top, row, in_picker, back, cleared, asked = str(nav).split("|")
+seq = walk.split(",")
+order = list(L("UbermocForever.PAD_ORDER").values())
+print("highlight walk:", ",".join(seq[:12]), "...", seq[-1])
+first_other = seq.index("other")
+assert all(x == "other" for x in seq[first_other:]), "highlight must stay on the bottom row once it is there, not jump back"
+lst = seq[:first_other]
+idx = [order.index(x) for x in lst]
+assert idx == sorted(idx) and len(set(idx)) == len(idx), "rows must be visited in order, once each: %s" % lst
+assert lst[0] == order[0], "highlight should start on the first row"
+print("rows visited in order, no jump to the top: OK  (%d rows)" % len(lst))
+assert in_picker == "true", "A on a row should open the picker and move the highlight into it"
+assert back == row, "B should close the picker and return to the same row (%s vs %s)" % (back, row)
+assert cleared == "nil", "X should clear the highlighted row's bind"
+assert asked.startswith("UBERMOCFOREVER_RESET"), "Y should ask to reset"
+print("A opens the picker, B returns to the row, X clears it, Y asks to reset: OK")
+
+# the first-run question and the reset question take A and B too
+pop = L("""function()
+    local UF = UbermocForever
+    local yes, no = { clicked = false }, { clicked = false }
+    local dialog = {
+        GetButton1 = function() return { IsEnabled = function() return true end, Click = function() yes.clicked = true end } end,
+        GetButton2 = function() return { IsShown = function() return true end, Click = function() no.clicked = true end } end,
+    }
+    StaticPopupDialogs["UBERMOCFOREVER_DEFAULTS"].OnShow(dialog)
+    local a = _G["UbermocForeverNav_PAD1"]; a.__scripts.OnClick(a, "LeftButton", true); a.__scripts.OnClick(a, "LeftButton", false)
+    local b = _G["UbermocForeverNav_PAD2"]; b.__scripts.OnClick(b, "LeftButton", true); b.__scripts.OnClick(b, "LeftButton", false)
+    StaticPopupDialogs["UBERMOCFOREVER_DEFAULTS"].OnHide(dialog)
+    return tostring(yes.clicked) .. "," .. tostring(no.clicked)
+end""")()
+assert str(pop) == "true,true", pop
+print("question window: A = Yes, B = No: OK")
+L("""function() local w = UbermocForeverOptions; w:Hide() end""")()
+print("overrides after the window closes:", len(list(L("__calls.overrides").keys())))
+assert len(list(L("__calls.overrides").keys())) == 0
+print("NAVIGATION OK")
+
+# the controller button always shows a short name, so its label can never spill out of the button
+L("""function() local UF = UbermocForever; UF.DB().layout = "steam"; UF.RefreshOptions() end""")()
+label = L("UbermocForeverOptions.controllerBtn.__text")
+assert label == "Steam Deck", label
+width = L("UbermocForeverOptions.controllerBtn.__width") or 0
+L("""function() local UF = UbermocForever; UF.DB().layout = "auto"; UF.RefreshOptions() end""")()
+assert L("UbermocForeverOptions.controllerBtn.__text") == "Auto"
+print("controller button label stays short ('%s'): OK" % label)
+print("ALL TESTS PASSED")
