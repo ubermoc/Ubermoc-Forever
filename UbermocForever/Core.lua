@@ -72,6 +72,17 @@ end
 function UF.reportChecks()
     UF.runChecks()
     UF.say("Controller the game reports: " .. tostring(UF.deviceName or "none") .. " (read as " .. tostring(UF.detected or "none") .. ")")
+    -- the game's own controller settings and what Start does on each layer, as the game has them right now
+    local function cv(n) local ok, v = pcall(GetCVar, n); return ok and tostring(v) or "?" end
+    UF.say("Shift = " .. cv("GamePadEmulateShift") .. ", Ctrl = " .. cv("GamePadEmulateCtrl") .. ", Alt = " .. cv("GamePadEmulateAlt") .. ", Escape = " .. cv("GamePadEmulateEsc"))
+    if GetBindingAction then
+        local parts = {}
+        for _, layerPrefix in ipairs({ "", "SHIFT-", "CTRL-", "CTRL-SHIFT-" }) do
+            local a = GetBindingAction(layerPrefix .. "PADFORWARD")
+            parts[#parts + 1] = (layerPrefix == "" and "Start" or (layerPrefix .. "Start")) .. " = " .. ((a and a ~= "") and a or "(nothing)")
+        end
+        UF.say(table.concat(parts, ", "))
+    end
     for _, c in ipairs(UF.checks) do
         UF.say((c.ok and "|cff44ff44ok|r  " or "|cffff4444MISSING|r  ") .. c.name .. (c.detail and (" (" .. c.detail .. ")") or ""))
     end

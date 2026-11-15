@@ -38,8 +38,8 @@ end
 local function actionText(combo, pad)
     local a = UF.actionOf(combo)
     if a then return UF.actionName(a) end
-    -- the button the game uses as Escape shows as Exit (base layer only)
-    if combo == pad and UF.exitButton() == pad then return "Exit (Escape)" end
+    -- the game's Escape button, with nothing bound on this layer, shows as Exit
+    if UF.isExitRow(combo, pad) then return "Exit (Escape)" end
     return "|cff888888Not bound|r"
 end
 
@@ -170,14 +170,10 @@ local function buildPicker()
     local function relayout()
         local y = 0
         if picker.exit then
-            if layer == 1 then
-                picker.exit:Show()
-                picker.exit:ClearAllPoints()
-                picker.exit:SetPoint("TOPLEFT", 8, -y)
-                y = y + ITEM_H + 6
-            else
-                picker.exit:Hide()
-            end
+            picker.exit:Show()
+            picker.exit:ClearAllPoints()
+            picker.exit:SetPoint("TOPLEFT", 8, -y)
+            y = y + ITEM_H + 6
         end
         for _, g in ipairs(picker.groups) do
             g.header:ClearAllPoints()
@@ -217,7 +213,7 @@ local function buildPicker()
         local exit = newLine(list, ITEM_H, "GameFontHighlight", 28)
         exit.label:SetText("Exit (Escape)")
         exit:SetScript("OnClick", function()
-            if UF.setExit(picker.pad) then picker:Hide(); UF.RefreshOptions() end
+            if UF.setExit(picker.pad, UF.combo(layer, picker.pad)) then picker:Hide(); UF.RefreshOptions() end
         end)
         picker.exit = exit
 
@@ -266,7 +262,7 @@ local function buildPicker()
         sf:SetVerticalScroll(0)
         legend:Set({ PAD1 = "Select", PAD2 = "Cancel" })
         UF.Nav.ClearFocus()
-        UF.Nav.SetFocus(layer == 1 and self.exit or (self.groups[1] and self.groups[1].header) or cancel)
+        UF.Nav.SetFocus(self.exit or (self.groups[1] and self.groups[1].header) or cancel)
     end
     picker:SetScript("OnHide", function()
         win.scroll:Show()
@@ -476,7 +472,12 @@ local function build()
             if pickerOpen() then return end
             local f = Nav.focus
             local r = (f and f.navRow) or hovered
-            if r then UF.setBind(UF.combo(layer, r.pad), nil); UF.RefreshOptions() end
+            if r then
+                local combo = UF.combo(layer, r.pad)
+                -- an Exit row has no bind to clear: clearing it turns the Escape button off
+                if UF.isExitRow(combo, r.pad) then UF.clearExit() else UF.setBind(combo, nil) end
+                UF.RefreshOptions()
+            end
         end,
         PAD4 = function()
             if pickerOpen() then return end

@@ -352,30 +352,51 @@ acc = L("""function()
     press("PAD1"); flush()                             -- again: closes
     local closedAgain = shownItems()
 
-    -- Exit: pick it for the button the picker is open for
+    -- Exit: pick it for the button the picker is open for (layer 1, button PAD3)
     press("PADDDOWN"); press("PADDDOWN")               -- ... down to the third category header, then
     for i = 1, 6 do press("PADDUP") end                -- back up to Exit (it stops at the top: Cancel)
     press("PADDDOWN")
     local onExit = UF.Nav.focus and UF.Nav.focus.label and rawget(UF.Nav.focus.label, "__text") or "?"
     press("PAD1")
     local esc = tostring(__calls.cvars.GamePadEmulateEsc)
-    local rowText
-    for _, f in ipairs(__frames) do
-        if rawget(f, "pad") == "PAD3" and rawget(f, "glyph") and rawget(f, "__fstext") then rowText = rawget(f, "__fstext") end
+    local function rowTextFor(pad)
+        local t
+        for _, f in ipairs(__frames) do
+            if rawget(f, "pad") == pad and rawget(f, "glyph") and rawget(f, "__fstext") then t = rawget(f, "__fstext") end
+        end
+        return tostring(t)
     end
-    -- binding something else to that button takes Exit away
+    local rowText = rowTextFor("PAD3")
+    -- binding something to that layer takes Escape away on that layer only: the button stays the game's Escape button
     UF.setBind("PAD3", "JUMP")
+    UF.RefreshOptions()
     local escAfter = tostring(__calls.cvars.GamePadEmulateEsc)
-    return table.concat({ closed, open1, open2, which2, closedAgain, onExit, esc, tostring(rowText), escAfter }, "|")
+    local boundText = rowTextFor("PAD3")
+    -- on a layer where it has no bind, the same button reads Exit
+    UF.setBind("CTRL-PAD3", nil)
+    press("PADRSHOULDER"); press("PADRSHOULDER")        -- third layer
+    local otherLayer = rowTextFor("PAD3")
+    -- X on an Exit row turns the game's Escape button off
+    UF.Nav.ClearFocus()
+    for _, r in ipairs(UF.__rows or {}) do end
+    for _, f in ipairs(__frames) do
+        if rawget(f, "pad") == "PAD3" and rawget(f, "glyph") then UF.Nav.SetFocus(f.btn) end
+    end
+    press("PAD3")
+    local escOff = tostring(__calls.cvars.GamePadEmulateEsc)
+    local offText = rowTextFor("PAD3")
+    return table.concat({ closed, open1, open2, which2, closedAgain, onExit, esc, rowText, escAfter, boundText, otherLayer, escOff, offText }, "\t")
 end""")()
-closed, open1, open2, which2, closed_again, on_exit, esc, row_text, esc_after = str(acc).split("|")
+closed, open1, open2, which2, closed_again, on_exit, esc, row_text, esc_after, bound_text, other_layer, esc_off, off_text = str(acc).split("\t")
 assert (closed, open1, open2, closed_again) == ("0", "1", "1", "0"), "categories: closed, then one open, then the other (one at a time), then closed: %s" % acc
 assert which2 == "Jump", "the second category's action should be showing, not the first's: %s" % which2
 print("categories start closed and open one at a time: OK")
 assert esc == "PAD3", "choosing Exit should make that button the game's Escape: %s" % esc
 assert row_text == "Exit (Escape)", "the row should read Exit (Escape): %s" % row_text
-assert esc_after == "NONE", "binding something else should take Exit away: %s" % esc_after
-print("Exit sets the game's own Escape button, shows on the row, and is removed by another bind: OK")
+assert esc_after == "PAD3" and bound_text == "Jump", "a bind on one layer keeps the button as the game's Escape and shows the bind: %s / %s" % (esc_after, bound_text)
+assert other_layer == "Exit (Escape)", "on a layer with no bind the same button should read Exit (Escape): %s" % other_layer
+assert esc_off == "NONE" and off_text.startswith("|cff888888Not bound"), "X on an Exit row should turn Escape off: %s / %s" % (esc_off, off_text)
+print("Exit: the game's Escape button reads Exit on every layer without a bind, X turns it off: OK")
 
 # friendlier names for binds that would show as a code
 names = L("""function() local UF = UbermocForever; return UF.actionName("CLICK UbermocMenu:LeftButton") .. "|" .. UF.actionName("CLICK SomeAddonButton:LeftButton") end""")()
