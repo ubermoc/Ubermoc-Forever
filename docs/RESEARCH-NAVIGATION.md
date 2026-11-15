@@ -151,3 +151,56 @@ cleanly. **Not decided yet; this is the first question below.**
   and UbermocUI both rely on it; **not tried here**.
 - Whether `GamePadCursorLeftClick` / `RightClick` CVars exist in Forever (UbermocUI sets them; HANDOFF section 4 says they do).
 - Which popups are "accept or decline" and which are "type something" (DELETE) in Forever's list of `StaticPopupDialogs`.
+
+## 7. Added 2026-11-15: scrolling, tabs, select and close (second pass)
+
+Same sources and commits as above. Read, not tried in the game.
+
+### Scrolling
+
+- **ConsolePort follows the highlight.** `Controller/Scroll.lua` `Scroll:To` L17-39: when the highlight moves to a node
+  inside a scroll area, the area is scrolled so the node is centred. Two cases: a classic `ScrollFrame` (sets the
+  vertical scroll with a short eased animation, `Interpolate` L83-95; hybrid scroll frames are skipped, L53-57) and the
+  newer `ScrollBox` list (`ScrollToElementDataIndex(index)`, found by climbing from the node to the row that is a direct
+  child of the box and calling its `GetElementDataIndex`, L63-79). Called from `Cursor:Select` (`View/Cursor.lua` L587).
+- **ConsolePort also scrolls on a button.** `Cursor:SetScrollButtonsForNode` (`View/Cursor.lua` L601-620): when the
+  highlight is inside something that scrolls, **modifier + D-pad up/down** is bound to two hidden proxy buttons
+  (`Scroll.lua` L110-139) that call the area's own `OnMouseWheel` with a repeat while held. "A scroll controller" is any
+  frame whose `OnMouseWheel` is the game's `ScrollControllerMixin.OnMouseWheel` (L158-160).
+- **The game's own scroll call**: `ScrollControllerMixin:OnMouseWheel(value)`
+  (`Blizzard_SharedXML/Shared/Scroll/ScrollController.lua` L93-100) scrolls one wheel step; `ScrollIncrease` / `ScrollDecrease`
+  (L113-125) are the calls it makes. So a plain call to the area's `OnMouseWheel` is the supported way to scroll one step
+  with no mouse.
+- **UbermocUI** scrolls with the triggers using `SimulateMouseWheel` (`PadCursor.lua` L336), which needs the game's cursor
+  over the list.
+
+### Tabs
+
+- **ConsolePort has no tab buttons.** A search of `ConsolePort_Cursor` finds no tab handling: tabs are just nodes the
+  highlight lands on with the D-pad, and A clicks them.
+- **UbermocUI uses the bumpers** (section 1): find the tab list on the open window, step with wrap, click on release.
+- **What the game gives us to find tabs** (Blizzard Forever UI `bebcb6b`): the newer `TabSystemMixin`
+  (`Blizzard_SharedXML/Shared/TabSystem/TabSystemTemplates.lua` L310 `SetTab(tabID, isUserAction)`, L350 `GetTabButton(tabID)`),
+  and the older `PanelTemplates_SetTab(frame, id)` (`Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.lua` L441) with
+  `PanelTemplates_GetSelectedTab` L446. Both kinds exist, so both have to be looked for.
+
+### Select and close
+
+- **Select**: ConsolePort re-binds A to a real secure click on the highlighted node (section 2). We already do the same
+  kind of thing with `button:Click()` for our own window; for the game's protected buttons the click has to come from a
+  secure button whose `clickbutton` attribute is set to the highlighted button (UbermocUI does exactly this for
+  accept/decline, section 1), and that attribute cannot change in combat.
+- **Close**: ConsolePort binds B to click the window's own close button (L674-697); UbermocUI `P.Back` calls the closing
+  steps in order. The close button way is the more exact one, because it runs the window's own close code.
+
+### What this adds up to (proposal, not built)
+
+1. **Highlight**: our own drawn highlight, moved with the D-pad using the angle-weighted pick (written fresh).
+2. **A**: secure click on the highlighted button; **B**: click the window's close button, else the closing steps.
+3. **Scroll**: auto-scroll to keep the highlighted row in view (ScrollBox index, or ScrollFrame centring), plus triggers
+   (or a held modifier plus D-pad) calling the area's `OnMouseWheel`.
+4. **Tabs**: bumpers, found through `TabSystemMixin` first, then `PanelTemplates` (`numTabs` / `selectedTab`), with wrap.
+5. **Combat**: everything off in combat, as now.
+
+Still **not known** (needs the game): which of the two tab kinds each Forever window uses, and whether a secure click onto
+a Blizzard button taints it.
