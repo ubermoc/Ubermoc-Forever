@@ -69,6 +69,13 @@ Fetch it all into Downloads with `bash tools/setup-research.sh`.
 | `Atraeau-WoW-Addons` | A generated API reference and deploy tooling. |
 | `wowlua-ls` | A WoW-aware Lua checker. |
 
+## Found while re-checking (and what was done)
+
+- **Combat and taken buttons (fixed).** The window takes the D-pad, bumpers and B/X/Y with override bindings. Code like ours cannot change bindings in combat, so a fight starting with the window open would have left them taken. `Nav.lua` now puts the bindings on a secure frame with a `[combat]` state driver, which drops them the moment combat starts. Ubermoc UI does the same. **[ubermoc-ui]** Blizzard's own controller code uses the same `SetOverrideBindingClick`. **[source]**
+- **Steam Deck may be detected as Xbox.** Steam Input can hand the game a virtual pad that calls itself an Xbox controller. Then the Xbox layout is chosen (triggers as Shift and Ctrl) instead of the Steam layout (R4 and R5). The options header shows the device name the game reports, and the Controller button there switches to Steam Deck / Steam Controller; Reset to default then applies that layout. What a real Deck reports is **Unverified.** Ubermoc UI has the same limit and its in-game note says to set R4 = Left Shift, R5 = Left Ctrl, L4 = F6 and L5 = Space in Steam's settings.
+- **Binds are account-wide.** Ubermoc UI gives each character its own copy of the binds (`charBinds`); that is not ported yet. Applying the defaults changes the binds every character shares unless the game's character-specific binds are on, while the first-run prompt asks once per character.
+- **Licence.** Detection and the default layout are ported from Ubermoc UI, which is marked All Rights Reserved by Marcos; this repository is MIT. Same author, so it is his call, but it is worth deciding on purpose.
+
 ## Still to check in the game
 
 1. Whether every row of the Checks list passes on Forever.

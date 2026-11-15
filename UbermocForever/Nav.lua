@@ -137,9 +137,21 @@ end
 
 ----------------------------------------------------------------------
 -- Taking the buttons while a window is open
+-- The buttons are taken with override bindings on one owner frame. That frame is a secure one with a state driver
+-- on [combat]: the game itself drops its bindings the moment combat starts (code like this addon's cannot change
+-- bindings in combat), so the D-pad, bumpers and face buttons are never left taken during a fight. This is the same
+-- way Ubermoc UI does it. Blizzard's own controller code uses the same SetOverrideBindingClick for the same job.
 ----------------------------------------------------------------------
 local carriers, handlers = {}, {}
-local owners = {}
+local owner
+
+local function getOwner()
+    if owner then return owner end
+    owner = CreateFrame("Frame", "UbermocForeverNavOwner", UIParent, "SecureHandlerStateTemplate")
+    owner:SetAttribute("_onstate-combat", [[ if newstate == "1" then self:ClearBindings() end ]])
+    pcall(RegisterStateDriver, owner, "combat", "[combat] 1; 0")
+    return owner
+end
 
 local function carrier(key)
     if carriers[key] then return carriers[key] end
@@ -153,31 +165,24 @@ local function carrier(key)
     return b
 end
 
--- map: { PADDUP = function() ... end, ... } for the buttons this window wants.
-function Nav.Enable(owner, map)
+-- map: { PADDUP = function() ... end, ... } for the buttons the window wants. Out of combat only.
+function Nav.Enable(map)
     if InCombatLockdown() then return false end
+    local o = getOwner()
     handlers = map
-    owners[owner] = true
     for key in pairs(map) do
         local b = carrier(key)
-        pcall(SetOverrideBindingClick, owner, true, key, b:GetName(), "LeftButton")
+        pcall(SetOverrideBindingClick, o, true, key, b:GetName(), "LeftButton")
     end
     return true
 end
 
-function Nav.Disable(owner)
-    owners[owner] = nil
-    if InCombatLockdown() then Nav.pendingClear = Nav.pendingClear or {}; Nav.pendingClear[owner] = true; return end
+-- Gives the buttons back. In combat the secure driver has already done it.
+function Nav.Disable()
+    handlers = {}
+    if InCombatLockdown() or not owner then return end
     pcall(ClearOverrideBindings, owner)
 end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-ev:SetScript("OnEvent", function()
-    if Nav.pendingClear then
-        for owner in pairs(Nav.pendingClear) do pcall(ClearOverrideBindings, owner) end
-        Nav.pendingClear = nil
-    end
-end)
-
 ev:SetScript("OnUpdate", function() if pendingCheck then checkLanding() end end)

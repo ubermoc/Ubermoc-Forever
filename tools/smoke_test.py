@@ -97,6 +97,7 @@ SetGamePadCursorControl = function() end
 GetCursorPosition = function() return 100, 100 end
 SetCursorPosition = function() end
 SetOverrideBindingClick = function(owner, prio, key) calls.overrides[key] = true end
+RegisterStateDriver = function(f, state, cond) calls.driver = state .. ':' .. cond end
 ClearOverrideBindings = function() calls.overrides = {} end
 PlaySound = function() end
 SOUNDKIT = { IG_MAINMENU_OPTION = 1 }
@@ -176,3 +177,9 @@ end""")()
 print("nav presses:", res)
 L("""function() local w = UbermocForeverOptions; w.__scripts.OnHide(w) end""")()
 print("overrides after hide:", len(list(L("__calls.overrides").keys())))
+
+print("combat driver registered:", L("__calls.driver"))
+assert L("__calls.driver") == "combat:[combat] 1; 0", "the secure combat driver must be registered"
+print("Nav owner frame exists:", L("UbermocForeverNavOwner") is not None)
+print("device name shown on options header:", "yes" if L("UbermocForever").deviceName else "no")
+print("ALL CHECKS PASSED")

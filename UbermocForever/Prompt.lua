@@ -6,7 +6,7 @@
 local _, UF = ...
 
 StaticPopupDialogs["UBERMOCFOREVER_DEFAULTS"] = {
-    text = "%s controller found.\n\nSet the default controller key binds? This replaces your current controller binds. You can change them any time in the game menu under Controller.",
+    text = "Controller detected: %s.\n\nSet the default controller key binds? This replaces your current controller binds. You can change them any time in the game menu under Controller.",
     button1 = YES,
     button2 = NO,
     OnAccept = function()

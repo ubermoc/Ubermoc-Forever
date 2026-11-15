@@ -40,7 +40,10 @@ function UF.RefreshOptions()
     local d = UF.DB()
     local set = UF.SETS[setId]
     local found = UF.detected and UF.SETS[UF.detected] and UF.SETS[UF.detected].name or "none found"
-    info:SetText("Controller: " .. (set and set.name or "?") .. (d.layout == "auto" and "  (detected: " .. found .. ")" or "  (chosen)"))
+    -- The game's own name for the device is shown too: on a Steam Deck, Steam Input can hand the game a pad it calls
+    -- "Xbox", in which case pick Steam Deck / Steam Controller with the button on the right.
+    local device = UF.deviceName and (" - " .. UF.deviceName) or ""
+    info:SetText("Controller: " .. (set and set.name or "?") .. (d.layout == "auto" and ("  (detected: " .. found .. device .. ")") or "  (chosen)"))
     win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.name or "?"))
 
     -- layer buttons: what to hold
@@ -332,12 +335,12 @@ local function build()
     win:SetScript("OnShow", function()
         pcall(UF.detect)
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(true) then SetGamePadCursorControl(true) end
-        UF.Nav.Enable(win, navMap)
+        UF.Nav.Enable(navMap)
         UF.RefreshOptions()
     end)
     win:SetScript("OnHide", function()
         picker:Hide()
-        UF.Nav.Disable(win)
+        UF.Nav.Disable()
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(false) then SetGamePadCursorControl(false) end
     end)
     local ev = CreateFrame("Frame")
