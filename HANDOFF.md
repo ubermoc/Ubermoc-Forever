@@ -1,7 +1,13 @@
 # Hand-off: Ubermoc Forever
 
-Written 2026-11-15 at the end of the first working session. Read this whole file before doing anything. It says what
-the project is, what the user wants, what is built, what is proven and what is not, and what to do next.
+Written 2026-11-15 at the end of the first working session, updated at the end of its last stretch. Read this whole
+file before doing anything. It says what the project is, what the user wants, what is built, what is proven and what
+is not, and what to do next.
+
+**Where it stands (read this first):** addon version **0.2.1**, last commit `4a10dfe` on the branch below. The window,
+the picker, Start = Exit and the D-pad navigation are all in. The user has been testing in the game from phone photos
+and found real bugs each round; the **latest fix (0.2.1) is not yet confirmed in the game**. The first thing to do is
+ask the user to update, check the version shown in the window, and report what the picker does.
 
 - **Repo:** `ubermoc/Ubermoc-Forever` (public). **Branch:** `claude/affectionate-cray-lhlr0j`. **PR:** [#1](https://github.com/ubermoc/Ubermoc-Forever/pull/1), draft, not merged.
 - **If you cannot see this file on the default branch**, it is on the branch above. Read it from there.
@@ -70,16 +76,13 @@ picture styles; both default layouts; the first-run prompt; the picker choosing 
 whole list in order without wrapping; A, B, X, Y; the question windows taking A and B; the combat driver is registered;
 the controller button label stays short. The stub **cannot** show how the game really behaves.
 
-**Not yet seen in the game (do these first):**
-1. **The "Ubermoc Forever" entry in the Esc menu.** The user has never sent a photo of it. It relies on giving the new button `layoutIndex = Options.layoutIndex - 0.5`. Unverified.
-2. **The latest navigation** (commit `c5f9261` and later): D-pad highlight, A presses, B/X/Y, bumpers. The user reported three problems with the *previous* version; all three were fixed but **none confirmed**:
-   - the controller button's label spilled out of the button (fixed: short names, sized to fit);
-   - the face buttons fired the action bars instead of the window (fixed: A is now taken too);
-   - the list jumped back to the top after about seven presses (fixed by dropping the pointer-moving code).
-3. **The first-run prompt** and **applying the defaults** on a real character.
-4. **The picker** after two rounds of changes: the higher draw layer with the list under it hidden, and the newest category list (closed by default, one open at a time, plus an **Exit (Escape)** option). The user asked for both; neither has been seen in the game.
-5. **Release of the buttons in combat** (secure `[combat]` driver) and when the window closes.
-6. The Checks list: whether every row passes on Forever. Ask the user to press Checks and paste the chat output.
+**Not yet confirmed in the game (do these first, in this order):**
+1. **The category list in the picker (0.2.1).** 0.2.0's list never appeared for the user because a binding with no category threw while it was being built (fixed in 0.2.1, and any later failure now prints a line in chat starting "The list of actions could not be…"). Ask: does Change show "Exit (Escape)" then categories, all closed? Does A open one and close the others?
+2. **Start alone = Exit.** The user's rule is that Start with no modifier is the game's own Escape. The default now does that (Start unbound, `GamePadEmulateEsc` = `PADFORWARD`), and the Start row reads "Exit (Escape)" on any layer with no bind. Unconfirmed: that pressing "Reset to default" really makes Start behave right. Ask for the **Checks** output: it prints the four `GamePadEmulate*` settings and what Start is bound to on each layer.
+3. **The "Ubermoc Forever" entry in the Esc menu.** No photo yet. It relies on `layoutIndex = Options.layoutIndex - 0.5`. Unverified.
+4. **The D-pad highlight, A, B, X, Y and the bumpers** (0.1.x rewrite). The three problems reported earlier (button label spilling, face buttons firing the action bars, list jumping to the top) were fixed but none confirmed.
+5. **The first-run prompt** and **applying the defaults** on a real character; releasing the buttons in combat.
+6. The Checks list: whether every row passes on Forever.
 
 ## 4. Things learned the hard way (do not relearn these)
 
@@ -101,7 +104,7 @@ the controller button label stays short. The stub **cannot** show how the game r
 
 ## 5. Known gaps and the next steps, in order
 
-1. **Get the user's in-game results** for section 3 (items 1 to 6). Ask for photos and the Checks output. Fix what they show.
+1. **Get the user's in-game results** for section 3 (items 1 to 6). Ask for photos, the version shown in the window and the Checks output. Fix what they show. **Reproduce before you decide what is wrong.** Twice the user was right and the first guess ("you are on an old build") was wrong.
 2. **Port per-character binds.** Ubermoc UI gives each character its own copy (`charBinds` in `Controller.lua`). Ours changes the account-wide binds while the prompt asks once per character.
 3. **Picker usability:** the list is every action the game offers (long). Consider grouping or search once it is confirmed to work.
 4. **PlayStation Back/Social labels:** Ubermoc UI says Back = "Create", Social = "Touchpad"; Blizzard's `KEY_PADBACK_SHP` is the touchpad picture. One is wrong. Check on a real PS5 pad.
@@ -121,8 +124,26 @@ the controller button label stays short. The stub **cannot** show how the game r
 - **Git rules for the session:** develop on `claude/affectionate-cray-lhlr0j`; commit messages end with the attribution lines the session gives; keep the PR a draft; the session is subscribed to PR #1 events. Do not merge or approve. Do not put model names in commits or PR text. Ask before anything outward-facing (releases, comments, uploads).
 - **Be honest about status.** Say what is proven in the game, what only passes offline, and what has not been tried.
 
+### Running Claude on their computer in the background (set up this session, in progress)
+The user wants Claude running all the time on their CachyOS handheld, including Gaming Mode, so they can work on the
+repos remotely from a phone. Set up as a **systemd user service** `~/.config/systemd/user/claude-remote.service` that
+runs `claude remote-control` in `~/Downloads/Ubermoc/Ubermoc-Forever`, with `UnsetEnvironment=ANTHROPIC_API_KEY`
+(Remote Control needs the claude.ai login), `Nice=19`, `CPUWeight=20`, `MemoryMax=1G`, `Restart=on-failure`, plus
+`loginctl enable-linger $USER`. **Status:** the service started and failed with "Workspace not trusted". The fix given:
+run `claude` once in that folder, accept the trust prompt, `/exit`, then `systemctl --user restart claude-remote.service`.
+**Not yet confirmed** that it now stays up. If it exits at once with no clear message it may need a terminal: fall back
+to a tmux-based unit (`Type=forking`, `RemainAfterExit=yes`, `tmux new-session -d -s claude-remote ...`). Each repo
+folder needs its own trust acceptance (and its own service if wanted). None of this was tested on their machine from
+here; ask for `systemctl --user status claude-remote.service` and `journalctl --user -u claude-remote.service -n 30 --no-pager`.
+
+### Lessons about working with this user
+- They test fast and report from the game. When they say something doesn't work, believe them and reproduce it. Two reports that looked like user error were real bugs (the category list, the Escape row).
+- They are exact about how the game should behave ("Start alone should equal Exit"). Do not change their stated defaults without asking, and ask one specific question when a rule is ambiguous.
+- They want short copy-paste steps, one command per block, fish syntax. They have hit "no such file" errors from `git fetch` without `git pull`, and from running commands outside the repo folder. Say the folder and the exact commands.
+
 ## 7. First thing to say to the user in the new session
 
-Summarise section 3 in a few lines, say that the three fixes from the last session are untested in the game, and ask
-them to run `git pull` and `bash tools/install.sh`, restart the game, then send photos of: the Esc menu, the main
-window, the picker, and the Checks output.
+Summarise the "Where it stands" paragraph and section 3 in a few lines, say which fixes are untested in the game, and ask
+them to run `git pull` and `bash tools/install.sh` (the last line should say version 0.2.1 or newer), restart the game,
+then send photos of: the Esc menu, the main window (the version is in the grey text in its header line), the picker
+after pressing Change, and the Checks output. Then ask whether `claude-remote.service` is running.
