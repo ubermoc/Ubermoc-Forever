@@ -32,20 +32,22 @@ local function proxy(name)
     local t = {}
     local mt = {}
     mt.__index = function(self, k)
+        -- Lowercase names are plain data fields in the game (picker.built, row.pad): unset means nil, not a method.
+        if type(k) == "string" and k:match("^%l") then return nil end
         if k == "GetName" then return function() return name end end
         if k == "GetRect" then return function() return 100, 100, 50, 20 end end
         if k == "GetCenter" then return function() return 125, 110 end end
         if k == "GetEffectiveScale" then return function() return 1 end end
         if k == "GetStringWidth" then return function() return 40 end end
         if k == "GetText" then return function(s) return rawget(s, "__text") end end
-        if k == "SetText" then return function(s, v) rawset(s, "__text", v) end end
+        if k == "SetText" then return function(s, v) rawset(s, "__text", v); local o = rawget(s, "__owner"); if o then rawset(o, "__fstext", v) end end end
         if k == "IsShown" or k == "IsVisible" or k == "IsEnabled" then return function() return true end end
         if k == "GetFrameLevel" then return function() return 1 end end
         if k == "GetVerticalScroll" or k == "GetVerticalScrollRange" or k == "GetTop" or k == "GetBottom" then return function() return 0 end end
         if k == "SetScript" then return function(s, ev, fn) rawset(s, "__scripts", rawget(s, "__scripts") or {}); s.__scripts[ev] = fn end end
         if k == "HookScript" then return function() end end
         if k == "RegisterEvent" then return function(s, e) rawset(s, "__events", rawget(s, "__events") or {}); s.__events[e] = true end end
-        if k == "CreateFontString" or k == "CreateTexture" then return function() return proxy("sub") end end
+        if k == "CreateFontString" or k == "CreateTexture" then return function(owner) local sub = proxy("sub"); rawset(sub, "__owner", owner); return sub end end
         if k == "SetFontString" then return function() end end
         return function() return proxy("ret") end
     end
@@ -109,6 +111,7 @@ KEY_PAD1_SHP = "|A:Gamepad_Shp_Cross_64:24:24|a"
 KEY_PAD1_REV = "|A:Gamepad_Rev_B_64:24:24|a"
 KEY_PAD1 = "|A:Gamepad_Gen_1_64:24:24|a"
 BINDING_NAME_JUMP = "Jump"
+BINDING_HEADER_ACTIONBAR = "Action Bar"
 '''
 lua.execute(stub)
 ns = lua.eval("{}")
@@ -183,3 +186,26 @@ assert L("__calls.driver") == "combat:[combat] 1; 0", "the secure combat driver 
 print("Nav owner frame exists:", L("UbermocForeverNavOwner") is not None)
 print("device name shown on options header:", "yes" if L("UbermocForever").deviceName else "no")
 print("ALL CHECKS PASSED")
+
+# open the action picker the way a click on a Change button does, choose an action, and check the bind changed
+res = L("""function()
+    local clicked
+    for _, f in ipairs(__frames) do
+        local sc = rawget(f, "__scripts")
+        if sc and sc.OnClick and rawget(f, "__text") == "Change" then clicked = f; break end
+    end
+    if not clicked then return "no Change button found" end
+    clicked.__scripts.OnClick(clicked)
+    -- the picker's action buttons are the ones that now exist with text from the binding list
+    local chose
+    for _, f in ipairs(__frames) do
+        local sc = rawget(f, "__scripts")
+        if sc and sc.OnClick and rawget(f, "__fstext") == "Jump" then chose = f; break end
+    end
+    if not chose then return "picker built no Jump button" end
+    chose.__scripts.OnClick(chose)
+    return "picked: PAD3 base is now " .. tostring(__calls.binds["PAD3"])
+end""")()
+print("picker:", res)
+assert "JUMP" in res, res
+print("PICKER OK")

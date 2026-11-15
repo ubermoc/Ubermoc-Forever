@@ -84,7 +84,10 @@ local function collectActions()
         local cmd, cat = GetBinding(i)
         if cmd and not cmd:find("^HEADER") then
             if cat ~= lastCat then
-                list[#list + 1] = { header = _G["BINDING_HEADER_" .. tostring(cat)] or tostring(cat) }
+                -- GetBinding hands back the name of the game's header text ("BINDING_HEADER_MOVEMENT"), not the text
+                local text = _G[tostring(cat)]
+                if type(text) ~= "string" then text = _G["BINDING_HEADER_" .. tostring(cat)] end
+                list[#list + 1] = { header = type(text) == "string" and text or tostring(cat) }
                 lastCat = cat
             end
             list[#list + 1] = { cmd = cmd }
@@ -94,13 +97,18 @@ local function collectActions()
 end
 
 local function buildPicker()
-    picker = CreateFrame("Frame", nil, win, "BackdropTemplate")
-    picker:SetFrameLevel(win:GetFrameLevel() + 20)
+    picker = CreateFrame("Frame", nil, win)
+    picker:SetFrameLevel(win:GetFrameLevel() + 50)
     picker:SetPoint("TOPLEFT", win, "TOPLEFT", 10, -56)
     picker:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -10, 48)
-    picker:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", tile = true, tileSize = 32, edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 } })
+    -- A solid background (the game's own dialog art over black) so nothing behind the list shows through. A backdrop
+    -- was tried first and left the rows underneath visible.
+    local black = picker:CreateTexture(nil, "BACKGROUND", nil, -2)
+    black:SetAllPoints()
+    black:SetColorTexture(0, 0, 0, 1)
+    local art = picker:CreateTexture(nil, "BACKGROUND", nil, -1)
+    art:SetAllPoints()
+    art:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
     picker:EnableMouse(true)
     picker:Hide()
     picker.head = picker:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
