@@ -9,7 +9,8 @@
 ----------------------------------------------------------------------
 local _, UF = ...
 
-local ROLES = { "PAD1", "PAD2", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER" }
+-- (the triggers and D-pad are used by the bar shown over the game's own windows, see GameNav.lua)
+local ROLES = { "PAD1", "PAD2", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER", "PADDUP" }
 
 function UF.CreateLegend(parent)
     local legend = CreateFrame("Frame", nil, parent)

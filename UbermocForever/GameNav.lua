@@ -230,6 +230,12 @@ end
 ----------------------------------------------------------------------
 -- State
 ----------------------------------------------------------------------
+local function bagSlot(btn)
+    if not (btn and btn.GetBagID and btn.GetID) then return false end
+    local ok, bag = pcall(btn.GetBagID, btn)
+    local slot = btn:GetID()
+    return ok and type(bag) == "number" and type(slot) == "number" and slot > 0
+end
 local focus          -- the highlighted node's frame
 local entry          -- our place on Nav's stack while active
 local wins, popup = {}, nil
@@ -405,12 +411,74 @@ local function move(dir)
 end
 
 ----------------------------------------------------------------------
+-- The legend bar: what each button does right now, shown at the bottom of the screen while this is active. A button is
+-- listed only when it is bound to something where the highlight is (Y only on a bag item, tabs only on a window with tabs).
+----------------------------------------------------------------------
+local bar, barLegend, barSig
+local function getBar()
+    if bar then return bar end
+    bar = CreateFrame("Frame", "UbermocForeverGameLegend", UIParent)
+    bar:SetFrameStrata("TOOLTIP")
+    bar:SetSize(10, 30)
+    bar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 28)
+    local bg = bar:CreateTexture(nil, "BACKGROUND")
+    bg:SetColorTexture(0, 0, 0, 0.6)
+    bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -10, 4)
+    bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 10, -4)
+    barLegend = UF.CreateLegend(bar)
+    barLegend:SetPoint("LEFT", bar, "LEFT", 0, 0)
+    bar:Hide()
+    return bar
+end
+
+local function legendTexts()
+    local t = { PADDUP = "Move" }
+    local inMenu = wins[1] and wins[1] == _G.UbermocForeverItemMenu
+    if popup then
+        t.PAD1, t.PAD2 = "Accept", "Decline"
+        return t
+    end
+    if inMenu then
+        t.PAD1, t.PAD2 = "Choose", "Close"
+        return t
+    end
+    t.PAD1, t.PAD2 = "Select", "Close"
+    if focus then
+        t.PAD3 = "Right-click"
+        if bagSlot and bagSlot(focus) then t.PAD4 = "Options" end
+        if scrollerOf(focus) then t.PADLTRIGGER, t.PADRTRIGGER = "Scroll up", "Scroll down" end
+    end
+    for i = #wins, 1, -1 do
+        local list = tabsIn(wins[i], 0)
+        if list and #list > 1 then t.PADLSHOULDER, t.PADRSHOULDER = "Prev tab", "Next tab"; break end
+    end
+    return t
+end
+
+local function updateBar()
+    local b = getBar()
+    local t = legendTexts()
+    local sig = {}
+    for k, v in pairs(t) do sig[#sig + 1] = k .. "=" .. v end
+    table.sort(sig)
+    sig = table.concat(sig, ";")
+    if sig ~= barSig then
+        barSig = sig
+        barLegend:Set(t)
+        b:SetWidth(barLegend:GetWidth())
+    end
+    if not b:IsShown() then b:Show() end
+end
+
+----------------------------------------------------------------------
 -- Active or not
 ----------------------------------------------------------------------
 local function release()
     if entry then UF.Nav.Pop(entry); entry = nil end
     focus = nil
     drawAt(nil)
+    if bar then bar:Hide() end
+    barSig = nil
 end
 
 local function engage()
@@ -446,6 +514,7 @@ function G.update()
         engage()
         rescan()
         setFocus(startNode())
+        pcall(updateBar)
     elseif not want and entry then
         release()
     elseif want then
@@ -469,6 +538,7 @@ function G.update()
         else
             drawAt(focus)
         end
+        pcall(updateBar)
     end
 end
 
