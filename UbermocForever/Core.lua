@@ -117,6 +117,9 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     msg = (msg or ""):lower()
     if msg == "check" or msg == "checks" then
         UF.reportChecks()
+    elseif msg == "nav off" or msg == "nav on" then
+        UF.DB().gameNav = (msg == "nav on")
+        UF.say("Moving around the game's windows with the controller is " .. (msg == "nav on" and "on." or "off."))
     elseif UF.ToggleOptions then
         UF.ToggleOptions()
     end

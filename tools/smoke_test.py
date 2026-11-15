@@ -505,5 +505,33 @@ r = L("""function()
 end""")()
 assert str(r) == "false,true,true", r
 print("Combat: the window refuses to open in combat and opens again after: OK")
+# Moving around the game's own windows
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local function n(x, y) return { cx = x, cy = y } end
+    local cur = n(100, 100)
+    local right, below, farRight, up = n(160, 100), n(100, 60), n(300, 100), n(100, 140)
+    local out = {}
+    out[#out + 1] = tostring(G.pick({ right, below, farRight, up }, cur, "RIGHT") == right)
+    out[#out + 1] = tostring(G.pick({ right, below, farRight, up }, cur, "DOWN") == below)
+    out[#out + 1] = tostring(G.pick({ right, below, farRight, up }, cur, "UP") == up)
+    out[#out + 1] = tostring(G.pick({ below }, cur, "UP") == nil)
+    -- straight ahead beats a slightly nearer one off to the side
+    local side, ahead = n(130, 140), n(100, 170)
+    out[#out + 1] = tostring(G.pick({ side, ahead }, cur, "UP") == ahead)
+    out[#out + 1] = tostring(G.stepTab(4, 4, 1)) .. tostring(G.stepTab(4, 1, -1)) .. tostring(G.stepTab(4, 2, 1))
+    out[#out + 1] = tostring(G.nearest({ right, farRight }, 200, 100) == right)
+    -- one update with nothing open does nothing, and with a window open it does not fail
+    G.update()
+    ContainerFrame1 = CreateFrame("Frame", "ContainerFrame1", UIParent)
+    G.update()
+    local active = tostring(G.active())
+    ContainerFrame1:Hide()
+    G.update()
+    out[#out + 1] = active .. tostring(G.active())
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true,true,true,true,true,143,true,truefalse".replace(" ", ""), r
+print("Game windows: highlight picks the right neighbour, tabs wrap, a window turns it on and off: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

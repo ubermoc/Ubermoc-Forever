@@ -2,7 +2,7 @@
 ## Title: Ubermoc Forever
 ## Notes: A controller-first interface for World of Warcraft Forever, built for the Steam Deck and Steam Controller, and working with PlayStation, Xbox and Nintendo Switch controllers. Uses only the game's own art.
 ## Author: Marcos
-## Version: 1.0.9
+## Version: 1.1.0
 ## SavedVariables: UbermocForeverDB
 
 Core.lua
@@ -12,6 +12,7 @@ Binds.lua
 Start.lua
 Legend.lua
 Nav.lua
+GameNav.lua
 Prompt.lua
 Options.lua
 Menu.lua

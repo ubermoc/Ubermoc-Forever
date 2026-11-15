@@ -74,22 +74,27 @@ local function rebind()
     if InCombatLockdown() then return end
     local o = getOwner()
     pcall(ClearOverrideBindings, o)
+    -- key -> { button name, mouse button }; an entry's `secure` keys (a real secure button, for clicking the game's own
+    -- protected buttons) win over the plain carrier for the same key
     local keys = {}
     for _, e in ipairs(stack) do
-        for key in pairs(e.map) do keys[key] = true end
+        for key in pairs(e.map) do keys[key] = { carrier(key):GetName(), "LeftButton" } end
+        for key, spec in pairs(e.secure or {}) do keys[key] = spec end
     end
-    for key in pairs(keys) do
-        pcall(SetOverrideBindingClick, o, true, key, carrier(key):GetName(), "LeftButton")
+    for key, spec in pairs(keys) do
+        pcall(SetOverrideBindingClick, o, true, key, spec[1], spec[2])
     end
 end
 
 -- map: { PADDUP = function() ... end, PAD1 = function() ... end, ... }. Returns a token for Pop.
-function Nav.Push(map)
-    local entry = { map = map }
+function Nav.Push(map, secure)
+    local entry = { map = map, secure = secure }
     stack[#stack + 1] = entry
     rebind()
     return entry
 end
+
+function Nav.Count() return #stack end
 
 function Nav.Pop(entry)
     for i = #stack, 1, -1 do
