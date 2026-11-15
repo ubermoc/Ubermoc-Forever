@@ -105,7 +105,26 @@ end
 function Nav.InCombat() return InCombatLockdown() and true or false end
 local after = CreateFrame("Frame")
 after:RegisterEvent("PLAYER_REGEN_ENABLED")
-after:SetScript("OnEvent", function() rebind() end)
+-- When combat starts, every window of ours closes by itself: the game's secure driver has already given every button
+-- back to the player's own binds, so nothing is left to control a window with. The stack is emptied so no stale
+-- window takes buttons when combat ends.
+local function closeAllForCombat()
+    held = nil
+    pcall(StaticPopup_Hide, "UBERMOCFOREVER_RESET")
+    local w = _G.UbermocForeverOptions
+    if w and w.IsShown and w:IsShown() then pcall(w.Hide, w) end
+    local gm = _G.GameMenuFrame
+    if gm and gm.IsShown and gm:IsShown() then
+        if securecallfunction then pcall(securecallfunction, HideUIPanel, gm) else pcall(HideUIPanel, gm) end
+    end
+    for i = #stack, 1, -1 do stack[i] = nil end
+    pcall(Nav.ClearFocus)
+end
+Nav.CloseAllForCombat = closeAllForCombat
+after:RegisterEvent("PLAYER_REGEN_DISABLED")
+after:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_REGEN_DISABLED" then closeAllForCombat() else rebind() end
+end)
 
 -- Hold the D-pad to keep moving.
 local repeater = CreateFrame("Frame")
