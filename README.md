@@ -2,7 +2,7 @@
 
 A controller-first interface for World of Warcraft: Forever, built for the Steam Deck and Steam Controller and working with PlayStation, Xbox and Nintendo Switch controllers. It uses only the game's own art and templates.
 
-A default UI that works 100% with a controller, designed for the Steam Deck. See [docs/DESCRIPTION.md](docs/DESCRIPTION.md) for what it does now.
+A default UI that works 100% with a controller, designed for the Steam Deck and Steam Controller. See [docs/DESCRIPTION.md](docs/DESCRIPTION.md) for what it does now.
 
 ## Install
 
