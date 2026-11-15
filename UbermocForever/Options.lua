@@ -108,7 +108,10 @@ local function buildPicker()
     -- underneath completely. Falls back to plain black if the template is missing.
     local ok, f = pcall(CreateFrame, "Frame", nil, win, "InsetFrameTemplate")
     picker = ok and f or CreateFrame("Frame", nil, win)
-    picker:SetFrameLevel(win:GetFrameLevel() + 50)
+    -- Drawn in a higher layer than the window, not just a higher level: in the game a raised level alone left the rows and
+    -- layer buttons drawing on top of the picker. Its children are created after this, so they follow it.
+    picker:SetFrameStrata("FULLSCREEN_DIALOG")
+    picker:SetFrameLevel(100)
     picker:SetAllPoints(inset)
     local black = picker:CreateTexture(nil, "BACKGROUND", nil, -8)
     black:SetAllPoints()
@@ -167,11 +170,16 @@ local function buildPicker()
             end
             list:SetHeight(y + 10)
         end
+        -- The list underneath is hidden while the picker is open, so nothing can show through or draw over it.
+        win.scroll:Hide()
+        for _, b in ipairs(layerButtons) do b:Hide() end
         self:Show()
         sf:SetVerticalScroll(0)
         legend:Set({ PAD1 = "Select", PAD2 = "Cancel" })
     end
     picker:SetScript("OnHide", function()
+        win.scroll:Show()
+        for _, b in ipairs(layerButtons) do b:Show() end
         if win and win:IsShown() then
             legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset" })
         end
