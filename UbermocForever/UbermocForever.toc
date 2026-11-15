@@ -10,6 +10,7 @@ Layouts.lua
 Detect.lua
 Binds.lua
 Legend.lua
+Nav.lua
 Prompt.lua
 Options.lua
 Menu.lua

@@ -109,7 +109,7 @@ local function buildPicker()
     local list = CreateFrame("Frame", nil, sf)
     list:SetSize(460, 10)
     sf:SetScrollChild(list)
-    picker.list, picker.buttons = list, {}
+    picker.list, picker.buttons, picker.scroll = list, {}, sf
 
     function picker:Open(pad)
         self.pad = pad
@@ -137,6 +137,7 @@ local function buildPicker()
                     b:SetScript("OnClick", function()
                         if UF.setBind(UF.combo(layer, picker.pad), e.cmd) then picker:Hide(); UF.RefreshOptions() end
                     end)
+                    picker.buttons[#picker.buttons + 1] = b
                     y = y + 24
                 end
             end
@@ -219,6 +220,7 @@ local function build()
     local sf = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
     sf:SetPoint("TOPLEFT", 16, -96)
     sf:SetPoint("BOTTOMRIGHT", -34, 92)
+    win.scroll = sf
     content = CreateFrame("Frame", nil, sf)
     content:SetSize(460, 10)
     sf:SetScrollChild(content)
@@ -275,24 +277,67 @@ local function build()
 
     buildPicker()
 
-    win:EnableGamePadButton(true)
-    win:SetScript("OnGamePadButtonDown", function(_, key)
-        if key == "PAD2" then
-            if picker:IsShown() then picker:Hide() else win:Hide() end
-        elseif key == "PAD3" and not picker:IsShown() and hovered then
-            UF.setBind(UF.combo(layer, hovered.pad), nil)
-            UF.RefreshOptions()
-        elseif key == "PAD4" and not picker:IsShown() then
-            StaticPopup_Show("UBERMOCFOREVER_RESET", (UF.SETS[UF.activeSet()] or {}).name or "this controller")
+    -- Moving around: the D-pad jumps the game's own cursor from button to button (Nav.lua), A clicks it for real,
+    -- the bumpers change layer, B goes back, X clears the row the cursor is on, Y resets. These buttons are taken
+    -- only while this window is open.
+    local function pickerOpen() return picker and picker:IsShown() end
+    local function focusable()
+        local list = {}
+        if pickerOpen() then
+            for _, b in ipairs(picker.buttons) do list[#list + 1] = b end
+            return list
         end
-    end)
+        list[#list + 1] = win.controllerBtn
+        for _, b in ipairs(layerButtons) do list[#list + 1] = b end
+        for _, r in ipairs(rows) do if r:IsShown() then list[#list + 1] = r.btn end end
+        list[#list + 1] = reset
+        list[#list + 1] = checks
+        if win.CloseButton then list[#list + 1] = win.CloseButton end
+        return list
+    end
+    local function step(direction)
+        local scroller = pickerOpen() and picker.scroll or win.scroll
+        return UF.Nav.Step(direction, focusable, scroller)
+    end
+    local function cursorRow()
+        local x, y = GetCursorPosition()
+        for _, r in ipairs(rows) do
+            if r:IsShown() and r:IsVisible() then
+                local l, bt, w, h = r:GetRect()
+                if l then
+                    local s = r:GetEffectiveScale()
+                    if x >= l * s and x <= (l + w) * s and y >= bt * s and y <= (bt + h) * s then return r end
+                end
+            end
+        end
+    end
+    local navMap = {
+        PADDUP = function() step("UP") end,
+        PADDDOWN = function() step("DOWN") end,
+        PADDLEFT = function() step("LEFT") end,
+        PADDRIGHT = function() step("RIGHT") end,
+        PADLSHOULDER = function() if not pickerOpen() and layer > 1 then layer = layer - 1; UF.RefreshOptions() end end,
+        PADRSHOULDER = function() if not pickerOpen() and layer < 4 then layer = layer + 1; UF.RefreshOptions() end end,
+        PAD2 = function() if pickerOpen() then picker:Hide() else win:Hide() end end,
+        PAD3 = function()
+            if pickerOpen() then return end
+            local r = cursorRow() or hovered
+            if r then UF.setBind(UF.combo(layer, r.pad), nil); UF.RefreshOptions() end
+        end,
+        PAD4 = function()
+            if pickerOpen() then return end
+            StaticPopup_Show("UBERMOCFOREVER_RESET", (UF.SETS[UF.activeSet()] or {}).name or "this controller")
+        end,
+    }
     win:SetScript("OnShow", function()
         pcall(UF.detect)
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(true) then SetGamePadCursorControl(true) end
+        UF.Nav.Enable(win, navMap)
         UF.RefreshOptions()
     end)
     win:SetScript("OnHide", function()
         picker:Hide()
+        UF.Nav.Disable(win)
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(false) then SetGamePadCursorControl(false) end
     end)
     local ev = CreateFrame("Frame")
