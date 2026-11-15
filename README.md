@@ -40,3 +40,13 @@ It finds your Forever addon folder (Steam, an SD card, Lutris) and copies the ad
 - `bash tools/setup-research.sh` builds a folder of reference material (Blizzard's Forever UI code, API dump, sample addons) in Downloads.
 - `docs/RESEARCH.md` is what we know about the Forever client, where each fact came from, and what is still unverified.
 - `python3 tools/smoke_test.py` (needs `pip install lupa`) checks the addon offline against a stub of the game.
+
+## Support the project
+
+Ubermoc Forever is free. If you'd like to say thanks, donations are optional and always appreciated:
+
+- [GitHub Sponsors](https://github.com/sponsors/ubermoc)
+- [Ko-fi](https://ko-fi.com/ubermoc)
+- [Buy Me a Coffee](https://buymeacoffee.com/Ubermoc)
+
+Made by Marcos ([Ubermoc](https://github.com/ubermoc)).
