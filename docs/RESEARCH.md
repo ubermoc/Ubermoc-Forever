@@ -55,7 +55,13 @@ Forever is a beta-era client: recheck anything marked below after a patch.
 
 ## Window templates used
 
-`ButtonFrameTemplate`, `UIPanelButtonTemplate`, `UIPanelScrollFrameTemplate`, `UIPanelCloseButton`, `BackdropTemplate` all exist in the Forever source. **[source]** The addon builds the window inside a `pcall` and falls back to the game's dialog textures if the window template is missing.
+`ButtonFrameTemplate`, `UIPanelButtonTemplate`, `UIPanelScrollFrameTemplate`, `UIPanelCloseButton`, `BackdropTemplate` all exist in the Forever source. **[source]**
+The window follows the game's own layout rules. **[source]** (`Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml` and `.lua`)
+- `ButtonFrameTemplate` has a header band under the title, then an `Inset` frame anchored top left `4,-60` and bottom right `-6,26`. The inset is `InsetFrameTemplate`: marble background (`Interface\FrameGeneral\UI-Background-Marble`) and a nine-slice border. Content goes inside the inset, not on the frame's border.
+- The 26-pixel band under the inset is the bottom bar. Its buttons are `MagicButtonTemplate`, anchored to the frame's bottom right at `-6,4`, the next one to the left of the first (`RIGHT` to `LEFT`, offset `-1`).
+- The action picker is a second `InsetFrameTemplate` laid exactly over the window's inset, so it covers the list underneath with the game's own marble.
+- Every line of text is set to one line (no word wrap), so a long name cannot spill into the row below.
+ The addon builds the window inside a `pcall` and falls back to the game's dialog textures if the window template is missing.
 
 ## Reference material
 

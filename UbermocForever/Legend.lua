@@ -12,11 +12,11 @@ local ROLES = { "PAD1", "PAD2", "PAD3", "PAD4" }
 
 function UF.CreateLegend(parent)
     local legend = CreateFrame("Frame", nil, parent)
-    legend:SetHeight(26)
+    legend:SetHeight(22)
     legend.items = {}
     for i, pad in ipairs(ROLES) do
         local fs = legend:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        fs:SetJustifyH("LEFT")
+        fs:SetJustifyH("LEFT"); fs:SetWordWrap(false)
         legend.items[i] = fs
     end
     legend.texts = {}
@@ -36,7 +36,7 @@ function UF.CreateLegend(parent)
                 fs:ClearAllPoints()
                 fs:SetPoint("LEFT", self, "LEFT", x, 0)
                 fs:Show()
-                x = x + fs:GetStringWidth() + 24
+                x = x + fs:GetStringWidth() + 18
             else
                 fs:Hide()
             end

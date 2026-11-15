@@ -1,14 +1,19 @@
 ----------------------------------------------------------------------
--- Ubermoc Forever: controller options
+-- Ubermoc Forever: options window
 -- One window, opened from the game menu (see Menu.lua). Pick a layer (nothing held, Shift button held, Ctrl
 -- button held, both), click a row to choose what that button does, X clears the row the cursor is on, Y resets
--- everything to the default. The window uses the game's own frame, button and list templates; if the game's
--- window template is missing the game's dialog textures are used instead.
+-- everything to the default.
+--
+-- It is laid out the way the game lays out its own windows (Blizzard_SharedXML ButtonFrameTemplate): a header
+-- band under the title, the content inside the frame's marble inset, and the action buttons in the bottom bar as
+-- "magic" buttons. Every piece of text is one line, so nothing can wrap into the row below it.
 ----------------------------------------------------------------------
 local _, UF = ...
 
+local WIN_W, WIN_H = 580, 560
 local ROW_H = 30
-local win, content, picker, legend, info, layerButtons, rows, hovered
+local LIST_W = 520            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
+local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
@@ -22,6 +27,12 @@ StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
     timeout = 0, whileDead = 1, hideOnEscape = 1, preferredIndex = 3,
 }
 
+local function oneLine(fs)
+    fs:SetJustifyH("LEFT")
+    fs:SetWordWrap(false)
+    return fs
+end
+
 local function actionText(combo)
     local a = UF.actionOf(combo)
     return a and UF.actionName(a) or "|cff888888Not bound|r"
@@ -30,7 +41,6 @@ end
 local function rowVisible(pad)
     if UF.isModifierButton(pad) then return false end
     if pad:find("^PADPADDLE") and not (UF.activeSet() == "steam" or UF.hasPaddles) then return false end
-    if pad == "PADLTRIGGER" or pad == "PADRTRIGGER" then return true end
     return true
 end
 
@@ -39,9 +49,6 @@ function UF.RefreshOptions()
     local setId = UF.activeSet()
     local d = UF.DB()
     local set = UF.SETS[setId]
-    local found = UF.detected and UF.SETS[UF.detected] and UF.SETS[UF.detected].name or "none found"
-    -- The game's own name for the device is shown too: on a Steam Deck, Steam Input can hand the game a pad it calls
-    -- "Xbox", in which case pick Steam Deck / Steam Controller with the button on the right.
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)"))
     win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.name or "?"))
 
@@ -97,29 +104,35 @@ local function collectActions()
 end
 
 local function buildPicker()
-    picker = CreateFrame("Frame", nil, win)
+    -- The game's own inset (marble background and border) laid exactly over the window's inset, so it covers the list
+    -- underneath completely. Falls back to plain black if the template is missing.
+    local ok, f = pcall(CreateFrame, "Frame", nil, win, "InsetFrameTemplate")
+    picker = ok and f or CreateFrame("Frame", nil, win)
     picker:SetFrameLevel(win:GetFrameLevel() + 50)
-    picker:SetPoint("TOPLEFT", win, "TOPLEFT", 10, -56)
-    picker:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -10, 48)
-    -- A solid background (the game's own dialog art over black) so nothing behind the list shows through. A backdrop
-    -- was tried first and left the rows underneath visible.
-    local black = picker:CreateTexture(nil, "BACKGROUND", nil, -2)
+    picker:SetAllPoints(inset)
+    local black = picker:CreateTexture(nil, "BACKGROUND", nil, -8)
     black:SetAllPoints()
     black:SetColorTexture(0, 0, 0, 1)
-    local art = picker:CreateTexture(nil, "BACKGROUND", nil, -1)
-    art:SetAllPoints()
-    art:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
     picker:EnableMouse(true)
     picker:Hide()
-    picker.head = picker:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    picker.head:SetPoint("TOPLEFT", 14, -12)
+
+    picker.head = oneLine(picker:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"))
+    picker.head:SetPoint("TOPLEFT", 14, -14)
+
+    local cancel = CreateFrame("Button", nil, picker, "UIPanelButtonTemplate")
+    cancel:SetSize(90, 22)
+    cancel:SetPoint("TOPRIGHT", -10, -8)
+    cancel:SetText(CANCEL or "Cancel")
+    cancel:SetScript("OnClick", function() picker:Hide() end)
+    picker.cancel = cancel
+
     local sf = CreateFrame("ScrollFrame", nil, picker, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", 10, -40)
-    sf:SetPoint("BOTTOMRIGHT", -30, 10)
+    sf:SetPoint("TOPLEFT", 8, -42)
+    sf:SetPoint("BOTTOMRIGHT", -28, 8)
     local list = CreateFrame("Frame", nil, sf)
-    list:SetSize(460, 10)
+    list:SetSize(LIST_W, 10)
     sf:SetScrollChild(list)
-    picker.list, picker.buttons, picker.scroll = list, {}, sf
+    picker.list, picker.buttons, picker.scroll = list, { cancel }, sf
 
     function picker:Open(pad)
         self.pad = pad
@@ -129,16 +142,17 @@ local function buildPicker()
             local y = 0
             for _, e in ipairs(collectActions()) do
                 if e.header then
-                    local fs = list:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-                    fs:SetPoint("TOPLEFT", 4, -y - 6)
+                    local fs = oneLine(list:CreateFontString(nil, "OVERLAY", "GameFontNormal"))
+                    fs:SetPoint("TOPLEFT", 8, -y - 8)
                     fs:SetText(e.header)
-                    y = y + 28
+                    y = y + 30
                 else
                     local b = CreateFrame("Button", nil, list)
-                    b:SetSize(440, 24)
-                    b:SetPoint("TOPLEFT", 14, -y)
-                    local t = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-                    t:SetPoint("LEFT", 4, 0)
+                    b:SetSize(LIST_W - 8, 26)
+                    b:SetPoint("TOPLEFT", 8, -y)
+                    local t = oneLine(b:CreateFontString(nil, "OVERLAY", "GameFontHighlight"))
+                    t:SetPoint("LEFT", 14, 0)
+                    t:SetPoint("RIGHT", -8, 0)
                     t:SetText(UF.actionName(e.cmd))
                     b:SetFontString(t)
                     local hl = b:CreateTexture(nil, "HIGHLIGHT")
@@ -148,7 +162,7 @@ local function buildPicker()
                         if UF.setBind(UF.combo(layer, picker.pad), e.cmd) then picker:Hide(); UF.RefreshOptions() end
                     end)
                     picker.buttons[#picker.buttons + 1] = b
-                    y = y + 24
+                    y = y + 26
                 end
             end
             list:SetHeight(y + 10)
@@ -159,7 +173,7 @@ local function buildPicker()
     end
     picker:SetScript("OnHide", function()
         if win and win:IsShown() then
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset to default" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset" })
         end
     end)
 end
@@ -184,7 +198,7 @@ local function makeWindow()
         local x = CreateFrame("Button", nil, f, "UIPanelCloseButton")
         x:SetPoint("TOPRIGHT", -4, -4)
     end
-    f:SetSize(520, 560)
+    f:SetSize(WIN_W, WIN_H)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:SetToplevel(true)
@@ -197,20 +211,37 @@ local function makeWindow()
     return f
 end
 
+-- The frame's own inset, or one made the same way (ButtonFrameTemplate: top left 4,-60, bottom right -6,26).
+local function makeInset()
+    if win.Inset then return win.Inset end
+    local ok, f = pcall(CreateFrame, "Frame", nil, win, "InsetFrameTemplate")
+    local i = ok and f or CreateFrame("Frame", nil, win)
+    i:SetPoint("TOPLEFT", 4, -60)
+    i:SetPoint("BOTTOMRIGHT", -6, 26)
+    return i
+end
+
+-- A button for the bottom bar: the game's magic button, else a plain panel button.
+local function bottomButton(text, width)
+    local ok, b = pcall(CreateFrame, "Button", nil, win, "MagicButtonTemplate")
+    if not ok or not b then b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate") end
+    b:SetSize(width, 22)
+    b:SetText(text)
+    return b
+end
+
 local function build()
     win = makeWindow()
+    inset = makeInset()
     table.insert(UISpecialFrames, "UbermocForeverOptions")
 
+    -- Header band, between the title and the inset: what controller this is, and the button to choose it by hand.
     win.controllerBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    win.controllerBtn:SetSize(130, 22)
-    win.controllerBtn:SetPoint("TOPRIGHT", -18, -32)
-
-    -- The header stops before the button, so a long controller name can never run into it.
-    info = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    info:SetPoint("TOPLEFT", 18, -36)
+    win.controllerBtn:SetSize(140, 22)
+    win.controllerBtn:SetPoint("TOPRIGHT", -12, -32)
+    info = oneLine(win:CreateFontString(nil, "OVERLAY", "GameFontHighlight"))
+    info:SetPoint("LEFT", win, "TOPLEFT", 16, -43)
     info:SetPoint("RIGHT", win.controllerBtn, "LEFT", -8, 0)
-    info:SetJustifyH("LEFT")
-    info:SetWordWrap(false)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
     -- which case this button switches to Steam Deck / Steam Controller and Reset to default applies that layout.
@@ -233,42 +264,48 @@ local function build()
         UF.RefreshOptions()
     end)
 
+    -- Inside the inset: the four layers across the top, then the list.
     layerButtons = {}
+    local widths = { 94, 134, 134, 160 }
     for i = 1, 4 do
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-        b:SetSize(112, 24)
-        b:SetPoint("TOPLEFT", 18 + (i - 1) * 118, -62)
+        b:SetSize(widths[i], 24)
+        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
+        else b:SetPoint("LEFT", layerButtons[i - 1], "RIGHT", 6, 0) end
         b:SetScript("OnClick", function() layer = i; UF.RefreshOptions() end)
         layerButtons[i] = b
     end
 
     local sf = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", 16, -96)
-    sf:SetPoint("BOTTOMRIGHT", -34, 92)
+    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -40)
+    sf:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -28, 8)
     win.scroll = sf
     content = CreateFrame("Frame", nil, sf)
-    content:SetSize(460, 10)
+    content:SetSize(LIST_W, 10)
     sf:SetScrollChild(content)
 
     rows = {}
     for _, pad in ipairs(UF.PAD_ORDER) do
         local r = CreateFrame("Button", nil, content)
-        r:SetSize(460, ROW_H)
+        r:SetSize(LIST_W, ROW_H)
         r.pad = pad
-        r.glyph = r:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        r.glyph:SetPoint("LEFT", 6, 0)
-        r.glyph:SetWidth(60)
-        r.glyph:SetJustifyH("LEFT")
-        r.action = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        r.action:SetPoint("LEFT", 72, 0)
-        r.action:SetPoint("RIGHT", -96, 0)
-        r.action:SetJustifyH("LEFT")
+        r.glyph = oneLine(r:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"))
+        r.glyph:SetPoint("LEFT", 8, 0)
+        r.glyph:SetWidth(64)
+        r.action = oneLine(r:CreateFontString(nil, "OVERLAY", "GameFontHighlight"))
+        r.action:SetPoint("LEFT", 80, 0)
+        r.action:SetPoint("RIGHT", -104, 0)
         local hl = r:CreateTexture(nil, "HIGHLIGHT")
         hl:SetAllPoints()
         hl:SetColorTexture(1, 1, 1, 0.08)
+        local sep = r:CreateTexture(nil, "BACKGROUND")
+        sep:SetColorTexture(1, 1, 1, 0.06)
+        sep:SetPoint("BOTTOMLEFT", 4, 0)
+        sep:SetPoint("BOTTOMRIGHT", -4, 0)
+        sep:SetHeight(1)
         r.btn = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
-        r.btn:SetSize(86, 22)
-        r.btn:SetPoint("RIGHT", -2, 0)
+        r.btn:SetSize(92, 22)
+        r.btn:SetPoint("RIGHT", -4, 0)
         r.btn:SetText("Change")
         local function choose()
             if InCombatLockdown() then UF.say("Binds can't be changed in combat."); return end
@@ -283,21 +320,18 @@ local function build()
         rows[#rows + 1] = r
     end
 
+    -- The bottom bar: the legend on the left, the action buttons on the right (the game's magic buttons).
     legend = UF.CreateLegend(win)
-    legend:SetPoint("BOTTOMLEFT", 20, 24)
-    legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset to default" })
+    legend:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", 12, 3)
+    legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset" })
 
-    local reset = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    reset:SetSize(150, 24)
-    reset:SetPoint("BOTTOMRIGHT", -18, 52)
-    reset:SetText("Reset to default")
+    local reset = bottomButton("Reset to default", 140)
+    reset:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -6, 4)
     reset:SetScript("OnClick", function()
         StaticPopup_Show("UBERMOCFOREVER_RESET", (UF.SETS[UF.activeSet()] or {}).name or "this controller")
     end)
-    local checks = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    checks:SetSize(90, 24)
-    checks:SetPoint("BOTTOMLEFT", 18, 52)
-    checks:SetText("Checks")
+    local checks = bottomButton("Checks", 70)
+    checks:SetPoint("RIGHT", reset, "LEFT", -1, 0)
     checks:SetScript("OnClick", function() UF.reportChecks() end)
 
     buildPicker()
