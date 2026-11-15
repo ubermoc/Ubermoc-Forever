@@ -8,6 +8,7 @@
 local _, UF = ...
 
 local function open()
+    if UF.Nav.InCombat() then UF.say("Can't open this in combat."); return end   -- leave the game menu up
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
     if GameMenuFrame then HideUIPanel(GameMenuFrame) end
     UF.ToggleOptions(true)

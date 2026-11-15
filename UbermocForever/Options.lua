@@ -534,6 +534,10 @@ local function build()
 end
 
 function UF.ToggleOptions(forceShow)
+    if UF.Nav.InCombat() and (forceShow == true or not (win and win:IsShown())) then
+        UF.say("Can't open this in combat.")
+        return
+    end
     if not win then
         local ok, err = pcall(build)
         if not ok then

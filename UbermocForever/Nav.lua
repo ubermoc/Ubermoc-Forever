@@ -99,6 +99,14 @@ function Nav.Pop(entry)
     rebind()
 end
 
+-- Combat rule: nothing is taken in combat (the game blocks it), so a window opened then would show but not answer, and
+-- the buttons would still fire abilities. Windows refuse to open in combat (see Nav.InCombat), and when combat ends the
+-- buttons are taken again for any window still on the stack.
+function Nav.InCombat() return InCombatLockdown() and true or false end
+local after = CreateFrame("Frame")
+after:RegisterEvent("PLAYER_REGEN_ENABLED")
+after:SetScript("OnEvent", function() rebind() end)
+
 -- Hold the D-pad to keep moving.
 local repeater = CreateFrame("Frame")
 repeater:SetScript("OnUpdate", function(_, dt)

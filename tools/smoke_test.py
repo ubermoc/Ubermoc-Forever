@@ -486,5 +486,24 @@ r = L("""function()
 end""")()
 assert str(r) == "clear,menu,true,hide,false", r
 print("Start: clears the target, then opens the game menu, then closes it: OK")
+# Combat rule: the window will not open in combat, and the buttons are taken again when combat ends
+r = L("""function()
+    local UF = UbermocForever
+    local w = UbermocForeverOptions
+    w:Hide()
+    local real = InCombatLockdown
+    InCombatLockdown = function() return true end
+    __calls.chat = ""
+    UF.ToggleOptions(true)
+    local openedInCombat = w:IsShown()
+    local said = string.find(__calls.chat or "", "in combat", 1, true) ~= nil
+    InCombatLockdown = real
+    UF.ToggleOptions(true)
+    local openedAfter = w:IsShown()
+    w:Hide()
+    return tostring(openedInCombat) .. "," .. tostring(said) .. "," .. tostring(openedAfter)
+end""")()
+assert str(r) == "false,true,true", r
+print("Combat: the window refuses to open in combat and opens again after: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
