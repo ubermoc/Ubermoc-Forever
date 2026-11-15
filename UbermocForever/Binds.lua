@@ -6,8 +6,9 @@
 -- A Steam Controller / Steam Deck holds R4 for Shift and R5 for Ctrl; every other controller holds the left
 -- trigger for Shift and the right trigger for Ctrl.
 -- Interact and jump are on L4 / L5 (or the stick clicks on a controller without back buttons).
--- Start is the game menu, Select the map, and auto-run is the left stick click (Shift + left stick click on
--- controllers whose left stick click interacts).
+-- Start alone is Exit: the game's own Escape (it is not a bind, so Start has no bind and the game's Escape setting
+-- points at it). Select is the map, and auto-run is the left stick click (Shift + left stick click on controllers whose
+-- left stick click interacts).
 ----------------------------------------------------------------------
 local _, UF = ...
 
@@ -75,10 +76,11 @@ local function bindRoles(interact, jump)
 end
 
 local function bindSystem(steam)
-    SetBinding("PADFORWARD", "TOGGLEGAMEMENU")
+    -- Start is Exit, the game's own Escape: no bind on it, and the game's Escape setting points at it.
+    SetBinding("PADFORWARD")
+    pcall(SetCVar, "GamePadEmulateEsc", "PADFORWARD")
     SetBinding("PADBACK", "TOGGLEWORLDMAP")
     SetBinding(steam and "PADLSTICK" or "SHIFT-PADLSTICK", "TOGGLEAUTORUN")
-    pcall(SetCVar, "GamePadEmulateEsc", "NONE")
 end
 
 local function setModifiers(shift, ctrl)

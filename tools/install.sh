@@ -133,7 +133,7 @@ for dest in "${FOUND[@]}"; do
       mkdir -p "$target"
       cp -R "$SRC/." "$target/"
       [ -f "$target/$ADDON.toc" ] || { echo "Copy failed: $target/$ADDON.toc is missing."; exit 1; }
-      echo "installed $target ($(ls "$target" | wc -l | tr -d ' ') files)"
+      echo "installed $target ($(ls "$target" | wc -l | tr -d ' ') files, version $(sed -n 's/^## Version: *//p' "$target/$ADDON.toc" | tr -d '\r'))"
       ;;
   esac
 done

@@ -54,9 +54,9 @@ More features come after this one. The user has not yet said which.
 
 TOC load order: `Core, Layouts, Detect, Binds, Legend, Nav, Prompt, Options, Menu`.
 
-Defaults (same as Ubermoc UI): Steam Controller/Deck uses R4 as Shift and R5 as Ctrl; every other controller uses the
+Defaults (same as Ubermoc UI, except Start, which is Exit): Steam Controller/Deck uses R4 as Shift and R5 as Ctrl; every other controller uses the
 left trigger as Shift and the right trigger as Ctrl. Right bumper targets the nearest enemy, left bumper the nearest
-friend. Start is the game menu, Select is the map. Interact and jump are on L4/L5 (stick clicks on pads without back
+friend. Start alone is Exit (the game's own Escape), Select is the map. Interact and jump are on L4/L5 (stick clicks on pads without back
 buttons).
 
 ## 3. What is proven and what is not
@@ -92,7 +92,8 @@ the controller button label stays short. The stub **cannot** show how the game r
 - **Native layout rules** (`ButtonFrameTemplate`): header band under the title; content inside `Inset` (top left `4,-60`, bottom right `-6,26`); bottom bar holds `MagicButtonTemplate` buttons (bottom right `-6,4`, next one `RIGHT` to `LEFT` offset `-1`). Every line of text is set to one line (`SetWordWrap(false)`) so nothing wraps into the next row.
 - **`/run` and `/dump` are blocked** in Forever (`C_AddOns.GetScriptsDisallowedForBeta()`). Never ask the user to type scripts. Use the in-addon Checks.
 - **Exit is the game's emulated Escape, not a bind.** `GamePadEmulateEsc` holds the button (or `NONE`). The user saw that with both modifiers held, Start acts as Escape even though our window said "Not bound" there. So a row whose button is the game's Escape button and has no bind on that layer reads "Exit (Escape)" (`UF.isExitRow`). `UF.setExit(pad, combo)` sets the button and clears that layer's bind; X on an Exit row calls `UF.clearExit()`. Why it acts as Escape there is **unverified**: ask for the Checks output, which prints the four `GamePadEmulate*` settings and Start's action on each layer. Ubermoc UI warns the game's native Escape can use up presses on a controller so the menu never opens; our default Start is still `TOGGLEGAMEMENU`. A row reading `CLICK UbermocMenu:LeftButton` is Ubermoc UI's Start bind, now shown as "Game menu (Start)".
-- **Open question for the user:** should the default be Start with both modifiers held = Exit? Do not change the defaults until they say.
+- **Decided by the user (0.2.0): Start alone = Exit.** `bindSystem` leaves Start unbound and sets `GamePadEmulateEsc` to `PADFORWARD`; the Start row reads "Exit (Escape)".
+- **Bump `## Version` in the TOC with every change** and mention it to the user. The window shows it (grey, in the header line), Checks prints it and `tools/install.sh` prints it after installing. The user had been testing an older build without knowing; this lets both sides tell.
 - **`GamePadEmulateShift/Ctrl/Alt/Esc` and `GamePadEnable` are not in Blizzard's Lua.** They are carried over from Ubermoc UI, which runs them.
 - **The paddle buttons used as Shift/Ctrl show as `P1` / `P3`** (the game's `Gen_Paddle1/3` pictures). They are R4/R5 on the Deck. The user has not asked to change this. Offer to add "R4"/"R5" text beside the pictures.
 - **Test-stub traps:** the stub must treat lowercase field names as plain data, track Show/Hide and fire OnShow/OnHide, and provide `Click`, `GetTextWidth`, `Inset`, `CloseButton`. Add to the stub when new code needs it. When a stub-only failure appears, check whether the real game would behave differently before changing the addon.

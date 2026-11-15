@@ -40,7 +40,7 @@ local function actionText(combo, pad)
     if a then return UF.actionName(a) end
     -- the game's Escape button, with nothing bound on this layer, shows as Exit
     if UF.isExitRow(combo, pad) then return "Exit (Escape)" end
-    return "|cff888888Not bound|r"
+    return "|cffa0a0a0Not bound|r"
 end
 
 local function rowVisible(pad)
@@ -54,7 +54,7 @@ function UF.RefreshOptions()
     local setId = UF.activeSet()
     local d = UF.DB()
     local set = UF.SETS[setId]
-    info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)"))
+    info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
     -- A short name on the button, sized to fit: the full name is in the line to its left.
     win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.short or "?"))
     win.controllerBtn:SetWidth(math.max(110, math.min(190, (win.controllerBtn:GetTextWidth() or 0) + 28)))
@@ -350,6 +350,7 @@ local function build()
         GameTooltip:SetText("Controller")
         GameTooltip:AddLine("The game reports: " .. (UF.deviceName or "no controller"), 1, 1, 1)
         GameTooltip:AddLine("Click to choose the controller by hand.", 0.8, 0.8, 0.8)
+        GameTooltip:AddLine("Ubermoc Forever " .. UF.getVersion(), 0.5, 0.5, 0.5)
         GameTooltip:Show()
     end)
     win.controllerBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)

@@ -174,6 +174,10 @@ for k in ["PAD3", "PAD1", "SHIFT-PAD1", "CTRL-SHIFT-PAD4", "PADRSHOULDER", "PADL
     print("  ", k, "->", b[k])
 c = L("__calls.cvars")
 print("  modifiers:", c["GamePadEmulateShift"], c["GamePadEmulateCtrl"])
+assert b["PADFORWARD"] is None, "Start alone should have no bind: it is Exit"
+assert c["GamePadEmulateEsc"] == "PADFORWARD", "the game's Escape button should be Start"
+assert L("UbermocForever").isExitRow("PADFORWARD", "PADFORWARD"), "the Start row should read Exit (Escape)"
+print("  default: Start alone = Exit (the game's own Escape): OK")
 ok = UF.applyDefaults("steam")
 print("applyDefaults steam ->", ok, "| shift/ctrl:", c["GamePadEmulateShift"], c["GamePadEmulateCtrl"], "| PADLSTICK:", b["PADLSTICK"], "| F6:", b["F6"], "| PADRSTICK:", b["PADRSTICK"], "| bar5 spill:", b["MULTIACTIONBAR4BUTTON1"])
 
@@ -395,11 +399,12 @@ assert esc == "PAD3", "choosing Exit should make that button the game's Escape: 
 assert row_text == "Exit (Escape)", "the row should read Exit (Escape): %s" % row_text
 assert esc_after == "PAD3" and bound_text == "Jump", "a bind on one layer keeps the button as the game's Escape and shows the bind: %s / %s" % (esc_after, bound_text)
 assert other_layer == "Exit (Escape)", "on a layer with no bind the same button should read Exit (Escape): %s" % other_layer
-assert esc_off == "NONE" and off_text.startswith("|cff888888Not bound"), "X on an Exit row should turn Escape off: %s / %s" % (esc_off, off_text)
+assert esc_off == "NONE" and off_text.startswith("|cffa0a0a0Not bound"), "X on an Exit row should turn Escape off: %s / %s" % (esc_off, off_text)
 print("Exit: the game's Escape button reads Exit on every layer without a bind, X turns it off: OK")
 
 # friendlier names for binds that would show as a code
 names = L("""function() local UF = UbermocForever; return UF.actionName("CLICK UbermocMenu:LeftButton") .. "|" .. UF.actionName("CLICK SomeAddonButton:LeftButton") end""")()
 assert str(names) == "Game menu (Start)|Press: SomeAddonButton", names
 print("code-like binds get plain names: OK")
+print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

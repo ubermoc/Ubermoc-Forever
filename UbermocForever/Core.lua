@@ -22,6 +22,12 @@ function UF.DB()
     return d
 end
 
+-- The version in the TOC, so what is installed can be told at a glance.
+function UF.getVersion()
+    local ok, v = pcall(function() return C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("UbermocForever", "Version") end)
+    return (ok and v) or "?"
+end
+
 function UF.guid()
     return UnitGUID and UnitGUID("player") or nil
 end
@@ -71,6 +77,7 @@ end
 
 function UF.reportChecks()
     UF.runChecks()
+    UF.say("Version " .. UF.getVersion())
     UF.say("Controller the game reports: " .. tostring(UF.deviceName or "none") .. " (read as " .. tostring(UF.detected or "none") .. ")")
     -- the game's own controller settings and what Start does on each layer, as the game has them right now
     local function cv(n) local ok, v = pcall(GetCVar, n); return ok and tostring(v) or "?" end
