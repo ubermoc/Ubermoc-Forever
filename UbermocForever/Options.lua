@@ -42,8 +42,7 @@ function UF.RefreshOptions()
     local found = UF.detected and UF.SETS[UF.detected] and UF.SETS[UF.detected].name or "none found"
     -- The game's own name for the device is shown too: on a Steam Deck, Steam Input can hand the game a pad it calls
     -- "Xbox", in which case pick Steam Deck / Steam Controller with the button on the right.
-    local device = UF.deviceName and (" - " .. UF.deviceName) or ""
-    info:SetText("Controller: " .. (set and set.name or "?") .. (d.layout == "auto" and ("  (detected: " .. found .. device .. ")") or "  (chosen)"))
+    info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)"))
     win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.name or "?"))
 
     -- layer buttons: what to hold
@@ -165,7 +164,7 @@ local function makeWindow()
     local ok = pcall(function() f = CreateFrame("Frame", "UbermocForeverOptions", UIParent, "ButtonFrameTemplate") end)
     if ok and f then
         if ButtonFrameTemplate_HidePortrait then pcall(ButtonFrameTemplate_HidePortrait, f) end
-        if f.SetTitle then pcall(f.SetTitle, f, "Controller") end
+        if f.SetTitle then pcall(f.SetTitle, f, UF.title) end
     else
         f = CreateFrame("Frame", "UbermocForeverOptions", UIParent, "BackdropTemplate")
         f:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -173,7 +172,7 @@ local function makeWindow()
             insets = { left = 11, right = 12, top = 12, bottom = 11 } })
         local t = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         t:SetPoint("TOP", 0, -16)
-        t:SetText("Controller")
+        t:SetText(UF.title)
         local x = CreateFrame("Button", nil, f, "UIPanelCloseButton")
         x:SetPoint("TOPRIGHT", -4, -4)
     end
@@ -194,12 +193,27 @@ local function build()
     win = makeWindow()
     table.insert(UISpecialFrames, "UbermocForeverOptions")
 
-    info = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    info:SetPoint("TOPLEFT", 18, -36)
-
     win.controllerBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
     win.controllerBtn:SetSize(130, 22)
     win.controllerBtn:SetPoint("TOPRIGHT", -18, -32)
+
+    -- The header stops before the button, so a long controller name can never run into it.
+    info = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    info:SetPoint("TOPLEFT", 18, -36)
+    info:SetPoint("RIGHT", win.controllerBtn, "LEFT", -8, 0)
+    info:SetJustifyH("LEFT")
+    info:SetWordWrap(false)
+
+    -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
+    -- which case this button switches to Steam Deck / Steam Controller and Reset to default applies that layout.
+    win.controllerBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Controller")
+        GameTooltip:AddLine("The game reports: " .. (UF.deviceName or "no controller"), 1, 1, 1)
+        GameTooltip:AddLine("Click to choose the controller by hand.", 0.8, 0.8, 0.8)
+        GameTooltip:Show()
+    end)
+    win.controllerBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     win.controllerBtn:SetScript("OnClick", function()
         -- Auto, then each controller in turn
         local d = UF.DB()
@@ -262,7 +276,7 @@ local function build()
     end
 
     legend = UF.CreateLegend(win)
-    legend:SetPoint("BOTTOMLEFT", 20, 16)
+    legend:SetPoint("BOTTOMLEFT", 20, 24)
     legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset to default" })
 
     local reset = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")

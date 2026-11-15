@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: the game menu entry
--- A "Controller" button directly above the game's Options button. The game builds its menu in
+-- An "Ubermoc Forever" button directly above the game's Options button. The game builds its menu in
 -- GameMenuFrame:InitButtons() (Blizzard_GameMenu/Shared/GameMenuFrame.lua) from a button pool, giving each button
 -- a layoutIndex. After it has run, the entry is added and given the index just before Options, so it sits in the
 -- same list with the same button art and spacing.
@@ -20,7 +20,7 @@ local function addEntry(menu)
         if button.GetText and button:GetText() == GAMEMENU_OPTIONS then optionsButton = button; break end
     end
     if not (optionsButton and optionsButton.layoutIndex) then return end
-    local entry = menu:AddButton("Controller", open)
+    local entry = menu:AddButton(UF.title, open)
     entry.layoutIndex = optionsButton.layoutIndex - 0.5
     entry.topPadding = optionsButton.topPadding
     optionsButton.topPadding = nil

@@ -51,7 +51,7 @@ Forever is a beta-era client: recheck anything marked below after a patch.
 
 - `GameMenuFrameMixin:InitButtons()` builds the menu in order from a pool; Options is added as `self:AddButton(GAMEMENU_OPTIONS, ...)`. Each button gets `layoutIndex` and `topPadding`; the layout sorts by `layoutIndex`. **[source]**
 - Forever's `GameMenuFrameMixin:AddButton` also appends each button to `self.buttons`. **[source]**
-- `Menu.lua` hooks `InitButtons` afterwards, adds "Controller", and gives it `layoutIndex = Options.layoutIndex - 0.5` so it sits directly above Options. Whether the layout accepts a fractional index and keeps the spacing right is **Unverified** in the game.
+- `Menu.lua` hooks `InitButtons` afterwards, adds "Ubermoc Forever", and gives it `layoutIndex = Options.layoutIndex - 0.5` so it sits directly above Options. Whether the layout accepts a fractional index and keeps the spacing right is **Unverified** in the game.
 
 ## Window templates used
 
@@ -72,14 +72,24 @@ Fetch it all into Downloads with `bash tools/setup-research.sh`.
 ## Found while re-checking (and what was done)
 
 - **Combat and taken buttons (fixed).** The window takes the D-pad, bumpers and B/X/Y with override bindings. Code like ours cannot change bindings in combat, so a fight starting with the window open would have left them taken. `Nav.lua` now puts the bindings on a secure frame with a `[combat]` state driver, which drops them the moment combat starts. Ubermoc UI does the same. **[ubermoc-ui]** Blizzard's own controller code uses the same `SetOverrideBindingClick`. **[source]**
-- **Steam Deck may be detected as Xbox.** Steam Input can hand the game a virtual pad that calls itself an Xbox controller. Then the Xbox layout is chosen (triggers as Shift and Ctrl) instead of the Steam layout (R4 and R5). The options header shows the device name the game reports, and the Controller button there switches to Steam Deck / Steam Controller; Reset to default then applies that layout. What a real Deck reports is **Unverified.** Ubermoc UI has the same limit and its in-game note says to set R4 = Left Shift, R5 = Left Ctrl, L4 = F6 and L5 = Space in Steam's settings.
+- **Steam Deck may be detected as Xbox.** Steam Input can hand the game a virtual pad that calls itself an Xbox controller. Then the Xbox layout is chosen (triggers as Shift and Ctrl) instead of the Steam layout (R4 and R5). The options header shows the device name the game reports, and the Controller button there switches to Steam Deck / Steam Controller; Reset to default then applies that layout. **Checked in game (2026-11-15, screenshot):** a Steam Deck / Steam Controller was read as `steam`, so on that setup the Steam layout is chosen without help. Other setups may differ. Ubermoc UI has the same limit and its in-game note says to set R4 = Left Shift, R5 = Left Ctrl, L4 = F6 and L5 = Space in Steam's settings.
 - **Binds are account-wide.** Ubermoc UI gives each character its own copy of the binds (`charBinds`); that is not ported yet. Applying the defaults changes the binds every character shares unless the game's character-specific binds are on, while the first-run prompt asks once per character.
 - **Licence.** Detection and the default layout are ported from Ubermoc UI, which is marked All Rights Reserved by Marcos; this repository is MIT. Same author, so it is his call, but it is worth deciding on purpose.
+
+## Confirmed in the game
+
+From a screenshot of the options window running in Forever (2026-11-15). **[in-game]**
+- The addon loads and the window opens, built on the game's own `ButtonFrameTemplate`, with the game's list, buttons and scroll bar.
+- The controller pictures come out as the game's own: X, A, B, Y, RB, LB, RT, LT and the D-pad.
+- The legend shows A / B / X / Y pictures with their words.
+- A Steam Controller / Steam Deck was detected as Steam.
+- The paddle buttons used as Shift and Ctrl show as `P1` and `P3` (the game's `Gen_Paddle1` / `Gen_Paddle3` pictures), not as R4 and R5.
+- The header text ran into the controller button; fixed by anchoring it to stop before the button.
 
 ## Still to check in the game
 
 1. Whether every row of the Checks list passes on Forever.
-2. Whether the "Controller" button lands directly above Options with correct spacing.
+2. Whether the "Ubermoc Forever" button lands directly above Options with correct spacing.
 3. Whether the D-pad jump puts the cursor on the right button (the units are calibrated on the first jump).
 4. Whether the PlayStation Back and Social buttons are labelled correctly.
 5. Whether the `GamePad*` settings behave as in Midnight (Shift and Ctrl on the triggers, Start as the game menu).

@@ -140,6 +140,6 @@ done
 
 if [ "$MODE" != "uninstall" ]; then
   echo
-  echo "Done. In the game: Esc > Controller, or the first time with a controller, answer the prompt."
+  echo "Done. In the game: Esc > Ubermoc Forever, or the first time with a controller, answer the prompt."
   echo "If the game was already running, type /reload."
 fi

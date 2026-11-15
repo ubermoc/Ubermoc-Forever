@@ -71,6 +71,7 @@ end
 
 function UF.reportChecks()
     UF.runChecks()
+    UF.say("Controller the game reports: " .. tostring(UF.deviceName or "none") .. " (read as " .. tostring(UF.detected or "none") .. ")")
     for _, c in ipairs(UF.checks) do
         UF.say((c.ok and "|cff44ff44ok|r  " or "|cffff4444MISSING|r  ") .. c.name .. (c.detail and (" (" .. c.detail .. ")") or ""))
     end
@@ -88,7 +89,7 @@ ev:SetScript("OnEvent", function()
     C_Timer.After(2, function()
         local bad = UF.runChecks()
         if bad > 0 then
-            UF.say(bad .. " game feature(s) it needs were not found. Open the game menu > Controller and press Checks.")
+            UF.say(bad .. " game feature(s) it needs were not found. Open the game menu > Ubermoc Forever and press Checks.")
         end
     end)
 end)

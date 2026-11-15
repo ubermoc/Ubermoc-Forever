@@ -1,17 +1,17 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: first-run prompt
 -- When a controller is found, once for each character, the game's own question window asks whether to set the
--- default controller binds. Answering No is remembered; the same choice stays in the game menu under Controller.
+-- default controller binds. Answering No is remembered; the same choice stays in the game menu under Ubermoc Forever.
 ----------------------------------------------------------------------
 local _, UF = ...
 
 StaticPopupDialogs["UBERMOCFOREVER_DEFAULTS"] = {
-    text = "Controller detected: %s.\n\nSet the default controller key binds? This replaces your current controller binds. You can change them any time in the game menu under Controller.",
+    text = "Controller detected: %s.\n\nSet the default controller key binds? This replaces your current controller binds. You can change them any time in the game menu under Ubermoc Forever.",
     button1 = YES,
     button2 = NO,
     OnAccept = function()
         if UF.applyDefaults(UF.activeSet()) then
-            UF.say("Default controller binds set. Change them in the game menu under Controller.")
+            UF.say("Default controller binds set. Change them in the game menu under Ubermoc Forever.")
         end
     end,
     OnCancel = function()

@@ -2,7 +2,7 @@
 
 A controller-first interface for World of Warcraft: Forever, built for the Steam Deck and Steam Controller and working with PlayStation, Xbox and Nintendo Switch controllers. It uses only the game's own art and templates.
 
-First feature: controller detection, a first-run prompt for the default key binds, a "Controller" entry in the game menu above Options (change or clear any bind, reset to default), and a legend of the controller buttons.
+First feature: controller detection, a first-run prompt for the default key binds, an "Ubermoc Forever" entry in the game menu above Options (change or clear any bind, reset to default), and a legend of the controller buttons.
 
 ## Install
 
