@@ -1,0 +1,5 @@
+UbermocForever 1.0.6
+- Added: Start steps like Esc on every layer: it closes what is open, clears the target and stops a cast, then opens the game menu, and closes the menu if it is up.
+- Added: the legend shows LB / RB for the previous / next hold on the key binds page, and the bumpers wrap from the last hold to the first and back.
+- Changed: the window is wider so the legend fits; Choosing Exit in the picker binds the Start button.
+- Fixed: Start did nothing on the plain layer when it was the game's own Escape.
