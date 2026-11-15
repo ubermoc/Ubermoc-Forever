@@ -10,11 +10,12 @@
 ----------------------------------------------------------------------
 local _, UF = ...
 
-local WIN_W, WIN_H = 580, 560
+local WIN_W, WIN_H = 680, 560
 local ROW_H = 30
-local LIST_W = 520            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
+local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
+function UF.optionsLayer() return layer end   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
     text = "Reset every controller bind to the default for %s?",
@@ -220,9 +221,9 @@ local function buildPicker()
 
         -- Exit first, so it is there even if the categories cannot be built
         local exit = newLine(list, ITEM_H, "GameFontHighlight", 28)
-        exit.label:SetText("Exit (Escape)")
+        exit.label:SetText("Exit / game menu (Start)")
         exit:SetScript("OnClick", function()
-            if UF.setExit(picker.pad, UF.combo(layer, picker.pad)) then picker:Hide(); UF.RefreshOptions() end
+            if UF.setBind(UF.combo(layer, picker.pad), UF.START_BIND) then picker:Hide(); UF.RefreshOptions() end
         end)
         picker.exit = exit
 
@@ -299,7 +300,7 @@ local function buildPicker()
             if r.pad == picker.pad and r:IsShown() then UF.Nav.SetFocus(r.btn); break end
         end
         if win and win:IsShown() then
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next" })
         end
     end)
 end
@@ -452,14 +453,14 @@ local function build()
     -- The bottom bar: the legend on the left, the action buttons on the right (the game's magic buttons).
     legend = UF.CreateLegend(win)
     legend:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", 12, 3)
-    legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset" })
+    legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next" })
 
-    local reset = bottomButton("Reset to default", 140)
+    local reset = bottomButton("Reset to default", 120)
     reset:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -6, 4)
     reset:SetScript("OnClick", function()
         StaticPopup_Show("UBERMOCFOREVER_RESET", (UF.SETS[UF.activeSet()] or {}).name or "this controller")
     end)
-    local checks = bottomButton("Checks", 70)
+    local checks = bottomButton("Checks", 60)
     checks:SetPoint("RIGHT", reset, "LEFT", -1, 0)
     checks:SetScript("OnClick", function() UF.reportChecks() end)
 
@@ -492,8 +493,8 @@ local function build()
         PAD1 = function()
             if not Nav.Click() then Nav.Move("DOWN", navRows, startRow()) end
         end,
-        PADLSHOULDER = function() if not pickerOpen() and layer > 1 then layer = layer - 1; UF.RefreshOptions() end end,
-        PADRSHOULDER = function() if not pickerOpen() and layer < 4 then layer = layer + 1; UF.RefreshOptions() end end,
+        PADLSHOULDER = function() if not pickerOpen() then layer = layer == 1 and 4 or layer - 1; UF.RefreshOptions() end end,
+        PADRSHOULDER = function() if not pickerOpen() then layer = layer == 4 and 1 or layer + 1; UF.RefreshOptions() end end,
         PAD2 = function() if pickerOpen() then picker:Hide() else win:Hide() end end,
         PAD3 = function()
             if pickerOpen() then return end

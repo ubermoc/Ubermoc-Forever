@@ -176,10 +176,10 @@ for k in ["PAD3", "PAD1", "SHIFT-PAD1", "CTRL-SHIFT-PAD4", "PADRSHOULDER", "PADL
     print("  ", k, "->", b[k])
 c = L("__calls.cvars")
 print("  modifiers:", c["GamePadEmulateShift"], c["GamePadEmulateCtrl"])
-assert b["PADFORWARD"] is None, "Start alone should have no bind: it is Exit"
-assert c["GamePadEmulateEsc"] == "PADFORWARD", "the game's Escape button should be Start"
-assert L("UbermocForever").isExitRow("PADFORWARD", "PADFORWARD"), "the Start row should read Exit (Escape)"
-print("  default: Start alone = Exit (the game's own Escape): OK")
+for layer in ["", "SHIFT-", "CTRL-", "CTRL-SHIFT-"]:
+    assert b[layer + "PADFORWARD"] == "CLICK UbermocForeverStart:LeftButton", "Start should be the stepped button on layer '%s'" % layer
+assert c["GamePadEmulateEsc"] == "NONE", "the game's own Escape button should be off so it cannot take the press"
+print("  default: Start = stepped exit / game menu on every layer: OK")
 ok = UF.applyDefaults("steam")
 print("applyDefaults steam ->", ok, "| shift/ctrl:", c["GamePadEmulateShift"], c["GamePadEmulateCtrl"], "| PADLSTICK:", b["PADLSTICK"], "| F6:", b["F6"], "| PADRSTICK:", b["PADRSTICK"], "| bar5 spill:", b["MULTIACTIONBAR4BUTTON1"])
 
@@ -256,7 +256,10 @@ nav = L("""function()
         if f.navRow then return f.navRow.pad end
         return "other"
     end
-    for i = 1, 5 do press("PADLSHOULDER") end                      -- the bumpers: back to the first layer
+    for i = 1, 4 do if UF.optionsLayer() ~= 1 then press("PADLSHOULDER") end end   -- the bumpers: back to the first layer
+    press("PADLSHOULDER"); local wrapL = UF.optionsLayer()          -- left on the first hold goes to the last
+    press("PADRSHOULDER"); local wrapR = UF.optionsLayer()          -- right on the last hold goes to the first
+    assert(wrapL == 4 and wrapR == 1, "bumpers should wrap: " .. wrapL .. "," .. wrapR)
     local out = { where() }
     for i = 1, 40 do press("PADDDOWN"); out[#out + 1] = where() end
     local walk = table.concat(out, ",")
@@ -348,7 +351,7 @@ acc = L("""function()
         end
         return n, which
     end
-    for i = 1, 5 do press("PADLSHOULDER") end          -- first layer
+    for i = 1, 4 do if UF.optionsLayer() ~= 1 then press("PADLSHOULDER") end end   -- first layer
     press("PAD1")                                      -- A on the first row opens the picker (it is for PAD3)
     local closed = shownItems()
     press("PADDDOWN"); press("PAD1"); flush()          -- Exit -> first category, open it
@@ -364,7 +367,7 @@ acc = L("""function()
     press("PADDDOWN")
     local onExit = UF.Nav.focus and UF.Nav.focus.label and rawget(UF.Nav.focus.label, "__text") or "?"
     press("PAD1")
-    local esc = tostring(__calls.cvars.GamePadEmulateEsc)
+    local esc = tostring(GetBindingAction("PAD3"))
     local function rowTextFor(pad)
         local t
         for _, f in ipairs(__frames) do
@@ -397,16 +400,15 @@ closed, open1, open2, which2, closed_again, on_exit, esc, row_text, esc_after, b
 assert (closed, open1, open2, closed_again) == ("0", "1", "1", "0"), "categories: closed, then one open, then the other (one at a time), then closed: %s" % acc
 assert which2 == "Jump", "the second category's action should be showing, not the first's: %s" % which2
 print("categories start closed and open one at a time: OK")
-assert esc == "PAD3", "choosing Exit should make that button the game's Escape: %s" % esc
-assert row_text == "Exit (Escape)", "the row should read Exit (Escape): %s" % row_text
-assert esc_after == "PAD3" and bound_text == "Jump", "a bind on one layer keeps the button as the game's Escape and shows the bind: %s / %s" % (esc_after, bound_text)
-assert other_layer == "Exit (Escape)", "on a layer with no bind the same button should read Exit (Escape): %s" % other_layer
-assert esc_off == "NONE" and off_text.startswith("|cffa0a0a0Not bound"), "X on an Exit row should turn Escape off: %s / %s" % (esc_off, off_text)
-print("Exit: the game's Escape button reads Exit on every layer without a bind, X turns it off: OK")
+assert esc == "CLICK UbermocForeverStart:LeftButton", "choosing Exit should bind the stepped Start button: %s" % esc
+assert row_text == "Exit / game menu (Start)", "the row should read Exit / game menu (Start): %s" % row_text
+assert bound_text == "Jump", "a bind replaces it on that layer: %s" % bound_text
+assert other_layer.startswith("|cffa0a0a0Not bound"), "another layer with no bind reads Not bound: %s" % other_layer
+print("Exit: choosing it again after clearing binds the stepped Start button: OK")
 
 # friendlier names for binds that would show as a code
 names = L("""function() local UF = UbermocForever; return UF.actionName("CLICK UbermocMenu:LeftButton") .. "|" .. UF.actionName("CLICK SomeAddonButton:LeftButton") end""")()
-assert str(names) == "Game menu (Start)|Press: SomeAddonButton", names
+assert str(names) == "Exit / game menu (Start)|Press: SomeAddonButton", names
 print("code-like binds get plain names: OK")
 
 # ---- a binding with no category goes under "Other"; a failure building the list is reported, not silent ----
@@ -455,11 +457,34 @@ failed = L("""function()
     press("PAD1")
     GetBinding = realGet
     local focus = UF.Nav.focus
-    local onExit = focus and focus.label and rawget(focus.label, "__text") == "Exit (Escape)"
+    local onExit = focus and focus.label and rawget(focus.label, "__text") == "Exit / game menu (Start)"
     return tostring(onExit) .. "|" .. tostring(string.find(__calls.chat or "", "could not be read", 1, true) ~= nil)
 end""")()
 assert str(failed) == "true|true", failed
 print("a list that cannot be read is reported and Exit still works: OK")
 
+# Start: close what is open and clear the target first, then the game menu, then close the menu
+r = L("""function()
+    local out = {}
+    local gm = GameMenuFrame
+    gm.__shown = false
+    gm.IsShown = function(self) return self.__shown end
+    ShowUIPanel = function(f) f.__shown = true end
+    HideUIPanel = function(f) f.__shown = false end
+    UnitExists = function() return __target end
+    UnitCastingInfo = function() return nil end
+    UnitChannelInfo = function() return nil end
+    local UF = UbermocForever
+    __target = true
+    out[#out + 1] = UF.startPressed()                 -- target set: clear
+    __target = false
+    out[#out + 1] = UF.startPressed()                 -- nothing left: open the game menu
+    out[#out + 1] = tostring(gm.__shown)
+    out[#out + 1] = UF.startPressed()                 -- menu up: close it
+    out[#out + 1] = tostring(gm.__shown)
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "clear,menu,true,hide,false", r
+print("Start: clears the target, then opens the game menu, then closes it: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

@@ -6,8 +6,8 @@
 -- A Steam Controller / Steam Deck holds R4 for Shift and R5 for Ctrl; every other controller holds the left
 -- trigger for Shift and the right trigger for Ctrl.
 -- Interact and jump are on L4 / L5 (or the stick clicks on a controller without back buttons).
--- Start alone is Exit: the game's own Escape (it is not a bind, so Start has no bind and the game's Escape setting
--- points at it). Select is the map, and auto-run is the left stick click (Shift + left stick click on controllers whose
+-- Start is the stepped Exit button (Start.lua): closes what is open, clears the target, then opens the game menu.
+-- Select is the map, and auto-run is the left stick click (Shift + left stick click on controllers whose
 -- left stick click interacts).
 ----------------------------------------------------------------------
 local _, UF = ...
@@ -76,9 +76,8 @@ local function bindRoles(interact, jump)
 end
 
 local function bindSystem(steam)
-    -- Start is Exit, the game's own Escape: no bind on it, and the game's Escape setting points at it.
-    SetBinding("PADFORWARD")
-    pcall(SetCVar, "GamePadEmulateEsc", "PADFORWARD")
+    -- Start does the stepped press (Start.lua): close windows, clear the target, then the game menu.
+    UF.bindStart()
     SetBinding("PADBACK", "TOGGLEWORLDMAP")
     SetBinding(steam and "PADLSTICK" or "SHIFT-PADLSTICK", "TOGGLEAUTORUN")
 end
@@ -130,7 +129,8 @@ end
 
 -- Plain names for binds that would otherwise show as a code.
 local FRIENDLY = {
-    ["CLICK UbermocMenu:LeftButton"] = "Game menu (Start)",   -- Ubermoc UI's Start button
+    ["CLICK UbermocMenu:LeftButton"] = "Exit / game menu (Start)",   -- Ubermoc UI's Start button
+    ["CLICK UbermocForeverStart:LeftButton"] = "Exit / game menu (Start)",
 }
 
 -- The game's own name for an action ("Action Button 1", "Jump", ...), else a plain version of the action's code.

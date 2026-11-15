@@ -4,11 +4,12 @@
 --   first button  = select / accept       second button = decline / back
 --   third button  = clear (only on the key binds page)
 --   fourth button = menus, and changes to fit the page.
+--   left / right bumper = the previous / next hold on the key binds page.
 -- The pictures follow the controller in use, so a Switch controller shows its own letters.
 ----------------------------------------------------------------------
 local _, UF = ...
 
-local ROLES = { "PAD1", "PAD2", "PAD3", "PAD4" }
+local ROLES = { "PAD1", "PAD2", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER" }
 
 function UF.CreateLegend(parent)
     local legend = CreateFrame("Frame", nil, parent)
@@ -36,7 +37,7 @@ function UF.CreateLegend(parent)
                 fs:ClearAllPoints()
                 fs:SetPoint("LEFT", self, "LEFT", x, 0)
                 fs:Show()
-                x = x + fs:GetStringWidth() + 18
+                x = x + fs:GetStringWidth() + 10
             else
                 fs:Hide()
             end
