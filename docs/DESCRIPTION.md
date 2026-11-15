@@ -12,6 +12,15 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
 - An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default.
 - Move around its windows with the D-pad, A, B, X and Y, without Blizzard's built-in controller interface. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
 
+## Works together
+
+Four projects made to be used together, so you can play World of Warcraft from the couch with only a controller:
+
+- **[Ubermoc UI](https://github.com/ubermoc/Ubermoc-UI)** ([CurseForge](https://www.curseforge.com/wow/addons/ubermoc-ui)): the controller-first addon for Midnight and Forever. It makes the game playable without a mouse or keyboard.
+- **Ubermoc Forever** (this addon): a default UI for Forever that works 100% with a controller, designed for the Steam Deck and Steam Controller.
+- **[Ubermoc Speech](https://github.com/ubermoc/Ubermoc-Speech)**: a Decky plugin for typing. Hold a button, speak, and your words are typed into chat or anything else with focus.
+- **[Ubermoc Warcraft Mod Updater](https://github.com/ubermoc/Ubermoc-Warcraft-Mod-Updater)**: a Decky plugin that installs and updates these addons from GitHub releases in Gaming Mode.
+
 ## Install
 
 Install it with the Ubermoc Warcraft Mod Updater, or copy the `UbermocForever` folder into your Forever `Interface/AddOns` folder.

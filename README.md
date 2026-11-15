@@ -16,6 +16,15 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 
 The full description is in [docs/DESCRIPTION.md](docs/DESCRIPTION.md).
 
+## Works together
+
+Four projects made to be used together, so you can play World of Warcraft from the couch with only a controller:
+
+- **[Ubermoc UI](https://github.com/ubermoc/Ubermoc-UI)** ([CurseForge](https://www.curseforge.com/wow/addons/ubermoc-ui)): the controller-first addon for Midnight and Forever. It makes the game playable without a mouse or keyboard.
+- **Ubermoc Forever** (this addon): a default UI for Forever that works 100% with a controller, designed for the Steam Deck and Steam Controller.
+- **[Ubermoc Speech](https://github.com/ubermoc/Ubermoc-Speech)**: a Decky plugin for typing. Hold a button, speak, and your words are typed into chat or anything else with focus.
+- **[Ubermoc Warcraft Mod Updater](https://github.com/ubermoc/Ubermoc-Warcraft-Mod-Updater)**: a Decky plugin that installs and updates these addons from GitHub releases in Gaming Mode.
+
 ## Install
 
 Clone this repo, then from its folder:
