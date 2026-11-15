@@ -81,6 +81,7 @@ local FIXED = { "WorldMapFrame", "SettingsPanel", "ContainerFrameCombinedBags" }
 local function shown(f) return type(f) == "table" and f.IsShown and f:IsShown() and true or false end
 
 local function isOurs(f)
+    if f.ubfNavOk then return false end   -- our own menu (ItemMenu) is moved through like a game window
     local n = f.GetName and f:GetName()
     return n and n:find("^UbermocForever") and true or false
 end
@@ -98,6 +99,8 @@ function G.windows()
         local p = _G[n]
         if shown(p) then return { p }, p end
     end
+    local menu = _G.UbermocForeverItemMenu
+    if shown(menu) then return { menu }, nil end   -- the item menu is on top of everything
     local list, seen = {}, {}
     if GetUIPanel then
         for _, side in ipairs({ "left", "center", "right", "doublewide", "fullscreen" }) do
@@ -417,6 +420,7 @@ local function engage()
         PADDDOWN = function() move("DOWN") end,
         PADDLEFT = function() move("LEFT") end,
         PADDRIGHT = function() move("RIGHT") end,
+        PAD4 = function() if focus and UF.ItemMenu and not (wins[1] and wins[1] == _G.UbermocForeverItemMenu) then UF.ItemMenu.open(focus) end end,
         PADLSHOULDER = function() stepTab(-1) end,
         PADRSHOULDER = function() stepTab(1) end,
         PADLTRIGGER = function() scrollBy(-1) end,
@@ -446,6 +450,11 @@ function G.update()
         release()
     elseif want then
         -- keep the highlight honest: a popup appearing takes it, a vanished button is replaced, a scroll re-picks it
+        if G.restore then
+            local back = G.restore
+            G.restore = nil
+            if back.IsVisible and back:IsVisible() then rescan(); setFocus(back) end
+        end
         local needNew = popup and focus and not G.inside(focus, popup)
         if needNew or not focus or not focus:IsVisible() then
             rescan(); setFocus(startNode())

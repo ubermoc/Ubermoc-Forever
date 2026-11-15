@@ -533,5 +533,26 @@ r = L("""function()
 end""")()
 assert str(r) == "true,true,true,true,true,143,true,truefalse".replace(" ", ""), r
 print("Game windows: highlight picks the right neighbour, tabs wrap, a window turns it on and off: OK")
+# The Y menu on a bag item
+r = L("""function()
+    local UF = UbermocForever
+    local out = {}
+    local btn = CreateFrame("Button", "FakeItem", UIParent)
+    btn.GetBagID = function() return 0 end
+    btn.GetID = function() return 3 end
+    C_Container = nil
+    out[#out + 1] = tostring(UF.ItemMenu.open(btn))            -- no item information: says so, does not open
+    C_Container = { GetContainerItemInfo = function() return { hyperlink = "|cff|Hitem:1|h[Sword]|h|r" } end,
+                    SortBags = function() end, PickupContainerItem = function() end }
+    out[#out + 1] = tostring(UF.ItemMenu.open(btn))
+    out[#out + 1] = tostring(UF.ItemMenu.isOpen())
+    local wins = UF.GameNav.windows()
+    out[#out + 1] = tostring(#wins) .. tostring(wins[1] == UbermocForeverItemMenu)
+    UbermocForeverItemMenu:Hide()
+    out[#out + 1] = tostring(UF.ItemMenu.isOpen())
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "false,true,true,1true,false", r
+print("Y menu: opens on a bag item, becomes the top window, closes: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
