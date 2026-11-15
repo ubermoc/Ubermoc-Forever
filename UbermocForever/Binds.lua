@@ -126,18 +126,50 @@ function UF.actionOf(combo)
     return a
 end
 
--- The game's own name for an action ("Action Button 1", "Jump", ...), else the action's code.
+-- Plain names for binds that would otherwise show as a code.
+local FRIENDLY = {
+    ["CLICK UbermocMenu:LeftButton"] = "Game menu (Start)",   -- Ubermoc UI's Start button
+}
+
+-- The game's own name for an action ("Action Button 1", "Jump", ...), else a plain version of the action's code.
 function UF.actionName(cmd)
     if not cmd then return nil end
+    if FRIENDLY[cmd] then return FRIENDLY[cmd] end
     local n = _G["BINDING_NAME_" .. cmd]
     if type(n) == "string" and n ~= "" then return n end
     local kind, rest = cmd:match("^(%u+) (.+)$")
     if kind == "SPELL" or kind == "MACRO" or kind == "ITEM" then return rest end
+    if kind == "CLICK" then
+        -- "CLICK SomeButton:LeftButton" is a press of a button an addon made
+        local frame = rest:match("^([^:]+)")
+        return "Press: " .. (frame or rest)
+    end
     return cmd
+end
+
+-- The Exit option. The game can make one controller button its Escape (the setting GamePadEmulateEsc holds that
+-- button's name, or NONE): pressed on its own it closes windows, clears the target and stops a cast, and when there
+-- is nothing left to close it opens the game menu. It is not a key bind, so it needs its own handling: choosing Exit
+-- for a button sets that setting and removes any bind on the button; binding something else to that button, or
+-- clearing it, takes Exit away from it. Only an unmodified press can be Escape, so Exit is offered on the base layer.
+function UF.exitButton()
+    local ok, v = pcall(GetCVar, "GamePadEmulateEsc")
+    if ok and type(v) == "string" and v:find("^PAD") then return v end
+    return nil
+end
+
+function UF.setExit(pad)
+    if InCombatLockdown() then UF.say("Binds can't be changed in combat."); return false end
+    pcall(SetCVar, "GamePadEmulateEsc", pad)
+    SetBinding(pad)
+    save()
+    return true
 end
 
 function UF.setBind(combo, cmd)
     if InCombatLockdown() then UF.say("Binds can't be changed in combat."); return false end
+    -- the button was Exit: binding something else to it, or clearing it, takes Exit away
+    if UF.exitButton() == combo then pcall(SetCVar, "GamePadEmulateEsc", "NONE") end
     if cmd then SetBinding(combo, cmd) else SetBinding(combo) end
     save()
     return true

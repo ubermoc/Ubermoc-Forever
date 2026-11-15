@@ -82,6 +82,14 @@ Fetch it all into Downloads with `bash tools/setup-research.sh`.
 - **Binds are account-wide.** Ubermoc UI gives each character its own copy of the binds (`charBinds`); that is not ported yet. Applying the defaults changes the binds every character shares unless the game's character-specific binds are on, while the first-run prompt asks once per character.
 - **Licence.** Detection and the default layout are ported from Ubermoc UI, which is marked All Rights Reserved by Marcos; this repository is MIT. Same author, so it is his call, but it is worth deciding on purpose.
 
+## Exit (the game's emulated Escape)
+
+- The game can make one controller button its Escape: the setting `GamePadEmulateEsc` holds that button's name (`PADFORWARD`, ...) or `NONE`. It is not in Blizzard's Lua; it is carried over from Ubermoc UI, which reads and writes it. **[ubermoc-ui]**
+- Ubermoc UI's note: the game's own Escape does close windows, clear the target and stop a cast first, and "on a controller its first steps can use up every press so the menu never opens". That is why Ubermoc UI binds Start to its own stepwise button (`CLICK UbermocMenu:LeftButton`) instead. **[ubermoc-ui]** Whether Forever behaves the same is **Unverified.**
+- Our options offer **Exit (Escape)** for any button on the base layer: it sets `GamePadEmulateEsc` to that button and removes any bind on it. Binding something else to the button, or clearing it, sets the setting back to `NONE`. Only an unmodified press can be Escape, so Exit is not offered on the Shift / Ctrl layers.
+- Our default is unchanged: Start is bound to the game's `TOGGLEGAMEMENU` and the setting is `NONE`. A row that shows `CLICK UbermocMenu:LeftButton` is Ubermoc UI's Start bind; it now reads "Game menu (Start)".
+- The action list is the game's own binding categories, each closed until chosen, one open at a time. The category headers use the game's own plus / minus art (`Interface\Buttons\UI-PlusButton-Up`, `UI-MinusButton-Up`, used by its quest log and group finder). **[source]**
+
 ## Confirmed in the game
 
 From a screenshot of the options window running in Forever (2026-11-15). **[in-game]**
@@ -96,6 +104,7 @@ From a screenshot of the options window running in Forever (2026-11-15). **[in-g
 
 1. Whether every row of the Checks list passes on Forever.
 2. Whether the "Ubermoc Forever" button lands directly above Options with correct spacing.
+2b. Whether the category list (closed, one open at a time) and the Exit option look and work right, and what Exit does in Forever.
 3. Whether the D-pad jump puts the cursor on the right button (the units are calibrated on the first jump).
 4. Whether the PlayStation Back and Social buttons are labelled correctly.
 5. Whether the `GamePad*` settings behave as in Midnight (Shift and Ctrl on the triggers, Start as the game menu).

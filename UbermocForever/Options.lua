@@ -35,9 +35,12 @@ local function oneLine(fs)
     return fs
 end
 
-local function actionText(combo)
+local function actionText(combo, pad)
     local a = UF.actionOf(combo)
-    return a and UF.actionName(a) or "|cff888888Not bound|r"
+    if a then return UF.actionName(a) end
+    -- the button the game uses as Escape shows as Exit (base layer only)
+    if combo == pad and UF.exitButton() == pad then return "Exit (Escape)" end
+    return "|cff888888Not bound|r"
 end
 
 local function rowVisible(pad)
@@ -78,7 +81,7 @@ function UF.RefreshOptions()
             row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
             y = y + ROW_H
             row.glyph:SetText(UF.glyph(row.pad, setId))
-            row.action:SetText(actionText(UF.combo(layer, row.pad)))
+            row.action:SetText(actionText(UF.combo(layer, row.pad), row.pad))
         else
             row:Hide()
         end
@@ -90,23 +93,28 @@ end
 ----------------------------------------------------------------------
 -- Choosing an action
 ----------------------------------------------------------------------
-local function collectActions()
-    local list, lastCat = {}, nil
+local function collectGroups()
+    local groups, byCat = {}, {}
     for i = 1, (GetNumBindings() or 0) do
         local cmd, cat = GetBinding(i)
         if cmd and not cmd:find("^HEADER") then
-            if cat ~= lastCat then
+            local g = byCat[cat]
+            if not g then
                 -- GetBinding hands back the name of the game's header text ("BINDING_HEADER_MOVEMENT"), not the text
                 local text = _G[tostring(cat)]
                 if type(text) ~= "string" then text = _G["BINDING_HEADER_" .. tostring(cat)] end
-                list[#list + 1] = { header = type(text) == "string" and text or tostring(cat) }
-                lastCat = cat
+                g = { title = type(text) == "string" and text or tostring(cat), cmds = {} }
+                byCat[cat] = g
+                groups[#groups + 1] = g
             end
-            list[#list + 1] = { cmd = cmd }
+            g.cmds[#g.cmds + 1] = cmd
         end
     end
-    return list
+    return groups
 end
+
+local HEAD_H, ITEM_H = 28, 26
+local PLUS, MINUS = "Interface\\Buttons\\UI-PlusButton-Up", "Interface\\Buttons\\UI-MinusButton-Up"   -- the game's own expand / collapse art
 
 local function buildPicker()
     -- The game's own inset (marble background and border) laid exactly over the window's inset, so it covers the list
@@ -140,42 +148,117 @@ local function buildPicker()
     local list = CreateFrame("Frame", nil, sf)
     list:SetSize(LIST_W, 10)
     sf:SetScrollChild(list)
-    picker.list, picker.buttons, picker.scroll = list, { cancel }, sf
+    picker.list, picker.scroll = list, sf
+
+    -- One line of the list: highlight on hover, text on one line.
+    local function newLine(parent, height, font, indent)
+        local b = CreateFrame("Button", nil, parent)
+        b:SetSize(LIST_W - 8, height)
+        local t = oneLine(b:CreateFontString(nil, "OVERLAY", font))
+        t:SetPoint("LEFT", indent, 0)
+        t:SetPoint("RIGHT", -8, 0)
+        b:SetFontString(t)
+        b.label = t
+        b.navScroll = sf
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.12)
+        return b
+    end
+
+    -- Lay the list out: the Exit line, then every category; only the open category shows its actions.
+    local function relayout()
+        local y = 0
+        if picker.exit then
+            if layer == 1 then
+                picker.exit:Show()
+                picker.exit:ClearAllPoints()
+                picker.exit:SetPoint("TOPLEFT", 8, -y)
+                y = y + ITEM_H + 6
+            else
+                picker.exit:Hide()
+            end
+        end
+        for _, g in ipairs(picker.groups) do
+            g.header:ClearAllPoints()
+            g.header:SetPoint("TOPLEFT", 8, -y)
+            g.header.icon:SetTexture(g.open and MINUS or PLUS)
+            y = y + HEAD_H
+            for _, b in ipairs(g.items) do
+                if g.open then
+                    b:Show()
+                    b:ClearAllPoints()
+                    b:SetPoint("TOPLEFT", 8, -y)
+                    y = y + ITEM_H
+                else
+                    b:Hide()
+                end
+            end
+        end
+        list:SetHeight(y + 10)
+    end
+
+    -- Opening a category closes the one that was open: one at a time.
+    local function toggle(g)
+        local was = g.open
+        for _, other in ipairs(picker.groups) do other.open = false end
+        g.open = not was
+        relayout()
+        -- keep the highlight on the header and in view once the layout has settled
+        C_Timer.After(0, function()
+            if picker:IsShown() then UF.Nav.SetFocus(g.header) end
+        end)
+    end
+
+    local function build()
+        picker.built = true
+        picker.groups = collectGroups()
+
+        local exit = newLine(list, ITEM_H, "GameFontHighlight", 28)
+        exit.label:SetText("Exit (Escape)")
+        exit:SetScript("OnClick", function()
+            if UF.setExit(picker.pad) then picker:Hide(); UF.RefreshOptions() end
+        end)
+        picker.exit = exit
+
+        for _, g in ipairs(picker.groups) do
+            local h = newLine(list, HEAD_H, "GameFontNormal", 28)
+            h.icon = h:CreateTexture(nil, "ARTWORK")
+            h.icon:SetSize(16, 16)
+            h.icon:SetPoint("LEFT", 6, 0)
+            h.label:SetText(g.title)
+            h:SetScript("OnClick", function() toggle(g) end)
+            g.header, g.items, g.open = h, {}, false
+            for _, cmd in ipairs(g.cmds) do
+                local b = newLine(list, ITEM_H, "GameFontHighlight", 40)
+                b.label:SetText(UF.actionName(cmd))
+                b:SetScript("OnClick", function()
+                    if UF.setBind(UF.combo(layer, picker.pad), cmd) then picker:Hide(); UF.RefreshOptions() end
+                end)
+                g.items[#g.items + 1] = b
+            end
+        end
+    end
+
+    -- The rows the D-pad walks, top to bottom: Cancel, Exit, then each category and, under the open one, its actions.
+    function picker.navRows()
+        local out = { { cancel } }
+        if picker.exit and picker.exit:IsShown() then out[#out + 1] = { picker.exit } end
+        for _, g in ipairs(picker.groups or {}) do
+            out[#out + 1] = { g.header }
+            if g.open then
+                for _, b in ipairs(g.items) do out[#out + 1] = { b } end
+            end
+        end
+        return out
+    end
 
     function picker:Open(pad)
         self.pad = pad
         self.head:SetText("Choose what " .. UF.glyph(pad) .. " does")
-        if not self.built then
-            self.built = true
-            local y = 0
-            for _, e in ipairs(collectActions()) do
-                if e.header then
-                    local fs = oneLine(list:CreateFontString(nil, "OVERLAY", "GameFontNormal"))
-                    fs:SetPoint("TOPLEFT", 8, -y - 8)
-                    fs:SetText(e.header)
-                    y = y + 30
-                else
-                    local b = CreateFrame("Button", nil, list)
-                    b:SetSize(LIST_W - 8, 26)
-                    b:SetPoint("TOPLEFT", 8, -y)
-                    local t = oneLine(b:CreateFontString(nil, "OVERLAY", "GameFontHighlight"))
-                    t:SetPoint("LEFT", 14, 0)
-                    t:SetPoint("RIGHT", -8, 0)
-                    t:SetText(UF.actionName(e.cmd))
-                    b:SetFontString(t)
-                    b.navScroll = sf
-                    local hl = b:CreateTexture(nil, "HIGHLIGHT")
-                    hl:SetAllPoints()
-                    hl:SetColorTexture(1, 1, 1, 0.12)
-                    b:SetScript("OnClick", function()
-                        if UF.setBind(UF.combo(layer, picker.pad), e.cmd) then picker:Hide(); UF.RefreshOptions() end
-                    end)
-                    picker.buttons[#picker.buttons + 1] = b
-                    y = y + 26
-                end
-            end
-            list:SetHeight(y + 10)
-        end
+        if not self.built then build() end
+        for _, g in ipairs(self.groups) do g.open = false end   -- every category starts closed
+        relayout()
         -- The list underneath is hidden while the picker is open, so nothing can show through or draw over it.
         win.scroll:Hide()
         for _, b in ipairs(layerButtons) do b:Hide() end
@@ -183,7 +266,7 @@ local function buildPicker()
         sf:SetVerticalScroll(0)
         legend:Set({ PAD1 = "Select", PAD2 = "Cancel" })
         UF.Nav.ClearFocus()
-        UF.Nav.SetFocus(self.buttons[2] or self.cancel)
+        UF.Nav.SetFocus(layer == 1 and self.exit or (self.groups[1] and self.groups[1].header) or cancel)
     end
     picker:SetScript("OnHide", function()
         win.scroll:Show()
@@ -366,11 +449,7 @@ local function build()
     local function pickerOpen() return picker and picker:IsShown() end
     local function navRows()
         local out = {}
-        if pickerOpen() then
-            out[1] = { picker.cancel }
-            for i = 2, #picker.buttons do out[#out + 1] = { picker.buttons[i] } end
-            return out
-        end
+        if pickerOpen() then return picker.navRows() end
         local header = { win.controllerBtn }
         if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
         out[1] = header

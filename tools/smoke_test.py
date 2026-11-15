@@ -105,7 +105,10 @@ SetBinding = function(k, a) calls.binds[k] = a end
 GetBindingKey = function() return nil end
 GetBindingAction = function(k) return calls.binds[k] or "" end
 GetNumBindings = function() return 3 end
-GetBinding = function(i) return ({ "ACTIONBUTTON1", "JUMP", "TOGGLEWORLDMAP" })[i], "ACTIONBAR" end
+GetBinding = function(i)
+    local t = { { "ACTIONBUTTON1", "ACTIONBAR" }, { "JUMP", "MOVEMENT" }, { "TOGGLEWORLDMAP", "INTERFACE" } }
+    return t[i][1], t[i][2]
+end
 SaveBindings = function() calls.saved = calls.saved + 1 end
 GetCurrentBindingSet = function() return 2 end
 SlashCmdList = {}
@@ -130,7 +133,9 @@ KEY_PAD1_SHP = "|A:Gamepad_Shp_Cross_64:24:24|a"
 KEY_PAD1_REV = "|A:Gamepad_Rev_B_64:24:24|a"
 KEY_PAD1 = "|A:Gamepad_Gen_1_64:24:24|a"
 BINDING_NAME_JUMP = "Jump"
-BINDING_HEADER_ACTIONBAR = "Action Bar"
+BINDING_HEADER_ACTIONBAR = "Action Bar 1"
+BINDING_HEADER_MOVEMENT = "Movement"
+BINDING_HEADER_INTERFACE = "Interface"
 '''
 lua.execute(stub)
 ns = lua.eval("{}")
@@ -314,4 +319,66 @@ width = L("UbermocForeverOptions.controllerBtn.__width") or 0
 L("""function() local UF = UbermocForever; UF.DB().layout = "auto"; UF.RefreshOptions() end""")()
 assert L("UbermocForeverOptions.controllerBtn.__text") == "Auto"
 print("controller button label stays short ('%s'): OK" % label)
+
+
+# ---- the category list: every category starts closed, one open at a time; Exit is the game's own Escape ----
+acc = L("""function()
+    local UF = UbermocForever
+    local w = UbermocForeverOptions
+    w:Hide(); w:Show()
+    local function press(key)
+        local b = _G["UbermocForeverNav_" .. key]
+        b.__scripts.OnClick(b, "LeftButton", true)
+        b.__scripts.OnClick(b, "LeftButton", false)
+    end
+    local function flush() local t = __calls.timers or {}; __calls.timers = {}; for _, f in ipairs(t) do f() end end
+    local names = { ACTIONBUTTON1 = true, Jump = true, TOGGLEWORLDMAP = true }
+    local function shownItems()
+        local n, which = 0, ""
+        for _, f in ipairs(__frames) do
+            local x = rawget(f, "__fstext")
+            -- only the picker's own lines (they carry .label); the window's rows show the same names
+            if x and names[x] and rawget(f, "label") and rawget(f, "__hidden") ~= true then n = n + 1; which = which .. x end
+        end
+        return n, which
+    end
+    for i = 1, 5 do press("PADLSHOULDER") end          -- first layer
+    press("PAD1")                                      -- A on the first row opens the picker (it is for PAD3)
+    local closed = shownItems()
+    press("PADDDOWN"); press("PAD1"); flush()          -- Exit -> first category, open it
+    local open1 = shownItems()
+    press("PADDDOWN"); press("PADDDOWN"); press("PAD1"); flush()   -- its item, the second category, open it
+    local open2, which2 = shownItems()
+    press("PAD1"); flush()                             -- again: closes
+    local closedAgain = shownItems()
+
+    -- Exit: pick it for the button the picker is open for
+    press("PADDDOWN"); press("PADDDOWN")               -- ... down to the third category header, then
+    for i = 1, 6 do press("PADDUP") end                -- back up to Exit (it stops at the top: Cancel)
+    press("PADDDOWN")
+    local onExit = UF.Nav.focus and UF.Nav.focus.label and rawget(UF.Nav.focus.label, "__text") or "?"
+    press("PAD1")
+    local esc = tostring(__calls.cvars.GamePadEmulateEsc)
+    local rowText
+    for _, f in ipairs(__frames) do
+        if rawget(f, "pad") == "PAD3" and rawget(f, "glyph") and rawget(f, "__fstext") then rowText = rawget(f, "__fstext") end
+    end
+    -- binding something else to that button takes Exit away
+    UF.setBind("PAD3", "JUMP")
+    local escAfter = tostring(__calls.cvars.GamePadEmulateEsc)
+    return table.concat({ closed, open1, open2, which2, closedAgain, onExit, esc, tostring(rowText), escAfter }, "|")
+end""")()
+closed, open1, open2, which2, closed_again, on_exit, esc, row_text, esc_after = str(acc).split("|")
+assert (closed, open1, open2, closed_again) == ("0", "1", "1", "0"), "categories: closed, then one open, then the other (one at a time), then closed: %s" % acc
+assert which2 == "Jump", "the second category's action should be showing, not the first's: %s" % which2
+print("categories start closed and open one at a time: OK")
+assert esc == "PAD3", "choosing Exit should make that button the game's Escape: %s" % esc
+assert row_text == "Exit (Escape)", "the row should read Exit (Escape): %s" % row_text
+assert esc_after == "NONE", "binding something else should take Exit away: %s" % esc_after
+print("Exit sets the game's own Escape button, shows on the row, and is removed by another bind: OK")
+
+# friendlier names for binds that would show as a code
+names = L("""function() local UF = UbermocForever; return UF.actionName("CLICK UbermocMenu:LeftButton") .. "|" .. UF.actionName("CLICK SomeAddonButton:LeftButton") end""")()
+assert str(names) == "Game menu (Start)|Press: SomeAddonButton", names
+print("code-like binds get plain names: OK")
 print("ALL TESTS PASSED")

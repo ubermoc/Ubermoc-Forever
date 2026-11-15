@@ -45,7 +45,7 @@ More features come after this one. The user has not yet said which.
 | `Legend.lua` | The legend row of button pictures and words. |
 | `Nav.lua` | Controller movement inside our windows (see section 4). |
 | `Prompt.lua` | The first-run question (the game's own popup), once per character. |
-| `Options.lua` | The window (`ButtonFrameTemplate`) and the action picker. |
+| `Options.lua` | The window (`ButtonFrameTemplate`) and the action picker: an **Exit (Escape)** line, then the game's binding categories, each **closed until chosen, one open at a time** (plus / minus art from the game). |
 | `Menu.lua` | Adds the "Ubermoc Forever" button above Options by hooking `GameMenuFrame:InitButtons`. |
 | `tools/install.sh` | Finds the Forever `AddOns` folder (Steam Proton prefixes incl. SD card, `~/Games`, `/Applications`) and installs. `--link`, `--uninstall`, or pass a path. |
 | `tools/setup-research.sh` | Builds `~/Downloads/WoW Forever Tools and Research` with Blizzard's Forever UI source and reference addons. |
@@ -77,7 +77,7 @@ the controller button label stays short. The stub **cannot** show how the game r
    - the face buttons fired the action bars instead of the window (fixed: A is now taken too);
    - the list jumped back to the top after about seven presses (fixed by dropping the pointer-moving code).
 3. **The first-run prompt** and **applying the defaults** on a real character.
-4. **The picker's look** after it was moved to a higher draw layer and the list under it hidden.
+4. **The picker** after two rounds of changes: the higher draw layer with the list under it hidden, and the newest category list (closed by default, one open at a time, plus an **Exit (Escape)** option). The user asked for both; neither has been seen in the game.
 5. **Release of the buttons in combat** (secure `[combat]` driver) and when the window closes.
 6. The Checks list: whether every row passes on Forever. Ask the user to press Checks and paste the chat output.
 
@@ -91,6 +91,7 @@ the controller button label stays short. The stub **cannot** show how the game r
 - **A raised frame level alone did not put the picker above the rows.** It needs `SetFrameStrata("FULLSCREEN_DIALOG")`, and the list underneath is hidden while it is open.
 - **Native layout rules** (`ButtonFrameTemplate`): header band under the title; content inside `Inset` (top left `4,-60`, bottom right `-6,26`); bottom bar holds `MagicButtonTemplate` buttons (bottom right `-6,4`, next one `RIGHT` to `LEFT` offset `-1`). Every line of text is set to one line (`SetWordWrap(false)`) so nothing wraps into the next row.
 - **`/run` and `/dump` are blocked** in Forever (`C_AddOns.GetScriptsDisallowedForBeta()`). Never ask the user to type scripts. Use the in-addon Checks.
+- **Exit is the game's emulated Escape, not a bind.** `GamePadEmulateEsc` holds the button (or `NONE`). `UF.setExit(pad)` sets it and clears the bind; `UF.setBind` sets it back to `NONE` when something else is bound to that button. Ubermoc UI warns the game's native Escape can use up presses on a controller so the menu never opens; our default Start is still `TOGGLEGAMEMENU`. A row reading `CLICK UbermocMenu:LeftButton` is Ubermoc UI's Start bind, now shown as "Game menu (Start)".
 - **`GamePadEmulateShift/Ctrl/Alt/Esc` and `GamePadEnable` are not in Blizzard's Lua.** They are carried over from Ubermoc UI, which runs them.
 - **The paddle buttons used as Shift/Ctrl show as `P1` / `P3`** (the game's `Gen_Paddle1/3` pictures). They are R4/R5 on the Deck. The user has not asked to change this. Offer to add "R4"/"R5" text beside the pictures.
 - **Test-stub traps:** the stub must treat lowercase field names as plain data, track Show/Hide and fire OnShow/OnHide, and provide `Click`, `GetTextWidth`, `Inset`, `CloseButton`. Add to the stub when new code needs it. When a stub-only failure appears, check whether the real game would behave differently before changing the addon.
