@@ -139,6 +139,11 @@ function UF.actionName(cmd)
     if FRIENDLY[cmd] then return FRIENDLY[cmd] end
     local n = _G["BINDING_NAME_" .. cmd]
     if type(n) == "string" and n ~= "" then return n end
+    -- the game's own name for any action (spells, macros, items too), as its Key Bindings page asks for it
+    if GetBindingName then
+        local ok, g = pcall(securecallfunction or function(f, ...) return f(...) end, GetBindingName, cmd)
+        if ok and type(g) == "string" and g ~= "" and g ~= cmd then return g end
+    end
     local kind, rest = cmd:match("^(%u+) (.+)$")
     if kind == "SPELL" or kind == "MACRO" or kind == "ITEM" then return rest end
     if kind == "CLICK" then

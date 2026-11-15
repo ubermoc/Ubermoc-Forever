@@ -93,18 +93,26 @@ end
 ----------------------------------------------------------------------
 -- Choosing an action
 ----------------------------------------------------------------------
+-- The game's own binding categories, the way its Key Bindings page reads them (Blizzard_SettingsDefinitions_Frame):
+-- GetBinding gives the name of the header text ("BINDING_HEADER_MOVEMENT"), which is looked up to get the words; a
+-- binding with no category at all belongs to "Other"; entries whose action starts with HEADER or PREFACE are spacers
+-- and notes, not actions. (A binding with no category used to break this list: a nil can't be a table key.)
 local function collectGroups()
-    local groups, byCat = {}, {}
+    local groups, byTitle = {}, {}
+    local other = _G.BINDING_HEADER_OTHER or "Other"
     for i = 1, (GetNumBindings() or 0) do
         local cmd, cat = GetBinding(i)
-        if cmd and not cmd:find("^HEADER") then
-            local g = byCat[cat]
-            if not g then
-                -- GetBinding hands back the name of the game's header text ("BINDING_HEADER_MOVEMENT"), not the text
+        if cmd and not cmd:find("^HEADER") and not cmd:find("^PREFACE") then
+            local title = other
+            if cat then
                 local text = _G[tostring(cat)]
                 if type(text) ~= "string" then text = _G["BINDING_HEADER_" .. tostring(cat)] end
-                g = { title = type(text) == "string" and text or tostring(cat), cmds = {} }
-                byCat[cat] = g
+                title = type(text) == "string" and text or tostring(cat)
+            end
+            local g = byTitle[title]
+            if not g then
+                g = { title = title, cmds = {} }
+                byTitle[title] = g
                 groups[#groups + 1] = g
             end
             g.cmds[#g.cmds + 1] = cmd
@@ -169,6 +177,7 @@ local function buildPicker()
     -- Lay the list out: the Exit line, then every category; only the open category shows its actions.
     local function relayout()
         local y = 0
+        picker.groups = picker.groups or {}
         if picker.exit then
             picker.exit:Show()
             picker.exit:ClearAllPoints()
@@ -207,15 +216,25 @@ local function buildPicker()
     end
 
     local function build()
-        picker.built = true
-        picker.groups = collectGroups()
+        picker.groups = {}
 
+        -- Exit first, so it is there even if the categories cannot be built
         local exit = newLine(list, ITEM_H, "GameFontHighlight", 28)
         exit.label:SetText("Exit (Escape)")
         exit:SetScript("OnClick", function()
             if UF.setExit(picker.pad, UF.combo(layer, picker.pad)) then picker:Hide(); UF.RefreshOptions() end
         end)
         picker.exit = exit
+
+        local okGroups, groups = pcall(collectGroups)
+        if not okGroups then
+            UF.say("The list of actions could not be read: " .. tostring(groups))
+            UF.check("Action list", false, tostring(groups))
+            picker.built = true
+            return
+        end
+        picker.groups = groups
+        picker.built = true
 
         for _, g in ipairs(picker.groups) do
             local h = newLine(list, HEAD_H, "GameFontNormal", 28)
@@ -252,8 +271,15 @@ local function buildPicker()
     function picker:Open(pad)
         self.pad = pad
         self.head:SetText("Choose what " .. UF.glyph(pad) .. " does")
-        if not self.built then build() end
-        for _, g in ipairs(self.groups) do g.open = false end   -- every category starts closed
+        if not self.built then
+            local ok, err = pcall(build)
+            if not ok then
+                self.built = false   -- try again next time
+                UF.say("The list of actions could not be built: " .. tostring(err))
+                UF.check("Action list", false, tostring(err))
+            end
+        end
+        for _, g in ipairs(self.groups or {}) do g.open = false end   -- every category starts closed
         relayout()
         -- The list underneath is hidden while the picker is open, so nothing can show through or draw over it.
         win.scroll:Hide()
@@ -262,7 +288,7 @@ local function buildPicker()
         sf:SetVerticalScroll(0)
         legend:Set({ PAD1 = "Select", PAD2 = "Cancel" })
         UF.Nav.ClearFocus()
-        UF.Nav.SetFocus(self.exit or (self.groups[1] and self.groups[1].header) or cancel)
+        UF.Nav.SetFocus(self.exit or ((self.groups or {})[1] and self.groups[1].header) or cancel)
     end
     picker:SetScript("OnHide", function()
         win.scroll:Show()

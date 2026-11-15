@@ -104,9 +104,10 @@ SetCVar = function(n, v) calls.cvars[n] = v end
 SetBinding = function(k, a) calls.binds[k] = a end
 GetBindingKey = function() return nil end
 GetBindingAction = function(k) return calls.binds[k] or "" end
-GetNumBindings = function() return 3 end
+GetNumBindings = function() return 4 end
 GetBinding = function(i)
-    local t = { { "ACTIONBUTTON1", "ACTIONBAR" }, { "JUMP", "MOVEMENT" }, { "TOGGLEWORLDMAP", "INTERFACE" } }
+    -- the last one has no category at all, as some of the game's bindings really do (they belong to "Other")
+    local t = { { "ACTIONBUTTON1", "ACTIONBAR" }, { "JUMP", "MOVEMENT" }, { "TOGGLEWORLDMAP", "INTERFACE" }, { "SOMEOTHER", nil } }
     return t[i][1], t[i][2]
 end
 SaveBindings = function() calls.saved = calls.saved + 1 end
@@ -136,6 +137,7 @@ BINDING_NAME_JUMP = "Jump"
 BINDING_HEADER_ACTIONBAR = "Action Bar 1"
 BINDING_HEADER_MOVEMENT = "Movement"
 BINDING_HEADER_INTERFACE = "Interface"
+BINDING_HEADER_OTHER = "Other"
 '''
 lua.execute(stub)
 ns = lua.eval("{}")
@@ -406,5 +408,58 @@ print("Exit: the game's Escape button reads Exit on every layer without a bind, 
 names = L("""function() local UF = UbermocForever; return UF.actionName("CLICK UbermocMenu:LeftButton") .. "|" .. UF.actionName("CLICK SomeAddonButton:LeftButton") end""")()
 assert str(names) == "Game menu (Start)|Press: SomeAddonButton", names
 print("code-like binds get plain names: OK")
+
+# ---- a binding with no category goes under "Other"; a failure building the list is reported, not silent ----
+other = L("""function()
+    local UF = UbermocForever
+    local w = UbermocForeverOptions
+    w:Hide(); w:Show()
+    local function press(key)
+        local b = _G["UbermocForeverNav_" .. key]
+        b.__scripts.OnClick(b, "LeftButton", true)
+        b.__scripts.OnClick(b, "LeftButton", false)
+    end
+    press("PAD1")                                             -- open the picker
+    local header
+    for _, f in ipairs(__frames) do
+        if rawget(f, "label") and rawget(f, "__fstext") == "Other" then header = f end
+    end
+    if not header then return "no Other category" end
+    header:Click()                                            -- open it
+    local shown = false
+    for _, f in ipairs(__frames) do
+        if rawget(f, "label") and rawget(f, "__fstext") == "SOMEOTHER" and rawget(f, "__hidden") ~= true then shown = true end
+    end
+    return "other:" .. tostring(shown)
+end""")()
+assert str(other) == "other:true", other
+print("a binding with no category shows under Other: OK")
+
+failed = L("""function()
+    local UF = UbermocForever
+    local w = UbermocForeverOptions
+    w:Hide(); w:Show()
+    __calls.chat = ""
+    -- a fresh picker whose list cannot be read: it must still open, still offer Exit, and say why
+    local realGet = GetBinding
+    GetBinding = function() error("boom") end
+    local function press(key)
+        local b = _G["UbermocForeverNav_" .. key]
+        b.__scripts.OnClick(b, "LeftButton", true)
+        b.__scripts.OnClick(b, "LeftButton", false)
+    end
+    for _, f in ipairs(__frames) do
+        -- find the picker (it carries .navRows) and forget what it built
+        if rawget(f, "navRows") then f.built = false; f.groups = nil end
+    end
+    press("PAD1")
+    GetBinding = realGet
+    local focus = UF.Nav.focus
+    local onExit = focus and focus.label and rawget(focus.label, "__text") == "Exit (Escape)"
+    return tostring(onExit) .. "|" .. tostring(string.find(__calls.chat or "", "could not be read", 1, true) ~= nil)
+end""")()
+assert str(failed) == "true|true", failed
+print("a list that cannot be read is reported and Exit still works: OK")
+
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
