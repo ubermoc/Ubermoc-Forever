@@ -527,9 +527,6 @@ local function build()
         Nav.ClearFocus()
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(false) then SetGamePadCursorControl(false) end
     end)
-    local ev = CreateFrame("Frame")
-    ev:RegisterEvent("PLAYER_REGEN_DISABLED")
-    ev:SetScript("OnEvent", function() if win:IsShown() then win:Hide() end end)
     UF.OnDetect(function() if win:IsShown() then UF.RefreshOptions() end end)
 end
 

@@ -505,18 +505,5 @@ r = L("""function()
 end""")()
 assert str(r) == "false,true,true", r
 print("Combat: the window refuses to open in combat and opens again after: OK")
-# Combat starting closes the window by itself
-r = L("""function()
-    local UF = UbermocForever
-    local w = UbermocForeverOptions
-    UF.ToggleOptions(true)
-    local before = w:IsShown()
-    UF.Nav.CloseAllForCombat()
-    local after = w:IsShown()
-    UF.ToggleOptions(true); w:Hide()
-    return tostring(before) .. "," .. tostring(after)
-end""")()
-assert str(r) == "true,false", r
-print("Combat: an open window closes when combat starts: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
