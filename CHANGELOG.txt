@@ -1,3 +1,7 @@
+UbermocForever 1.3.6
+- Added: the Y menu also offers armor kits for the armor pieces they fit, and scopes for your ranged weapon. Where an item goes is now read from the game's own use text, for the bag menu and for worn items in the character screen.
+- Added: /ubf scan (an author tool that saves the use text of items applied to other items).
+
 UbermocForever 1.3.5
 - Added: quest and gossip windows start the highlight on the first option, or on the Accept, Continue or Complete button. A accepts a quest and B declines it.
 - Added: in a trainer, A selects a skill and X trains it.

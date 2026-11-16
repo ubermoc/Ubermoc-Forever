@@ -660,5 +660,25 @@ r = L("""function()
 end""")()
 assert str(r) == "truetruetrue", r
 print("Conversations: start on Accept, X trains in a trainer: OK")
+# Where an item goes, read from its use text (wording taken from the scan of the game's own items)
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    C_Item = {
+        GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, 8 end,
+        GetItemSpell = function(id) return "Use it" end,
+    }
+    local text = {
+        [1] = "Use: Coats a weapon with poison that lasts for 30 minutes.",
+        [2] = "Use: Permanently increase the Stamina value by 2 and the armor value by 16 of an item worn on the chest, legs, hands or feet.",
+        [3] = "Use: Attaches a permanent scope to a bow or gun that increases its damage by 5.",
+        [4] = "Use: Increases armor by 2,000 for 2 min.",
+        [5] = "Use: Increase critical chance on a melee weapon by 2% for 30 minutes.",
+    }
+    C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = text[id] } } } end }
+    local function join(t) if not t then return "nil" end return table.concat(t, "-") end
+    return join(M.targets(1)) .. "|" .. join(M.targets(2)) .. "|" .. join(M.targets(3)) .. "|" .. join(M.targets(4)) .. "|" .. join(M.targets(5))
+end""")()
+assert str(r) == "16-17|5-7-8-10|18|nil|16-17", r
+print("Where an item goes: weapons, armor slots, ranged only for scopes, potions nowhere: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

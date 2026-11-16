@@ -117,60 +117,86 @@ local NOT_ON_ITEMS = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = tru
 -- C_TooltipInfo.GetItemByID (lines carry `leftText`, as Blizzard_SharedXMLGame/Tooltip/TooltipDataHandler.lua reads them).
 -- If the tooltip cannot be read, the class rule alone is used.
 local useCache = {}
-local function useLineMentionsWeapon(itemID)
-    if useCache[itemID] ~= nil then return useCache[itemID] end
-    local verdict
+-- The item's own "Use:" text, lower case, joined; nil when the tooltip cannot be read.
+local function useText(itemID)
+    if useCache[itemID] ~= nil then return useCache[itemID] or nil end
+    local text
     if C_TooltipInfo and C_TooltipInfo.GetItemByID then
         local ok, data = pcall(C_TooltipInfo.GetItemByID, itemID)
         if ok and type(data) == "table" and type(data.lines) == "table" then
-            verdict = false
+            local parts = {}
             local prefix = tostring(_G.ITEM_SPELL_TRIGGER_ONUSE or "Use:"):lower()
             for _, line in ipairs(data.lines) do
                 local t = type(line) == "table" and line.leftText
                 if type(t) == "string" then
                     local l = t:lower()
-                    if l:sub(1, #prefix) == prefix and l:find("weapon", 1, true) then verdict = true; break end
+                    if l:sub(1, #prefix) == prefix then parts[#parts + 1] = l end
                 end
             end
+            text = table.concat(parts, " ")
         end
     end
-    if verdict ~= nil then useCache[itemID] = verdict end
-    return verdict
+    if text ~= nil then useCache[itemID] = text end
+    return text
 end
 
--- Items that are used on another item (sharpening stones, weightstones, poisons, oils ...): the game's "Item Enhancement"
--- class counts; a consumable with a use that is not a potion, elixir, flask, scroll, food or bandage counts when its use
--- text is about a weapon.
+-- Equipment slots in the game's numbering, with what the item's use text calls them. The wording comes from a scan of the
+-- game's own items (/ubf scan): poisons "Coats a weapon ...", oils "While applied to target weapon ...", sharpening stones
+-- "... on a melee weapon", armor kits "... of an item worn on the chest, legs, hands or feet", scopes "Attaches a permanent
+-- scope to a bow or gun".
+local SLOT_NAMES = { [1] = "Head", [2] = "Neck", [3] = "Shoulders", [5] = "Chest", [6] = "Waist", [7] = "Legs", [8] = "Feet",
+                     [9] = "Wrists", [10] = "Hands", [11] = "Ring", [12] = "Ring", [15] = "Back", [16] = "Main hand",
+                     [17] = "Off hand", [18] = "Ranged" }
+local ARMOR_WORDS = { { 1, "head" }, { 3, "shoulder" }, { 5, "chest" }, { 6, "waist" }, { 6, "belt" }, { 7, "leg" },
+                      { 8, "feet" }, { 8, "foot" }, { 9, "wrist" }, { 9, "bracer" }, { 10, "hand" }, { 15, "back" },
+                      { 15, "cloak" } }
+
+-- Which equipment slots a use-on-item can go to, read from its use text: a list of slots, or nil when the text does not
+-- say it goes on an item (then it is a potion, food ...). Ranged weapons take only what names a bow or gun.
+function M.targets(itemID)
+    local t = useText(itemID)
+    if not t then return nil end
+    if t:find("bow or gun", 1, true) or t:find("to a bow", 1, true) or t:find("to a gun", 1, true) then return { 18 } end
+    local worn = t:find("worn on", 1, true) or t:find("piece of armor", 1, true)
+    if worn then
+        local out, seen = {}, {}
+        for _, w in ipairs(ARMOR_WORDS) do
+            if t:find(w[2], 1, true) and not seen[w[1]] then seen[w[1]] = true; out[#out + 1] = w[1] end
+        end
+        if #out == 0 then out = { 1, 3, 5, 6, 7, 8, 9, 10, 15 } end   -- "an item worn": any armor piece
+        return out
+    end
+    if t:find("weapon", 1, true) then return { 16, 17 } end
+    return nil
+end
+
+-- Items that are used on another item (sharpening stones, weightstones, poisons, oils, armor kits, scopes ...): the game's
+-- "Item Enhancement" class counts; a consumable with a use that is not a potion, elixir, flask, scroll, food or bandage counts
+-- when its use text says what it goes on (M.targets).
 function M.usedOnItems(itemID)
     if not hasUse(itemID) then return false end
     local classID, subClassID = instant(itemID)
     if classID == CLASS.itemEnhancement then return true end
     if classID == CLASS.consumable and not NOT_ON_ITEMS[subClassID or -1] then
-        local v = useLineMentionsWeapon(itemID)
+        local v = useText(itemID)
         if v == nil then return true end
-        return v
+        return M.targets(itemID) ~= nil
     end
     return false
 end
 
--- Slots a use-on-item can go to: the melee weapons you wear (16 main hand, 17 off hand, in the game's numbering). Ranged
--- weapons (slot 18) take nothing.
-local WEAPON_SLOTS = { 16, 17 }
-local SLOT_NAMES = { [16] = "Main hand", [17] = "Off hand" }
-
-local function equippedWeapons()
+-- The pieces you wear right now that this item can go on, each with its slot and name.
+local function equippedTargets(itemID)
     local list = {}
-    for _, slot in ipairs(WEAPON_SLOTS) do
+    local slots = M.targets(itemID) or { 16, 17 }
+    for _, slot in ipairs(slots) do
         local id = GetInventoryItemID and GetInventoryItemID("player", slot)
-        if id and instant(id) == CLASS.weapon then list[#list + 1] = { slot = slot, id = id, name = SLOT_NAMES[slot] } end
+        if id then list[#list + 1] = { slot = slot, id = id, name = SLOT_NAMES[slot] or ("Slot " .. slot) } end
     end
     return list
 end
 
-local function isWeaponSlot(slot)
-    for _, s in ipairs(WEAPON_SLOTS) do if s == slot then return true end end
-    return false
-end
+
 
 ----------------------------------------------------------------------
 -- Profession actions on a bag item
@@ -333,9 +359,9 @@ local function openBag(btn)
 
     -- used on another item: one entry for each weapon you wear
     if not vendor and M.usedOnItems(itemID) then
-        for _, w in ipairs(equippedWeapons()) do
+        for _, w in ipairs(equippedTargets(itemID)) do
             local link = GetInventoryItemLink and GetInventoryItemLink("player", w.slot)
-            add("Use on " .. w.name .. ": " .. itemName(link, "weapon"),
+            add("Use on " .. w.name .. ": " .. itemName(link, "item"),
                 { type = "macro", macrotext = "/use " .. bag .. " " .. slot .. "\n/use " .. w.slot })
         end
     end
@@ -380,7 +406,7 @@ local function carriedEnhancers()
             local info = C_Container.GetContainerItemInfo(bag, slot)
             if info and info.itemID and not seen[info.itemID] and M.usedOnItems(info.itemID) then
                 seen[info.itemID] = true
-                out[#out + 1] = { bag = bag, slot = slot, link = info.hyperlink, count = info.stackCount }
+                out[#out + 1] = { bag = bag, slot = slot, link = info.hyperlink, count = info.stackCount, itemID = info.itemID }
             end
         end
     end
@@ -395,13 +421,17 @@ local function openEquip(btn)
     reset()
     local itemID = GetInventoryItemID and GetInventoryItemID("player", id)
     if hasUse(itemID) then add("Use", { type = "macro", macrotext = "/use " .. id }) end
-    -- a weapon: everything in the bags that can be used on it
-    if instant(itemID) == CLASS.weapon and isWeaponSlot(id) then
+    -- everything in the bags that can be used on this piece
+    do
         local ok, list = pcall(carriedEnhancers)
         if ok then
             for _, e in ipairs(list) do
-                add("Use " .. itemName(e.link, "item") .. ((e.count and e.count > 1) and (" (" .. e.count .. ")") or ""),
-                    { type = "macro", macrotext = "/use " .. e.bag .. " " .. e.slot .. "\n/use " .. id })
+                local fits = false
+                for _, sl in ipairs(M.targets(e.itemID) or { 16, 17 }) do
+                    if sl == id or (sl == 11 and id == 12) then fits = true end
+                end
+                if fits then add("Use " .. itemName(e.link, "item") .. ((e.count and e.count > 1) and (" (" .. e.count .. ")") or ""),
+                    { type = "macro", macrotext = "/use " .. e.bag .. " " .. e.slot .. "\n/use " .. id }) end
             end
         end
     end
