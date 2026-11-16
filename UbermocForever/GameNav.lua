@@ -458,6 +458,8 @@ local function dialogCloser(w)
     end
 end
 
+G.dialogCloser = dialogCloser
+
 local function trainButton(f)
     local t = _G.ClassTrainerFrame
     if f and shown(t) and G.inside(f, t) then

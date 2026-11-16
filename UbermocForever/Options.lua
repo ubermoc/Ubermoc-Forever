@@ -15,7 +15,7 @@ local ROW_H = 30
 local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
-local cineBtn   -- declared here, above every function that uses it
+local cineBtn, questBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
@@ -56,6 +56,7 @@ function UF.RefreshOptions()
     local setId = UF.activeSet()
     local d = UF.DB()
     local set = UF.SETS[setId]
+    if questBtn then questBtn:SetText("Quest: " .. (d.questStyle == false and "Off" or "Pad")) end
     if cineBtn then cineBtn:SetText("Cinematic: " .. (d.cinema == false and "Off" or "On")) end
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
     -- A short name on the button, sized to fit: the full name is in the line to its left.
@@ -387,7 +388,24 @@ local function build()
         GameTooltip:Show()
     end)
     cineBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    info:SetPoint("RIGHT", cineBtn, "LEFT", -8, 0)
+    -- Quest and gossip windows: the game's buttons drawn as "(A) Accept" strips (DialogButtons.lua).
+    questBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    questBtn:SetSize(110, 22)
+    questBtn:SetPoint("RIGHT", cineBtn, "LEFT", -6, 0)
+    questBtn:SetScript("OnClick", function()
+        local d = UF.DB()
+        d.questStyle = (d.questStyle == false)
+        if UF.DialogButtons then UF.DialogButtons.refresh() end
+        UF.RefreshOptions()
+    end)
+    questBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Quest buttons")
+        GameTooltip:AddLine("Quest and gossip windows show Accept, Decline and Goodbye as controller buttons (A, B) instead of clickable buttons. Off shows the game's own buttons.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    questBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    info:SetPoint("RIGHT", questBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
     -- which case this button switches to Steam Deck / Steam Controller and Reset to default applies that layout.
@@ -493,8 +511,8 @@ local function build()
     local function navRows()
         local out = {}
         if pickerOpen() then return picker.navRows() end
-        local header = { win.controllerBtn, cineBtn }
-        if win.CloseButton and win.CloseButton:IsVisible() then header[3] = win.CloseButton end
+        local header = { win.controllerBtn, cineBtn, questBtn }
+        if win.CloseButton and win.CloseButton:IsVisible() then header[4] = win.CloseButton end
         out[1] = header
         out[2] = layerButtons
         for _, r in ipairs(rows) do
