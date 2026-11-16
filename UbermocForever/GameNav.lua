@@ -915,6 +915,62 @@ local function engage()
     })
 end
 
+----------------------------------------------------------------------
+-- The right stick scrolls the list or text under the highlight (a quest's text, a long list), smoothly: the further you push,
+-- the faster. The sticks are only taken from the game while the highlight is in something that scrolls and we are not in
+-- combat. The stick API is the one Ubermoc UI uses: C_GamePad.StickIndexToConfigName, GetDeviceMappedState().sticks[i] with
+-- x, y and len, and EnableGamePadStick on a frame that has an OnGamePadStick script.
+----------------------------------------------------------------------
+local stickFrame, rightStick
+local function findRightStick()
+    rightStick = nil
+    if not (C_GamePad and C_GamePad.StickIndexToConfigName) then return end
+    for i = 0, 16 do
+        local ok, name = pcall(C_GamePad.StickIndexToConfigName, i)
+        if not ok or not name then break end
+        if name == "Right" then rightStick = i + 1; return end
+    end
+end
+
+local function stickScroll(dt)
+    local sc, kind = scrollerOf(focus)
+    if not sc then return end
+    local ok, state = pcall(C_GamePad.GetDeviceMappedState)
+    local pos = ok and state and state.sticks and rightStick and state.sticks[rightStick]
+    if not pos or not pos.len or pos.len < 0.3 then return end
+    local y = pos.y or 0
+    if UF.DB().stickFlip then y = -y end
+    local dir = (y > 0) and -1 or 1          -- stick up: back toward the top of the list
+    local amount = math.min(1, math.abs(y)) * dt
+    if kind == "box" and sc.GetScrollPercentage and sc.SetScrollPercentage then
+        local okc, cur = pcall(sc.GetScrollPercentage, sc)
+        local okv, vis = pcall(function() return sc.GetVisibleExtentPercentage and sc:GetVisibleExtentPercentage() end)
+        if okc and cur then
+            local per = (okv and vis and vis > 0 and vis <= 1) and vis * 1.2 or 0.25
+            pcall(sc.SetScrollPercentage, sc, math.max(0, math.min(1, cur + dir * per * amount)))
+        end
+    elseif kind == "frame" then
+        local cur, range = sc:GetVerticalScroll() or 0, sc:GetVerticalScrollRange() or 0
+        sc:SetVerticalScroll(math.max(0, math.min(range, cur + dir * (sc:GetHeight() or 200) * 1.2 * amount)))
+    end
+    G.scrolled = true
+end
+
+local stickTicker = CreateFrame("Frame")
+stickTicker:SetScript("OnUpdate", function(_, dt)
+    local want = entry ~= nil and focus ~= nil and not InCombatLockdown() and scrollerOf(focus) ~= nil
+    if want and not stickFrame then
+        stickFrame = CreateFrame("Frame", "UbermocForeverStickBlocker", UIParent)
+        stickFrame:SetScript("OnGamePadStick", function() end)
+        findRightStick()
+    end
+    if stickFrame and stickFrame.stickOn ~= want then
+        stickFrame.stickOn = want
+        pcall(stickFrame.EnableGamePadStick, stickFrame, want)
+    end
+    if want then pcall(stickScroll, dt) end
+end)
+
 G.known = {}
 function G.focusFrame() return focus end
 function G.enabled() return UF.DB().gameNav ~= false end

@@ -122,6 +122,9 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         UF.say("Moving around the game's windows with the controller is " .. (msg == "nav on" and "on." or "off."))
     elseif msg == "scan" or msg:match("^scan ") then
         if UF.scan then UF.scan(msg:match("^scan%s+(.*)$")) end
+    elseif msg == "stick flip" then
+        UF.DB().stickFlip = not UF.DB().stickFlip
+        UF.say("Right stick scrolling is now " .. (UF.DB().stickFlip and "reversed." or "the normal way (up scrolls up)."))
     elseif msg == "item" then
         if UF.ItemMenu and UF.GameNav then UF.ItemMenu.report(UF.GameNav.focusFrame()) end
     elseif msg == "tabs" then
