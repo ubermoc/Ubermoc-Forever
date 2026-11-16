@@ -120,6 +120,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     elseif msg == "nav off" or msg == "nav on" then
         UF.DB().gameNav = (msg == "nav on")
         UF.say("Moving around the game's windows with the controller is " .. (msg == "nav on" and "on." or "off."))
+    elseif msg == "tabs" then
+        if UF.GameNav then UF.GameNav.report() end
     elseif msg == "menu left" or msg == "menu right" then
         UF.DB().menuSide = msg:sub(6)
         if UF.RefreshOptions then pcall(UF.RefreshOptions) end

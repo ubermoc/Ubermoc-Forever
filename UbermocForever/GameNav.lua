@@ -391,20 +391,45 @@ end
 --   `rightProfessionTabs` (+ `ProfessionsOverviewTab`)                            Blizzard_Professions Camelot ProfessionsFrame.lua
 --   the older PanelTemplates (`numTabs`, `selectedTab`, buttons named <frame>Tab<n>)
 ----------------------------------------------------------------------
+-- The big tabs down the side of a window (professions, character, group finder, guild and communities, collections ...)
+-- are plain Frames from LargeSideTabButtonTemplate (Blizzard_SharedXML SharedUIPanelTemplates.xml), not Buttons: they have
+-- no Click(), they act on OnMouseUp, and they show SelectedTexture when chosen. The template is recognised by those parts.
+local function isSideTab(b)
+    return type(b) == "table" and b.SelectedTexture and b.TabGlow and b.GetScript and b:GetScript("OnMouseUp") and true or false
+end
+
 local function usable(b)
-    return type(b) == "table" and b.Click and b.IsShown and b:IsShown() and true or false
+    if type(b) ~= "table" or not (b.IsShown and b:IsShown()) then return false end
+    return (b.Click or isSideTab(b)) and true or false
+end
+
+local function isSelected(b)
+    if b.GetChecked then
+        local ok, v = pcall(b.GetChecked, b)
+        if ok and v then return true end
+    end
+    return isSideTab(b) and b.SelectedTexture.IsShown and b.SelectedTexture:IsShown() or false
 end
 
 local function checkedIndex(list)
     for i, b in ipairs(list) do
-        if b.GetChecked and b:GetChecked() then return i end
+        if isSelected(b) then return i end
     end
+end
+
+-- Press a tab the way the mouse does.
+local function pressTab(b)
+    if b.Click and not isSideTab(b) then pcall(b.Click, b); return end
+    local down, up = b:GetScript("OnMouseDown"), b:GetScript("OnMouseUp")
+    if down then pcall(down, b, "LeftButton") end
+    if up then pcall(up, b, "LeftButton", true) end
 end
 
 local function collectGroups(f, depth, out, seen)
     if depth > 7 or not (f.IsShown and f:IsShown()) then return end
     local function add(list, cur)
-        if #list < 2 or seen[list[1]] then return end
+        if #list < 2 then return end
+        for _, b in ipairs(list) do if seen[b] then return end end
         for _, b in ipairs(list) do seen[b] = true end
         out[#out + 1] = { buttons = list, cur = cur or checkedIndex(list) or 1 }
     end
@@ -438,9 +463,20 @@ local function collectGroups(f, depth, out, seen)
         end
         add(list, tonumber(f.selectedTab))
     end
+    -- side tabs that sit together under one frame, whatever the window calls them, top to bottom
     if f.GetChildren then
-        for _, c in ipairs({ f:GetChildren() }) do collectGroups(c, depth + 1, out, seen) end
+        local kids, side = { f:GetChildren() }, {}
+        for _, c in ipairs(kids) do if usable(c) and isSideTab(c) then side[#side + 1] = c end end
+        table.sort(side, function(a, b) return (a:GetTop() or 0) > (b:GetTop() or 0) end)
+        add(side)
+        for _, c in ipairs(kids) do collectGroups(c, depth + 1, out, seen) end
     end
+end
+
+function G.groupsFor(w)   -- for the offline test
+    local out = {}
+    collectGroups(w, 0, out, {})
+    return out
 end
 
 -- A group is "vertical" when its tabs are stacked more than they are side by side (the profession tabs and the
@@ -491,7 +527,7 @@ local function stepTab(step, vertical)
     if not g then return false end
     local nxt = G.stepTab(#g.buttons, g.cur, step)
     local b = nxt and g.buttons[nxt]
-    if b then pcall(b.Click, b) end
+    if b then pressTab(b) end
     G.scrolled = true
     return true
 end
@@ -721,3 +757,15 @@ ticker:SetScript("OnUpdate", function(_, dt)
 end)
 ticker:RegisterEvent("PLAYER_REGEN_DISABLED")
 ticker:SetScript("OnEvent", function() release() end)
+
+-- /ubf tabs: what is open and which tab groups were found in it (for when a window's tabs do not answer).
+function G.report()
+    local w = G.windows()
+    if #w == 0 then UF.say("No game window is open."); return end
+    for _, f in ipairs(w) do
+        local groups = G.groupsFor(f)
+        local parts = {}
+        for _, g in ipairs(groups) do parts[#parts + 1] = #g.buttons .. (isVertical(g) and " side" or " across") end
+        UF.say((f.GetName and f:GetName() or "unnamed window") .. ": " .. (#parts > 0 and table.concat(parts, ", ") or "no tabs found"))
+    end
+end

@@ -583,5 +583,22 @@ r = L("""function()
 end""")()
 assert str(r) == "right,left,right", r
 print("Item menu side: right by default, left and right can be chosen: OK")
+# Side tabs are plain frames (no Click): found by their parts, selected one read from SelectedTexture
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local pressed = {}
+    local function tab(i, selected)
+        local t = { SelectedTexture = { IsShown = function() return selected end }, TabGlow = {},
+                    IsShown = function() return true end, GetTop = function() return 500 - i * 40 end,
+                    GetScript = function(_, n) if n == "OnMouseUp" then return function(self) pressed[#pressed + 1] = i end end end }
+        return t
+    end
+    local tabs = { tab(1, false), tab(2, true), tab(3, false) }
+    local win = { IsShown = function() return true end, GetChildren = function() return tabs[1], tabs[2], tabs[3] end }
+    local groups = G.groupsFor(win)
+    return #groups .. "," .. (groups[1] and #groups[1].buttons or 0) .. "," .. (groups[1] and groups[1].cur or 0)
+end""")()
+assert str(r) == "1,3,2", r
+print("Side tabs that are plain frames are found, with the chosen one: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
