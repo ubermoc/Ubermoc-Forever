@@ -1,18 +1,15 @@
 ----------------------------------------------------------------------
--- Ubermoc Forever: controller-style buttons on quest and gossip windows.
--- With a controller you never click Accept or Decline, so the game's own buttons are drawn as a strip with the
--- controller picture and the word: "(A) Accept", "(B) Decline". The game's real buttons stay where they are, fully
--- working (our A and B presses click them); only their look is covered. Nothing is written onto the game's frames
--- except the button's opacity, which is put back when the window closes. Off with /ubf quest off.
+-- Ubermoc Forever: controller pictures on quest and gossip windows.
+-- The game's own Accept, Continue, Complete, Decline and Goodbye buttons are left exactly as they are (their own art,
+-- their own text, their own enabled/disabled look). A small controller picture (A or B, in the game's own set for your
+-- controller) is added on the left of each, the same pictures the legend uses. Nothing is written onto the game's
+-- frames. Off with /ubf quest off.
 ----------------------------------------------------------------------
 local ADDON, UF = ...
 local D = {}
 UF.DialogButtons = D
 
-local STRIP = { 0.80, 0.70, 0.33, 0.95 }   -- the gold strip
-local DIM = 0.45
-local overlays = {}   -- real button -> its overlay
-local hidden = {}     -- real button -> its opacity before we hid it
+local overlays = {}   -- real button -> its picture frame
 
 function D.enabled() return UF.DB().questStyle ~= false end
 
@@ -24,29 +21,18 @@ local function overlayFor(b)
     o = CreateFrame("Frame", nil, UIParent)
     o:EnableMouse(false)
     o:SetFrameStrata(b:GetFrameStrata())
-    o:SetFrameLevel((b:GetFrameLevel() or 1) + 20)
-    o:SetAllPoints(b)
-    o.bg = o:CreateTexture(nil, "BACKGROUND")
-    o.bg:SetAllPoints()
-    o.bg:SetColorTexture(STRIP[1], STRIP[2], STRIP[3], STRIP[4])
+    o:SetFrameLevel((b:GetFrameLevel() or 1) + 5)
+    o:SetSize(28, 28)
+    o:SetPoint("LEFT", b, "LEFT", 6, 0)
     o.text = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    o.text:SetPoint("LEFT", 10, 0)
-    o.text:SetPoint("RIGHT", -6, 0)
-    o.text:SetJustifyH("LEFT")
+    o.text:SetPoint("CENTER")
     o:Hide()
     overlays[b] = o
     return o
 end
 
-local function hideReal(b)
-    if hidden[b] == nil then hidden[b] = b:GetAlpha() end
-    b:SetAlpha(0)
-end
-
 local function release()
     for b, o in pairs(overlays) do o:Hide() end
-    for b, a in pairs(hidden) do pcall(b.SetAlpha, b, a) end
-    wipe(hidden)
 end
 
 -- Which real button carries which controller button right now.
@@ -74,14 +60,12 @@ end
 local function update()
     if not D.enabled() or InCombatLockdown() then release(); return end
     local p = plan()
-    for b, o in pairs(overlays) do if not p[b] then o:Hide(); if hidden[b] ~= nil then pcall(b.SetAlpha, b, hidden[b]); hidden[b] = nil end end end
+    for b, o in pairs(overlays) do if not p[b] then o:Hide() end end
     for b, pad in pairs(p) do
         local o = overlayFor(b)
-        local label = (b.GetText and b:GetText()) or ""
-        o.text:SetText(UF.glyph(pad) .. "  " .. label)
+        o.text:SetText(UF.glyph(pad))
         local on = (not b.IsEnabled) or b:IsEnabled()
-        o:SetAlpha(on and 1 or DIM)
-        hideReal(b)
+        o:SetAlpha(on and 1 or 0.5)
         o:Show()
     end
 end
