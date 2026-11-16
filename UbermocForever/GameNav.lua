@@ -473,11 +473,25 @@ local function scrollBy(step)
     local sc, kind = scrollerOf(focus)
     if not sc then return end
     if kind == "box" then
-        local fn = sc:GetScript("OnMouseWheel")
-        if fn then pcall(fn, sc, step > 0 and -1 or 1) end    -- the game's wheel: negative scrolls down
+        -- a page at a time, by percentage, so it can reach both ends of the list (the game's wheel step is small)
+        local done = false
+        if sc.GetScrollPercentage and sc.SetScrollPercentage then
+            local ok, cur = pcall(sc.GetScrollPercentage, sc)
+            local okv, vis = pcall(function() return sc.GetVisibleExtentPercentage and sc:GetVisibleExtentPercentage() end)
+            if ok and cur then
+                local page = (okv and vis and vis > 0 and vis <= 1) and vis * 0.7 or 0.2
+                local new = math.max(0, math.min(1, cur + (step > 0 and page or -page)))
+                done = pcall(sc.SetScrollPercentage, sc, new)
+            end
+        end
+        if not done then
+            local fn = sc:GetScript("OnMouseWheel")
+            if fn then pcall(fn, sc, step > 0 and -1 or 1) end    -- the game's wheel: negative scrolls down
+        end
     else
         local cur, range = sc:GetVerticalScroll() or 0, sc:GetVerticalScrollRange() or 0
-        sc:SetVerticalScroll(math.max(0, math.min(range, cur + step * 60)))
+        local page = math.max(60, (sc:GetHeight() or 100) * 0.7)
+        sc:SetVerticalScroll(math.max(0, math.min(range, cur + step * page)))
     end
     G.scrolled = true   -- the next tick re-picks the highlight if it was scrolled out of view
 end
@@ -689,11 +703,11 @@ local function tooltipShow(f)
     pcall(tooltipPlace, f)
 end
 
-local function setFocus(f)
+local function setFocus(f, noReveal)
     focus = f
     drawAt(f)
     setTargets()
-    if f then pcall(reveal, f) end
+    if f and not noReveal then pcall(reveal, f) end
     pcall(tooltipShow, f)
 end
 
@@ -968,7 +982,8 @@ function G.update()
             if not nodeOf(focus) then
                 local r = rectOf(focus)
                 local n = r and G.nearest(nodes, r.cx, r.cy)
-                setFocus(n and n.frame or startNode())
+                -- the view was scrolled on purpose: keep it where it is
+                setFocus(n and n.frame or startNode(), true)
             end
         else
             drawAt(focus)
