@@ -153,9 +153,10 @@ function M.usedOnItems(itemID)
     return false
 end
 
--- Slots a use-on-item can go to: the weapons you wear. (16 main hand, 17 off hand, 18 ranged, in the game's numbering.)
-local WEAPON_SLOTS = { 16, 17, 18 }
-local SLOT_NAMES = { [16] = "Main hand", [17] = "Off hand", [18] = "Ranged" }
+-- Slots a use-on-item can go to: the melee weapons you wear (16 main hand, 17 off hand, in the game's numbering). Ranged
+-- weapons (slot 18) take nothing.
+local WEAPON_SLOTS = { 16, 17 }
+local SLOT_NAMES = { [16] = "Main hand", [17] = "Off hand" }
 
 local function equippedWeapons()
     local list = {}
