@@ -28,22 +28,36 @@ function UF.CreateLegend(parent)
         self:Refresh()
     end
 
+    -- With a maximum width (the bar under a game window) the items wrap onto more rows instead of running wider than the window.
+    function legend:SetMaxWidth(w)
+        if self.maxWidth ~= w then
+            self.maxWidth = w
+            self:Refresh()
+        end
+    end
+
     function legend:Refresh()
-        local x = 0
+        local x, row, widest = 0, 0, 0
         for i, pad in ipairs(ROLES) do
             local fs = self.items[i]
             local t = self.texts[pad]
             if t then
                 fs:SetText(UF.glyph(pad) .. " " .. t)
+                local w = fs:GetStringWidth()
+                if self.maxWidth and x > 0 and x + w > self.maxWidth then
+                    x, row = 0, row + 1
+                end
                 fs:ClearAllPoints()
-                fs:SetPoint("LEFT", self, "LEFT", x, 0)
+                fs:SetPoint("LEFT", self, "TOPLEFT", x, -11 - row * 22)
                 fs:Show()
-                x = x + fs:GetStringWidth() + 10
+                x = x + w + 10
+                widest = math.max(widest, x - 10)
             else
                 fs:Hide()
             end
         end
-        self:SetWidth(math.max(x, 1))
+        self:SetWidth(math.max(widest, 1))
+        self:SetHeight(22 * (row + 1))
     end
 
     UF.OnDetect(function() if legend:IsVisible() then legend:Refresh() end end)

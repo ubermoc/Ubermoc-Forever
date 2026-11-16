@@ -609,7 +609,7 @@ local function getBar()
     bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -10, 4)
     bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 10, -4)
     barLegend = UF.CreateLegend(bar)
-    barLegend:SetPoint("LEFT", bar, "LEFT", 0, 0)
+    barLegend:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
     bar:Hide()
     return bar
 end
@@ -674,10 +674,18 @@ local function updateBar()
         if sig ~= barSig then
             barSig = sig
             barLegend:Set(t)
-            b:SetWidth(barLegend:GetWidth())
         end
     end
     anchorBar(b)
+    -- never wider than the window it sits under: the items wrap onto more rows
+    local w = (not G.placing) and (G.windowOfFocus() or wins[#wins]) or nil
+    local maxW = 600
+    if w and w.GetWidth and w.GetEffectiveScale and UIParent.GetEffectiveScale then
+        local ww = (w:GetWidth() or 0) * ((w:GetEffectiveScale() or 1) / (UIParent:GetEffectiveScale() or 1))
+        if ww > 0 then maxW = math.max(220, ww - 20) end
+    end
+    barLegend:SetMaxWidth(maxW)
+    b:SetSize(barLegend:GetWidth(), barLegend:GetHeight())
     if not b:IsShown() then b:Show() end
 end
 
