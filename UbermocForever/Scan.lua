@@ -7,7 +7,7 @@
 ----------------------------------------------------------------------
 local _, UF = ...
 
-local S = { running = false, nextId = 1, last = 60000, found = 0, seen = 0 }
+local S = { running = false, nextId = 1, last = 60000, found = 0, seen = 0, budget = 12 }
 UF.Scan = S
 
 local WORDS = { "weapon", "armor", "enchant", "attach", "apply", "equipment", "boots", "chest", "gloves", "bracer", "cloak",
@@ -65,7 +65,10 @@ local function step()
         end
         return
     end
-    for _ = 1, PER_TICK do
+    local t0 = debugprofilestop and debugprofilestop() or 0
+    for n = 1, 5000 do
+        -- as many ids as fit in the time budget for this frame (milliseconds), so a fast PC goes fast and a slow one stays smooth
+        if debugprofilestop and n % 20 == 0 and debugprofilestop() - t0 > S.budget then break end
         local id = S.nextId
         if id > S.last then break end
         S.nextId = id + 1
@@ -90,6 +93,10 @@ function UF.scan(arg)
         UF.say(("Scan: %s, at id %d of %d, %d kept, %d candidates, %d with data."):format(S.running and "running" or "not running", S.nextId, S.last, S.found, S.classed, S.loaded))
         return
     end
+    local b = arg and arg:match("^budget%s+(%d+)$")
+    if b then S.budget = tonumber(b); UF.say("Scan time budget per frame: " .. S.budget .. " ms."); return end
+    local from = arg and arg:match("^from%s+(%d+)$")
+    if from then S.nextId = tonumber(from); arg = nil end
     local n = tonumber(arg)
     if n then S.last = n end
     if arg == "reset" then UF.DB().scan = {}; S.nextId, S.found, S.classed, S.loaded = 1, 0, 0, 0; pending = {}; UF.say("Scan data cleared."); return end
