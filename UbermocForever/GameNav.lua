@@ -113,12 +113,49 @@ local function barFrames()
     return list
 end
 
+-- Drop-down menus that are open: the game's newer menu (Blizzard_Menu: Menu.GetManager) and the older lists
+-- (DropDownList1..3). While one is open it is modal: only its entries count.
+local function openMenus()
+    local list = {}
+    if Menu and Menu.GetManager then
+        local ok, m = pcall(Menu.GetManager)
+        if ok and m then
+            local ok2, any = pcall(m.IsAnyMenuOpen, m)
+            if ok2 and any then
+                local ok3, menu = pcall(m.GetOpenMenu, m)
+                if ok3 and shown(menu) then list[#list + 1] = menu end
+            end
+        end
+    end
+    for i = 1, 3 do
+        local d = _G["DropDownList" .. i]
+        if shown(d) then list[#list + 1] = d end
+    end
+    return list
+end
+G.openMenus = openMenus
+
+local function closeMenus()
+    local did = false
+    if Menu and Menu.GetManager then
+        local ok, m = pcall(Menu.GetManager)
+        if ok and m then
+            local ok2, any = pcall(m.IsAnyMenuOpen, m)
+            if ok2 and any then pcall(m.CloseMenus, m); did = true end
+        end
+    end
+    if shown(_G.DropDownList1) and CloseDropDownMenus then pcall(CloseDropDownMenus); did = true end
+    return did
+end
+
 function G.windows()
     if G.placing then return barFrames(), nil end
     for _, n in ipairs(POPUPS) do
         local p = _G[n]
         if shown(p) then return { p }, p end
     end
+    local drop = openMenus()
+    if #drop > 0 then return drop, nil end
     local menu = _G.UbermocForeverItemMenu
     if shown(menu) then return { menu }, nil end   -- the item menu is on top of everything
     local list, seen = {}, {}
@@ -251,7 +288,17 @@ local clicker, backer
 local function buttons()
     if not clicker then
         clicker = secureButton("UbermocForeverGameClick")
-        clicker:HookScript("PostClick", function() if G.placing then pcall(G.placeHere) end end)
+        clicker:HookScript("PostClick", function()
+            if G.placing then pcall(G.placeHere); return end
+            -- The newer drop-down buttons open on the mouse going DOWN, which a click from here does not send, so the
+            -- menu is toggled with the button's own call (the same one its mouse-down script makes).
+            local f = focus
+            if f and f.SetMenuOpen and f.IsMenuOpen and not InCombatLockdown() then
+                local ok, open = pcall(f.IsMenuOpen, f)
+                pcall(f.SetMenuOpen, f, not (ok and open))
+                G.menuFrom = f
+            end
+        end)
     end
     if not backer then
         backer = secureButton("UbermocForeverGameBack")
@@ -308,6 +355,7 @@ end
 
 function G.fallbackClose()
     if G.placing then G.endPlace(true); return end
+    if closeMenus() then return end
     local w = G.windowOfFocus() or wins[#wins]
     if w then secureCall(HideUIPanel, w) end
 end
@@ -744,6 +792,13 @@ function G.update()
     elseif want then
         -- keep the highlight honest: a popup appearing takes it, a vanished button is replaced, a scroll re-picks it
         if G.placing and GetCursorInfo and not GetCursorInfo() then G.endPlace(false) end
+        if G.menuFrom and #openMenus() == 0 and not G.menuWait then
+            G.menuWait = (G.menuWait or 0) + 1
+        elseif G.menuFrom and #openMenus() == 0 then
+            G.restore, G.menuFrom, G.menuWait = G.menuFrom, nil, nil
+        elseif #openMenus() > 0 then
+            G.menuWait = nil
+        end
         -- a window that has just opened (the letter you opened in the mail) takes the highlight
         local now, fresh = {}, nil
         for _, w in ipairs(wins) do
@@ -769,6 +824,7 @@ function G.update()
         local menu = _G.UbermocForeverItemMenu
         local needNew = (popup and focus and not G.inside(focus, popup))
             or (wins[1] and wins[1] == menu and focus and not G.inside(focus, menu))
+            or (#wins == 1 and focus and wins[1].ubfMenuLike == nil and #openMenus() > 0 and not G.inside(focus, wins[1]))
         if needNew or not focus or not focus:IsVisible() then
             rescan(); setFocus(startNode())
         elseif G.scrolled then
