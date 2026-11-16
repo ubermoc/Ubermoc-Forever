@@ -251,3 +251,13 @@ game's own gossip buttons pass `self:GetID()` which is set to `questInfo.questID
 `C_GossipInfo.GetAvailableQuests()`, `GetActiveQuests()` (fields `questID`, `title`, `isComplete`) and `GetOptions()`. Rule used: no options and
 exactly one quest, available or an active complete one. Not yet tested in the game: whether calling it from `GOSSIP_SHOW` after 0.05 s works
 without a user action, and whether declining returns to the list (guarded by a 60 s memory per NPC and quest).
+
+## Dialogue UI, read from the installed copy (version 1.0.7 c, loads on camelot = Forever), 2026-11-16
+Replaces the guesses from the GitHub pages above. Files: `Code/Dialogue/DialogueUI.lua`, `Code/Skimmer/Skimmer_Base.lua`, `Initialization.lua`.
+- **Single quest opens by itself** (`HandleAutoSelect`, DialogueUI.lua ~1179): no options, no active quests and exactly one available quest ->
+  `C_GossipInfo.SelectAvailableQuest(questID)`. This is the call ours uses (1.3.36); it works from addon code on `GOSSIP_SHOW`. It is a setting there
+  (`AutoSelectGossip` / `AutoCompleteQuest`), and `QUEST_GREETING` (`HandleQuestGreeting`) calls `SelectActiveQuest(i)` for a quest ready to turn in.
+- **No highlight at the start** (`FocusObjectByDelta`, `ClickFocusedObject`, ~3287-3365): on a fresh interaction nothing is focused. The first A
+  press focuses an option without clicking it; the next one clicks. `GamePadClickFirstObject` (default false, `Initialization.lua` line 55) makes
+  the first press click. So it does not pre-highlight the first choice; ours (highlight on the first choice of a list) is one press faster.
+- D-pad up/down moves the focus by index and scrolls the text by three buttons when the focus nears an edge (`ScrollBy`).
