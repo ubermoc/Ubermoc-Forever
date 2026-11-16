@@ -247,18 +247,17 @@ local function getCursor()
     cursor = CreateFrame("Frame", "UbermocForeverGameCursor", UIParent)
     cursor:SetFrameStrata("TOOLTIP")
     cursor:EnableMouse(false)
-    local function edge(p1, p2, w, h)
-        local t = cursor:CreateTexture(nil, "OVERLAY")
-        t:SetColorTexture(1, 0.82, 0, 1)
-        t:SetPoint(p1, cursor, p1)
-        t:SetPoint(p2, cursor, p2)
-        if w then t:SetWidth(w) end
-        if h then t:SetHeight(h) end
-    end
-    edge("TOPLEFT", "TOPRIGHT", nil, 2)
-    edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 2)
-    edge("TOPLEFT", "BOTTOMLEFT", 2, nil)
-    edge("TOPRIGHT", "BOTTOMRIGHT", 2, nil)
+    -- A glow over the button, like the game's own button highlight (its ButtonHilight-Square art, added to what is
+    -- underneath) plus a faint warm wash so it shows on any button. No outline.
+    local glow = cursor:CreateTexture(nil, "OVERLAY")
+    glow:SetAllPoints(cursor)
+    glow:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+    glow:SetBlendMode("ADD")
+    glow:SetVertexColor(1, 0.9, 0.55, 1)
+    local wash = cursor:CreateTexture(nil, "ARTWORK")
+    wash:SetAllPoints(cursor)
+    wash:SetColorTexture(1, 0.85, 0.4, 0.22)
+    wash:SetBlendMode("ADD")
     cursor:Hide()
     return cursor
 end
