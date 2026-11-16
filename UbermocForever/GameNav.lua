@@ -284,7 +284,7 @@ local function secureButton(name)
     return b
 end
 
-local clicker, backer
+local clicker, backer, rclicker
 local function buttons()
     if not clicker then
         clicker = secureButton("UbermocForeverGameClick")
@@ -318,7 +318,10 @@ local function buttons()
         -- when the window has no close button of its own, the game's closing steps run before the click
         backer:SetScript("PreClick", function() if not G.closer and G.fallbackClose then pcall(G.fallbackClose) end end)
     end
-    return clicker, backer
+    -- X: the right click, a button of its own so it can be left without a target where a right click means nothing or is
+    -- refused (the game's question windows assert when their buttons get a right click)
+    if not rclicker then rclicker = secureButton("UbermocForeverGameRClick") end
+    return clicker, backer, rclicker
 end
 
 ----------------------------------------------------------------------
@@ -351,8 +354,10 @@ end
 
 local function setTargets()
     if InCombatLockdown() then return end
-    local c, b = buttons()
+    local c, b, rc = buttons()
     c:SetAttribute("clickbutton", (not G.placing) and focus or nil)
+    local menuUp = wins[1] and wins[1] == _G.UbermocForeverItemMenu
+    rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and focus or nil)
     local closer
     if G.placing then
         closer = nil   -- B cancels the placing (fallbackClose)
@@ -816,7 +821,7 @@ local function release()
 end
 
 local function engage()
-    local c, b = buttons()
+    local c, b, rc = buttons()
     entry = UF.Nav.Push({
         PADDUP = function() move("UP") end,
         PADDDOWN = function() move("DOWN") end,
@@ -834,7 +839,7 @@ local function engage()
         PADRTRIGGER = function() if not stepTab(1, true) then scrollBy(1) end end,
     }, {
         PAD1 = { c:GetName(), "LeftButton" },
-        PAD3 = { c:GetName(), "RightButton" },
+        PAD3 = { rc:GetName(), "RightButton" },
         PAD2 = { b:GetName(), "LeftButton" },
     })
 end
