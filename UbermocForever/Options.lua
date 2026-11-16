@@ -15,6 +15,7 @@ local ROW_H = 30
 local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
+local cineBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
@@ -55,6 +56,7 @@ function UF.RefreshOptions()
     local setId = UF.activeSet()
     local d = UF.DB()
     local set = UF.SETS[setId]
+    if cineBtn then cineBtn:SetText("Cinematic: " .. (d.cinema == false and "Off" or "On")) end
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
     -- A short name on the button, sized to fit: the full name is in the line to its left.
     win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.short or "?"))
@@ -368,7 +370,24 @@ local function build()
     win.controllerBtn:SetPoint("TOPRIGHT", -12, -32)
     info = oneLine(win:CreateFontString(nil, "OVERLAY", "GameFontHighlight"))
     info:SetPoint("LEFT", win, "TOPLEFT", 16, -43)
-    info:SetPoint("RIGHT", win.controllerBtn, "LEFT", -8, 0)
+    -- Cinematic camera while talking to an NPC (Cinematic.lua): one button, On or Off.
+    cineBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    cineBtn:SetSize(120, 22)
+    cineBtn:SetPoint("RIGHT", win.controllerBtn, "LEFT", -6, 0)
+    cineBtn:SetScript("OnClick", function()
+        local d = UF.DB()
+        d.cinema = (d.cinema == false)
+        if d.cinema == false and UF.Cinematic then UF.Cinematic.stopNow() end
+        UF.RefreshOptions()
+    end)
+    cineBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Cinematic camera")
+        GameTooltip:AddLine("While you talk to a quest giver or other NPC, the camera moves in and the screen gets black bars. The game's own quest window is not changed.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    cineBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    info:SetPoint("RIGHT", cineBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
     -- which case this button switches to Steam Deck / Steam Controller and Reset to default applies that layout.
@@ -474,8 +493,8 @@ local function build()
     local function navRows()
         local out = {}
         if pickerOpen() then return picker.navRows() end
-        local header = { win.controllerBtn }
-        if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
+        local header = { win.controllerBtn, cineBtn }
+        if win.CloseButton and win.CloseButton:IsVisible() then header[3] = win.CloseButton end
         out[1] = header
         out[2] = layerButtons
         for _, r in ipairs(rows) do
