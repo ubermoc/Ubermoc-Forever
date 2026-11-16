@@ -95,6 +95,7 @@ function R.apply()
             local name = f and R.groundSpellOf(f.action)
             if name then
                 local keys = { GetBindingKey(bar[2] .. i) }
+                for _, k in ipairs({ GetBindingKey("CLICK " .. f:GetName() .. ":LeftButton") }) do keys[#keys + 1] = k end   -- the game also reads these
                 for _, key in ipairs(keys) do
                     if key and key ~= "" then
                         n = n + 1
@@ -161,9 +162,10 @@ function R.setDebug(on) R.debug = on; UF.say("Ground spell debug is " .. (on and
 -- Learning: while the game is waiting for a ground spot, the button of the spell that started it is the game's
 -- "current action". That spell is remembered, so nobody has to add their spells by hand.
 function R.learnScan()
-    if not (SpellIsTargeting and SpellIsTargeting()) or not IsCurrentAction then return nil end
+    local isCurrent = (C_ActionBar and C_ActionBar.IsCurrentAction) or IsCurrentAction   -- the game's own button state uses C_ActionBar
+    if not (SpellIsTargeting and SpellIsTargeting()) or not isCurrent then return nil end
     for slot = 1, 180 do
-        local okc, cur = pcall(IsCurrentAction, slot)
+        local okc, cur = pcall(isCurrent, slot)
         if okc and cur then
             local ok, t, id = pcall(GetActionInfo, slot)
             if ok and t == "spell" and type(id) == "number" then

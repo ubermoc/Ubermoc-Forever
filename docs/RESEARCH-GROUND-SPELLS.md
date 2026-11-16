@@ -39,3 +39,17 @@ for the action type. Blizzard's bar buttons have none for ground spells, so lett
 `pressAndHoldAction=true`, `type=spell` + `spell=<name>` (key down starts the aim), `typerelease=macro` + `macrotext=/stopspelltarget` and
 `/cast [@cursor] <name>` (key up casts). They take the key with `SetOverrideBindingClick` (out of combat), cleared when turned off.
 The user's game reports `ActionButtonUseKeyHeldSpell` = 1 and `ActionButtonUseKeyDown` = 1 (`/ubf hold`; UbermocUI may have set them).
+
+## Source check of GroundCast.lua (1.3.31), against `blizzard-ui-source-forever`
+Confirmed by reading Blizzard's code (not yet by running it in the game):
+- Button frames: `ActionButton<i>` for the main bar, `<BarFrameName>Button<i>` for the others (`Shared/ActionBar.lua` lines 15-30), e.g.
+  `MultiBarBottomLeftButton1`. The slot is `button.action` (`Shared/ActionButton.lua` UpdateAction, ~line 545).
+- Key names: `commandName = prefix.."BUTTON"..i`, prefixes `ACTION`, `MULTIACTIONBAR1..7` (`MultiActionBars.xml`). The game itself looks up a button's
+  key with `GetBindingKey(bindingAction)` or `GetBindingKey("CLICK <name>:LeftButton")` (`ActionButton.lua` ~line 498): we now do both.
+- `C_Spell.IsPressHoldReleaseSpell` is documented as "empower" spells only, and Blizzard sets `pressAndHoldAction` on its bar buttons from it
+  (`ActionButton.lua` `UpdatePressAndHoldAction`). So ground spells get no release action from the game: the reason for GroundCast.lua.
+- The game's own pressed look of a bar button is `C_ActionBar.IsCurrentAction(action)` (`ActionButton.lua` line 717). The global `IsCurrentAction`
+  is only a deprecated wrapper for it. API doc: `RequiresValidActionSlot` (so pcall), `SecretArguments = "AllowedWhenUntainted"`.
+- `C_Spell.PlaceTargetingSpellAtCursor` exists but is restricted (`HasRestrictions = true`), so addon code cannot call it.
+Not verified (needs the game): that `IsCurrentAction` is true for the spell that is waiting for a ground spot; which class/spell the user tried
+first (their `/ubf ground` report said no ground spell was found, so that spell was probably not in the built-in list).

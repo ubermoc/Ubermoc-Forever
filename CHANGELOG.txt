@@ -1,3 +1,6 @@
+UbermocForever 1.3.31
+- Changed: ground spell learning uses the game's own C_ActionBar.IsCurrentAction (what its action buttons use for their pressed look), and keys bound as CLICK ActionButtonN:LeftButton are taken into account.
+
 UbermocForever 1.3.30
 - Added: ground spells are learned by themselves. When a spell starts an aim, the addon remembers it, tells you in chat, and from then on it is hold to aim, release to cast. The first use of each spell works as before. /ubf ground shows what was learned; /ubf ground add|remove is still there.
 

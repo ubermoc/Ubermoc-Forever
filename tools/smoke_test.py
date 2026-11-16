@@ -771,6 +771,7 @@ r = L("""function()
     C_Spell = { GetSpellName = function(id) return ({ [9999] = "Odd Leap", [585] = "Smite" })[id] end }
     local current = nil
     IsCurrentAction = function(s) return s == current end
+    C_ActionBar = { IsCurrentAction = function(s) return s == current end }
     local aiming = false
     SpellIsTargeting = function() return aiming end
     local a = tostring(R.learnScan())             -- not aiming: nothing
