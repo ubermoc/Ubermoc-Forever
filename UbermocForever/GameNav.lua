@@ -290,12 +290,25 @@ local function buttons()
         clicker = secureButton("UbermocForeverGameClick")
         clicker:HookScript("PostClick", function()
             if G.placing then pcall(G.placeHere); return end
-            -- The newer drop-down buttons open on the mouse going DOWN, which a click from here does not send, so the
-            -- menu is toggled with the button's own call (the same one its mouse-down script makes).
+            -- Some of the game's buttons act on the mouse going down or up and have no OnClick at all (the newer drop-down
+            -- buttons open on mouse DOWN: DropdownButtonMixin:OnMouseDown_Intrinsic). A click from here sends neither, so
+            -- for those the button's own mouse scripts are run, as a real click would (what ConsolePort does for such
+            -- buttons too: ConsolePort_Cursor Cursor.lua GetEmuClick). A drop-down that still did not open is toggled
+            -- with its own SetMenuOpen call.
             local f = focus
-            if f and f.SetMenuOpen and f.IsMenuOpen and not InCombatLockdown() then
-                local ok, open = pcall(f.IsMenuOpen, f)
-                pcall(f.SetMenuOpen, f, not (ok and open))
+            if not f or InCombatLockdown() or not f.GetScript then return end
+            local isDrop = f.SetMenuOpen and f.IsMenuOpen
+            if f:GetScript("OnClick") and not isDrop then return end
+            local down, up = f:GetScript("OnMouseDown"), f:GetScript("OnMouseUp")
+            local wasOpen = isDrop and select(2, pcall(f.IsMenuOpen, f)) or false
+            if down then
+                local ok, err = pcall(down, f, "LeftButton")
+                if not ok then UF.check("Mouse-down on " .. (f:GetName() or "a button"), false, tostring(err)) end
+            end
+            if up then pcall(up, f, "LeftButton", true) end
+            if isDrop then
+                local nowOpen = select(2, pcall(f.IsMenuOpen, f))
+                if nowOpen == wasOpen then pcall(f.SetMenuOpen, f, not wasOpen) end
                 G.menuFrom = f
             end
         end)
