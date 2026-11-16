@@ -15,7 +15,7 @@ local ROW_H = 30
 local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
-local cineBtn, questBtn   -- declared here, above every function that uses it
+local cineBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
@@ -56,8 +56,7 @@ function UF.RefreshOptions()
     local setId = UF.activeSet()
     local d = UF.DB()
     local set = UF.SETS[setId]
-    if questBtn then questBtn:SetText("Quest icons: " .. (d.questStyle == false and "Off" or "On")) end
-    if cineBtn then cineBtn:SetText("Cinematic: " .. (d.cinema == false and "Off" or "On")) end
+    if cineBtn then cineBtn:SetText("Cinematic mode: " .. (d.cinema == false and "Off" or "On")) end
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
     -- A short name on the button, sized to fit: the full name is in the line to its left.
     win.controllerBtn:SetText(d.layout == "auto" and "Auto" or (set and set.short or "?"))
@@ -373,38 +372,22 @@ local function build()
     info:SetPoint("LEFT", win, "TOPLEFT", 16, -43)
     -- Cinematic camera while talking to an NPC (Cinematic.lua): one button, On or Off.
     cineBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    cineBtn:SetSize(140, 22)
+    cineBtn:SetSize(170, 22)
     cineBtn:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
     cineBtn:SetScript("OnClick", function()
         local d = UF.DB()
         d.cinema = (d.cinema == false)
         if d.cinema == false and UF.Cinematic then UF.Cinematic.stopNow() end
+        if UF.DialogButtons then UF.DialogButtons.refresh() end
         UF.RefreshOptions()
     end)
     cineBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:SetText("Cinematic camera")
-        GameTooltip:AddLine("While you talk to a quest giver or other NPC, the camera moves in and the screen gets black bars. The game's own quest window is not changed.", 1, 1, 1, true)
+        GameTooltip:SetText("Cinematic mode")
+        GameTooltip:AddLine("While you talk to a quest giver or other NPC, the camera moves in and the screen gets black bars. The game's own quest window is not changed, and the A and B pictures are added to its buttons.", 1, 1, 1, true)
         GameTooltip:Show()
     end)
     cineBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    -- Quest and gossip windows: the game's buttons drawn as "(A) Accept" strips (DialogButtons.lua).
-    questBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    questBtn:SetSize(150, 22)
-    questBtn:SetPoint("LEFT", cineBtn, "RIGHT", 6, 0)
-    questBtn:SetScript("OnClick", function()
-        local d = UF.DB()
-        d.questStyle = (d.questStyle == false)
-        if UF.DialogButtons then UF.DialogButtons.refresh() end
-        UF.RefreshOptions()
-    end)
-    questBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:SetText("Quest buttons")
-        GameTooltip:AddLine("Quest and gossip windows show the controller picture (A, B) on the game's own Accept, Decline and Goodbye buttons.", 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    questBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     info:SetPoint("RIGHT", win.controllerBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
@@ -514,7 +497,7 @@ local function build()
         local header = { win.controllerBtn }
         if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
         out[1] = header
-        out[2] = { cineBtn, questBtn }
+        out[2] = { cineBtn }
         out[3] = layerButtons
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end

@@ -3,7 +3,7 @@
 -- The game's own Accept, Continue, Complete, Decline and Goodbye buttons are left exactly as they are (their own art,
 -- their own text, their own enabled/disabled look). A small controller picture (A or B, in the game's own set for your
 -- controller) is added on the left of each, the same pictures the legend uses. Nothing is written onto the game's
--- frames. Off with /ubf quest off.
+-- frames. Part of cinematic mode: /ubf cinema off hides them.
 ----------------------------------------------------------------------
 local ADDON, UF = ...
 local D = {}
@@ -11,7 +11,7 @@ UF.DialogButtons = D
 
 local overlays = {}   -- real button -> its picture frame
 
-function D.enabled() return UF.DB().questStyle ~= false end
+function D.enabled() return UF.DB().cinema ~= false end   -- part of cinematic mode
 
 local function shown(f) return f and f.IsShown and f:IsShown() end
 
