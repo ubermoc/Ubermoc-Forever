@@ -7,7 +7,7 @@
 ----------------------------------------------------------------------
 local _, UF = ...
 
-local S = { running = false, nextId = 1, last = 60000, found = 0, seen = 0, budget = 12 }
+local S = { running = false, nextId = 1, last = 60000, found = 0, seen = 0, budget = 50 }
 UF.Scan = S
 
 local WORDS = { "weapon", "armor", "enchant", "attach", "apply", "equipment", "boots", "chest", "gloves", "bracer", "cloak",
