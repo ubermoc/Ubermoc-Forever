@@ -284,7 +284,46 @@ local function secureButton(name)
     return b
 end
 
+local focus          -- the highlighted node's frame (declared here so the click handlers below can see it)
 local clicker, backer, rclicker
+
+-- Mail: the inbox row (or the open letter) the highlight is on, as an inbox index, or nil.
+local function mailIndex(f)
+    local g, depth = f, 0
+    while g and depth < 6 do
+        if g == _G.OpenMailFrame then return _G.InboxFrame and _G.InboxFrame.openMailID or _G.OpenMailFrame.openMailID or nil end
+        local n = g.GetName and g:GetName()
+        if n and n:match("^MailItem%d+") then
+            if g.index then return g.index end
+            local row = tonumber(n:match("^MailItem(%d+)"))
+            local page = (_G.InboxFrame and _G.InboxFrame.pageNum) or 1
+            return row and ((page - 1) * (_G.INBOXITEMS_TO_DISPLAY or 7) + row) or nil
+        end
+        g, depth = g.GetParent and g:GetParent(), depth + 1
+    end
+end
+G.mailIndex = mailIndex
+
+-- True when that mail has something to take (an item or money) and is not cash on delivery.
+local function mailTakeable(index)
+    if not (index and GetInboxHeaderInfo) then return false end
+    local ok, _, _, _, _, money, cod, _, hasItem = pcall(GetInboxHeaderInfo, index)
+    if not ok then return false end
+    if cod and cod > 0 then return false, true end
+    return (hasItem and true or false) or ((money or 0) > 0)
+end
+G.mailTakeable = mailTakeable
+
+local function takeMail(index)
+    local ok, cod = mailTakeable(index)
+    if cod then UF.say("That mail is cash on delivery: open it to pay for it.") return end
+    if not ok then return end
+    if AutoLootMailItem then
+        local good, err = pcall(AutoLootMailItem, index)
+        if not good then UF.check("Take mail", false, tostring(err)) end
+    end
+end
+
 local function buttons()
     if not clicker then
         clicker = secureButton("UbermocForeverGameClick")
@@ -320,14 +359,21 @@ local function buttons()
     end
     -- X: the right click, a button of its own so it can be left without a target where a right click means nothing or is
     -- refused (the game's question windows assert when their buttons get a right click)
-    if not rclicker then rclicker = secureButton("UbermocForeverGameRClick") end
+    if not rclicker then
+        rclicker = secureButton("UbermocForeverGameRClick")
+        -- X on a mail with an item or money takes everything in it (the game's own call, run by this press)
+        rclicker:HookScript("PostClick", function()
+            if InCombatLockdown() or not focus then return end
+            local idx = mailIndex(focus)
+            if idx then pcall(takeMail, idx) end
+        end)
+    end
     return clicker, backer, rclicker
 end
 
 ----------------------------------------------------------------------
 -- State
 ----------------------------------------------------------------------
-local focus          -- the highlighted node's frame
 local entry          -- our place on Nav's stack while active
 local wins, popup = {}, nil
 G.closer = nil
@@ -380,7 +426,7 @@ local function setTargets()
     c:SetAttribute("clickbutton", (not G.placing) and focus or nil)
     local menuUp = wins[1] and wins[1] == _G.UbermocForeverItemMenu
     local train = trainButton(focus)
-    rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and (train or focus) or nil)
+    rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and (train or (not mailIndex(focus) and focus or nil)) or nil)
     local closer
     if G.placing then
         closer = nil   -- B cancels the placing (fallbackClose)
@@ -871,6 +917,8 @@ local function legendTexts()
     t.PAD1, t.PAD2 = "Select", "Close"
     if focus then
         t.PAD3 = trainButton(focus) and "Train" or "Right-click"
+        local mi = mailIndex(focus)
+        if mi and mailTakeable(mi) then t.PAD3 = "Take all" end
         local w = G.windowOfFocus()
         local dc = dialogCloser(w)
         if dc then t.PAD2 = "Decline" end
