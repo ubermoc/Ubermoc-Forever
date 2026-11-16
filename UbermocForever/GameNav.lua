@@ -504,7 +504,6 @@ end
 -- (so it never sits on the mouse cursor), the way the game's own "change what a slot uses" works.
 function G.beginPlace(from, spell)
     G.placing = { from = from, spell = spell }
-    G.replaceOK = nil
     focus = nil
     G.scrolled = nil
     if G.applyMap then G.applyMap() end
@@ -553,8 +552,8 @@ end
 G.slotOf = slotOf
 
 -- Put the spell being placed into an action slot. Returns true when the slot now holds it.
-local function placeSpell(slot)
-    local sp = G.placing and G.placing.spell
+local function placeSpell(slot, spell)
+    local sp = spell or (G.placing and G.placing.spell)
     if not (sp and C_SpellBook and C_SpellBook.PickupSpellBookItem and C_ActionBar and C_ActionBar.PutActionInSlot) then
         UF.say("This game version cannot place a spell from here.")
         return false
@@ -602,21 +601,32 @@ function G.placeKey(key)
         return
     end
     if action and action ~= "" then
-        if G.replaceOK ~= key then
-            G.replaceOK = key
-            UF.say(("%s is already used for %s (%s). Press it again to replace that with this spell, or press another combination, or B to cancel."):format(
-                key, UF.actionName and UF.actionName(action) or action, action))
-            return
+        -- ask: the game's own question window (A is Replace, B keeps what is there). Placing stops while it is up.
+        local sp = G.placing.spell
+        G.endPlace(false)
+        G.pendingBind = { key = key, spell = sp }
+        local name = UF.actionName and UF.actionName(action) or action
+        if StaticPopup_Show then
+            StaticPopup_Show("UBERMOCFOREVER_REPLACEBIND", key, name)
+        else
+            G.pendingBind = nil
+            UF.say(("%s is already used for %s. Nothing was changed."):format(key, name))
         end
-        UF.say(("Replacing %s on %s."):format(UF.actionName and UF.actionName(action) or action, key))
+        return
     end
+    G.bindToFree(key, G.placing.spell)
+end
+
+-- A combination with nothing on it: put the spell in the first empty slot and bind the combination to it. Also used after
+-- the player agreed to replace what was there.
+function G.bindToFree(key, spell)
     local free, bind, frameName = G.freeSlot()
     if not free then
         UF.say("There is no empty slot on a visible action bar to put it in.")
-        G.endPlace(false)
+        if G.placing then G.endPlace(false) end
         return
     end
-    if placeSpell(free) then
+    if placeSpell(free, spell) then
         if UF.setBind and UF.setBind(key, bind) then
             UF.say(("Spell placed on %s (slot %d) and %s is now bound to it."):format(frameName, free, key))
         else
@@ -625,8 +635,27 @@ function G.placeKey(key)
     else
         UF.say(("The spell was not placed in slot %d. /ubf check shows why."):format(free))
     end
-    G.endPlace(false)
+    if G.placing then G.endPlace(false) end
 end
+
+StaticPopupDialogs["UBERMOCFOREVER_REPLACEBIND"] = {
+    text = "%s is already used for %s.\n\nReplace it with this spell?",
+    button1 = "Replace",
+    button2 = "Keep it",
+    OnAccept = function()
+        local p = G.pendingBind
+        G.pendingBind = nil
+        if p then G.bindToFree(p.key, p.spell) end
+    end,
+    OnCancel = function()
+        G.pendingBind = nil
+        UF.say("Nothing was changed.")
+    end,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    preferredIndex = 3,
+}
 
 -- (a click while placing, kept for the old route: nothing to do now)
 local function placeHere() end

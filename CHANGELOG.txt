@@ -1,3 +1,6 @@
+UbermocForever 1.3.17
+- Changed: when the combination you press is already used for something else, the game's own question window asks "Replace it with this spell?" (A replaces, B keeps what is there) instead of asking you to press it again.
+
 UbermocForever 1.3.16
 - Changed: when the combination you press is already used for something else (Jump on every layer, for example), pressing the same combination again replaces it with the spell.
 
