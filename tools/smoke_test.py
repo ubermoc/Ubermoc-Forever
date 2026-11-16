@@ -733,13 +733,13 @@ r = L("""function()
     UbermocForeverDB.aim = nil; UbermocForeverDB.aimBackup = nil
     A.apply()
     local out = { cv.GamePadCursorForTargeting, cv.CursorCenteredYPos, A.distanceName() }
-    A.nextDistance(); A.nextDistance()
+    A.nextDistance()
     out[#out + 1] = A.distanceName() .. cv.CursorCenteredYPos
     A.toggle()
     out[#out + 1] = cv.GamePadCursorForTargeting .. cv.CursorCenteredYPos
     return table.concat(out, ",")
 end""")()
-assert str(r) == "0,0.50,Game's own,Close0.50,10.50", r
+assert str(r) == "0,0.60,Middle,Far0.72,10.50", r
 print("Aim dot: settings step, game settings saved and put back: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

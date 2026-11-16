@@ -130,6 +130,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if msg == "cinema off" and UF.Cinematic then UF.Cinematic.stopNow() end
         if UF.DialogButtons then UF.DialogButtons.refresh() end
         UF.say("The cinematic camera while talking to an NPC is " .. (msg == "cinema on" and "on." or "off."))
+    elseif msg == "hold" then
+        if UF.Aim then UF.Aim.holdReport() end
     elseif msg == "item" then
         if UF.ItemMenu and UF.GameNav then UF.ItemMenu.report(UF.GameNav.focusFrame()) end
     elseif msg == "tabs" then

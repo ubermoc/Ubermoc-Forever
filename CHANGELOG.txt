@@ -1,3 +1,7 @@
+UbermocForever 1.3.26
+- Changed: the aim dot starts at Middle distance with a Small dot.
+- Added: /ubf hold tells whether this game has the Press and Hold Casting setting (needed to plan release to cast).
+
 UbermocForever 1.3.25
 - Added: aim dot for ground spells. A white dot shows where a ground spell will land, only while you are aiming one. Options window, second row: Aim dot On/Off, Aim distance (Closest to Furthest, moves the aim point up or down the screen, not exact yards), Dot size. Game settings it changes are saved and put back. Hold to aim and release to cast is not part of this version.
 

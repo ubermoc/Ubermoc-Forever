@@ -22,8 +22,12 @@ local function cfg()
     d.aim = d.aim or {}
     local a = d.aim
     if a.on == nil then a.on = true end
-    a.dist = a.dist or 0     -- 0 = leave the game's own height alone
-    a.size = a.size or 2
+    if not a.v2 then   -- 1.3.26: new starting values, Middle distance and a Small dot
+        a.v2 = true
+        a.dist, a.size = 3, 1
+    end
+    a.dist = a.dist or 3     -- 0 = leave the game's own height alone
+    a.size = a.size or 1
     return a
 end
 A.cfg = cfg
@@ -143,6 +147,13 @@ function A.nextDistance()
 end
 function A.nextSize() local a = cfg(); a.size = (a.size % #A.SIZES) + 1; sigSeen = nil end
 function A.distanceName() local s = A.DISTANCES[cfg().dist]; return s and s.name or "Game's own" end
+-- What the game says about Press and Hold Casting (the game's own setting, in Settings > Gameplay > Combat when it exists).
+function A.holdReport()
+    local v = getCVar("ActionButtonUseKeyHeldSpell")
+    local k = getCVar("ActionButtonUseKeyDown")
+    UF.say("Press and Hold Casting setting in this game: " .. (v == nil and "not found (this game has no such setting)" or ("found, value " .. tostring(v)))
+        .. ". Cast on key press: " .. (k == nil and "not found" or tostring(k)) .. ".")
+end
 function A.sizeName() return (A.SIZES[cfg().size] or A.SIZES[2]).name end
 
 UF.OnLogin(function() A.apply() end)
