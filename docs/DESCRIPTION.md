@@ -8,7 +8,7 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
 
 - Detects your controller and offers to set the default key binds the first time you play.
 - Default binds in four layers (nothing held, Shift button held, Ctrl button held, both). Steam Deck and Steam Controller hold R4 and R5; every other controller holds the triggers. Bumpers target the nearest enemy and friend; Select is the map; interact and jump are on the back buttons.
-- Cinematic camera while you talk to a quest giver or gossip NPC: the camera moves in and turns to the NPC, black bars and dark cloudy edges come in and the rest of the screen fades, while the game's own quest window stays exactly as it is. Everything is put back when the talk ends. /ubf cinema off turns it off.
+- Cinematic camera while you talk to a quest giver or gossip NPC: the camera moves in and turns to the NPC, black bars and dark cloudy edges come in, nameplates are hidden and the rest of the screen fades, while the game's own quest window stays exactly as it is. Everything is put back when the talk ends. /ubf cinema off turns it off.
 - Quest and gossip windows show the A or B picture on the game's own Accept, Decline and Goodbye buttons, which keep their normal look. They are part of cinematic mode: /ubf cinema off hides them.
 - A white aim dot for ground spells (Heroic Leap, Blizzard, Rain of Fire), shown only while you aim one, with an aim distance and dot size setting in the options window.
 - Ground spells (Heroic Leap, Blizzard, Rain of Fire ...): hold the button to aim, let go to cast at the aim dot. Spells missing from the built-in list: /ubf ground add Spell Name.

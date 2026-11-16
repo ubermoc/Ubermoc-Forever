@@ -39,3 +39,9 @@ his call). It never replaces the quest window. It only changes the world around 
 New file `Cinematic.lua` (after `GameNav`): on talk start, save CVars, ease camera in (zoom + face the NPC), black bars and
 interface fade except the quest/gossip window, restore everything on end. Options page: on/off only at first. Defaults
 conservative. Later steps (separate): framing choices, vignette, sound.
+
+## Nameplates (1.3.33)
+CVars in the game's own `Blizzard_SettingsDefinitions_Frame` and in the console command list: `nameplateShowAll`, `nameplateShowEnemies`,
+`nameplateShowFriendlyNpcs`, `nameplateShowFriendlyPlayers`. Set to 0 at the start of a talk (saved first), put back at the end. UbermocUI
+notes that nameplate settings cannot change in combat; we skip them then and restore on `PLAYER_REGEN_ENABLED`. Floating unit names
+(`UnitName...` CVars) are not touched. Not yet tested in the game.

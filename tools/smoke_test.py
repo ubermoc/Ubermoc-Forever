@@ -777,5 +777,23 @@ r = L("""function()
 end""")()
 assert str(r) == "nil,Odd Leap", r
 print("Release to cast: a spell that starts an aim is learned: OK")
+# Cinematic: nameplates are put back, but not during combat (the game does not allow it)
+r = L("""function()
+    local UF = UbermocForever
+    local C = UF.Cinematic
+    local cv = { nameplateShowAll = "0", a = "0" }
+    SetCVar = function(k, v) cv[k] = v end
+    C_CVar = nil
+    UbermocForeverDB.cinemaBackup = { nameplateShowAll = "1", a = "1" }
+    local real = InCombatLockdown
+    InCombatLockdown = function() return true end
+    C.restoreCVars()
+    local inFight = cv.nameplateShowAll .. cv.a .. tostring(UbermocForeverDB.cinemaBackup.nameplateShowAll)
+    InCombatLockdown = real
+    C.restoreCVars()
+    return inFight .. "," .. cv.nameplateShowAll .. tostring(UbermocForeverDB.cinemaBackup)
+end""")()
+assert str(r) == "011,1nil", r
+print("Cinematic: nameplates wait for the end of combat: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

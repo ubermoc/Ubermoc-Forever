@@ -19,6 +19,10 @@ local FACE_CVARS = {   -- the camera turns toward the NPC (the same ones Ubermoc
     test_cameraTargetFocusInteractStrengthPitch = "1.00",
     test_cameraTargetFocusInteractStrengthYaw = "1.00",
 }
+-- Nameplates are hidden during the talk (names in the game's own settings code and console list: nameplateShowAll etc.). The game does
+-- not allow changing them in combat, so they are put back when combat is over if a fight started in the middle of a talk.
+local PLATE_CVARS = { "nameplateShowAll", "nameplateShowEnemies", "nameplateShowFriendlyNpcs", "nameplateShowFriendlyPlayers" }
+local function isPlate(c) return c:find("^nameplate") ~= nil end
 -- Windows that stay visible while the rest of the interface fades.
 local KEEP = { "GossipFrame", "QuestFrame", "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2",
     "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4", "UbermocForeverGameCursor",
@@ -57,7 +61,9 @@ function C.restoreCVars()
     local b = d.cinemaBackup
     if not b then return end
     for cvar, v in pairs(b) do
-        if pcall(setCVar, cvar, v) then b[cvar] = nil end
+        if not (isPlate(cvar) and InCombatLockdown()) then   -- left for after the fight
+            if pcall(setCVar, cvar, v) then b[cvar] = nil end
+        end
     end
     if next(b) == nil then d.cinemaBackup = nil end
 end
@@ -147,6 +153,7 @@ local function start()
     if em and em.IsShown and em:IsShown() then return end
     S.active, S.goal = true, 1
     for cvar, v in pairs(FACE_CVARS) do put(cvar, v) end
+    for _, cvar in ipairs(PLATE_CVARS) do put(cvar, "0") end
     S.oldZoom = GetCameraZoom and GetCameraZoom()
     if S.oldZoom and S.oldZoom > ZOOM + 0.05 and CameraZoomIn then pcall(CameraZoomIn, S.oldZoom - ZOOM) end
     keepVisible(true)
@@ -196,12 +203,14 @@ drv:SetScript("OnUpdate", tick)
 
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE",
-    "PLAYER_REGEN_DISABLED", "PLAYER_LEAVING_WORLD" }) do
+    "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_LEAVING_WORLD" }) do
     pcall(ev.RegisterEvent, ev, e)
 end
 ev:SetScript("OnEvent", function(_, e)
     if e == "PLAYER_REGEN_DISABLED" or e == "PLAYER_LEAVING_WORLD" then
         stop(true)
+    elseif e == "PLAYER_REGEN_ENABLED" then
+        if not S.active then C.restoreCVars() end   -- the nameplates, if a fight began in the middle of a talk
     else
         -- the window is shown a moment after the event
         C_Timer.After(0.1, function() if C.talking() then start() end end)
