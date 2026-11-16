@@ -445,11 +445,34 @@ local function scrollerOf(node)
     end
 end
 
--- Bring the highlighted button into view.
+-- Scroll a scroll box by a number of screen pixels (positive = down) using its percentage, which works whatever the
+-- row layout. Returns the box's percentage before the move, or nil when it cannot be done.
+local function scrollPixels(sc, px)
+    if not (sc.GetScrollPercentage and sc.SetScrollPercentage and sc.GetVisibleExtentPercentage) then return nil end
+    local okc, cur = pcall(sc.GetScrollPercentage, sc)
+    local okv, vis = pcall(sc.GetVisibleExtentPercentage, sc)
+    local r = rectOf(sc)
+    if not (okc and okv and cur and vis and r and vis > 0 and vis < 1) then return nil end
+    local H = r.t - r.b
+    local range = H / vis - H
+    if range <= 0 then return nil end
+    pcall(sc.SetScrollPercentage, sc, math.max(0, math.min(1, cur + px / range)))
+    return cur
+end
+
+-- Bring the highlighted button into view, moving the list only as far as needed (never to one of its ends).
 local function reveal(node)
     local sc, kind = scrollerOf(node)
     if not sc then return end
     if kind == "box" then
+        local rn, rs = rectOf(node), rectOf(sc)
+        if rn and rs and sc.GetScrollPercentage then
+            local margin, px = 8, nil
+            if rn.t > rs.t - margin then px = -(rn.t - (rs.t - margin))
+            elseif rn.b < rs.b + margin then px = (rs.b + margin) - rn.b end
+            if px == nil then return end
+            if scrollPixels(sc, px) ~= nil then return end
+        end
         local target = sc:GetScrollTarget()
         local row = node
         while row and row:GetParent() ~= target do row = row:GetParent() end
@@ -705,6 +728,7 @@ end
 
 local function setFocus(f, noReveal)
     focus = f
+    if f then G.lastRect = rectOf(f) end
     drawAt(f)
     setTargets()
     if f and not noReveal then pcall(reveal, f) end
@@ -786,13 +810,26 @@ local function move(dir)
     local cur = focus and nodeOf(focus)
     if not cur and focus then
         -- the highlight was scrolled out of view: start from the button nearest where it was
-        local r = rectOf(focus)
+        local r = G.lastRect or rectOf(focus)
         local n = r and G.nearest(nodes, r.cx, r.cy)
         if n then setFocus(n.frame); return end
     end
     if not cur then setFocus(startNode()); return end
     local nxt = G.pick(nodes, cur, dir)
-    if nxt then setFocus(nxt.frame) end
+    if nxt then setFocus(nxt.frame); return end
+    -- nothing further in view: a list that can still scroll that way scrolls half a page, then the move is tried again
+    if (dir == "UP" or dir == "DOWN") and focus then
+        local sc, kind = scrollerOf(focus)
+        local r = sc and rectOf(sc)
+        if sc and kind == "box" and r then
+            local half = (r.t - r.b) * 0.5
+            if scrollPixels(sc, dir == "DOWN" and half or -half) ~= nil then G.retry = { dir = dir, tries = 5 } end
+        elseif sc and kind == "frame" then
+            local cur, range = sc:GetVerticalScroll() or 0, sc:GetVerticalScrollRange() or 0
+            local nv = math.max(0, math.min(range, cur + (dir == "DOWN" and 1 or -1) * (sc:GetHeight() or 200) * 0.5))
+            if nv ~= cur then sc:SetVerticalScroll(nv); G.retry = { dir = dir, tries = 5 } end
+        end
+    end
 end
 
 ----------------------------------------------------------------------
@@ -970,6 +1007,7 @@ local function stickScroll(dt)
         sc:SetVerticalScroll(math.max(0, math.min(range, cur + dir * (sc:GetHeight() or 200) * 1.2 * amount)))
     end
     G.stickScrolled = true   -- only the view moves; the highlight stays on its button
+    G.stickUntil = (GetTime and GetTime() or 0) + 1.0
 end
 
 local stickTicker = CreateFrame("Frame")
@@ -1046,8 +1084,31 @@ function G.update()
         local needNew = (popup and focus and not G.inside(focus, popup))
             or (wins[1] and wins[1] == menu and focus and not G.inside(focus, menu))
             or (#wins == 1 and focus and wins[1].ubfMenuLike == nil and #openMenus() > 0 and not G.inside(focus, wins[1]))
-        if needNew or not focus or not focus:IsVisible() then
+        if G.retry then
+            -- a move that scrolled the list first: the new buttons are there a moment later
+            rescan()
+            local cur = focus and nodeOf(focus)
+            if not cur and G.lastRect then cur = G.nearest(nodes, G.lastRect.cx, G.lastRect.cy) end
+            local nxt = cur and G.pick(nodes, cur, G.retry.dir)
+            if nxt then setFocus(nxt.frame); G.retry = nil
+            else
+                G.retry.tries = G.retry.tries - 1
+                if G.retry.tries <= 0 then G.retry = nil end
+            end
+        end
+        if needNew or not focus then
             rescan(); setFocus(startNode())
+        elseif not focus:IsVisible() then
+            -- the button's row was recycled by a scroll. While the stick is scrolling, hold the highlight where it was;
+            -- otherwise take the button nearest to where it was (never the window's first button, which is its exit).
+            if (GetTime and GetTime() or 0) < (G.stickUntil or 0) then
+                drawAt(nil)
+            else
+                rescan()
+                local r = G.lastRect
+                local n = r and G.nearest(nodes, r.cx, r.cy)
+                setFocus(n and n.frame or startNode(), true)
+            end
         elseif G.stickScrolled then
             G.stickScrolled = nil
             if G.inView(focus) then drawAt(focus) else drawAt(nil) end
