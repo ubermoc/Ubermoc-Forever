@@ -9,7 +9,9 @@
 --   B              closes the window the highlight is in (its own close button, or for a question window its second
 --                  button); the highlight then jumps to another open window, so B three times closes three windows
 --   bumpers        the previous / next tab or page of the group of tabs nearest the highlight, wrapping round
---   triggers       scroll the list the highlight is in up / down; the list also scrolls by itself to show the highlight
+--   triggers       the previous / next side page (the tabs stacked down the right of the professions window, the spellbook
+--                  and others); in a window without them, scroll the list the highlight is in (it also scrolls by itself
+--                  to show the highlight)
 --
 -- How it was designed (docs/RESEARCH-NAVIGATION.md, sections 2, 5 and 7): the highlight and the secure click on the
 -- highlighted button are what ConsolePort does; the bumpers for tabs, a modal question window and the closing steps are
@@ -441,10 +443,31 @@ local function collectGroups(f, depth, out, seen)
     end
 end
 
--- The group of tabs nearest the highlight (the first one when nothing is highlighted).
-local function pickGroup()
-    local groups, seen = {}, {}
-    for i = #wins, 1, -1 do collectGroups(wins[i], 0, groups, seen) end
+-- A group is "vertical" when its tabs are stacked more than they are side by side (the profession tabs and the
+-- spellbook's category tabs down the right edge of a window).
+local function isVertical(g)
+    local minX, maxX, minY, maxY
+    for _, b in ipairs(g.buttons) do
+        local r = rectOf(b)
+        if r then
+            minX, maxX = math.min(minX or r.cx, r.cx), math.max(maxX or r.cx, r.cx)
+            minY, maxY = math.min(minY or r.cy, r.cy), math.max(maxY or r.cy, r.cy)
+        end
+    end
+    return minX ~= nil and (maxY - minY) > (maxX - minX)
+end
+
+-- The group of tabs nearest the highlight (the first one when nothing is highlighted). `vertical` true asks for the
+-- stacked side tabs (the triggers step those); false asks for the bumpers' group: the across-the-top kind, or any
+-- group when the window has no other.
+local function pickGroup(vertical)
+    local all, seen = {}, {}
+    for i = #wins, 1, -1 do collectGroups(wins[i], 0, all, seen) end
+    local groups = {}
+    for _, g in ipairs(all) do
+        if isVertical(g) == (vertical and true or false) then groups[#groups + 1] = g end
+    end
+    if #groups == 0 and not vertical then groups = all end
     if #groups == 0 then return nil end
     local fr = focus and rectOf(focus)
     if not fr then return groups[1] end
@@ -463,13 +486,14 @@ local function pickGroup()
     return best or groups[1]
 end
 
-local function stepTab(step)
-    local g = pickGroup()
-    if not g then return end
+local function stepTab(step, vertical)
+    local g = pickGroup(vertical)
+    if not g then return false end
     local nxt = G.stepTab(#g.buttons, g.cur, step)
     local b = nxt and g.buttons[nxt]
     if b then pcall(b.Click, b) end
     G.scrolled = true
+    return true
 end
 
 ----------------------------------------------------------------------
@@ -565,6 +589,7 @@ local function legendTexts()
         if kind then t.PAD4 = (kind == "spell") and "Bind" or "Options" end
         if scrollerOf(focus) then t.PADLTRIGGER, t.PADRTRIGGER = "Scroll up", "Scroll down" end
     end
+    if pickGroup(true) then t.PADLTRIGGER, t.PADRTRIGGER = "Prev page", "Next page" end
     if pickGroup() then t.PADLSHOULDER, t.PADRSHOULDER = "Prev tab", "Next tab" end
     return t
 end
@@ -631,8 +656,9 @@ local function engage()
         PAD4 = function() if focus and UF.ItemMenu and not (wins[1] and wins[1] == _G.UbermocForeverItemMenu) then UF.ItemMenu.open(focus) end end,
         PADLSHOULDER = function() stepTab(-1) end,
         PADRSHOULDER = function() stepTab(1) end,
-        PADLTRIGGER = function() scrollBy(-1) end,
-        PADRTRIGGER = function() scrollBy(1) end,
+        -- the side tabs when the window has them, else scroll the list
+        PADLTRIGGER = function() if not stepTab(-1, true) then scrollBy(-1) end end,
+        PADRTRIGGER = function() if not stepTab(1, true) then scrollBy(1) end end,
     }, {
         PAD1 = { c:GetName(), "LeftButton" },
         PAD3 = { c:GetName(), "RightButton" },
