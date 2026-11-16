@@ -13,15 +13,16 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 - Start steps like Esc: it closes what is open, clears your target, then opens the game menu.
 - An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
 - Move around the game's own windows (bags, character, spellbook, professions, map, mail, the game menu and question windows) with a highlight, without Blizzard's built-in controller interface:
-  - D-pad moves the highlight, A clicks, X right-clicks, and B closes the window you are in, then jumps to the next open one.
-  - The bumpers change tabs and pages, and the triggers step the side tabs down the right of a window (or scroll a list). Lists scroll by themselves to follow the highlight.
+  - D-pad moves a glowing highlight, A clicks, X right-clicks, and B closes the window you are in, then jumps to the next open one.
+  - The bumpers change tabs and pages, and the triggers step the side tabs down the right of a window (or scroll a list). Lists scroll by themselves to follow the highlight, and the right stick scrolls a quest's text or a long list.
   - Drop-down menus open and the highlight jumps into them; new windows, like an opened letter in the mail, take the highlight.
   - A legend under each window lists what every button does there, and the item's tooltip shows beside the highlight on whichever side has room.
   - Quest and gossip windows start on their first option (or the Accept, Continue or Complete button). A accepts, B declines.
   - Trainers: A selects a skill, X trains it.
+  - Mailbox: X on a mail with an item or money takes everything in it.
 - Y opens a small menu on what the highlight is over:
-  - A bag item: use or sell, use on your main hand or off hand (poisons, sharpening stones, oils), disenchant, prospect, mill, pick up, delete, sort bags.
-  - A worn item: use it, or use anything from your bags on it, or pick it up.
+  - A bag item: use or sell, use on the piece it fits (poisons, sharpening stones and oils on your weapons, armor kits on the armor they name, scopes on your ranged weapon), disenchant, prospect, mill, pick up, delete, sort bags.
+  - A worn item: use it, or use anything from your bags that fits it, or pick it up.
   - A spell in the spellbook: bind it to an action bar, then pick the slot.
 - In combat your buttons go straight back to your own binds. Windows stay open but do not take your buttons, and they will not open in combat.
 

@@ -10,7 +10,7 @@ templates, one feature at a time, research with sources first, short answers, be
 Repo `ubermoc/Ubermoc-Forever`, working branch `claude/affectionate-cray-lhlr0j`, releases are cut from `main`.
 
 ## Current state (version in `UbermocForever/UbermocForever.toc`, history in `CHANGELOG.txt`)
-Built: controller detection, four-layer default binds, options window and action picker, Start button (steps like Esc),
+Built (1.3.6 on top of the list below: right stick scrolls, X takes mail, glow highlight, armor kits and scopes in the Y menu; `/ubf scan` is an author tool, data notes in `docs/ITEM-USE-SCAN.md`): controller detection, four-layer default binds, options window and action picker, Start button (steps like Esc),
 game-menu entry, and window navigation (`GameNav.lua`), the Y item menu (`ItemMenu.lua`), the legend (`Legend.lua`).
 
 Window navigation: a drawn gold highlight moves with the D-pad; A = left click, X = right click, B = close button of the
