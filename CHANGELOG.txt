@@ -1,3 +1,11 @@
+UbermocForever 1.3.3
+- Added: moving around the game's own windows with the controller (bags, character, spellbook, professions, map, mail, game menu, question windows). The D-pad moves a highlight, A and X click, B closes the window the highlight is in and jumps to the next open one, the bumpers change tabs and pages, the triggers step the side tabs down the right of a window (or scroll a list), and the highlight follows new windows, drop-down menus and the open letter in the mail.
+- Added: a legend under the window you are in that lists what each button does, wrapping to fit the window. The item's tooltip shows beside the highlight, on whichever side has room.
+- Added: Y menu on a bag item (Use or Sell, Use on your main hand or off hand for poisons, stones and oils, Disenchant, Prospect, Mill, Pick up, Delete, Sort bags), on a worn item (Use, the items from your bags that can be used on it, Pick up), and on a spell in the spellbook (Bind to action bar, then pick the slot).
+- Added: windows stay open in combat and give the buttons back to your own binds; they will not open in combat.
+- Added: /ubf item (what the game says about the highlighted item), /ubf tabs (which tab groups were found), /ubf nav off to turn window navigation off.
+- Fixed: X no longer right-clicks buttons in question windows, which made the game log errors.
+
 UbermocForever 1.0.6
 - Added: Start steps like Esc on every layer: it closes what is open, clears the target and stops a cast, then opens the game menu, and closes the menu if it is up.
 - Added: the legend shows LB / RB for the previous / next hold on the key binds page, and the bumpers wrap from the last hold to the first and back.
