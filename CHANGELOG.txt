@@ -1,3 +1,6 @@
+UbermocForever 1.3.34
+- Changed: during a cinematic talk everything else on screen is hidden, including frames that ignore the interface fade (party frames, objective widgets, the chat edit box, other addons' frames). Only the quest or gossip window, tooltips, question windows and our own button legend stay. Everything comes back when the talk ends.
+
 UbermocForever 1.3.33
 - Added: nameplates are hidden while you talk to an NPC in cinematic mode and come back when the talk ends (after the fight, if one starts during the talk).
 

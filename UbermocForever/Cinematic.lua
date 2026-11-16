@@ -133,7 +133,7 @@ local function keepVisible(on)
         for _, n in ipairs(KEEP) do
             local f = _G[n]
             if f and f.SetIgnoreParentAlpha and kept[f] == nil and not (f.IsForbidden and f:IsForbidden()) then
-                local ok, was = pcall(f.GetIgnoreParentAlpha, f)
+                local ok, was = pcall(f.IsIgnoringParentAlpha, f)
                 kept[f] = ok and was or false
                 pcall(f.SetIgnoreParentAlpha, f, true)
             end
@@ -142,6 +142,53 @@ local function keepVisible(on)
         for f, was in pairs(kept) do pcall(f.SetIgnoreParentAlpha, f, was) end
         wipe(kept)
     end
+end
+
+----------------------------------------------------------------------
+-- Everything else goes: frames that ignore the interface fade (party frames, objective widgets, chat edit box, other
+-- addons' frames) or that are not under UIParent are hidden for the talk by setting their own opacity to 0, and put back at
+-- the end. Only the talk window, tooltips, popups and our own frames stay. (Blizzard frames that do this by themselves:
+-- party and raid frames, UI widgets, chat edit box, name plates: see docs/RESEARCH-CINEMATIC.md.)
+----------------------------------------------------------------------
+local dimmed = {}   -- frame -> its opacity before
+local function underKeep(f)
+    local p, n = f, 0
+    while p and n < 50 do
+        local name = p.GetName and p:GetName()
+        if name and (kept[p] ~= nil or name:find("^UbermocForever")) then return true end
+        p = p.GetParent and p:GetParent()
+        n = n + 1
+    end
+    return false
+end
+
+local function sweep()
+    if InCombatLockdown() or not EnumerateFrames then return end
+    local f = EnumerateFrames()
+    while f do
+        local frame = f
+        f = EnumerateFrames(f)
+        pcall(function()
+            if frame == UIParent or frame == WorldFrame or dimmed[frame] ~= nil then return end
+            if frame.IsForbidden and frame:IsForbidden() then return end
+            if not (frame.IsShown and frame:IsShown()) then return end
+            local parent = frame:GetParent()
+            local ignores = frame.IsIgnoringParentAlpha and frame:IsIgnoringParentAlpha()
+            local outside = (parent == nil or parent == WorldFrame)
+            if not (ignores or outside) then return end
+            if underKeep(frame) then return end
+            local a = frame:GetAlpha()
+            if a and a > 0 then
+                dimmed[frame] = a
+                frame:SetAlpha(0)
+            end
+        end)
+    end
+end
+
+local function undim()
+    for frame, a in pairs(dimmed) do pcall(frame.SetAlpha, frame, a) end
+    wipe(dimmed)
 end
 
 ----------------------------------------------------------------------
@@ -157,6 +204,7 @@ local function start()
     S.oldZoom = GetCameraZoom and GetCameraZoom()
     if S.oldZoom and S.oldZoom > ZOOM + 0.05 and CameraZoomIn then pcall(CameraZoomIn, S.oldZoom - ZOOM) end
     keepVisible(true)
+    S.sweepAt = FADE_IN * 0.7   -- the rest of the interface has mostly faded by then
     if drv then drv:Show() end
 end
 
@@ -175,11 +223,16 @@ local function stop(snap)
         paint(0)
         UIParent:SetAlpha(1)
         keepVisible(false)
+        undim()
     end
     if drv then drv:Show() end
 end
 
 local function tick(self, dt)
+    if S.active then
+        S.sweepAt = (S.sweepAt or 0) - dt
+        if S.sweepAt <= 0 then S.sweepAt = 1; sweep() end   -- new frames can appear during a talk
+    end
     if S.active then
         if not C.talking() then stop(false)
         elseif InCombatLockdown() then stop(true) end
@@ -191,11 +244,13 @@ local function tick(self, dt)
     if not S.active and S.k <= 0 then
         UIParent:SetAlpha(1)
         keepVisible(false)
+        undim()
         self:Hide()
     end
 end
 
 function C.stopNow() stop(true) end
+C._sweep, C._undim = sweep, undim   -- for the offline test
 
 drv = CreateFrame("Frame")
 drv:Hide()

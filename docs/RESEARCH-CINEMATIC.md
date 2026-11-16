@@ -45,3 +45,13 @@ CVars in the game's own `Blizzard_SettingsDefinitions_Frame` and in the console 
 `nameplateShowFriendlyNpcs`, `nameplateShowFriendlyPlayers`. Set to 0 at the start of a talk (saved first), put back at the end. UbermocUI
 notes that nameplate settings cannot change in combat; we skip them then and restore on `PLAYER_REGEN_ENABLED`. Floating unit names
 (`UnitName...` CVars) are not touched. Not yet tested in the game.
+
+## Hiding everything else (1.3.34)
+Fading `UIParent` does not hide a frame that has `ignoreParentAlpha` set. In Forever's Blizzard source those are: chat edit box
+(`ChatFrameEditBox.xml`), `Blizzard_NamePlates`, UI widgets (`Blizzard_UIWidgetTemplate*.xml`), party frames (`PartyFrameTemplates.xml`),
+compact arena and raid unit frames (`CompactUnitFrame.xml`, `CompactArenaFrame.xml`), recruit-a-friend frames, edit mode. Frames that are not
+under `UIParent` (children of `WorldFrame`) are not faded either. So while a talk is on, `Cinematic.lua` looks over all frames
+(`EnumerateFrames`, once a second, out of combat), and sets the opacity of every shown frame that ignores the fade or sits outside `UIParent` to 0
+(the original value is kept and put back), except the quest/gossip window, tooltips, question windows and our own frames. The API is
+`IsIgnoringParentAlpha` (UbermocUI and 1.3.3 to 1.3.33 used `GetIgnoreParentAlpha`, which is not in the game's API list).
+Not yet tested in the game: what else is left on screen is the thing to report.

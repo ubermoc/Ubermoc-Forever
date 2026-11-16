@@ -795,5 +795,35 @@ r = L("""function()
 end""")()
 assert str(r) == "011,1nil", r
 print("Cinematic: nameplates wait for the end of combat: OK")
+# Cinematic: frames that ignore the interface fade are hidden for the talk and put back
+r = L("""function()
+    local UF = UbermocForever
+    local C = UF.Cinematic
+    local function frame(name, ignores, parent)
+        local f = { alpha = 1, name = name, ignores = ignores, parent = parent }
+        function f:IsShown() return true end
+        function f:GetName() return self.name end
+        function f:GetParent() return self.parent end
+        function f:IsIgnoringParentAlpha() return self.ignores end
+        function f:GetAlpha() return self.alpha end
+        function f:SetAlpha(a) self.alpha = a end
+        return f
+    end
+    local a = frame("PartyFrame", true, UIParent)       -- ignores the fade: hidden
+    local b = frame("PlayerFrame", false, UIParent)     -- fades with UIParent: left alone
+    local c = frame("UbermocForeverGameLegend", true, UIParent)   -- ours: stays
+    local d = frame(nil, false, nil)                    -- not under UIParent at all: hidden
+    local all = { a, b, c, d }
+    EnumerateFrames = function(prev)
+        if prev == nil then return all[1] end
+        for i = 1, #all do if all[i] == prev then return all[i + 1] end end
+    end
+    C._sweep()
+    local hidden = a.alpha .. b.alpha .. c.alpha .. d.alpha
+    C._undim()
+    return hidden .. "," .. a.alpha .. d.alpha
+end""")()
+assert str(r) == "0110,11", r
+print("Cinematic: frames that ignore the fade are hidden and put back: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
