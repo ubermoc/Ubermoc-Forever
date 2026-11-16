@@ -7,7 +7,10 @@
 -- (ConsolePort_Menu ItemMenu.lua) both offer these for bag items.
 -- Using an item has to come from a real secure button press, so "Use / equip" is a secure button of type "item" (the game
 -- uses the same click at a vendor to sell, which is why one entry covers both). "Pick up" is a secure click on the item's
--- own button. Delete asks "Really delete?" first. Spells in the spellbook are not covered yet.
+-- own button. Delete asks "Really delete?" first.
+-- On an equipped item (character window): Use, Pick up / move. On a spell in the spellbook: "Bind to action bar", which
+-- picks the spell up (the same C_SpellBook.PickupSpellBookItem call the game's own drag makes, SpellBookItem.lua) and hands
+-- over to GameNav's "place" mode, where the highlight moves over the action bars and A drops the spell on a slot.
 ----------------------------------------------------------------------
 local _, UF = ...
 
@@ -61,7 +64,7 @@ local function build()
     menu:SetScript("OnHide", function()
         local back = M.from
         M.from = nil
-        if UF.GameNav then UF.GameNav.restore = back end
+        if UF.GameNav and not UF.GameNav.placing then UF.GameNav.restore = back end
     end)
     menu:Hide()
 end
@@ -76,20 +79,44 @@ local function setEntry(i, label, attrs, pre, keepOpen)
     b:Show()
 end
 
--- Open the list for the highlighted button `btn`. Returns true when it opened.
-function M.open(btn)
-    if InCombatLockdown() then return false end
+local function spellOf(btn)
+    local p = btn and btn.GetParent and btn:GetParent()
+    if type(p) == "table" and p.slotIndex and p.spellBank and p.spellBookItemInfo then return p end
+end
+
+local EQUIP_NAME = "^Character%u%a+Slot$"
+local function equipSlot(btn)
+    local n = btn and btn.GetName and btn:GetName()
+    if not (n and n:find(EQUIP_NAME) and btn.GetID) then return end
+    local id = btn:GetID()
+    if type(id) == "number" and id > 0 and GetInventoryItemLink and GetInventoryItemLink("player", id) then return id end
+end
+
+-- What the highlighted button is: "bag", "equip", "spell" or nil.
+function M.kind(btn)
+    if not btn then return nil end
+    local bag = bagSlot(btn)
+    if bag then
+        local info = C_Container and C_Container.GetContainerItemInfo and select(2, pcall(C_Container.GetContainerItemInfo, bagSlot(btn)))
+        if info then return "bag" end
+        return nil
+    end
+    if equipSlot(btn) then return "equip" end
+    if spellOf(btn) then return "spell" end
+end
+
+local function layout(count)
+    for i, e in ipairs(entries) do
+        if i > count then e:Hide() end
+    end
+    menu:SetHeight(46 + count * 28)
+end
+
+local function openBag(btn)
     local bag, slot = bagSlot(btn)
     local info = bag and C_Container and C_Container.GetContainerItemInfo and C_Container.GetContainerItemInfo(bag, slot)
-    if not info then
-        say("The options menu works on items in your bags and bank.")
-        return false
-    end
-    build()
-    M.from = btn
-    local name = info.hyperlink and info.hyperlink:match("%[(.-)%]") or "Item"
-    title:SetText(name)
-    for _, e in ipairs(entries) do e:Hide() end
+    if not info then return false end
+    title:SetText(info.hyperlink and info.hyperlink:match("%[(.-)%]") or "Item")
     local vendor = MerchantFrame and MerchantFrame:IsShown()
     setEntry(1, vendor and "Sell" or "Use / equip", { type = "item", item = bag .. " " .. slot })
     setEntry(2, "Pick up / move", { type = "click", clickbutton = btn })
@@ -108,10 +135,56 @@ function M.open(btn)
             if CursorHasItem() then ClearCursor(); say("The game would not delete that item from here.") end
         end
     end, true)
+    local count = 3
     if C_Container.SortBags then
+        count = 4
         setEntry(4, "Sort bags", nil, function() pcall(C_Container.SortBags) end)
     end
-    menu:SetHeight(46 + MAX * 28)
+    layout(count)
+    return true
+end
+
+local function openEquip(btn)
+    local id = equipSlot(btn)
+    if not id then return false end
+    local link = GetInventoryItemLink("player", id)
+    title:SetText(link and link:match("%[(.-)%]") or "Item")
+    setEntry(1, "Use", { type = "macro", macrotext = "/use " .. id })
+    setEntry(2, "Pick up / move", { type = "click", clickbutton = btn })
+    layout(2)
+    return true
+end
+
+local function openSpell(btn)
+    local p = spellOf(btn)
+    if not p then return false end
+    title:SetText(p.spellBookItemInfo.name or "Spell")
+    setEntry(1, "Bind to action bar", nil, function()
+        if not (C_SpellBook and C_SpellBook.PickupSpellBookItem) then return end
+        pcall(C_SpellBook.PickupSpellBookItem, p.slotIndex, p.spellBank)
+        if GetCursorInfo and GetCursorInfo() then
+            if UF.GameNav and UF.GameNav.beginPlace then UF.GameNav.beginPlace(btn) end
+        else
+            say("That spell cannot go on an action bar.")
+        end
+    end, true)
+    layout(1)
+    return true
+end
+
+-- Open the list for the highlighted button `btn`. Returns true when it opened.
+function M.open(btn)
+    if InCombatLockdown() then return false end
+    local kind = M.kind(btn)
+    if not kind then
+        say("The options menu works on items in your bags, items you are wearing, and spells in the spellbook.")
+        return false
+    end
+    build()
+    M.from = btn
+    for _, e in ipairs(entries) do e:Hide() end
+    local ok = (kind == "bag" and openBag(btn)) or (kind == "equip" and openEquip(btn)) or (kind == "spell" and openSpell(btn))
+    if not ok then M.from = nil; return false end
     menu:ClearAllPoints()
     menu:SetPoint("LEFT", btn, "RIGHT", 12, 0)
     menu:Show()

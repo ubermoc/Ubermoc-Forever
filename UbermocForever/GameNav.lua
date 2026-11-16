@@ -6,8 +6,9 @@
 --   D-pad          move a drawn highlight from button to button (the mouse never moves)
 --   A / X          left / right click on the highlighted button, from a real secure button, so protected things
 --                  (using an item, picking it up) work the way a mouse click would
---   B              the window's own close button (or, for a question window, its second button)
---   bumpers        the previous / next tab of the window, wrapping round
+--   B              closes the window the highlight is in (its own close button, or for a question window its second
+--                  button); the highlight then jumps to another open window, so B three times closes three windows
+--   bumpers        the previous / next tab or page of the group of tabs nearest the highlight, wrapping round
 --   triggers       scroll the list the highlight is in up / down; the list also scrolls by itself to show the highlight
 --
 -- How it was designed (docs/RESEARCH-NAVIGATION.md, sections 2, 5 and 7): the highlight and the secure click on the
@@ -94,7 +95,24 @@ local function addWindow(list, seen, f)
 end
 
 -- Returns the open windows, and the question window when one is up (it is modal: only its buttons count).
+local BAR_BUTTONS = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarRightButton",
+                      "MultiBarLeftButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button" }
+
+-- While a spell is on the cursor waiting for a slot, only the action bars count.
+local function barFrames()
+    local list, seen = {}, {}
+    for _, base in ipairs(BAR_BUTTONS) do
+        for i = 1, 12 do
+            local b = _G[base .. i]
+            local par = b and b.GetParent and b:GetParent()
+            if par and not seen[par] and shown(par) then seen[par] = true; list[#list + 1] = par end
+        end
+    end
+    return list
+end
+
 function G.windows()
+    if G.placing then return barFrames(), nil end
     for _, n in ipairs(POPUPS) do
         local p = _G[n]
         if shown(p) then return { p }, p end
@@ -218,7 +236,10 @@ end
 
 local clicker, backer
 local function buttons()
-    if not clicker then clicker = secureButton("UbermocForeverGameClick") end
+    if not clicker then
+        clicker = secureButton("UbermocForeverGameClick")
+        clicker:HookScript("PostClick", function() if G.placing then pcall(G.placeHere) end end)
+    end
     if not backer then
         backer = secureButton("UbermocForeverGameBack")
         -- when the window has no close button of its own, the game's closing steps run before the click
@@ -230,12 +251,6 @@ end
 ----------------------------------------------------------------------
 -- State
 ----------------------------------------------------------------------
-local function bagSlot(btn)
-    if not (btn and btn.GetBagID and btn.GetID) then return false end
-    local ok, bag = pcall(btn.GetBagID, btn)
-    local slot = btn:GetID()
-    return ok and type(bag) == "number" and type(slot) == "number" and slot > 0
-end
 local focus          -- the highlighted node's frame
 local entry          -- our place on Nav's stack while active
 local wins, popup = {}, nil
@@ -253,28 +268,67 @@ local function closeButtonOf(w)
     if c and c.Click and c.IsShown and c:IsShown() then return c end
 end
 
+-- The open window the highlight is in (the innermost one listed), else nil.
+function G.windowOfFocus()
+    if not focus then return nil end
+    for i = #wins, 1, -1 do
+        if G.inside(focus, wins[i]) then return wins[i] end
+    end
+end
+
 local function setTargets()
     if InCombatLockdown() then return end
     local c, b = buttons()
-    c:SetAttribute("clickbutton", focus)
+    c:SetAttribute("clickbutton", (not G.placing) and focus or nil)
     local closer
-    if popup then
+    if G.placing then
+        closer = nil   -- B cancels the placing (fallbackClose)
+    elseif popup then
         closer = popup.GetButton2 and popup:GetButton2()
         if not (closer and closer:IsShown()) then closer = nil end
     else
-        for i = #wins, 1, -1 do
-            closer = closeButtonOf(wins[i])
-            if closer then break end
-        end
+        closer = closeButtonOf(G.windowOfFocus() or wins[#wins] or menu)
     end
     G.closer = closer
     b:SetAttribute("clickbutton", closer)
 end
 
 function G.fallbackClose()
-    local top = wins[#wins]
-    if top then secureCall(HideUIPanel, top) end
+    if G.placing then G.endPlace(true); return end
+    local w = G.windowOfFocus() or wins[#wins]
+    if w then secureCall(HideUIPanel, w) end
 end
+
+----------------------------------------------------------------------
+-- Placing a spell on an action bar: the spell is on the cursor (ItemMenu picked it up); the highlight moves over the
+-- action bars; A drops it on the highlighted slot with C_ActionBar.PutActionInSlot (the call the game itself makes when a
+-- slot is picked in quick keybind mode, Blizzard_ActionBar ActionButton.lua); B puts it back.
+----------------------------------------------------------------------
+function G.beginPlace(from)
+    G.placing = { from = from }
+    focus = nil
+    G.scrolled = nil
+end
+
+function G.endPlace(cancel)
+    local p = G.placing
+    G.placing = nil
+    if cancel and ClearCursor then pcall(ClearCursor) end
+    focus = nil
+    if p and p.from then G.restore = p.from end
+end
+
+local function placeHere()
+    if not (G.placing and focus) then return end
+    local slot = (focus.CalculateAction and select(2, pcall(focus.CalculateAction, focus))) or focus.action
+    if type(slot) == "number" and C_ActionBar and C_ActionBar.PutActionInSlot then
+        pcall(C_ActionBar.PutActionInSlot, slot)
+        if ClearCursor then pcall(ClearCursor) end   -- whatever was in that slot lands on the cursor: let it go
+        UF.say("Spell placed on the action bar.")
+    end
+    G.endPlace(false)
+end
+G.placeHere = placeHere
 
 ----------------------------------------------------------------------
 -- Scrolling
@@ -326,47 +380,96 @@ local function scrollBy(step)
 end
 
 ----------------------------------------------------------------------
--- Tabs
+-- Tabs and pages
+-- A window can hold several groups of tabs (the character window has its mode tabs and the side tabs; the professions
+-- window has its profession tabs down the right; the spellbook has its category tabs). The bumpers move through the group
+-- nearest the highlight. The shapes looked for are the ones found in the Blizzard Forever source:
+--   TabSystemMixin (`frame.tabs` + `SetTab`, selected = `selectedTabID`)        Blizzard_SharedXML TabSystemTemplates.lua
+--   a `Tabs` array of check buttons (CharacterFrame.ModeTabs, PaperDollSidebarTabs)   Camelot CharacterFrame / PaperDollFrame
+--   `rightProfessionTabs` (+ `ProfessionsOverviewTab`)                            Blizzard_Professions Camelot ProfessionsFrame.lua
+--   the older PanelTemplates (`numTabs`, `selectedTab`, buttons named <frame>Tab<n>)
 ----------------------------------------------------------------------
--- Returns a list of tab buttons and the index of the selected one, from the newer TabSystem or the older PanelTemplates.
-local function tabsIn(f, depth)
-    local ts = f.TabSystem
-    if type(ts) == "table" and type(ts.tabs) == "table" and #ts.tabs > 0 then
-        local list = {}
-        for _, b in ipairs(ts.tabs) do if b:IsShown() then list[#list + 1] = b end end
-        local cur = 1
-        for i, b in ipairs(list) do if b == ts.tabs[ts.selectedTabID or 0] then cur = i end end
-        return list, cur
-    end
-    if type(f.numTabs) == "number" and f.numTabs > 1 then
-        local n = f.GetName and f:GetName()
-        local list, cur = {}, tonumber(f.selectedTab) or 1
-        for i = 1, f.numTabs do
-            local b = (f.Tabs and f.Tabs[i]) or (n and _G[n .. "Tab" .. i])
-            if b and b:IsShown() then list[#list + 1] = b end
-        end
-        if #list > 1 then return list, math.min(cur, #list) end
-    end
-    if depth < 4 and f.GetChildren then
-        for _, c in ipairs({ f:GetChildren() }) do
-            if c.IsShown and c:IsShown() then
-                local l, cu = tabsIn(c, depth + 1)
-                if l then return l, cu end
-            end
-        end
+local function usable(b)
+    return type(b) == "table" and b.Click and b.IsShown and b:IsShown() and true or false
+end
+
+local function checkedIndex(list)
+    for i, b in ipairs(list) do
+        if b.GetChecked and b:GetChecked() then return i end
     end
 end
 
-local function stepTab(step)
-    for i = #wins, 1, -1 do
-        local list, cur = tabsIn(wins[i], 0)
-        if list and #list > 1 then
-            local nxt = G.stepTab(#list, cur, step)
-            if nxt and list[nxt] and list[nxt].Click then pcall(list[nxt].Click, list[nxt]) end
-            G.scrolled = true
-            return
+local function collectGroups(f, depth, out, seen)
+    if depth > 7 or not (f.IsShown and f:IsShown()) then return end
+    local function add(list, cur)
+        if #list < 2 or seen[list[1]] then return end
+        for _, b in ipairs(list) do seen[b] = true end
+        out[#out + 1] = { buttons = list, cur = cur or checkedIndex(list) or 1 }
+    end
+    if type(f.tabs) == "table" and f.SetTab then
+        local list, cur = {}, nil
+        for id, b in ipairs(f.tabs) do
+            if usable(b) then
+                list[#list + 1] = b
+                if id == f.selectedTabID then cur = #list end
+            end
+        end
+        add(list, cur)
+    end
+    if type(f.Tabs) == "table" then
+        local list = {}
+        for _, b in ipairs(f.Tabs) do if usable(b) then list[#list + 1] = b end end
+        add(list)
+    end
+    if type(f.rightProfessionTabs) == "table" then
+        local list = {}
+        if usable(f.ProfessionsOverviewTab) then list[1] = f.ProfessionsOverviewTab end
+        for _, b in ipairs(f.rightProfessionTabs) do if usable(b) then list[#list + 1] = b end end
+        add(list)
+    end
+    if type(f.numTabs) == "number" and f.numTabs > 1 then
+        local n = f.GetName and f:GetName()
+        local list = {}
+        for i = 1, f.numTabs do
+            local b = n and _G[n .. "Tab" .. i]
+            if usable(b) then list[#list + 1] = b end
+        end
+        add(list, tonumber(f.selectedTab))
+    end
+    if f.GetChildren then
+        for _, c in ipairs({ f:GetChildren() }) do collectGroups(c, depth + 1, out, seen) end
+    end
+end
+
+-- The group of tabs nearest the highlight (the first one when nothing is highlighted).
+local function pickGroup()
+    local groups, seen = {}, {}
+    for i = #wins, 1, -1 do collectGroups(wins[i], 0, groups, seen) end
+    if #groups == 0 then return nil end
+    local fr = focus and rectOf(focus)
+    if not fr then return groups[1] end
+    local best, bestD
+    for _, g in ipairs(groups) do
+        local sx, sy, n = 0, 0, 0
+        for _, b in ipairs(g.buttons) do
+            local r = rectOf(b)
+            if r then sx, sy, n = sx + r.cx, sy + r.cy, n + 1 end
+        end
+        if n > 0 then
+            local d = (sx / n - fr.cx) ^ 2 + (sy / n - fr.cy) ^ 2
+            if not bestD or d < bestD then best, bestD = g, d end
         end
     end
+    return best or groups[1]
+end
+
+local function stepTab(step)
+    local g = pickGroup()
+    if not g then return end
+    local nxt = G.stepTab(#g.buttons, g.cur, step)
+    local b = nxt and g.buttons[nxt]
+    if b then pcall(b.Click, b) end
+    G.scrolled = true
 end
 
 ----------------------------------------------------------------------
@@ -386,6 +489,10 @@ local function rescan()
 end
 
 local function startNode()
+    if G.placing then
+        local b = _G.ActionButton1
+        if b and b:IsShown() then return b end
+    end
     if popup then
         local b1 = popup.GetButton1 and popup:GetButton1()
         if b1 and b1:IsShown() then return b1 end
@@ -434,6 +541,10 @@ end
 local function legendTexts()
     local t = { PADDUP = "Move" }
     local inMenu = wins[1] and wins[1] == _G.UbermocForeverItemMenu
+    if G.placing then
+        t.PAD1, t.PAD2 = "Place here", "Cancel"
+        return t
+    end
     if popup then
         t.PAD1, t.PAD2 = "Accept", "Decline"
         return t
@@ -445,28 +556,51 @@ local function legendTexts()
     t.PAD1, t.PAD2 = "Select", "Close"
     if focus then
         t.PAD3 = "Right-click"
-        if bagSlot and bagSlot(focus) then t.PAD4 = "Options" end
+        local kind = UF.ItemMenu and UF.ItemMenu.kind(focus)
+        if kind then t.PAD4 = (kind == "spell") and "Bind" or "Options" end
         if scrollerOf(focus) then t.PADLTRIGGER, t.PADRTRIGGER = "Scroll up", "Scroll down" end
     end
-    for i = #wins, 1, -1 do
-        local list = tabsIn(wins[i], 0)
-        if list and #list > 1 then t.PADLSHOULDER, t.PADRSHOULDER = "Prev tab", "Next tab"; break end
-    end
+    if pickGroup() then t.PADLSHOULDER, t.PADRSHOULDER = "Prev tab", "Next tab" end
     return t
 end
 
+-- The legend sits just under the window the highlight is in (inside its bottom edge when the window reaches the bottom of
+-- the screen, and above the action bars while a spell is being placed).
+local anchoredTo
+local function anchorBar(b)
+    local w = (not G.placing) and (G.windowOfFocus() or wins[#wins]) or nil
+    local key = w or "screen"
+    if key == anchoredTo then return end
+    anchoredTo = key
+    b:ClearAllPoints()
+    local bottom = w and w.GetBottom and w:GetBottom()
+    if w and bottom and bottom > 50 then
+        b:SetPoint("TOP", w, "BOTTOM", 0, -12)
+    elseif w then
+        b:SetPoint("BOTTOM", w, "BOTTOM", 0, 14)
+    else
+        b:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 150)
+    end
+end
+
+local lastCalc, lastFocus = 0, nil
 local function updateBar()
     local b = getBar()
-    local t = legendTexts()
-    local sig = {}
-    for k, v in pairs(t) do sig[#sig + 1] = k .. "=" .. v end
-    table.sort(sig)
-    sig = table.concat(sig, ";")
-    if sig ~= barSig then
-        barSig = sig
-        barLegend:Set(t)
-        b:SetWidth(barLegend:GetWidth())
+    local now = GetTime and GetTime() or 0
+    if focus ~= lastFocus or now - lastCalc > 0.5 or not barSig then
+        lastFocus, lastCalc = focus, now
+        local t = legendTexts()
+        local sig = {}
+        for k, v in pairs(t) do sig[#sig + 1] = k .. "=" .. v end
+        table.sort(sig)
+        sig = table.concat(sig, ";")
+        if sig ~= barSig then
+            barSig = sig
+            barLegend:Set(t)
+            b:SetWidth(barLegend:GetWidth())
+        end
     end
+    anchorBar(b)
     if not b:IsShown() then b:Show() end
 end
 
@@ -477,8 +611,9 @@ local function release()
     if entry then UF.Nav.Pop(entry); entry = nil end
     focus = nil
     drawAt(nil)
+    if G.placing then G.endPlace(true) end
     if bar then bar:Hide() end
-    barSig = nil
+    barSig, anchoredTo = nil, nil
 end
 
 local function engage()
@@ -519,6 +654,7 @@ function G.update()
         release()
     elseif want then
         -- keep the highlight honest: a popup appearing takes it, a vanished button is replaced, a scroll re-picks it
+        if G.placing and GetCursorInfo and not GetCursorInfo() then G.endPlace(false) end
         if G.restore then
             local back = G.restore
             G.restore = nil

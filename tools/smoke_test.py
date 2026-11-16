@@ -554,5 +554,22 @@ r = L("""function()
 end""")()
 assert str(r) == "false,true,true,1true,false", r
 print("Y menu: opens on a bag item, becomes the top window, closes: OK")
+# Placing a spell, and closing the window the highlight is in
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local out = {}
+    local a = { GetParent = function() return nil end }
+    local b = { GetParent = function() return a end }
+    out[#out + 1] = tostring(G.inside(b, a)) .. tostring(G.inside(a, b))
+    G.beginPlace(b)
+    out[#out + 1] = tostring(G.placing ~= nil)
+    G.endPlace(true)
+    out[#out + 1] = tostring(G.placing == nil) .. tostring(G.restore == b)
+    G.restore = nil
+    G.update()
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "truefalse,true,truetrue", r
+print("Placing a spell: begins and ends cleanly: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
