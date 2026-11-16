@@ -17,6 +17,8 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
   - The bumpers change tabs and pages, and the triggers step the side tabs down the right of a window (or scroll a list). Lists scroll by themselves to follow the highlight.
   - Drop-down menus open and the highlight jumps into them; new windows, like an opened letter in the mail, take the highlight.
   - A legend under each window lists what every button does there, and the item's tooltip shows beside the highlight on whichever side has room.
+  - Quest and gossip windows start on their first option (or the Accept, Continue or Complete button). A accepts, B declines.
+  - Trainers: A selects a skill, X trains it.
 - Y opens a small menu on what the highlight is over:
   - A bag item: use or sell, use on your main hand or off hand (poisons, sharpening stones, oils), disenchant, prospect, mill, pick up, delete, sort bags.
   - A worn item: use it, or use anything from your bags on it, or pick it up.

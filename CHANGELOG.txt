@@ -1,3 +1,7 @@
+UbermocForever 1.3.5
+- Added: quest and gossip windows start the highlight on the first option, or on the Accept, Continue or Complete button. A accepts a quest and B declines it.
+- Added: in a trainer, A selects a skill and X trains it.
+
 UbermocForever 1.3.4
 - Fixed: the Y menu on a bag item at a vendor now sells the item. Before, Sell used the item, which equipped it.
 

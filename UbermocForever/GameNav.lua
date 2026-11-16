@@ -352,12 +352,35 @@ function G.windowOfFocus()
     end
 end
 
+-- Conversations: quest and gossip windows start on their first option (or the Accept/Continue/Complete button), B is the
+-- window's Decline, and in a trainer X trains the selected skill.
+local function visibleButton(name)
+    local b = _G[name]
+    if b and b.IsVisible and b:IsVisible() then return b end
+end
+
+local function dialogCloser(w)
+    if w and w == _G.QuestFrame then
+        return visibleButton("QuestFrameDeclineButton") or visibleButton("QuestFrameGoodbyeButton")
+    end
+end
+
+local function trainButton(f)
+    local t = _G.ClassTrainerFrame
+    if f and shown(t) and G.inside(f, t) then
+        local b = t.TrainButton or _G.ClassTrainerTrainButton
+        if b and b.IsVisible and b:IsVisible() then return b end
+    end
+end
+G.trainButton = trainButton
+
 local function setTargets()
     if InCombatLockdown() then return end
     local c, b, rc = buttons()
     c:SetAttribute("clickbutton", (not G.placing) and focus or nil)
     local menuUp = wins[1] and wins[1] == _G.UbermocForeverItemMenu
-    rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and focus or nil)
+    local train = trainButton(focus)
+    rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and (train or focus) or nil)
     local closer
     if G.placing then
         closer = nil   -- B cancels the placing (fallbackClose)
@@ -365,7 +388,8 @@ local function setTargets()
         closer = popup.GetButton2 and popup:GetButton2()
         if not (closer and closer:IsShown()) then closer = nil end
     else
-        closer = closeButtonOf(G.windowOfFocus() or wins[#wins] or menu)
+        local w = G.windowOfFocus() or wins[#wins]
+        closer = dialogCloser(w) or closeButtonOf(w or menu)
     end
     G.closer = closer
     b:SetAttribute("clickbutton", closer)
@@ -677,6 +701,34 @@ local function rescan()
     nodes = G.scan(wins)
 end
 
+function G.dialogStart()
+    local q = _G.QuestFrame
+    if shown(q) then
+        for _, n in ipairs({ "QuestFrameAcceptButton", "QuestFrameCompleteQuestButton", "QuestFrameCompleteButton" }) do
+            local b = visibleButton(n)
+            if b and (not b.IsEnabled or b:IsEnabled()) then return b end
+        end
+    end
+    for _, w in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
+        if shown(w) then
+            local skip = {}
+            skip[closeButtonOf(w) or 0] = true
+            skip[_G.QuestFrameGoodbyeButton or 0] = true
+            skip[_G.QuestFrameDeclineButton or 0] = true
+            skip[_G.GossipFrameGreetingGoodbyeButton or 0] = true
+            skip[(w.GreetingPanel and w.GreetingPanel.GoodbyeButton) or 0] = true
+            local best
+            for _, n in ipairs(nodes) do
+                if G.inside(n.frame, w) and not skip[n.frame]
+                    and (not best or n.cy > best.cy + 4 or (math.abs(n.cy - best.cy) <= 4 and n.cx < best.cx)) then
+                    best = n
+                end
+            end
+            if best then return best.frame end
+        end
+    end
+end
+
 local function startNode()
     local menu = _G.UbermocForeverItemMenu
     if wins[1] and wins[1] == menu then
@@ -691,6 +743,8 @@ local function startNode()
         local b1 = popup.GetButton1 and popup:GetButton1()
         if b1 and b1:IsShown() then return b1 end
     end
+    local d = G.dialogStart and G.dialogStart()
+    if d then return d end
     -- the top left button of the topmost window
     local best
     for _, n in ipairs(nodes) do
@@ -749,7 +803,10 @@ local function legendTexts()
     end
     t.PAD1, t.PAD2 = "Select", "Close"
     if focus then
-        t.PAD3 = "Right-click"
+        t.PAD3 = trainButton(focus) and "Train" or "Right-click"
+        local w = G.windowOfFocus()
+        local dc = dialogCloser(w)
+        if dc then t.PAD2 = "Decline" end
         local kind = UF.ItemMenu and UF.ItemMenu.kind(focus)
         if kind then t.PAD4 = (kind == "spell") and "Bind" or "Options" end
         if scrollerOf(focus) then t.PADLTRIGGER, t.PADRTRIGGER = "Scroll up", "Scroll down" end
@@ -890,7 +947,9 @@ function G.update()
                     best = n
                 end
             end
-            if best then setFocus(best.frame) end
+            local d = G.dialogStart()
+            if d and G.inside(d, fresh) then setFocus(d)
+            elseif best then setFocus(best.frame) end
         end
         if G.restore then
             local back = G.restore

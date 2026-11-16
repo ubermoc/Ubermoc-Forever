@@ -639,5 +639,26 @@ r = L("""function()
 end""")()
 assert str(r) == "truefalse", r
 print("Poisons are recognised from their use text: OK")
+# Conversations start on the Accept button, and X trains in a trainer
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local function btn(parent) return { IsShown = function() return true end, IsVisible = function() return true end,
+        IsEnabled = function() return true end, GetParent = function() return parent end } end
+    local q = btn(nil)
+    QuestFrame = q
+    QuestFrameAcceptButton = btn(q)
+    local a = G.dialogStart() == QuestFrameAcceptButton
+    QuestFrame, QuestFrameAcceptButton = nil, nil
+    local t = btn(nil)
+    ClassTrainerFrame = t
+    local skill, train = btn(t), btn(t)
+    t.TrainButton = train
+    local x = G.trainButton(skill) == train
+    local y = G.trainButton(btn(nil)) == nil
+    ClassTrainerFrame = nil
+    return tostring(a) .. tostring(x) .. tostring(y)
+end""")()
+assert str(r) == "truetruetrue", r
+print("Conversations: start on Accept, X trains in a trainer: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
