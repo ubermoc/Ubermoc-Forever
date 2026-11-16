@@ -176,6 +176,37 @@ local function openSpell(btn)
     return true
 end
 
+-- Put the menu beside the highlighted button: on the side chosen in the options when it fits on the screen, otherwise on
+-- the other side, and when neither side has room, over the button's edge, always kept on the screen.
+function M.place(btn)
+    menu:ClearAllPoints()
+    if menu.SetClampedToScreen then menu:SetClampedToScreen(true) end
+    local side = UF.menuSide()
+    local ok, chosen = pcall(function()
+        local ui = UIParent:GetEffectiveScale() or 1
+        local sc = (btn:GetEffectiveScale() or 1) / ui
+        local left, right = btn:GetLeft(), btn:GetRight()
+        local screenW = UIParent:GetWidth() or 0
+        local w = (menu:GetWidth() or 210) + 12
+        if left and right and screenW > 0 then
+            local roomLeft, roomRight = left * sc, screenW - right * sc
+            local fits = { left = roomLeft >= w, right = roomRight >= w }
+            if not fits[side] then
+                local other = (side == "left") and "right" or "left"
+                if fits[other] then return other end
+                return (roomRight >= roomLeft) and "right" or "left"
+            end
+        end
+        return side
+    end)
+    if ok and chosen then side = chosen end
+    if side == "left" then
+        menu:SetPoint("RIGHT", btn, "LEFT", -12, 0)
+    else
+        menu:SetPoint("LEFT", btn, "RIGHT", 12, 0)
+    end
+end
+
 -- Open the list for the highlighted button `btn`. Returns true when it opened.
 function M.open(btn)
     if InCombatLockdown() then return false end
@@ -189,12 +220,7 @@ function M.open(btn)
     for _, e in ipairs(entries) do e:Hide() end
     local ok = (kind == "bag" and openBag(btn)) or (kind == "equip" and openEquip(btn)) or (kind == "spell" and openSpell(btn))
     if not ok then M.from = nil; return false end
-    menu:ClearAllPoints()
-    if UF.menuSide() == "left" then
-        menu:SetPoint("RIGHT", btn, "LEFT", -12, 0)
-    else
-        menu:SetPoint("LEFT", btn, "RIGHT", 12, 0)
-    end
+    M.place(btn)
     menu:Show()
     return true
 end
