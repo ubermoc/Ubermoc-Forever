@@ -100,17 +100,39 @@ end
 local BAR_BUTTONS = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarRightButton",
                       "MultiBarLeftButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button" }
 
--- While a spell is on the cursor waiting for a slot, only the action bars count.
-local function barFrames()
+-- While a spell is waiting for a slot, only the action bars count: every bar the game or another addon shows, found by
+-- looking for the buttons that stand for an action slot (so a bar whose buttons are bound to the back buttons through Steam
+-- Input, or any custom bar, is included). The list is made once when placing starts.
+local function findBarParents()
     local list, seen = {}, {}
+    local function add(b)
+        local par = b and b.GetParent and b:GetParent()
+        if par and not seen[par] and shown(par) then seen[par] = true; list[#list + 1] = par end
+    end
     for _, base in ipairs(BAR_BUTTONS) do
-        for i = 1, 12 do
-            local b = _G[base .. i]
-            local par = b and b.GetParent and b:GetParent()
-            if par and not seen[par] and shown(par) then seen[par] = true; list[#list + 1] = par end
+        for i = 1, 12 do add(_G[base .. i]) end
+    end
+    if EnumerateFrames then
+        local f = EnumerateFrames()
+        while f do
+            if (f.CalculateAction or type(f.action) == "number") and f.IsShown and f:IsShown() and f.IsObjectType
+                and (f:IsObjectType("CheckButton") or f:IsObjectType("Button")) and not isOurs(f) then
+                add(f)
+            end
+            f = EnumerateFrames(f)
         end
     end
     return list
+end
+
+local function barFrames()
+    if G.placing then
+        G.placing.bars = G.placing.bars or findBarParents()
+        local out = {}
+        for _, p in ipairs(G.placing.bars) do if shown(p) then out[#out + 1] = p end end
+        return out
+    end
+    return {}
 end
 
 -- Drop-down menus that are open: the game's newer menu (Blizzard_Menu: Menu.GetManager) and the older lists
