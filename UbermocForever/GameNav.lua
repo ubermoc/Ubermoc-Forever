@@ -1176,12 +1176,16 @@ local function comboFor(key)
     return m .. key
 end
 local function onCapKey(_, key)
-    if not G.placing or not key or MODIFIER_KEYS[key] then return end
-    if UF.isModifierButton and UF.isModifierButton(key) then return end   -- the paddle that stands in for Ctrl / Shift
+    if not G.placing or not key then return end
+    if MODIFIER_KEYS[key] or (UF.isModifierButton and UF.isModifierButton(key)) then
+        UF.say("Binding: modifier " .. key .. " held.")   -- the paddle that stands in for Ctrl / Shift
+        return
+    end
     local combo = comboFor(key)
     local now = GetTime and GetTime() or 0
     if G.capLast == combo and now - (G.capLastT or 0) < 0.25 then return end   -- the same press arriving twice
     G.capLast, G.capLastT = combo, now
+    UF.say("Binding: the game sent " .. combo .. " (key " .. tostring(key) .. ").")
     if key == "ESCAPE" or combo == "PAD2" then G.endPlace(true); UF.say("Binding cancelled."); return end
     if G.placeKey then G.placeKey(combo) end
 end
@@ -1214,6 +1218,7 @@ local function captureMap()
                 local now = GetTime and GetTime() or 0
                 if G.capLast == key and now - (G.capLastT or 0) < 0.25 then return end
                 G.capLast, G.capLastT = key, now
+                UF.say("Binding: the controller sent " .. key .. ".")
                 if G.placeKey then G.placeKey(key) end
             end
         end
