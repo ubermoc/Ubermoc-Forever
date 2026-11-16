@@ -679,6 +679,19 @@ r = L("""function()
 end""")()
 assert str(r) == "truetruetrue", r
 print("Quest with one action found for A, none for lists: OK")
+# One quest and nothing else: it is opened by itself; lists and other options are left alone
+r = L("""function()
+    local D = UbermocForever.DialogButtons
+    local function show(k, id) return tostring(k) .. tostring(id) end
+    local a1, a2 = D.autoTarget({ { questID = 7 } }, {}, {})
+    local b1, b2 = D.autoTarget({ { questID = 7 }, { questID = 8 } }, {}, {})
+    local c1, c2 = D.autoTarget({ { questID = 7 } }, {}, { { name = "I want to browse" } })
+    local d1, d2 = D.autoTarget({}, { { questID = 9, isComplete = true } }, {})
+    local e1, e2 = D.autoTarget({}, { { questID = 9, isComplete = false } }, {})
+    return show(a1, a2) .. "|" .. show(b1, b2) .. "|" .. show(c1, c2) .. "|" .. show(d1, d2) .. "|" .. show(e1, e2)
+end""")()
+assert str(r) == "available7|nilnil|nilnil|active9|nilnil", r
+print("One quest and nothing else opens by itself, lists and other options do not: OK")
 # Where an item goes, read from its use text (wording taken from the scan of the game's own items)
 r = L("""function()
     local M = UbermocForever.ItemMenu

@@ -92,3 +92,41 @@ end
 ev:SetScript("OnEvent", function() drv:Show() end)
 
 function D.refresh() if not D.enabled() then release() else drv:Show() end end
+
+----------------------------------------------------------------------
+-- One quest, nothing else to say: open it at once (no list to pick from), so the window is the Accept / Decline page.
+-- An NPC with several quests or any other option (a vendor, a trainer) still shows its list. Part of cinematic mode.
+-- Calls: C_GossipInfo.GetAvailableQuests / GetActiveQuests / GetOptions and SelectAvailableQuest / SelectActiveQuest, which
+-- take the quest ID (the same calls the game's own gossip buttons make, Blizzard_UIPanels_Game/Shared/GossipFrameShared.lua).
+----------------------------------------------------------------------
+-- Pure: what to open from the lists the game gives. Returns "available" or "active" and the quest ID, or nil.
+function D.autoTarget(available, active, options)
+    available, active, options = available or {}, active or {}, options or {}
+    if #options > 0 or (#available + #active) ~= 1 then return nil end
+    if #available == 1 then return "available", available[1].questID end
+    if active[1].isComplete then return "active", active[1].questID end   -- a quest to turn in; one still in progress only shows its list
+end
+
+local recent = {}   -- npc guid .. quest id -> time it was opened by us (so declining does not open it again at once)
+local function seenRecently(key)
+    local t = recent[key]
+    return t and GetTime() - t < 60
+end
+
+local function auto()
+    if not (UF.Cinematic and UF.Cinematic.enabled()) or InCombatLockdown() then return end
+    local g = _G.GossipFrame
+    if not (g and g.IsShown and g:IsShown()) or not C_GossipInfo then return end
+    local ok, kind, id = pcall(function()
+        return D.autoTarget(C_GossipInfo.GetAvailableQuests(), C_GossipInfo.GetActiveQuests(), C_GossipInfo.GetOptions())
+    end)
+    if not ok or not kind then return end
+    local key = tostring(UnitGUID and UnitGUID("npc")) .. ":" .. tostring(id)
+    if seenRecently(key) then return end
+    recent[key] = GetTime()
+    if kind == "available" then C_GossipInfo.SelectAvailableQuest(id) else C_GossipInfo.SelectActiveQuest(id) end
+end
+
+local ev2 = CreateFrame("Frame")
+pcall(ev2.RegisterEvent, ev2, "GOSSIP_SHOW")
+ev2:SetScript("OnEvent", function() C_Timer.After(0.05, auto) end)

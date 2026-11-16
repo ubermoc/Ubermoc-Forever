@@ -244,3 +244,10 @@ All Rights Reserved: ideas only, nothing copied. It is a retail/classic addon; F
   previous, down/right = next, held D-pad repeats every 0.125 s; at the ends it scrolls the text by 192.
 - Glyphs are the addon's own PNGs (not Blizzard's); we keep using the game's own button strings.
 Result in 1.3.35: a quest with one action has no highlight (`G.direct` in `GameNav.lua`); lists start on the first choice as before.
+
+## Opening a single quest by itself (1.3.36), source: Blizzard_APIDocumentationGenerated/GossipInfoDocumentation.lua, Blizzard_UIPanels_Game/Shared/GossipFrameShared.lua
+`C_GossipInfo.SelectAvailableQuest(questID)` and `SelectActiveQuest(questID)` take the quest ID (the argument is documented as `optionID`, the
+game's own gossip buttons pass `self:GetID()` which is set to `questInfo.questID`). They are not marked restricted. The lists come from
+`C_GossipInfo.GetAvailableQuests()`, `GetActiveQuests()` (fields `questID`, `title`, `isComplete`) and `GetOptions()`. Rule used: no options and
+exactly one quest, available or an active complete one. Not yet tested in the game: whether calling it from `GOSSIP_SHOW` after 0.05 s works
+without a user action, and whether declining returns to the list (guarded by a 60 s memory per NPC and quest).

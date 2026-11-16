@@ -1,3 +1,6 @@
+UbermocForever 1.3.36
+- Added: an NPC with exactly one quest and nothing else to say opens that quest's Accept / Decline page by itself (a quest to turn in too, when it is complete). Several quests or other options still show the list. Part of cinematic mode. If you decline, it does not open again for a minute.
+
 UbermocForever 1.3.35
 - Changed: a quest with only one thing to do (accept it, turn it in, continue) shows no highlight. A presses that button, B declines or says goodbye. The first D-pad press brings the highlight in, on the first reward or option. Lists (several quests or gossip lines) still start on the first choice.
 
