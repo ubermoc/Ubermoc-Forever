@@ -507,7 +507,8 @@ function G.beginPlace(from, spell)
     focus = nil
     G.scrolled = nil
     if G.applyMap then G.applyMap() end
-    UF.say("Hold your buttons and press the one to put this spell on. B cancels.")
+    if G.setCapture then G.setCapture(true) end
+    UF.say("Hold your buttons and press the one to put this spell on (a back button that Steam Input turns into a key works too). B cancels.")
 end
 
 function G.endPlace(cancel)
@@ -517,6 +518,7 @@ function G.endPlace(cancel)
     focus = nil
     if p and p.from then G.restore = p.from end
     if G.applyMap then G.applyMap() end
+    if G.setCapture then G.setCapture(false) end
 end
 
 -- The action slot (1 to 180) a bar button stands for. The game's own methods first, then the number it keeps, then the
@@ -1144,7 +1146,7 @@ end
 -- own key binds. A plain B cancels.
 local PAD_KEYS = { "PAD1", "PAD2", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER",
                    "PADDUP", "PADDDOWN", "PADDLEFT", "PADDRIGHT", "PADLSTICK", "PADRSTICK" }
-local MODS = { "", "SHIFT-", "CTRL-", "SHIFT-CTRL-" }
+local MODS = { "", "SHIFT-", "CTRL-", "CTRL-SHIFT-" }
 local BIND_FRAMES = { ACTIONBUTTON = "ActionButton", MULTIACTIONBAR1BUTTON = "MultiBarBottomLeftButton",
                       MULTIACTIONBAR2BUTTON = "MultiBarBottomRightButton", MULTIACTIONBAR3BUTTON = "MultiBarRightButton",
                       MULTIACTIONBAR4BUTTON = "MultiBarLeftButton", MULTIACTIONBAR5BUTTON = "MultiBar5Button",
@@ -1161,6 +1163,47 @@ function G.slotForKey(key)
     return slot, action
 end
 
+-- Keys that do not come as pad buttons: a back button that Steam Input turns into a keyboard key (SPACE, F6 ...), and
+-- any pad button the game also reports as a key. A frame takes the keyboard while a spell is being placed; the modifiers
+-- held (a paddle the game uses as Ctrl or Shift counts too) make the combination, written the way the game stores binds.
+local capFrame
+local MODIFIER_KEYS = { LCTRL = 1, RCTRL = 1, LSHIFT = 1, RSHIFT = 1, LALT = 1, RALT = 1 }
+local function comboFor(key)
+    local m = ""
+    if IsAltKeyDown and IsAltKeyDown() then m = "ALT-" end
+    if IsControlKeyDown and IsControlKeyDown() then m = m .. "CTRL-" end
+    if IsShiftKeyDown and IsShiftKeyDown() then m = m .. "SHIFT-" end
+    return m .. key
+end
+local function onCapKey(_, key)
+    if not G.placing or not key or MODIFIER_KEYS[key] then return end
+    if UF.isModifierButton and UF.isModifierButton(key) then return end   -- the paddle that stands in for Ctrl / Shift
+    local combo = comboFor(key)
+    local now = GetTime and GetTime() or 0
+    if G.capLast == combo and now - (G.capLastT or 0) < 0.25 then return end   -- the same press arriving twice
+    G.capLast, G.capLastT = combo, now
+    if key == "ESCAPE" or combo == "PAD2" then G.endPlace(true); UF.say("Binding cancelled."); return end
+    if G.placeKey then G.placeKey(combo) end
+end
+function G.setCapture(on)
+    if not capFrame then
+        if not on then return end
+        capFrame = CreateFrame("Frame", "UbermocForeverKeyCapture", UIParent)
+        capFrame:SetScript("OnKeyDown", onCapKey)
+        capFrame:SetScript("OnGamePadButtonDown", onCapKey)
+    end
+    -- turning it off must work in combat too, so nothing here checks for combat; each call is protected
+    if on then
+        pcall(capFrame.SetPropagateKeyboardInput, capFrame, false)
+        pcall(capFrame.EnableKeyboard, capFrame, true)
+        pcall(capFrame.EnableGamePadButton, capFrame, true)
+    else
+        pcall(capFrame.SetPropagateKeyboardInput, capFrame, true)
+        pcall(capFrame.EnableKeyboard, capFrame, false)
+        pcall(capFrame.EnableGamePadButton, capFrame, false)
+    end
+end
+
 local function captureMap()
     local map = {}
     for _, mod in ipairs(MODS) do
@@ -1168,6 +1211,9 @@ local function captureMap()
             local key = mod .. k
             map[key] = function()
                 if key == "PAD2" then G.endPlace(true); UF.say("Binding cancelled."); return end
+                local now = GetTime and GetTime() or 0
+                if G.capLast == key and now - (G.capLastT or 0) < 0.25 then return end
+                G.capLast, G.capLastT = key, now
                 if G.placeKey then G.placeKey(key) end
             end
         end

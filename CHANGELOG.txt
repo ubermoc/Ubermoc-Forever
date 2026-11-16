@@ -1,3 +1,6 @@
+UbermocForever 1.3.14
+- Fixed: binding a spell by pressing buttons also takes keyboard keys, so a back button that Steam Input turns into a key (L4 as SPACE, say) works together with a held paddle that stands in for Ctrl or Shift. Escape cancels too.
+
 UbermocForever 1.3.13
 - Changed: "Bind to action bar" now works by pressing buttons. After choosing it, hold your paddles and press the button you want (B alone cancels). A combination that already triggers an action slot gets the spell in that slot. A combination with no bind (a back button pair, say) gets the spell in the first empty slot on a visible bar (bars 4 and 5 first) and is bound to that slot. A combination used for something else is left alone and says what it is used for.
 
