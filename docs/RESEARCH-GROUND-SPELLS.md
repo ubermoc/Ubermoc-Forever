@@ -31,3 +31,11 @@ B. **Aim height** (low risk): our setting moves `CursorCenteredYPos`; shown as "
 C. **Hold to aim, release to cast** (the risky one): needs either UbermocUI's button attributes (taint risk), or our own secure button
    (macro `/cast [@cursor] Spell`) triggered by our own override binding on release. Needs an in-game test of what the game does when the
    key is released (`OnGamePadButtonUp` on a capture frame while `SpellIsTargeting()`), because casting at the cursor is a protected action.
+
+## Release to cast, built in 1.3.27 (GroundCast.lua), not yet tested in the game
+Blizzard_FrameXML/SecureTemplates.lua: `SecureActionButton_OnClick` runs `OnActionButtonPressAndHoldRelease` on key up when the button has
+the attribute `pressAndHoldAction` (or the CVar `ActionButtonUseKeyHeldSpell` is on), and that looks up the attribute `typerelease`
+for the action type. Blizzard's bar buttons have none for ground spells, so letting go does nothing. Our own secure buttons get:
+`pressAndHoldAction=true`, `type=spell` + `spell=<name>` (key down starts the aim), `typerelease=macro` + `macrotext=/stopspelltarget` and
+`/cast [@cursor] <name>` (key up casts). They take the key with `SetOverrideBindingClick` (out of combat), cleared when turned off.
+The user's game reports `ActionButtonUseKeyHeldSpell` = 1 and `ActionButtonUseKeyDown` = 1 (`/ubf hold`; UbermocUI may have set them).
