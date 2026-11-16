@@ -44,10 +44,14 @@ local function resolve(id, p)
         return p.tries >= 240   -- give up after about 4 seconds
     end
     S.loaded = S.loaded + 1
+    p.done = true   -- never counted twice, whatever happens next
     if lines and mentions(table.concat(lines, " ")) then
+        local name
+        if C_Item and C_Item.GetItemNameByID then name = C_Item.GetItemNameByID(id) end
+        if not name and GetItemInfo then name = (GetItemInfo(id)) end
         local db = UF.DB()
         db.scan = db.scan or {}
-        db.scan[id] = { class = p.class, sub = p.sub, name = (GetItemInfo(id)), use = lines }
+        db.scan[id] = { class = p.class, sub = p.sub, name = name, use = lines }
         S.found = S.found + 1
     end
     return true
@@ -55,14 +59,23 @@ end
 
 local function saveStats()
     local db = UF.DB()
-    db.scanStats = { nextId = S.nextId, classed = S.classed, loaded = S.loaded, found = S.found, last = S.last }
+    db.scanStats = { errors = S.errors or 0, nextId = S.nextId, classed = S.classed, loaded = S.loaded, found = S.found, last = S.last }
 end
 
 local function step()
     saveStats()
     for id, p in pairs(pending) do
         p.wait = p.wait - 1
-        if p.wait <= 0 and resolve(id, p) then pending[id] = nil end
+        if p.wait <= 0 then
+            local ok, done = pcall(resolve, id, p)
+            if not ok then
+                S.errors = (S.errors or 0) + 1
+                S.lastError = tostring(done)
+                UF.DB().scanError = S.lastError
+                done = true
+            end
+            if done or p.done then pending[id] = nil end
+        end
     end
     if S.nextId > S.last then
         if next(pending) == nil then
@@ -96,7 +109,8 @@ end)
 function UF.scan(arg)
     if arg == "stop" then S.running = false; UF.say("Scan stopped at id " .. S.nextId .. "."); return end
     if arg == "status" then
-        UF.say(("Scan: %s, at id %d of %d, %d kept, %d candidates, %d with data."):format(S.running and "running" or "not running", S.nextId, S.last, S.found, S.classed, S.loaded))
+        UF.say(("Scan: %s, at id %d of %d, %d kept, %d candidates, %d with data, %d errors."):format(S.running and "running" or "not running", S.nextId, S.last, S.found, S.classed, S.loaded, S.errors or 0))
+        if S.lastError then UF.say("Last scan error: " .. S.lastError) end
         return
     end
     local b = arg and arg:match("^budget%s+(%d+)$")
