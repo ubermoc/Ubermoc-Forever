@@ -1,3 +1,6 @@
+UbermocForever 1.3.16
+- Changed: when the combination you press is already used for something else (Jump on every layer, for example), pressing the same combination again replaces it with the spell.
+
 UbermocForever 1.3.15
 - Added: while a spell is being bound, chat shows every key or button the game sends, so a combination that does not arrive can be seen.
 

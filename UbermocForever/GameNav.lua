@@ -504,6 +504,7 @@ end
 -- (so it never sits on the mouse cursor), the way the game's own "change what a slot uses" works.
 function G.beginPlace(from, spell)
     G.placing = { from = from, spell = spell }
+    G.replaceOK = nil
     focus = nil
     G.scrolled = nil
     if G.applyMap then G.applyMap() end
@@ -601,9 +602,13 @@ function G.placeKey(key)
         return
     end
     if action and action ~= "" then
-        UF.say(("%s is already used for %s (%s). Press another combination, or B to cancel."):format(
-            key, UF.actionName and UF.actionName(action) or action, action))
-        return
+        if G.replaceOK ~= key then
+            G.replaceOK = key
+            UF.say(("%s is already used for %s (%s). Press it again to replace that with this spell, or press another combination, or B to cancel."):format(
+                key, UF.actionName and UF.actionName(action) or action, action))
+            return
+        end
+        UF.say(("Replacing %s on %s."):format(UF.actionName and UF.actionName(action) or action, key))
     end
     local free, bind, frameName = G.freeSlot()
     if not free then
