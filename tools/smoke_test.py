@@ -699,5 +699,28 @@ r = L("""function()
 end""")()
 assert str(r) == "26,MULTIACTIONBAR3BUTTON2,3,nil,true,27,MULTIACTIONBAR3BUTTON3", r
 print("Binding by buttons: slot of a combination, free slot for a new one: OK")
+# Cinematic camera: talking is told by the game's own windows, settings are saved first and put back
+r = L("""function()
+    local UF = UbermocForever
+    local C = UF.Cinematic
+    local out = {}
+    out[#out + 1] = tostring(C.talking())
+    GossipFrame = { IsShown = function() return true end }
+    out[#out + 1] = tostring(C.talking())
+    out[#out + 1] = tostring(C.enabled())
+    UbermocForeverDB.cinema = false
+    out[#out + 1] = tostring(C.enabled())
+    UbermocForeverDB.cinema = nil
+    local cv = { a = "1" }
+    C_CVar = nil
+    UbermocForeverDB.cinemaBackup = { a = "0", b = "5" }
+    SetCVar = function(k, v) cv[k] = v end
+    C.restoreCVars()
+    out[#out + 1] = tostring(cv.a) .. tostring(cv.b) .. tostring(UbermocForeverDB.cinemaBackup)
+    C.stopNow()
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "false,true,true,false,05nil", r
+print("Cinematic camera: talking, on/off, settings put back: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

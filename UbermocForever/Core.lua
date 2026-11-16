@@ -125,6 +125,10 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     elseif msg == "stick flip" then
         UF.DB().stickFlip = not UF.DB().stickFlip
         UF.say("Right stick scrolling is now " .. (UF.DB().stickFlip and "reversed." or "the normal way (up scrolls up)."))
+    elseif msg == "cinema on" or msg == "cinema off" then
+        UF.DB().cinema = (msg == "cinema on")
+        if msg == "cinema off" and UF.Cinematic then UF.Cinematic.stopNow() end
+        UF.say("The cinematic camera while talking to an NPC is " .. (msg == "cinema on" and "on." or "off."))
     elseif msg == "item" then
         if UF.ItemMenu and UF.GameNav then UF.ItemMenu.report(UF.GameNav.focusFrame()) end
     elseif msg == "tabs" then

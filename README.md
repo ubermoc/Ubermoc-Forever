@@ -10,6 +10,7 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 
 - Detects your controller and offers to set the default key binds the first time you play.
 - Default binds in four layers (nothing held, Shift button held, Ctrl button held, both). Steam Deck and Steam Controller hold R4 and R5; every other controller holds the triggers. Bumpers target the nearest enemy and friend; Select is the map; interact and jump are on the back buttons.
+- Cinematic camera while you talk to a quest giver or gossip NPC: the camera moves in and turns to the NPC, black bars slide in and the rest of the screen fades, while the game's own quest window stays exactly as it is. Everything is put back when the talk ends. /ubf cinema off turns it off.
 - Start steps like Esc: it closes what is open, clears your target, then opens the game menu.
 - An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
 - Move around the game's own windows (bags, character, spellbook, professions, map, mail, the game menu and question windows) with a highlight, without Blizzard's built-in controller interface:

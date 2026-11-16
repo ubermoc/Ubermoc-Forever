@@ -1,3 +1,6 @@
+UbermocForever 1.3.18
+- Added: cinematic camera while talking to a quest giver or gossip NPC. The camera moves in and turns to the NPC, black bars slide in, and the rest of the interface fades. The game's own quest and gossip windows are not changed. Everything is put back when the talk ends, in combat, and after a reload. /ubf cinema off turns it off, /ubf cinema on turns it back on.
+
 UbermocForever 1.3.17
 - Changed: when the combination you press is already used for something else, the game's own question window asks "Replace it with this spell?" (A replaces, B keeps what is there) instead of asking you to press it again.
 
