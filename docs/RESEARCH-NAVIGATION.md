@@ -204,3 +204,28 @@ Same sources and commits as above. Read, not tried in the game.
 
 Still **not known** (needs the game): which of the two tab kinds each Forever window uses, and whether a secure click onto
 a Blizzard button taints it.
+
+## 8. Added 2026-11-15: using items on other items, profession actions, tooltips
+
+Sources: the Blizzard Forever UI `bebcb6b` (paths under `Interface/AddOns/`), ConsolePort `5d526b2`, Ubermoc UI `09d87d3`, plus
+the web. **Read** = opened and read; **not tried** = not run in the game.
+
+- **How the game applies an item to another item.** Using such an item puts the game into item targeting
+  (`SpellCanTargetItem()` / `SpellIsTargeting()`, used in `Blizzard_UIPanels_Game/Camelot/PaperDollFrame.lua` L1614 and L1861 and
+  `Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua` L631, L1508, L1723); the next click on a worn item or bag item
+  applies it. The same thing as a macro is two lines, "/use <item>" then "/use <inventory slot>", with slot 16 the main hand
+  and 17 the off hand: confirmed by player macros in a [Blizzard forum thread](https://us.forums.blizzard.com/en/wow/t/sharpening-stone-macro/276382)
+  and the [Warcraft Wiki](https://warcraft.wiki.gg/wiki/Sharpening_Stone); not tried here. It runs from a secure macro button.
+- **Which items are used on another item** is NOT given by any single game call that was found. The game has
+  `Enum.ItemClass.ItemEnhancement` = 8 and, for consumables, `Itemenhancement` = 6 and `ItemenhancementTemporary` = 15
+  (`Blizzard_APIDocumentationGenerated/ItemConstantsDocumentation.lua` L284, L313, L322). The rule used is: an item with a use
+  spell that is of class 8, or a consumable that is not a potion, elixir, flask, scroll, food or bandage. How Forever
+  classifies sharpening stones and poisons could **not** be confirmed (the one database page that might say, metaforge, refused
+  the request), so `/ubf item` prints the class and subclass of the highlighted item to check it in the game.
+- **Disenchant, Prospecting, Milling**: ConsolePort uses "/cast Disenchant" then "/use <bag> <slot>" (`ConsolePort_Menu/View/Popup/ItemMenu.lua`
+  SetCommands) and only for green to epic weapons and armour (`Wrapper.lua` `CanPlayerDisenchantItem`). Ubermoc UI uses spell ids
+  13262, 31252 and 51005 (`Extras.lua`). Prospecting needs five ore (trade goods subclass 7) and Milling five herbs (subclass 9):
+  those two subclass numbers are from memory of the item data, not from the Forever files. Pick Lock was left out.
+- **Tooltip beside the highlight**: the highlighted button's own `OnEnter` runs so each window shows its own tooltip, then
+  `GameTooltip` is anchored to the right of the button, or the left when the right has no room (ConsolePort also draws its tooltip next to its
+  node: `ConsolePort_Menu/View/Popup/ItemMenu.lua` SetTooltip uses `SetBagItem`). Not tried.

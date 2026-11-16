@@ -609,11 +609,63 @@ end
 ----------------------------------------------------------------------
 local nodes = {}
 
+----------------------------------------------------------------------
+-- The tooltip beside the highlight: the highlighted button's own OnEnter runs (as if the mouse were on it, so every
+-- window shows its own tooltip), then the tooltip is moved next to the button on the side with room: the right when it
+-- fits on the screen, otherwise the left (and the other way round when the right has no room).
+----------------------------------------------------------------------
+local tipFor
+local function tooltipHide()
+    if tipFor then
+        local f = tipFor
+        tipFor = nil
+        local leave = f.GetScript and f:GetScript("OnLeave")
+        if leave then pcall(leave, f) end
+    end
+    if GameTooltip and GameTooltip:IsShown() then GameTooltip:Hide() end
+end
+G.tooltipHide = tooltipHide
+
+local function tooltipPlace(f)
+    if not (GameTooltip and GameTooltip:IsShown()) then return end
+    local ui = UIParent:GetEffectiveScale() or 1
+    local sc = (f:GetEffectiveScale() or 1) / ui
+    local left, right = f:GetLeft(), f:GetRight()
+    local screenW = UIParent:GetWidth() or 0
+    local tipScale = (GameTooltip:GetEffectiveScale() or 1) / ui
+    local w = (GameTooltip:GetWidth() or 300) * tipScale + 12
+    local side = "right"
+    if left and right and screenW > 0 then
+        local roomLeft, roomRight = left * sc, screenW - right * sc
+        if roomRight >= w then side = "right"
+        elseif roomLeft >= w then side = "left"
+        else side = (roomRight >= roomLeft) and "right" or "left" end
+    end
+    GameTooltip:ClearAllPoints()
+    if GameTooltip.SetClampedToScreen then GameTooltip:SetClampedToScreen(true) end
+    if side == "left" then
+        GameTooltip:SetPoint("TOPRIGHT", f, "TOPLEFT", -8, 0)
+    else
+        GameTooltip:SetPoint("TOPLEFT", f, "TOPRIGHT", 8, 0)
+    end
+end
+
+local function tooltipShow(f)
+    tooltipHide()
+    if not f or InCombatLockdown() then return end
+    local enter = f.GetScript and f:GetScript("OnEnter")
+    if not enter then return end
+    tipFor = f
+    pcall(enter, f)
+    pcall(tooltipPlace, f)
+end
+
 local function setFocus(f)
     focus = f
     drawAt(f)
     setTargets()
     if f then pcall(reveal, f) end
+    pcall(tooltipShow, f)
 end
 
 local function rescan()
@@ -758,6 +810,7 @@ local function release()
     focus = nil
     drawAt(nil)
     if G.placing then G.endPlace(true) end
+    pcall(tooltipHide)
     if bar then bar:Hide() end
     barSig, anchoredTo = nil, nil
 end
@@ -769,7 +822,11 @@ local function engage()
         PADDDOWN = function() move("DOWN") end,
         PADDLEFT = function() move("LEFT") end,
         PADDRIGHT = function() move("RIGHT") end,
-        PAD4 = function() if focus and UF.ItemMenu and not (wins[1] and wins[1] == _G.UbermocForeverItemMenu) then UF.ItemMenu.open(focus) end end,
+        PAD4 = function()
+            if focus and UF.ItemMenu and not (wins[1] and wins[1] == _G.UbermocForeverItemMenu) then
+                if UF.ItemMenu.open(focus) then pcall(tooltipHide) end
+            end
+        end,
         PADLSHOULDER = function() stepTab(-1) end,
         PADRSHOULDER = function() stepTab(1) end,
         -- the side tabs when the window has them, else scroll the list
@@ -783,6 +840,7 @@ local function engage()
 end
 
 G.known = {}
+function G.focusFrame() return focus end
 function G.enabled() return UF.DB().gameNav ~= false end
 function G.active() return entry ~= nil end
 

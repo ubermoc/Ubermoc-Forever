@@ -588,5 +588,43 @@ r = L("""function()
 end""")()
 assert str(r) == "1,3,2", r
 print("Side tabs that are plain frames are found, with the chosen one: OK")
+# Items used on other items, profession actions, and what the bag menu offers
+r = L("""function()
+    local UF = UbermocForever
+    local M = UF.ItemMenu
+    local classes = { [1] = { 0, 6 }, [2] = { 0, 1 }, [3] = { 8, 0 }, [4] = { 4, 1 }, [5] = { 2, 1 }, [6] = { 7, 7 }, [7] = { 7, 9 }, [100] = { 2, 7 } }
+    C_Item = {
+        GetItemInfoInstant = function(id) local c = classes[id] or { 15, 0 }; return id, "t", "s", "", 1, c[1], c[2] end,
+        GetItemSpell = function(id) if id == 4 or id == 5 or id == 6 or id == 7 or id == 100 then return nil end return "Use it" end,
+        GetItemInfo = function(id) return "n", "l", (id == 5) and 3 or 1 end,
+    }
+    classes[4] = { 4, 1 }
+    local out = {}
+    out[#out + 1] = tostring(M.usedOnItems(1))     -- consumable, item enhancement subclass
+    out[#out + 1] = tostring(M.usedOnItems(2))     -- potion: no
+    out[#out + 1] = tostring(M.usedOnItems(3))     -- item enhancement class
+    out[#out + 1] = tostring(M.usedOnItems(4))     -- armour with no use: no
+    out[#out + 1] = tostring(M.professionFor(13262, 5, 1)) .. tostring(M.professionFor(13262, 4, 1))   -- rare weapon yes, armour of poor quality no
+    out[#out + 1] = tostring(M.professionFor(31252, 6, 4)) .. tostring(M.professionFor(31252, 6, 5))   -- ore needs five
+    out[#out + 1] = tostring(M.professionFor(51005, 7, 5))
+    -- the menu on a sharpening stone in a bag, with a weapon in the main hand
+    local btn = CreateFrame("Button", "FakeStone", UIParent)
+    btn.GetBagID = function() return 0 end
+    btn.GetID = function() return 2 end
+    C_Container = { GetContainerItemInfo = function() return { itemID = 1, hyperlink = "|cff|Hitem:1|h[Rough Stone]|h|r", stackCount = 3 } end,
+                    SortBags = function() end, PickupContainerItem = function() end }
+    GetInventoryItemID = function(_, slot) if slot == 16 then return 100 end end
+    GetInventoryItemLink = function(_, slot) if slot == 16 then return "|cff|Hitem:100|h[Big Sword]|h|r" end end
+    IsPlayerSpell = function(id) return id == 13262 end
+    C_Spell = { GetSpellName = function() return "Disenchant" end }
+    M.open(btn)
+    local texts = {}
+    for i = 1, 8 do local e = _G["UbermocForeverItemMenuEntry" .. i]; if e and e:IsShown() then texts[#texts + 1] = e:GetText() end end
+    UbermocForeverItemMenu:Hide()
+    out[#out + 1] = table.concat(texts, "|")
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true,false,true,false,truefalse,falsetrue,true,Use / equip|Use on Main hand: Big Sword|Pick up / move|Delete|Sort bags", r
+print("Item menu: use-on-weapon entries and profession rules: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
