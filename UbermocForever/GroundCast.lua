@@ -1,9 +1,11 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: hold to aim, release to cast, for ground spells (Heroic Leap, Blizzard, Rain of Fire ...).
--- For each action button that holds a ground spell, our own secure button takes over that button's key: pressing starts
--- the aim as usual, letting go casts the spell at the aim point (the dot from Aim.lua). It is done with the game's own
--- press-and-hold support for secure buttons (attribute typerelease, Blizzard_FrameXML/SecureTemplates.lua). Nothing is
--- written onto the game's action buttons. Set up out of combat only; the keys are given back when it is turned off.
+-- Pressing a ground spell's action button starts the aim as usual; letting go casts the spell at the aim point (the dot
+-- from Aim.lua). The game runs the attribute "typerelease" of a button on key release when "Press and Hold Casting" is on
+-- (Blizzard_FrameXML/SecureTemplates.lua), and gives it only to empower spells, so ground spells' buttons are given one
+-- here (macro: /stopspelltarget, /cast [@cursor] Spell). This is the method UbermocUI uses, which works in this game.
+-- Which spells are ground spells: a built-in list, plus every spell whose button starts an aim (learned by itself).
+-- Attributes are set out of combat only. Nothing is stored on the game's buttons (our own tables remember them).
 -- Notes: docs/RESEARCH-GROUND-SPELLS.md. Not tested in the game until the user reports.
 ----------------------------------------------------------------------
 local ADDON, UF = ...
@@ -61,52 +63,81 @@ function R.groundSpellOf(slot)
     return nil
 end
 
-local owner = CreateFrame("Frame", "UbermocForeverGroundOwner", UIParent)
-local pool = {}
-local function button(i)
-    if pool[i] then return pool[i] end
-    local b = CreateFrame("Button", "UbermocForeverGround" .. i, UIParent, "SecureActionButtonTemplate")
-    b:RegisterForClicks("AnyDown", "AnyUp")
-    -- /ubf ground debug: say what this button receives (our own button, so safe to hook)
-    b:HookScript("PreClick", function(self, btn, down)
-        if R.debug then
-            UF.say("Ground button " .. self:GetName() .. " " .. (down and "DOWN" or "UP") .. " (" .. tostring(btn)
-                .. "), aiming: " .. tostring(SpellIsTargeting and SpellIsTargeting()) .. ", spell: " .. tostring(self:GetAttribute("spell")))
-        end
-    end)
-    pool[i] = b
-    return b
-end
+local groundBtn = {}   -- bar button -> true while it carries the release action (kept here, not on the game's button)
+local watched = {}     -- bar button -> true once its press is watched for learning
 
 local dirty = false
+local function learnFrom(b)
+    local slot = b.action
+    if not slot then return end
+    local ok, t, id = pcall(GetActionInfo, slot)
+    if not ok or t ~= "spell" or type(id) ~= "number" then return end
+    if R.groundSpellOf(slot) then return end
+    local name = spellName(id)
+    if not name then return end
+    cfg().learned[id] = name
+    UF.say(name .. " starts an aim, so it is now a ground spell: hold its button to aim and let go to cast.")
+    if InCombatLockdown() then dirty = true else R.apply() end
+end
+R.learnFrom = learnFrom
+
+-- Watch a bar button's press: a spell that is not known but starts an aim a moment later is a ground spell.
+local function watch(b)
+    if watched[b] then return end
+    watched[b] = true
+    b:HookScript("PreClick", function(self, btn, down)
+        if R.debug then
+            UF.say("Button " .. tostring(self:GetName()) .. " " .. (down and "DOWN" or "UP") .. ", aiming: " .. tostring(SpellIsTargeting and SpellIsTargeting())
+                .. ", ground button: " .. tostring(groundBtn[self] == true))
+        end
+        if groundBtn[self] or not cfg().on then return end
+        if SpellIsTargeting and SpellIsTargeting() then return end   -- an aim was already open
+        C_Timer.After(0.1, function()
+            if SpellIsTargeting and SpellIsTargeting() then learnFrom(self) end
+        end)
+    end)
+end
+
+-- The game's own settings that make the release count; saved first, put back when this is turned off.
+local function holdSettings(on)
+    local d = UF.DB()
+    local function get(c) local f = (C_CVar and C_CVar.GetCVar) or GetCVar; return f and f(c) end
+    local function set(c, v) local f = (C_CVar and C_CVar.SetCVar) or SetCVar; return f(c, v) end
+    d.groundBackup = d.groundBackup or {}
+    for _, c in ipairs({ "ActionButtonUseKeyDown", "ActionButtonUseKeyHeldSpell" }) do
+        local cur = get(c)
+        if cur ~= nil then
+            if on then
+                if d.groundBackup[c] == nil then d.groundBackup[c] = cur end
+                if cur ~= "1" then pcall(set, c, "1") end
+            elseif d.groundBackup[c] ~= nil then
+                pcall(set, c, d.groundBackup[c]); d.groundBackup[c] = nil
+            end
+        end
+    end
+end
+
 function R.apply()
     if InCombatLockdown() then dirty = true; return end
     dirty = false
-    ClearOverrideBindings(owner)
-    for _, b in pairs(pool) do
-        b:SetAttribute("type", nil); b:SetAttribute("spell", nil); b:SetAttribute("typerelease", nil)
-        b:SetAttribute("macrotext", nil); b:SetAttribute("pressAndHoldAction", nil)
-    end
-    if not cfg().on then return end
+    local on = cfg().on
+    holdSettings(on)
     local n = 0
     for _, bar in ipairs(BARS) do
         for i = 1, 12 do
-            local f = _G[bar[1] .. i]
-            local name = f and R.groundSpellOf(f.action)
-            if name then
-                local keys = { GetBindingKey(bar[2] .. i) }
-                for _, k in ipairs({ GetBindingKey("CLICK " .. bar[1] .. i .. ":LeftButton") }) do keys[#keys + 1] = k end   -- the game also reads these
-                for _, key in ipairs(keys) do
-                    if key and key ~= "" then
-                        n = n + 1
-                        local b = button(n)
-                        b:SetAttribute("pressAndHoldAction", true)
-                        b:SetAttribute("type", "spell")                 -- pressing: starts the aim, as the bar button does
-                        b:SetAttribute("spell", name)
-                        b:SetAttribute("typerelease", "macro")          -- letting go: casts it at the aim point
-                        b:SetAttribute("macrotext", "/stopspelltarget\n/cast [@cursor] " .. name)
-                        SetOverrideBindingClick(owner, false, key, b:GetName(), "LeftButton")
-                    end
+            local b = _G[bar[1] .. i]
+            if b and b.SetAttribute and not (b.IsForbidden and b:IsForbidden()) then
+                if on then watch(b) end
+                local name = on and R.groundSpellOf(b.action) or nil
+                if name then
+                    b:SetAttribute("typerelease", "macro")
+                    b:SetAttribute("macrotext", "/stopspelltarget\n/cast [@cursor] " .. name)
+                    groundBtn[b] = true
+                    n = n + 1
+                elseif groundBtn[b] then
+                    b:SetAttribute("typerelease", nil)
+                    b:SetAttribute("macrotext", nil)
+                    groundBtn[b] = nil
                 end
             end
         end
@@ -114,105 +145,6 @@ function R.apply()
     R.count = n
 end
 
--- /ubf ground: what is set up, and which key a bound spell's key now goes to.
-function R.report()
-    local lines = {}
-    for _, bar in ipairs(BARS) do
-        for i = 1, 12 do
-            local f = _G[bar[1] .. i]
-            local name = f and R.groundSpellOf(f.action)
-            if name then
-                local keys = { GetBindingKey(bar[2] .. i) }
-                for _, key in ipairs(keys) do
-                    if key and key ~= "" then
-                        lines[#lines + 1] = name .. " on " .. bar[2] .. i .. ", key " .. key .. " goes to: " .. tostring(GetBindingAction(key))
-                    end
-                end
-                if #keys == 0 then lines[#lines + 1] = name .. " on " .. bar[2] .. i .. " has no key" end
-            end
-        end
-    end
-    UF.say("Release to cast is " .. (cfg().on and "on" or "off") .. ", buttons set up: " .. tostring(R.count or 0)
-        .. ". Press and hold setting: " .. tostring(GetCVar and GetCVar("ActionButtonUseKeyHeldSpell")))
-    if #lines == 0 then
-        UF.say("No ground spell with a key was found on your action bars.")
-        -- what the bars hold, so a missing spell can be added by name
-        local frames, spells = 0, {}
-        for _, bar in ipairs(BARS) do
-            for i = 1, 12 do
-                local f = _G[bar[1] .. i]
-                if f then
-                    frames = frames + 1
-                    local ok, t, id = pcall(GetActionInfo, f.action)
-                    if ok and t == "spell" and type(id) == "number" then spells[#spells + 1] = (spellName(id) or "?") .. " (" .. id .. ")" end
-                end
-            end
-        end
-        UF.say("Bar buttons found: " .. frames .. ". Spells on them: " .. (#spells > 0 and table.concat(spells, ", ") or "none read") .. ".")
-        UF.say("If your ground spell is in that list, add it: /ubf ground add Spell Name")
-    end
-    for _, l in ipairs(lines) do UF.say(l) end
-    local names = {}
-    for id, n in pairs(cfg().learned) do names[#names + 1] = n .. " (" .. id .. ")" end
-    UF.say("Ground spells learned so far: " .. (#names > 0 and table.concat(names, ", ") or "none yet") .. ".")
-    UF.say("To watch presses and releases type /ubf ground debug, then try a spell.")
-end
-function R.setDebug(on) R.debug = on; UF.say("Ground spell debug is " .. (on and "on." or "off.")) end
-
--- Learning: while the game is waiting for a ground spot, the button of the spell that started it is the game's
--- "current action". That spell is remembered, so nobody has to add their spells by hand.
-function R.learnScan()
-    local isCurrent = (C_ActionBar and C_ActionBar.IsCurrentAction) or IsCurrentAction   -- the game's own button state uses C_ActionBar
-    if not (SpellIsTargeting and SpellIsTargeting()) or not isCurrent then return nil end
-    for slot = 1, 180 do
-        local okc, cur = pcall(isCurrent, slot)
-        if okc and cur then
-            local ok, t, id = pcall(GetActionInfo, slot)
-            if ok and t == "spell" and type(id) == "number" then
-                local d = cfg()
-                if not (GROUND_IDS[id] or d.learned[id]) then
-                    local name = spellName(id)
-                    if name then
-                        d.learned[id] = name
-                        return name
-                    end
-                end
-                return nil
-            end
-        end
-    end
-end
-
-do
-    local seen, tries, acc = false, 0, 0
-    local drv = CreateFrame("Frame")
-    drv:SetScript("OnUpdate", function(_, dt)
-        acc = acc + dt
-        if acc < 0.05 then return end
-        acc = 0
-        if SpellIsTargeting and SpellIsTargeting() then
-            if not seen then seen, tries = true, 0 end
-            if tries < 8 then
-                tries = tries + 1
-                local name = R.learnScan()
-                if name then
-                    tries = 8
-                    UF.say(name .. " is a ground spell: from now on hold its button to aim and let go to cast.")
-                    if InCombatLockdown() then R.dirtyAfterCombat() else R.apply() end
-                end
-            end
-        else
-            seen = false
-        end
-    end)
-end
-
-local queued
-local function soon()
-    if queued then return end
-    queued = true
-    C_Timer.After(0.4, function() queued = false; R.apply() end)
-end
 function R.dirtyAfterCombat() dirty = true end
 function R.toggle() local c = cfg(); c.on = not c.on; R.apply() end
 
@@ -224,12 +156,38 @@ function R.addName(name, remove)
     UF.say(name .. (remove and " is no longer a ground spell." or " is now a ground spell (hold to aim, release to cast)."))
 end
 
+-- /ubf ground: what is set up.
+function R.report()
+    local lines = {}
+    for _, bar in ipairs(BARS) do
+        for i = 1, 12 do
+            local b = _G[bar[1] .. i]
+            if b and groundBtn[b] then lines[#lines + 1] = bar[1] .. i .. ": " .. tostring(R.groundSpellOf(b.action)) end
+        end
+    end
+    UF.say("Release to cast is " .. (cfg().on and "on" or "off") .. ", buttons set up: " .. tostring(R.count or 0)
+        .. ". Press and hold setting: " .. tostring(GetCVar and GetCVar("ActionButtonUseKeyHeldSpell")))
+    for _, l in ipairs(lines) do UF.say(l) end
+    local names = {}
+    for id, n in pairs(cfg().learned) do names[#names + 1] = n .. " (" .. id .. ")" end
+    UF.say("Ground spells learned so far: " .. (#names > 0 and table.concat(names, ", ") or "none yet") .. ".")
+    UF.say("To watch presses and releases type /ubf ground debug, then try a spell.")
+end
+function R.setDebug(on) R.debug = on; UF.say("Ground spell debug is " .. (on and "on." or "off.")) end
+
+local queued
+local function soon()
+    if queued then return end
+    queued = true
+    C_Timer.After(0.4, function() queued = false; R.apply() end)
+end
+
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_BONUS_ACTIONBAR",
-    "SPELLS_CHANGED", "UPDATE_BINDINGS", "PLAYER_REGEN_ENABLED", "PLAYER_TALENT_UPDATE" }) do
+    "SPELLS_CHANGED", "PLAYER_SPECIALIZATION_CHANGED", "UPDATE_SHAPESHIFT_FORM", "PLAYER_REGEN_ENABLED", "PLAYER_TALENT_UPDATE" }) do
     pcall(ev.RegisterEvent, ev, e)
 end
 ev:SetScript("OnEvent", function(_, e)
     if e == "PLAYER_REGEN_ENABLED" then if dirty then soon() end else soon() end
 end)
-UF.OnLogin(function() soon() end)
+UF.OnLogin(function() C_Timer.After(3, function() R.apply() end) end)

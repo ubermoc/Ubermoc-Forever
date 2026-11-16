@@ -53,3 +53,11 @@ Confirmed by reading Blizzard's code (not yet by running it in the game):
 - `C_Spell.PlaceTargetingSpellAtCursor` exists but is restricted (`HasRestrictions = true`), so addon code cannot call it.
 Not verified (needs the game): that `IsCurrentAction` is true for the spell that is waiting for a ground spot; which class/spell the user tried
 first (their `/ubf ground` report said no ground spell was found, so that spell was probably not in the built-in list).
+
+## 1.3.32: switched to UbermocUI's method (works in the user's game)
+UbermocUI `Aim.lua` learns a ground spell by hooking `PreClick` of each bar button: if the game is not aiming at the press and
+`SpellIsTargeting()` is true 0.1 s later, that button's spell is a ground spell; it is saved to the player's own list. Then it sets
+`typerelease = macro` and `macrotext = /stopspelltarget` + `/cast [@cursor] <Spell>` on that button, out of combat, and turns on the CVars
+`ActionButtonUseKeyDown` and `ActionButtonUseKeyHeldSpell`. The override-key method and the `IsCurrentAction` scan of 1.3.27 to 1.3.31 were
+replaced by this, because it is the one the user has seen work. Ours keeps its marks in its own tables (no fields written on the game's
+buttons) and saves/restores those two CVars (`groundBackup`). Whether the earlier taint errors came from this kind of attribute is not proven.
