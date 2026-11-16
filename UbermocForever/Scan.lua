@@ -53,7 +53,13 @@ local function resolve(id, p)
     return true
 end
 
+local function saveStats()
+    local db = UF.DB()
+    db.scanStats = { nextId = S.nextId, classed = S.classed, loaded = S.loaded, found = S.found, last = S.last }
+end
+
 local function step()
+    saveStats()
     for id, p in pairs(pending) do
         p.wait = p.wait - 1
         if p.wait <= 0 and resolve(id, p) then pending[id] = nil end
