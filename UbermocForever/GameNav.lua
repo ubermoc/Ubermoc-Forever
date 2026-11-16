@@ -468,19 +468,64 @@ function G.endPlace(cancel)
     if p and p.from then G.restore = p.from end
 end
 
+-- The action slot (1 to 180) a bar button stands for. The game's own methods first, then the number it keeps, then the
+-- slot worked out from the button's name (ActionButtonN is the page you are on, the other bars have fixed ranges).
+local BAR_FIRST = { MultiBarBottomLeftButton = 60, MultiBarBottomRightButton = 48, MultiBarRightButton = 24,
+                    MultiBarLeftButton = 36, MultiBar5Button = 144, MultiBar6Button = 156, MultiBar7Button = 168 }
+local function slotOf(f)
+    local function num(v) return (type(v) == "number" and v > 0) and v or nil end
+    if f.CalculateAction then
+        local ok, v = pcall(f.CalculateAction, f)
+        if ok and num(v) then return v end
+    end
+    if num(f.action) then return f.action end
+    if f.GetAttribute then
+        local ok, v = pcall(f.GetAttribute, f, "action")
+        if ok and num(v) then return v end
+    end
+    local n = f.GetName and f:GetName()
+    if n then
+        local base, i = n:match("^(.-)(%d+)$")
+        i = tonumber(i)
+        if base and i then
+            if BAR_FIRST[base] then return BAR_FIRST[base] + i end
+            if base == "ActionButton" then
+                local page = (GetActionBarPage and GetActionBarPage()) or 1
+                return (page - 1) * 12 + i
+            end
+        end
+    end
+end
+G.slotOf = slotOf
+
 local function placeHere()
     if not (G.placing and focus) then return end
-    local slot = (focus.CalculateAction and select(2, pcall(focus.CalculateAction, focus))) or focus.action
     local sp = G.placing.spell
-    if type(slot) == "number" and C_ActionBar and C_ActionBar.PutActionInSlot and sp and C_SpellBook then
-        pcall(C_SpellBook.PickupSpellBookItem, sp.slotIndex, sp.spellBank)
-        if GetCursorInfo and GetCursorInfo() then
-            pcall(C_ActionBar.PutActionInSlot, slot)
-            UF.say("Spell placed on the action bar.")
-        else
-            UF.say("That spell cannot go on an action bar.")
-        end
-        if ClearCursor then pcall(ClearCursor) end   -- whatever was in that slot lands on the cursor: let it go
+    local slot = slotOf(focus)
+    if not slot then
+        UF.say("Could not tell which action slot " .. (focus.GetName and focus:GetName() or "that button") .. " is.")
+        return   -- stay in placing mode so another slot can be tried
+    end
+    if not (sp and C_SpellBook and C_SpellBook.PickupSpellBookItem and C_ActionBar and C_ActionBar.PutActionInSlot) then
+        UF.say("This game version cannot place a spell from here.")
+        G.endPlace(false)
+        return
+    end
+    local ok, err = pcall(C_SpellBook.PickupSpellBookItem, sp.slotIndex, sp.spellBank)
+    if not ok then UF.check("Pick up the spell to place it", false, tostring(err)) end
+    if not (GetCursorInfo and GetCursorInfo()) then
+        UF.say("That spell cannot go on an action bar.")
+        G.endPlace(false)
+        return
+    end
+    local ok2, err2 = pcall(C_ActionBar.PutActionInSlot, slot)
+    if not ok2 then UF.check("Place the spell in slot " .. slot, false, tostring(err2)) end
+    if ClearCursor then pcall(ClearCursor) end   -- whatever was in that slot lands on the cursor: let it go
+    local placed = GetActionInfo and GetActionInfo(slot)
+    if ok2 and placed then
+        UF.say("Spell placed on the action bar (slot " .. slot .. ").")
+    else
+        UF.say("The spell was not placed in slot " .. slot .. ". /ubf check shows why.")
     end
     G.endPlace(false)
 end
