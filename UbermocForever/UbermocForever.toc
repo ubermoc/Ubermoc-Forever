@@ -14,6 +14,7 @@ Legend.lua
 Nav.lua
 GameNav.lua
 ItemMenu.lua
+Scan.lua
 Prompt.lua
 Options.lua
 Menu.lua
