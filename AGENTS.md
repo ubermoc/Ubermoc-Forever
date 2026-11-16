@@ -1,6 +1,6 @@
 # Ubermoc Forever: notes for coding agents
 
-Read this first, then `HANDOFF.md` (history, older and partly out of date) and `docs/RESEARCH*.md` (sourced facts).
+Read this first, then `docs/LUA-WOW-GUIDE.md` (Lua and game knowledge, taint rules, where to look things up, working method; essential for a small model), then `HANDOFF.md` (history, older and partly out of date) and `docs/RESEARCH*.md` (sourced facts).
 The code is the truth; where a note here disagrees with it, trust the code and fix the note.
 
 ## What this is
