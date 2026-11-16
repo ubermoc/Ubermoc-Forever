@@ -20,9 +20,7 @@ A selects a skill, X trains. Windows stay open in combat and the buttons go back
 
 **Confirmed in the game by the user:** navigation, tabs, scroll, mailbox open letter, drop-downs, legend placement, item
 menu side, Y menu on bags, poisons being class 0 subclass 8.
-**Not confirmed in the game:** the vendor Sell entry (1.3.4), quest/gossip start position, B decline and trainer X (1.3.5),
-spell "Bind to action bar" placement, sharpening stone/oil classification, Prospect/Mill subclass numbers, submenu levels
-in drop-downs, which control on the map the user calls the "pull tab", account collection tabs.
+**Confirmed in the game by the user (2026-11-16, through 1.3.6):** everything above plus the vendor Sell entry, quest/gossip start and B decline, trainer X, spell binding, items on weapons and armor, right-stick scrolling, highlight-driven scrolling, X taking mail, the glow highlight. Anything not listed was not reported on: ask.
 
 ## How the code is organised
 TOC load order: `Core, Layouts, Detect, Binds, Legend, Nav, GameNav, ItemMenu, Prompt, Options, Menu` (plus `Start`).
