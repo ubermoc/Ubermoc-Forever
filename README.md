@@ -23,7 +23,7 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 - Y opens a small menu on what the highlight is over:
   - A bag item: use or sell, use on the piece it fits (poisons, sharpening stones and oils on your weapons, armor kits on the armor they name, scopes on your ranged weapon), disenchant, prospect, mill, pick up, delete, sort bags.
   - A worn item: use it, or use anything from your bags that fits it, or pick it up.
-  - A spell in the spellbook: bind it to an action bar, then pick the slot.
+  - A spell in the spellbook: bind it by pressing buttons. Hold your paddles and press the button you want (a back button that Steam Input turns into a key works too). If that combination already triggers an action slot, the spell goes there. If it is free, the spell goes in the first empty slot on a visible bar and the combination is bound to it. If it is already used for something else, the game asks if you want to replace it.
 - In combat your buttons go straight back to your own binds. Windows stay open but do not take your buttons, and they will not open in combat.
 
 The full description is in [docs/DESCRIPTION.md](docs/DESCRIPTION.md).
