@@ -9,8 +9,17 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
 - Detects your controller and offers to set the default key binds the first time you play.
 - Default binds in four layers (nothing held, Shift button held, Ctrl button held, both). Steam Deck and Steam Controller hold R4 and R5; every other controller holds the triggers. Bumpers target the nearest enemy and friend; Select is the map; interact and jump are on the back buttons.
 - Start steps like Esc: it closes what is open, clears your target, then opens the game menu.
-- An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default.
-- Move around its windows with the D-pad, A, B, X and Y, without Blizzard's built-in controller interface. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
+- An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
+- Move around the game's own windows (bags, character, spellbook, professions, map, mail, the game menu and question windows) with a highlight, without Blizzard's built-in controller interface:
+  - D-pad moves the highlight, A clicks, X right-clicks, and B closes the window you are in, then jumps to the next open one.
+  - The bumpers change tabs and pages, and the triggers step the side tabs down the right of a window (or scroll a list). Lists scroll by themselves to follow the highlight.
+  - Drop-down menus open and the highlight jumps into them; new windows, like an opened letter in the mail, take the highlight.
+  - A legend under each window lists what every button does there, and the item's tooltip shows beside the highlight on whichever side has room.
+- Y opens a small menu on what the highlight is over:
+  - A bag item: use or sell, use on your main hand or off hand (poisons, sharpening stones, oils), disenchant, prospect, mill, pick up, delete, sort bags.
+  - A worn item: use it, or use anything from your bags on it, or pick it up.
+  - A spell in the spellbook: bind it to an action bar, then pick the slot.
+- In combat your buttons go straight back to your own binds. Windows stay open but do not take your buttons, and they will not open in combat.
 
 ## Works together
 
