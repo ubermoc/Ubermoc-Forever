@@ -1,5 +1,4 @@
-UbermocForever 1.3.11
-- Added: a "Game windows: On/Off" button on the options window turns the highlight that moves around the game's own windows off and on (the same as /ubf nav off).
+UbermocForever 1.3.12
 - Fixed: placing a spell now finds every action bar that is showing, also bars with the back buttons bound through Steam Input and custom bars.
 
 UbermocForever 1.3.10

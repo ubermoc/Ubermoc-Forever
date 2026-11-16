@@ -463,19 +463,6 @@ local function build()
     local checks = bottomButton("Checks", 60)
     checks:SetPoint("RIGHT", reset, "LEFT", -1, 0)
     checks:SetScript("OnClick", function() UF.reportChecks() end)
-    -- the highlight that moves around the game's own windows can be turned off here (and with /ubf nav off)
-    local winNav = bottomButton("", 190)
-    winNav:SetPoint("RIGHT", checks, "LEFT", -1, 0)
-    local function winNavText()
-        winNav:SetText("Game windows: " .. ((UF.DB().gameNav ~= false) and "On" or "Off"))
-    end
-    winNavText()
-    winNav:SetScript("OnClick", function()
-        local on = UF.DB().gameNav == false
-        UF.DB().gameNav = on
-        winNavText()
-        UF.say("Moving around the game's windows with the controller is " .. (on and "on." or "off."))
-    end)
 
     buildPicker()
 
@@ -494,7 +481,7 @@ local function build()
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end
         end
-        out[#out + 1] = { winNav, checks, reset }
+        out[#out + 1] = { checks, reset }
         return out
     end
     local function startRow() return pickerOpen() and 2 or 3 end
