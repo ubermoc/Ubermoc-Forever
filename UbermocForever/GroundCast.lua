@@ -66,6 +66,13 @@ local function button(i)
     if pool[i] then return pool[i] end
     local b = CreateFrame("Button", "UbermocForeverGround" .. i, UIParent, "SecureActionButtonTemplate")
     b:RegisterForClicks("AnyDown", "AnyUp")
+    -- /ubf ground debug: say what this button receives (our own button, so safe to hook)
+    b:HookScript("PreClick", function(self, btn, down)
+        if R.debug then
+            UF.say("Ground button " .. self:GetName() .. " " .. (down and "DOWN" or "UP") .. " (" .. tostring(btn)
+                .. "), aiming: " .. tostring(SpellIsTargeting and SpellIsTargeting()) .. ", spell: " .. tostring(self:GetAttribute("spell")))
+        end
+    end)
     pool[i] = b
     return b
 end
@@ -104,6 +111,32 @@ function R.apply()
     end
     R.count = n
 end
+
+-- /ubf ground: what is set up, and which key a bound spell's key now goes to.
+function R.report()
+    local lines = {}
+    for _, bar in ipairs(BARS) do
+        for i = 1, 12 do
+            local f = _G[bar[1] .. i]
+            local name = f and R.groundSpellOf(f.action)
+            if name then
+                local keys = { GetBindingKey(bar[2] .. i) }
+                for _, key in ipairs(keys) do
+                    if key and key ~= "" then
+                        lines[#lines + 1] = name .. " on " .. bar[2] .. i .. ", key " .. key .. " goes to: " .. tostring(GetBindingAction(key))
+                    end
+                end
+                if #keys == 0 then lines[#lines + 1] = name .. " on " .. bar[2] .. i .. " has no key" end
+            end
+        end
+    end
+    UF.say("Release to cast is " .. (cfg().on and "on" or "off") .. ", buttons set up: " .. tostring(R.count or 0)
+        .. ". Press and hold setting: " .. tostring(GetCVar and GetCVar("ActionButtonUseKeyHeldSpell")))
+    if #lines == 0 then UF.say("No ground spell with a key was found on your action bars.") end
+    for _, l in ipairs(lines) do UF.say(l) end
+    UF.say("To watch presses and releases type /ubf ground debug, then try a spell.")
+end
+function R.setDebug(on) R.debug = on; UF.say("Ground spell debug is " .. (on and "on." or "off.")) end
 
 local queued
 local function soon()

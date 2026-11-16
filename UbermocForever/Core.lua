@@ -133,6 +133,10 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     elseif msg:match("^ground add ") or msg:match("^ground remove ") then
         local verb, name = msg:match("^ground (%a+) (.+)$")   -- the name is matched without regard to capitals
         if UF.GroundCast then UF.GroundCast.addName(name, verb == "remove") end
+    elseif msg == "ground" then
+        if UF.GroundCast then UF.GroundCast.report() end
+    elseif msg == "ground debug" then
+        if UF.GroundCast then UF.GroundCast.setDebug(not UF.GroundCast.debug) end
     elseif msg == "hold" then
         if UF.Aim then UF.Aim.holdReport() end
     elseif msg == "item" then
