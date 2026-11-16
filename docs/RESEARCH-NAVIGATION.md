@@ -229,3 +229,8 @@ the web. **Read** = opened and read; **not tried** = not run in the game.
 - **Tooltip beside the highlight**: the highlighted button's own `OnEnter` runs so each window shows its own tooltip, then
   `GameTooltip` is anchored to the right of the button, or the left when the right has no room (ConsolePort also draws its tooltip next to its
   node: `ConsolePort_Menu/View/Popup/ItemMenu.lua` SetTooltip uses `SetBagItem`). Not tried.
+
+**Update, checked in the game:** `/ubf item` on Crippling Poison (3775) and Instant Poison (6947) printed class 0, subclass 8
+("Other"), `INVTYPE_NON_EQUIP_IGNORE`, has a use: true. So poisons are not in the Item Enhancement groups here. The rule now
+reads the item's tooltip (`C_TooltipInfo.GetItemByID`) and requires its "Use:" line to mention a weapon; sharpening stones and
+oils are not yet checked in the game.

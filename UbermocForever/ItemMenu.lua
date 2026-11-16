@@ -111,14 +111,45 @@ local CLASS = { consumable = 0, weapon = 2, armor = 4, tradegoods = 7, itemEnhan
 -- bandages 7 (Enum.ItemConsumableSubclass, same file).
 local NOT_ON_ITEMS = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [7] = true }
 
--- Items that are used on another item (sharpening stones, weightstones, poisons, oils, enchant scrolls ...): the game
--- groups them as the "Item Enhancement" class, or as consumables of the Item Enhancement subclasses (6 and 15), and a
--- consumable with a use that is not a potion, elixir, flask, scroll, food or bandage is treated the same way.
+-- Poisons turned out (checked in the game with /ubf item: Crippling Poison 3775 and Instant Poison 6947) to be class 0,
+-- subclass 8 ("Other"), the same group as many other consumables. So for a consumable the item's own tooltip decides: its
+-- "Use:" line has to talk about a weapon (poisons, sharpening stones, weightstones and oils all do). The tooltip comes from
+-- C_TooltipInfo.GetItemByID (lines carry `leftText`, as Blizzard_SharedXMLGame/Tooltip/TooltipDataHandler.lua reads them).
+-- If the tooltip cannot be read, the class rule alone is used.
+local useCache = {}
+local function useLineMentionsWeapon(itemID)
+    if useCache[itemID] ~= nil then return useCache[itemID] end
+    local verdict
+    if C_TooltipInfo and C_TooltipInfo.GetItemByID then
+        local ok, data = pcall(C_TooltipInfo.GetItemByID, itemID)
+        if ok and type(data) == "table" and type(data.lines) == "table" then
+            verdict = false
+            local prefix = tostring(_G.ITEM_SPELL_TRIGGER_ONUSE or "Use:"):lower()
+            for _, line in ipairs(data.lines) do
+                local t = type(line) == "table" and line.leftText
+                if type(t) == "string" then
+                    local l = t:lower()
+                    if l:sub(1, #prefix) == prefix and l:find("weapon", 1, true) then verdict = true; break end
+                end
+            end
+        end
+    end
+    if verdict ~= nil then useCache[itemID] = verdict end
+    return verdict
+end
+
+-- Items that are used on another item (sharpening stones, weightstones, poisons, oils ...): the game's "Item Enhancement"
+-- class counts; a consumable with a use that is not a potion, elixir, flask, scroll, food or bandage counts when its use
+-- text is about a weapon.
 function M.usedOnItems(itemID)
     if not hasUse(itemID) then return false end
     local classID, subClassID = instant(itemID)
     if classID == CLASS.itemEnhancement then return true end
-    if classID == CLASS.consumable then return not NOT_ON_ITEMS[subClassID or -1] end
+    if classID == CLASS.consumable and not NOT_ON_ITEMS[subClassID or -1] then
+        local v = useLineMentionsWeapon(itemID)
+        if v == nil then return true end
+        return v
+    end
     return false
 end
 

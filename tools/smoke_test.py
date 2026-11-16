@@ -626,5 +626,18 @@ r = L("""function()
 end""")()
 assert str(r) == "true,false,true,false,truefalse,falsetrue,true,Use / equip|Use on Main hand: Big Sword|Pick up / move|Delete|Sort bags", r
 print("Item menu: use-on-weapon entries and profession rules: OK")
+# A poison (class 0, subclass 8) is told apart from other "Other" consumables by its use text
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    C_Item = {
+        GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, 8 end,
+        GetItemSpell = function(id) return "Use it" end,
+    }
+    local lines = { [3775] = "Use: Coats a weapon with poison that lasts for 30 minutes.", [9999] = "Use: Restores 10 health." }
+    C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = lines[id] } } } end }
+    return tostring(M.usedOnItems(3775)) .. tostring(M.usedOnItems(9999))
+end""")()
+assert str(r) == "truefalse", r
+print("Poisons are recognised from their use text: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
