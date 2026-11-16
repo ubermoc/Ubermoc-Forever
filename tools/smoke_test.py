@@ -571,18 +571,6 @@ r = L("""function()
 end""")()
 assert str(r) == "truefalse,true,truetrue", r
 print("Placing a spell: begins and ends cleanly: OK")
-# Item menu side
-r = L("""function()
-    local UF = UbermocForever
-    local out = { UF.menuSide() }
-    SlashCmdList["UBERMOCFOREVER"]("menu left")
-    out[#out + 1] = UF.menuSide()
-    SlashCmdList["UBERMOCFOREVER"]("menu right")
-    out[#out + 1] = UF.menuSide()
-    return table.concat(out, ",")
-end""")()
-assert str(r) == "right,left,right", r
-print("Item menu side: right by default, left and right can be chosen: OK")
 # Side tabs are plain frames (no Click): found by their parts, selected one read from SelectedTexture
 r = L("""function()
     local G = UbermocForever.GameNav

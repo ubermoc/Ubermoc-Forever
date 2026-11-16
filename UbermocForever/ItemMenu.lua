@@ -20,10 +20,6 @@ UF.ItemMenu = M
 local menu, entries, title
 local MAX = 4
 
--- Which side of the highlighted item the menu opens on: "right" (default) or "left". Set with the button on the options
--- window, or /ubf menu left|right.
-function UF.menuSide() return UF.DB().menuSide == "left" and "left" or "right" end
-
 local function say(m) if UF.say then UF.say(m) end end
 
 local function bagSlot(btn)
@@ -176,12 +172,12 @@ local function openSpell(btn)
     return true
 end
 
--- Put the menu beside the highlighted button: on the side chosen in the options when it fits on the screen, otherwise on
--- the other side, and when neither side has room, over the button's edge, always kept on the screen.
+-- Put the menu beside the highlighted button: on the right when it fits on the screen, otherwise on the left, and when
+-- neither side has room, on the side with more room; always kept on the screen.
 function M.place(btn)
     menu:ClearAllPoints()
     if menu.SetClampedToScreen then menu:SetClampedToScreen(true) end
-    local side = UF.menuSide()
+    local side = "right"
     local ok, chosen = pcall(function()
         local ui = UIParent:GetEffectiveScale() or 1
         local sc = (btn:GetEffectiveScale() or 1) / ui
