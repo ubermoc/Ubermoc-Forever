@@ -373,8 +373,8 @@ local function build()
     info:SetPoint("LEFT", win, "TOPLEFT", 16, -43)
     -- Cinematic camera while talking to an NPC (Cinematic.lua): one button, On or Off.
     cineBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    cineBtn:SetSize(120, 22)
-    cineBtn:SetPoint("RIGHT", win.controllerBtn, "LEFT", -6, 0)
+    cineBtn:SetSize(140, 22)
+    cineBtn:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
     cineBtn:SetScript("OnClick", function()
         local d = UF.DB()
         d.cinema = (d.cinema == false)
@@ -390,8 +390,8 @@ local function build()
     cineBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     -- Quest and gossip windows: the game's buttons drawn as "(A) Accept" strips (DialogButtons.lua).
     questBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    questBtn:SetSize(120, 22)
-    questBtn:SetPoint("RIGHT", cineBtn, "LEFT", -6, 0)
+    questBtn:SetSize(150, 22)
+    questBtn:SetPoint("LEFT", cineBtn, "RIGHT", 6, 0)
     questBtn:SetScript("OnClick", function()
         local d = UF.DB()
         d.questStyle = (d.questStyle == false)
@@ -405,7 +405,7 @@ local function build()
         GameTooltip:Show()
     end)
     questBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    info:SetPoint("RIGHT", questBtn, "LEFT", -8, 0)
+    info:SetPoint("RIGHT", win.controllerBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
     -- which case this button switches to Steam Deck / Steam Controller and Reset to default applies that layout.
@@ -435,14 +435,14 @@ local function build()
     for i = 1, 4 do
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
         b:SetSize(widths[i], 24)
-        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
+        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36)
         else b:SetPoint("LEFT", layerButtons[i - 1], "RIGHT", 6, 0) end
         b:SetScript("OnClick", function() layer = i; UF.RefreshOptions() end)
         layerButtons[i] = b
     end
 
     local sf = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -40)
+    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -68)
     sf:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -28, 8)
     win.scroll = sf
     content = CreateFrame("Frame", nil, sf)
@@ -511,17 +511,18 @@ local function build()
     local function navRows()
         local out = {}
         if pickerOpen() then return picker.navRows() end
-        local header = { win.controllerBtn, cineBtn, questBtn }
-        if win.CloseButton and win.CloseButton:IsVisible() then header[4] = win.CloseButton end
+        local header = { win.controllerBtn }
+        if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
         out[1] = header
-        out[2] = layerButtons
+        out[2] = { cineBtn, questBtn }
+        out[3] = layerButtons
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end
         end
         out[#out + 1] = { checks, reset }
         return out
     end
-    local function startRow() return pickerOpen() and 2 or 3 end
+    local function startRow() return pickerOpen() and 2 or 4 end
     local navMap = {
         PADDUP = function() Nav.Move("UP", navRows, startRow()) end,
         PADDDOWN = function() Nav.Move("DOWN", navRows, startRow()) end,
@@ -556,7 +557,7 @@ local function build()
         UF.RefreshOptions()
         navToken = Nav.Push(navMap)
         Nav.ClearFocus()
-        Nav.Move("DOWN", navRows, 3)   -- highlight the first row
+        Nav.Move("DOWN", navRows, 4)   -- highlight the first row
     end)
     win:SetScript("OnHide", function()
         picker:Hide()

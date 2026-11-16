@@ -1,3 +1,6 @@
+UbermocForever 1.3.23
+- Changed: the Cinematic and Quest icons buttons are on their own row at the top of the options list, above the layer buttons, so the header has room.
+
 UbermocForever 1.3.22
 - Changed: quest and gossip buttons keep the game's own look (no gold strip). Only the A or B picture is added on the left of the game's own Accept, Continue, Complete, Decline and Goodbye buttons. The options button is now "Quest icons: On/Off".
 
