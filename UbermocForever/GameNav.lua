@@ -242,6 +242,25 @@ end
 -- The drawn highlight (plain gold edges: the game's own buttons keep their own art underneath)
 ----------------------------------------------------------------------
 local cursor
+-- The action bars are the game's protected, edit-mode managed frames. Running one of their scripts from here (the tooltip's
+-- OnEnter / OnLeave) leaves values tainted that the bars use later, which showed as blocked-action and "secret value"
+-- errors in ActionButton.lua and EditMode. So no tooltip is ever raised on them, and nothing of ours is anchored to them
+-- (the highlight is placed by screen position instead).
+local BAR_NAMES = { "^ActionButton%d", "^MultiBar", "^MainActionBar", "^MainMenuBar", "^StanceButton", "^PetActionButton",
+                    "^OverrideActionBar", "^ExtraActionButton", "^PossessButton", "ActionBar" }
+local function onActionBar(f)
+    local g, depth = f, 0
+    while g and depth < 5 do
+        local n = g.GetName and g:GetName()
+        if n then
+            for _, pat in ipairs(BAR_NAMES) do if n:find(pat) then return true end end
+        end
+        g, depth = g.GetParent and g:GetParent(), depth + 1
+    end
+    return false
+end
+G.onActionBar = onActionBar
+
 local function getCursor()
     if cursor then return cursor end
     cursor = CreateFrame("Frame", "UbermocForeverGameCursor", UIParent)
@@ -266,8 +285,16 @@ local function drawAt(frame)
     local c = getCursor()
     if not frame then c:Hide(); return end
     c:ClearAllPoints()
-    c:SetPoint("TOPLEFT", frame, "TOPLEFT", -2, 2)
-    c:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 2, -2)
+    local r = onActionBar(frame) and rectOf(frame)
+    if r then
+        -- by position, never anchored to an action bar button (see above)
+        local ui = UIParent:GetEffectiveScale() or 1
+        c:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", r.l / ui - 2, r.t / ui + 2)
+        c:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r.r / ui + 2, r.b / ui - 2)
+    else
+        c:SetPoint("TOPLEFT", frame, "TOPLEFT", -2, 2)
+        c:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 2, -2)
+    end
     c:Show()
 end
 
@@ -814,23 +841,6 @@ local function tooltipPlace(f)
     end
 end
 
--- The action bars are the game's protected, edit-mode managed frames. Running one of their scripts from here (the tooltip's
--- OnEnter / OnLeave) leaves values tainted that the bars use later, which showed as blocked-action and "secret value"
--- errors in ActionButton.lua and EditMode. So no tooltip is ever raised on them.
-local BAR_NAMES = { "^ActionButton%d", "^MultiBar", "^MainActionBar", "^MainMenuBar", "^StanceButton", "^PetActionButton",
-                    "^OverrideActionBar", "^ExtraActionButton", "^PossessButton", "ActionBar" }
-local function onActionBar(f)
-    local g, depth = f, 0
-    while g and depth < 5 do
-        local n = g.GetName and g:GetName()
-        if n then
-            for _, pat in ipairs(BAR_NAMES) do if n:find(pat) then return true end end
-        end
-        g, depth = g.GetParent and g:GetParent(), depth + 1
-    end
-    return false
-end
-G.onActionBar = onActionBar
 
 local function tooltipShow(f)
     tooltipHide()

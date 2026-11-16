@@ -1,3 +1,6 @@
+UbermocForever 1.3.10
+- Fixed: the highlight is no longer anchored to action bar buttons (it is placed by screen position), so the action bars have nothing of ours attached to them when the game moves them.
+
 UbermocForever 1.3.9
 - Fixed: placing a spell on an action bar finds the slot of any bar button (also from its name), says in chat what happened, and reports a failure instead of silently doing nothing.
 
