@@ -95,7 +95,7 @@ function R.apply()
             local name = f and R.groundSpellOf(f.action)
             if name then
                 local keys = { GetBindingKey(bar[2] .. i) }
-                for _, k in ipairs({ GetBindingKey("CLICK " .. f:GetName() .. ":LeftButton") }) do keys[#keys + 1] = k end   -- the game also reads these
+                for _, k in ipairs({ GetBindingKey("CLICK " .. bar[1] .. i .. ":LeftButton") }) do keys[#keys + 1] = k end   -- the game also reads these
                 for _, key in ipairs(keys) do
                     if key and key ~= "" then
                         n = n + 1
