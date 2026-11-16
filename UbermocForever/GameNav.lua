@@ -771,9 +771,25 @@ local function nodeOf(f)
     for _, n in ipairs(nodes) do if n.frame == f then return n end end
 end
 
+-- True unless the highlighted button has been scrolled out of the list or text it sits in.
+function G.inView(f)
+    if not f then return false end
+    local sc = scrollerOf(f)
+    if not sc then return true end
+    local a, b = rectOf(f), rectOf(sc)
+    if not (a and b) then return true end
+    return a.cy <= b.t and a.cy >= b.b
+end
+
 local function move(dir)
     rescan()
     local cur = focus and nodeOf(focus)
+    if not cur and focus then
+        -- the highlight was scrolled out of view: start from the button nearest where it was
+        local r = rectOf(focus)
+        local n = r and G.nearest(nodes, r.cx, r.cy)
+        if n then setFocus(n.frame); return end
+    end
     if not cur then setFocus(startNode()); return end
     local nxt = G.pick(nodes, cur, dir)
     if nxt then setFocus(nxt.frame) end
@@ -953,7 +969,7 @@ local function stickScroll(dt)
         local cur, range = sc:GetVerticalScroll() or 0, sc:GetVerticalScrollRange() or 0
         sc:SetVerticalScroll(math.max(0, math.min(range, cur + dir * (sc:GetHeight() or 200) * 1.2 * amount)))
     end
-    G.scrolled = true
+    G.stickScrolled = true   -- only the view moves; the highlight stays on its button
 end
 
 local stickTicker = CreateFrame("Frame")
@@ -1032,6 +1048,9 @@ function G.update()
             or (#wins == 1 and focus and wins[1].ubfMenuLike == nil and #openMenus() > 0 and not G.inside(focus, wins[1]))
         if needNew or not focus or not focus:IsVisible() then
             rescan(); setFocus(startNode())
+        elseif G.stickScrolled then
+            G.stickScrolled = nil
+            if G.inView(focus) then drawAt(focus) else drawAt(nil) end
         elseif G.scrolled then
             G.scrolled = nil
             rescan()
@@ -1042,7 +1061,7 @@ function G.update()
                 setFocus(n and n.frame or startNode(), true)
             end
         else
-            drawAt(focus)
+            if G.inView(focus) then drawAt(focus) else drawAt(nil) end
         end
         pcall(updateBar)
     end
