@@ -1,3 +1,6 @@
+UbermocForever 1.3.4
+- Fixed: the Y menu on a bag item at a vendor now sells the item. Before, Sell used the item, which equipped it.
+
 UbermocForever 1.3.3
 - Added: moving around the game's own windows with the controller (bags, character, spellbook, professions, map, mail, game menu, question windows). The D-pad moves a highlight, A and X click, B closes the window the highlight is in and jumps to the next open one, the bumpers change tabs and pages, the triggers step the side tabs down the right of a window (or scroll a list), and the highlight follows new windows, drop-down menus and the open letter in the mail.
 - Added: a legend under the window you are in that lists what each button does, wrapping to fit the window. The item's tooltip shows beside the highlight, on whichever side has room.

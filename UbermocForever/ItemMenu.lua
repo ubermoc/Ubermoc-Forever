@@ -313,7 +313,23 @@ local function openBag(btn)
     title:SetText(itemName(info.hyperlink, "Item"))
     reset()
     local vendor = MerchantFrame and MerchantFrame:IsShown()
-    add(vendor and "Sell" or "Use / equip", { type = "item", item = bag .. " " .. slot })
+    if vendor then
+        -- Using an item at a vendor equips or uses it; selling is the right-click on the item button itself.
+        local name = btn.GetName and btn:GetName()
+        if name and name ~= "" then
+            add("Sell", { type = "macro", macrotext = "/click " .. name .. " RightButton" })
+        else
+            add("Sell", nil, function()
+                pcall(C_Container.PickupContainerItem, bag, slot)
+                if CursorHasItem and CursorHasItem() then
+                    pcall(PickupMerchantItem, 0)
+                    if CursorHasItem() then ClearCursor() end
+                end
+            end)
+        end
+    else
+        add("Use / equip", { type = "item", item = bag .. " " .. slot })
+    end
 
     -- used on another item: one entry for each weapon you wear
     if not vendor and M.usedOnItems(itemID) then
