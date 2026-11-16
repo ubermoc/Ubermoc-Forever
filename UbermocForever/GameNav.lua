@@ -489,6 +489,11 @@ local function rescan()
 end
 
 local function startNode()
+    local menu = _G.UbermocForeverItemMenu
+    if wins[1] and wins[1] == menu then
+        local e = _G.UbermocForeverItemMenuEntry1
+        if e and e:IsShown() then return e end
+    end
     if G.placing then
         local b = _G.ActionButton1
         if b and b:IsShown() then return b end
@@ -660,7 +665,9 @@ function G.update()
             G.restore = nil
             if back.IsVisible and back:IsVisible() then rescan(); setFocus(back) end
         end
-        local needNew = popup and focus and not G.inside(focus, popup)
+        local menu = _G.UbermocForeverItemMenu
+        local needNew = (popup and focus and not G.inside(focus, popup))
+            or (wins[1] and wins[1] == menu and focus and not G.inside(focus, menu))
         if needNew or not focus or not focus:IsVisible() then
             rescan(); setFocus(startNode())
         elseif G.scrolled then

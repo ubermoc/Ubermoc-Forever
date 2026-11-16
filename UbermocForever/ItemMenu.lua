@@ -20,6 +20,10 @@ UF.ItemMenu = M
 local menu, entries, title
 local MAX = 4
 
+-- Which side of the highlighted item the menu opens on: "right" (default) or "left". Set with the button on the options
+-- window, or /ubf menu left|right.
+function UF.menuSide() return UF.DB().menuSide == "left" and "left" or "right" end
+
 local function say(m) if UF.say then UF.say(m) end end
 
 local function bagSlot(btn)
@@ -186,7 +190,11 @@ function M.open(btn)
     local ok = (kind == "bag" and openBag(btn)) or (kind == "equip" and openEquip(btn)) or (kind == "spell" and openSpell(btn))
     if not ok then M.from = nil; return false end
     menu:ClearAllPoints()
-    menu:SetPoint("LEFT", btn, "RIGHT", 12, 0)
+    if UF.menuSide() == "left" then
+        menu:SetPoint("RIGHT", btn, "LEFT", -12, 0)
+    else
+        menu:SetPoint("LEFT", btn, "RIGHT", 12, 0)
+    end
     menu:Show()
     return true
 end

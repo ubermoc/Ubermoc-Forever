@@ -13,7 +13,7 @@ local _, UF = ...
 local WIN_W, WIN_H = 680, 560
 local ROW_H = 30
 local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
-local win, inset, content, picker, legend, info, layerButtons, rows, hovered
+local win, inset, content, picker, legend, info, layerButtons, rows, hovered, menuSideBtn
 local layer = 1
 function UF.optionsLayer() return layer end   -- for the offline test
 
@@ -88,6 +88,7 @@ function UF.RefreshOptions()
         end
     end
     content:SetHeight(math.max(y, 1))
+    if menuSideBtn then menuSideBtn:SetText("Menu: " .. (UF.menuSide and UF.menuSide() == "left" and "Left" or "Right")) end
     legend:Refresh()
 end
 
@@ -404,6 +405,22 @@ local function build()
         layerButtons[i] = b
     end
 
+    -- Which side the item menu (Y on a bag item) opens on.
+    menuSideBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    menuSideBtn:SetSize(100, 24)
+    menuSideBtn:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -8, -8)
+    menuSideBtn:SetScript("OnClick", function()
+        UF.DB().menuSide = (UF.menuSide() == "left") and "right" or "left"
+        UF.RefreshOptions()
+    end)
+    menuSideBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Item menu side")
+        GameTooltip:AddLine("Which side of an item the Y menu opens on.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    menuSideBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     local sf = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
     sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -40)
     sf:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -28, 8)
@@ -477,7 +494,10 @@ local function build()
         local header = { win.controllerBtn }
         if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
         out[1] = header
-        out[2] = layerButtons
+        local top = {}
+        for _, b in ipairs(layerButtons) do top[#top + 1] = b end
+        top[#top + 1] = menuSideBtn
+        out[2] = top
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end
         end
