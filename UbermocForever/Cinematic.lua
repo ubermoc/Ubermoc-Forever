@@ -11,6 +11,7 @@ UF.Cinematic = C
 
 local ZOOM = 5         -- how close the camera comes (yards), only ever closer than the player had it
 local BARS = 0.11      -- black bars, as a share of the screen height (each)
+local VIGNETTE = { { size = 0.32, alpha = 0.6 }, { size = 0.17, alpha = 0.5 } }   -- two soft layers = cloudy dark edges
 local FADE_IN = 0.8    -- seconds to ease in
 local FADE_OUT = 0.6   -- seconds to ease out
 local FACE_CVARS = {   -- the camera turns toward the NPC (the same ones UbermocUI uses)
@@ -78,6 +79,23 @@ local function makeDress()
     dress.bot = dress:CreateTexture(nil, "ARTWORK")
     dress.bot:SetColorTexture(0, 0, 0, 1)
     dress.bot:SetPoint("BOTTOMLEFT"); dress.bot:SetPoint("BOTTOMRIGHT")
+    -- Dark edges: for each side, two gradient layers of different depth, darkest at the screen edge.
+    dress.edges = {}
+    local SIDES = {
+        { "TOPLEFT", "TOPRIGHT", "VERTICAL", false, false },
+        { "BOTTOMLEFT", "BOTTOMRIGHT", "VERTICAL", true, false },
+        { "TOPLEFT", "BOTTOMLEFT", "HORIZONTAL", true, true },
+        { "TOPRIGHT", "BOTTOMRIGHT", "HORIZONTAL", false, true },
+    }
+    for _, sd in ipairs(SIDES) do
+        for li = 1, #VIGNETTE do
+            local t = dress:CreateTexture(nil, "BACKGROUND")
+            t:SetTexture("Interface\\Buttons\\WHITE8x8")
+            t:SetPoint(sd[1]); t:SetPoint(sd[2])
+            t.orient, t.darkFirst, t.sideways, t.layer = sd[3], sd[4], sd[5], li
+            dress.edges[#dress.edges + 1] = t
+        end
+    end
     dress:Hide()
     return dress
 end
@@ -88,6 +106,19 @@ local function paint(k)
     if h <= 1 then h = UIParent:GetHeight() or 768 end
     local bar = math.max(0.01, math.floor(h * BARS * k + 0.5))
     D.top:SetHeight(bar); D.bot:SetHeight(bar)
+    local w = D:GetWidth() or 0
+    if w <= 1 then w = UIParent:GetWidth() or 1024 end
+    for _, t in ipairs(D.edges) do
+        local v = VIGNETTE[t.layer]
+        local a = v.alpha * k
+        if t.sideways then t:SetWidth(math.max(0.01, w * v.size)) else t:SetHeight(math.max(0.01, h * v.size)) end
+        local dark, clear = { 0, 0, 0, a }, { 0, 0, 0, 0 }
+        local c1, c2 = clear, dark          -- first colour is the left/bottom end
+        if t.darkFirst then c1, c2 = dark, clear end
+        local ok = CreateColor and pcall(t.SetGradient, t, t.orient, CreateColor(c1[1], c1[2], c1[3], c1[4]), CreateColor(c2[1], c2[2], c2[3], c2[4]))
+        if not ok then t:SetColorTexture(0, 0, 0, a * 0.4) end
+        t:SetShown(a > 0.001)
+    end
     D:SetShown(k > 0.001)
 end
 
