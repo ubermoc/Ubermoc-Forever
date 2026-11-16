@@ -761,5 +761,26 @@ r = L("""function()
 end""")()
 assert str(r) == "Heroic Leap,nil,nil,Odd Spell,nil", r
 print("Release to cast: ground spells recognised, own list add/remove: OK")
+# Release to cast: a ground spell is learned from the button the game marks while aiming
+r = L("""function()
+    local UF = UbermocForever
+    local R = UF.GroundCast
+    UbermocForeverDB.ground = nil
+    local acts = { [5] = { "spell", 9999 }, [6] = { "spell", 585 } }
+    GetActionInfo = function(s) local a = acts[s]; if a then return a[1], a[2] end end
+    C_Spell = { GetSpellName = function(id) return ({ [9999] = "Odd Leap", [585] = "Smite" })[id] end }
+    local current = nil
+    IsCurrentAction = function(s) return s == current end
+    local aiming = false
+    SpellIsTargeting = function() return aiming end
+    local a = tostring(R.learnScan())             -- not aiming: nothing
+    aiming = true; current = 5
+    local b = tostring(R.learnScan())             -- aiming with slot 5 marked: learned
+    local c = tostring(R.learnScan())             -- already known: nothing new
+    local d = tostring(R.groundSpellOf(5)) .. tostring(R.groundSpellOf(6))
+    return a .. "," .. b .. "," .. c .. "," .. d
+end""")()
+assert str(r) == "nil,Odd Leap,nil,Odd Leapnil", r
+print("Release to cast: ground spell learned from the marked button: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

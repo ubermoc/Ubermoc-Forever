@@ -31,6 +31,7 @@ local function cfg()
     d.ground = d.ground or {}
     if d.ground.on == nil then d.ground.on = true end
     d.ground.extra = d.ground.extra or {}
+    d.ground.learned = d.ground.learned or {}   -- spell id -> name, found by watching the game start an aim
     return d.ground
 end
 function R.enabled() return cfg().on end
@@ -49,11 +50,11 @@ function R.groundSpellOf(slot)
     if not name then return nil end
     local extra = cfg().extra
     local lname = name:lower()
-    if GROUND_IDS[id] then return name end
+    if GROUND_IDS[id] or cfg().learned[id] then return name end
     for _, n in ipairs(extra) do if n:lower() == lname then return name end end
     local okb, base = pcall(function() return C_Spell and C_Spell.GetBaseSpell and C_Spell.GetBaseSpell(id) end)
     if okb and type(base) == "number" and base ~= id then
-        if GROUND_IDS[base] then return name end
+        if GROUND_IDS[base] or cfg().learned[base] then return name end
         local bn = spellName(base)
         if bn then for _, n in ipairs(extra) do if n:lower() == bn:lower() then return name end end end
     end
@@ -150,9 +151,59 @@ function R.report()
         UF.say("If your ground spell is in that list, add it: /ubf ground add Spell Name")
     end
     for _, l in ipairs(lines) do UF.say(l) end
+    local names = {}
+    for id, n in pairs(cfg().learned) do names[#names + 1] = n .. " (" .. id .. ")" end
+    UF.say("Ground spells learned so far: " .. (#names > 0 and table.concat(names, ", ") or "none yet") .. ".")
     UF.say("To watch presses and releases type /ubf ground debug, then try a spell.")
 end
 function R.setDebug(on) R.debug = on; UF.say("Ground spell debug is " .. (on and "on." or "off.")) end
+
+-- Learning: while the game is waiting for a ground spot, the button of the spell that started it is the game's
+-- "current action". That spell is remembered, so nobody has to add their spells by hand.
+function R.learnScan()
+    if not (SpellIsTargeting and SpellIsTargeting()) or not IsCurrentAction then return nil end
+    for slot = 1, 180 do
+        local okc, cur = pcall(IsCurrentAction, slot)
+        if okc and cur then
+            local ok, t, id = pcall(GetActionInfo, slot)
+            if ok and t == "spell" and type(id) == "number" then
+                local d = cfg()
+                if not (GROUND_IDS[id] or d.learned[id]) then
+                    local name = spellName(id)
+                    if name then
+                        d.learned[id] = name
+                        return name
+                    end
+                end
+                return nil
+            end
+        end
+    end
+end
+
+do
+    local seen, tries, acc = false, 0, 0
+    local drv = CreateFrame("Frame")
+    drv:SetScript("OnUpdate", function(_, dt)
+        acc = acc + dt
+        if acc < 0.05 then return end
+        acc = 0
+        if SpellIsTargeting and SpellIsTargeting() then
+            if not seen then seen, tries = true, 0 end
+            if tries < 8 then
+                tries = tries + 1
+                local name = R.learnScan()
+                if name then
+                    tries = 8
+                    UF.say(name .. " is a ground spell: from now on hold its button to aim and let go to cast.")
+                    if InCombatLockdown() then R.dirtyAfterCombat() else R.apply() end
+                end
+            end
+        else
+            seen = false
+        end
+    end)
+end
 
 local queued
 local function soon()
@@ -160,6 +211,7 @@ local function soon()
     queued = true
     C_Timer.After(0.4, function() queued = false; R.apply() end)
 end
+function R.dirtyAfterCombat() dirty = true end
 function R.toggle() local c = cfg(); c.on = not c.on; R.apply() end
 
 function R.addName(name, remove)
