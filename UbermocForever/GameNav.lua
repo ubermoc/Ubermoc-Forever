@@ -472,7 +472,7 @@ G.trainButton = trainButton
 local function setTargets()
     if InCombatLockdown() then return end
     local c, b, rc = buttons()
-    c:SetAttribute("clickbutton", (not G.placing) and focus or nil)
+    c:SetAttribute("clickbutton", (not G.placing) and (focus or G.direct) or nil)
     local menuUp = wins[1] and wins[1] == _G.UbermocForeverItemMenu
     local train = trainButton(focus)
     rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and (train or (not mailIndex(focus) and focus or nil)) or nil)
@@ -970,14 +970,18 @@ local function rescan()
     nodes = G.scan(wins)
 end
 
-function G.dialogStart()
-    local q = _G.QuestFrame
-    if shown(q) then
+-- The quest window's one action (Accept, Complete, Continue), when it has one to press.
+function G.dialogAccept()
+    if shown(_G.QuestFrame) then
         for _, n in ipairs({ "QuestFrameAcceptButton", "QuestFrameCompleteQuestButton", "QuestFrameCompleteButton" }) do
             local b = visibleButton(n)
             if b and (not b.IsEnabled or b:IsEnabled()) then return b end
         end
     end
+end
+
+-- The first option of a quest or gossip window (a quest in a list, a gossip line, a reward), not its Accept or Decline.
+function G.dialogFirstOption()
     for _, w in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
         if shown(w) then
             local skip = {}
@@ -996,6 +1000,10 @@ function G.dialogStart()
             if best then return best.frame end
         end
     end
+end
+
+function G.dialogStart()
+    return G.dialogAccept() or G.dialogFirstOption()
 end
 
 local function startNode()
@@ -1036,8 +1044,31 @@ function G.inView(f)
     return a.cy <= b.t and a.cy >= b.b
 end
 
+-- A quest with just one thing to do (accept it, turn it in): no highlight is drawn, A presses that button and B declines.
+-- The first D-pad press brings the highlight in (on the first reward or option, else on the button itself).
+local function startFocus()
+    local a = G.dialogAccept and G.dialogAccept()
+    if a and not popup and not G.placing and #openMenus() == 0 then
+        focus = nil
+        G.direct = a
+        drawAt(nil)
+        setTargets()
+        pcall(tooltipHide)
+        return
+    end
+    G.direct = nil
+    setFocus(startNode())
+end
+
 local function move(dir)
     rescan()
+    if G.direct then
+        local a = G.direct
+        G.direct = nil
+        local first = G.dialogFirstOption and G.dialogFirstOption()
+        setFocus(first or a)
+        return
+    end
     local cur = focus and nodeOf(focus)
     if not cur and focus then
         -- the highlight was scrolled out of view: start from the button nearest where it was
@@ -1170,6 +1201,7 @@ end
 local function release()
     if entry then UF.Nav.Pop(entry); entry = nil end
     focus = nil
+    G.direct = nil
     drawAt(nil)
     if G.placing then G.endPlace(true) end
     pcall(tooltipHide)
@@ -1372,7 +1404,7 @@ function G.update()
         G.known = {}
         for _, w in ipairs(wins) do G.known[w] = true end
         rescan()
-        setFocus(startNode())
+        startFocus()
         pcall(updateBar)
     elseif not want and entry then
         release()
@@ -1401,8 +1433,8 @@ function G.update()
                 end
             end
             local d = G.dialogStart()
-            if d and G.inside(d, fresh) then setFocus(d)
-            elseif best then setFocus(best.frame) end
+            if d and G.inside(d, fresh) then startFocus()
+            elseif best then G.direct = nil; setFocus(best.frame) end
         end
         if G.placing then
             -- placing a spell: no highlight, the next button press picks the slot
@@ -1431,8 +1463,18 @@ function G.update()
                 if G.retry.tries <= 0 then G.retry = nil end
             end
         end
-        if needNew or not focus then
-            rescan(); setFocus(startNode())
+        if G.direct then
+            -- the quest window's action can change (Accept, then Complete): follow it, or leave direct mode
+            local a = G.dialogAccept and G.dialogAccept()
+            if a ~= G.direct then
+                if a then G.direct = a; setTargets() else G.direct = nil end
+            end
+        end
+        if needNew then G.direct = nil end
+        if G.direct and not focus then
+            drawAt(nil)   -- direct mode: nothing is highlighted, A presses the quest's action
+        elseif needNew or not focus then
+            rescan(); startFocus()
         elseif not focus:IsVisible() then
             -- the button's row was recycled by a scroll. While the stick is scrolling, hold the highlight where it was;
             -- otherwise take the button nearest to where it was (never the window's first button, which is its exit).

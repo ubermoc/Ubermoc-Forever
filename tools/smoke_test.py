@@ -660,6 +660,25 @@ r = L("""function()
 end""")()
 assert str(r) == "truetruetrue", r
 print("Conversations: start on Accept, X trains in a trainer: OK")
+# A quest with one action: the action button is found (so no highlight is needed), nothing in a gossip list
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local function btn(parent, en) return { IsShown = function() return true end, IsVisible = function() return true end,
+        IsEnabled = function() return en ~= false end, GetParent = function() return parent end } end
+    local q = btn(nil)
+    QuestFrame = q
+    QuestFrameCompleteButton = btn(q)
+    local a = G.dialogAccept() == QuestFrameCompleteButton
+    QuestFrameCompleteButton = btn(q, false)        -- disabled: not pressable
+    local b = G.dialogAccept() == nil
+    QuestFrame, QuestFrameCompleteButton = nil, nil
+    GossipFrame = btn(nil)
+    local c = G.dialogAccept() == nil               -- a gossip list has no single action
+    GossipFrame = nil
+    return tostring(a) .. tostring(b) .. tostring(c)
+end""")()
+assert str(r) == "truetruetrue", r
+print("Quest with one action found for A, none for lists: OK")
 # Where an item goes, read from its use text (wording taken from the scan of the game's own items)
 r = L("""function()
     local M = UbermocForever.ItemMenu

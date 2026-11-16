@@ -234,3 +234,13 @@ the web. **Read** = opened and read; **not tried** = not run in the game.
 ("Other"), `INVTYPE_NON_EQUIP_IGNORE`, has a use: true. So poisons are not in the Item Enhancement groups here. The rule now
 reads the item's tooltip (`C_TooltipInfo.GetItemByID`) and requires its "Use:" line to mention a weapon; sharpening stones and
 oils are not yet checked in the game.
+
+## Dialogue UI (Peterodox) on controllers, read 2026-11-16 (source: https://github.com/Peterodox/YUI-Dialogue, `Code/Dialogue/KeyboardControl.lua`, `UITemplates.lua`)
+All Rights Reserved: ideas only, nothing copied. It is a retail/classic addon; Forever support is not confirmed.
+- Confirm = PAD1, cancel = PAD2, alt = PAD4 (Switch layout swaps them). PAD2 is remapped to Escape, which clicks the exit/decline button.
+- Quest accept is registered as the "Confirm" action and shown with a hotkey glyph; decline and exit gossip use the Escape hotkey. So with one
+  quest, A accepts and B declines with no highlight to move.
+- With several options the first A press focuses one (a setting, `GamePadClickFirstObject`, decides whether it also clicks). D-pad up/left =
+  previous, down/right = next, held D-pad repeats every 0.125 s; at the ends it scrolls the text by 192.
+- Glyphs are the addon's own PNGs (not Blizzard's); we keep using the game's own button strings.
+Result in 1.3.35: a quest with one action has no highlight (`G.direct` in `GameNav.lua`); lists start on the first choice as before.

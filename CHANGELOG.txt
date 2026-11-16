@@ -1,3 +1,6 @@
+UbermocForever 1.3.35
+- Changed: a quest with only one thing to do (accept it, turn it in, continue) shows no highlight. A presses that button, B declines or says goodbye. The first D-pad press brings the highlight in, on the first reward or option. Lists (several quests or gossip lines) still start on the first choice.
+
 UbermocForever 1.3.34
 - Changed: during a cinematic talk everything else on screen is hidden, including frames that ignore the interface fade (party frames, objective widgets, the chat edit box, other addons' frames). Only the quest or gossip window, tooltips, question windows and our own button legend stay. Everything comes back when the talk ends.
 
