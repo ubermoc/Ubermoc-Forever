@@ -132,6 +132,17 @@ function G.windows()
     for i = 1, 13 do addWindow(list, seen, _G["ContainerFrame" .. i]) end
     addWindow(list, seen, _G.GameMenuFrame)
     for _, n in ipairs(UISpecialFrames or {}) do addWindow(list, seen, _G[n]) end
+    -- every window the game registered as a panel, and the windows that hang off another one (the open letter in the mail,
+    -- the guild pop-ups ...: UIChildWindows, Blizzard_UIParentPanelManager); children go last so they count as on top
+    if type(UIPanelWindows) == "table" then
+        for n in pairs(UIPanelWindows) do addWindow(list, seen, _G[n]) end
+    end
+    if type(UIChildWindows) == "table" then
+        for _, n in ipairs(UIChildWindows) do
+            local f = _G[n]
+            if shown(f) and not seen[f] then seen[f] = true; list[#list + 1] = f end
+        end
+    end
     return list, nil
 end
 
@@ -702,6 +713,7 @@ local function engage()
     })
 end
 
+G.known = {}
 function G.enabled() return UF.DB().gameNav ~= false end
 function G.active() return entry ~= nil end
 
@@ -714,6 +726,8 @@ function G.update()
     end
     if want and not entry then
         engage()
+        G.known = {}
+        for _, w in ipairs(wins) do G.known[w] = true end
         rescan()
         setFocus(startNode())
         pcall(updateBar)
@@ -722,6 +736,23 @@ function G.update()
     elseif want then
         -- keep the highlight honest: a popup appearing takes it, a vanished button is replaced, a scroll re-picks it
         if G.placing and GetCursorInfo and not GetCursorInfo() then G.endPlace(false) end
+        -- a window that has just opened (the letter you opened in the mail) takes the highlight
+        local now, fresh = {}, nil
+        for _, w in ipairs(wins) do
+            now[w] = true
+            if not G.known[w] then fresh = w end
+        end
+        G.known = now
+        if fresh and not G.placing and not popup and not (wins[1] == _G.UbermocForeverItemMenu) then
+            rescan()
+            local best
+            for _, n in ipairs(nodes) do
+                if G.inside(n.frame, fresh) and (not best or n.cy > best.cy + 4 or (math.abs(n.cy - best.cy) <= 4 and n.cx < best.cx)) then
+                    best = n
+                end
+            end
+            if best then setFocus(best.frame) end
+        end
         if G.restore then
             local back = G.restore
             G.restore = nil
