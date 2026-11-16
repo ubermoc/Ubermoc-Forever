@@ -13,7 +13,7 @@ UF.Scan = S
 local WORDS = { "weapon", "armor", "enchant", "attach", "apply", "equipment", "boots", "chest", "gloves", "bracer", "cloak",
                 "shield", "ring", "helm", "leg ", "legs", "shoulder", "belt", "waist", "trinket", "ranged", "item", "melee" }
 local KEEP = { [0] = true, [8] = true }
-local PER_TICK = 25
+local PER_TICK = 150   -- ids per frame; most are skipped without loading anything
 
 local function mentions(text)
     local t = text:lower()
@@ -41,7 +41,7 @@ local function resolve(id, p)
     local lines, loaded = useLines(id)
     if not loaded then
         p.tries = p.tries + 1
-        return p.tries >= 40   -- give up after about 4 seconds
+        return p.tries >= 240   -- give up after about 4 seconds
     end
     S.loaded = S.loaded + 1
     if lines and mentions(table.concat(lines, " ")) then
@@ -73,7 +73,7 @@ local function step()
         if ok and class and KEEP[class] then
             S.classed = S.classed + 1
             pcall(C_Item.RequestLoadItemDataByID, id)
-            pending[id] = { class = class, sub = sub, tries = 0, wait = 3 }
+            pending[id] = { class = class, sub = sub, tries = 0, wait = 12 }
         end
     end
 end
@@ -81,9 +81,6 @@ end
 local ticker = CreateFrame("Frame")
 ticker:SetScript("OnUpdate", function(_, dt)
     if not S.running then return end
-    S.acc = (S.acc or 0) + dt
-    if S.acc < 0.1 then return end
-    S.acc = 0
     pcall(step)
 end)
 
