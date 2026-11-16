@@ -452,8 +452,10 @@ end
 -- action bars; A drops it on the highlighted slot with C_ActionBar.PutActionInSlot (the call the game itself makes when a
 -- slot is picked in quick keybind mode, Blizzard_ActionBar ActionButton.lua); B puts it back.
 ----------------------------------------------------------------------
-function G.beginPlace(from)
-    G.placing = { from = from }
+-- The spell is not picked up here: the highlight goes over the action bars, and picking the slot places it in one step
+-- (so it never sits on the mouse cursor), the way the game's own "change what a slot uses" works.
+function G.beginPlace(from, spell)
+    G.placing = { from = from, spell = spell }
     focus = nil
     G.scrolled = nil
 end
@@ -469,10 +471,16 @@ end
 local function placeHere()
     if not (G.placing and focus) then return end
     local slot = (focus.CalculateAction and select(2, pcall(focus.CalculateAction, focus))) or focus.action
-    if type(slot) == "number" and C_ActionBar and C_ActionBar.PutActionInSlot then
-        pcall(C_ActionBar.PutActionInSlot, slot)
+    local sp = G.placing.spell
+    if type(slot) == "number" and C_ActionBar and C_ActionBar.PutActionInSlot and sp and C_SpellBook then
+        pcall(C_SpellBook.PickupSpellBookItem, sp.slotIndex, sp.spellBank)
+        if GetCursorInfo and GetCursorInfo() then
+            pcall(C_ActionBar.PutActionInSlot, slot)
+            UF.say("Spell placed on the action bar.")
+        else
+            UF.say("That spell cannot go on an action bar.")
+        end
         if ClearCursor then pcall(ClearCursor) end   -- whatever was in that slot lands on the cursor: let it go
-        UF.say("Spell placed on the action bar.")
     end
     G.endPlace(false)
 end
@@ -1095,7 +1103,6 @@ function G.update()
         release()
     elseif want then
         -- keep the highlight honest: a popup appearing takes it, a vanished button is replaced, a scroll re-picks it
-        if G.placing and GetCursorInfo and not GetCursorInfo() then G.endPlace(false) end
         if G.menuFrom and #openMenus() == 0 and not G.menuWait then
             G.menuWait = (G.menuWait or 0) + 1
         elseif G.menuFrom and #openMenus() == 0 then

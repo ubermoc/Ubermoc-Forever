@@ -445,13 +445,8 @@ local function openSpell(btn)
     title:SetText(p.spellBookItemInfo.name or "Spell")
     reset()
     add("Bind to action bar", nil, function()
-        if not (C_SpellBook and C_SpellBook.PickupSpellBookItem) then return end
-        pcall(C_SpellBook.PickupSpellBookItem, p.slotIndex, p.spellBank)
-        if GetCursorInfo and GetCursorInfo() then
-            if UF.GameNav and UF.GameNav.beginPlace then UF.GameNav.beginPlace(btn) end
-        else
-            say("That spell cannot go on an action bar.")
-        end
+        if p.spellBookItemInfo.isPassive then say("A passive spell cannot go on an action bar."); return end
+        if UF.GameNav and UF.GameNav.beginPlace then UF.GameNav.beginPlace(btn, { slotIndex = p.slotIndex, spellBank = p.spellBank }) end
     end, true)
     return true
 end
