@@ -1,3 +1,6 @@
+UbermocForever 1.3.29
+- Added: /ubf ground also lists the bar buttons and the spells it can read on them when it finds no ground spell.
+
 UbermocForever 1.3.28
 - Added: /ubf ground lists the ground spells found on your bars and where their keys go; /ubf ground debug prints each press and release our buttons receive (to find why release does not cast).
 

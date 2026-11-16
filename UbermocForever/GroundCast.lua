@@ -132,7 +132,23 @@ function R.report()
     end
     UF.say("Release to cast is " .. (cfg().on and "on" or "off") .. ", buttons set up: " .. tostring(R.count or 0)
         .. ". Press and hold setting: " .. tostring(GetCVar and GetCVar("ActionButtonUseKeyHeldSpell")))
-    if #lines == 0 then UF.say("No ground spell with a key was found on your action bars.") end
+    if #lines == 0 then
+        UF.say("No ground spell with a key was found on your action bars.")
+        -- what the bars hold, so a missing spell can be added by name
+        local frames, spells = 0, {}
+        for _, bar in ipairs(BARS) do
+            for i = 1, 12 do
+                local f = _G[bar[1] .. i]
+                if f then
+                    frames = frames + 1
+                    local ok, t, id = pcall(GetActionInfo, f.action)
+                    if ok and t == "spell" and type(id) == "number" then spells[#spells + 1] = (spellName(id) or "?") .. " (" .. id .. ")" end
+                end
+            end
+        end
+        UF.say("Bar buttons found: " .. frames .. ". Spells on them: " .. (#spells > 0 and table.concat(spells, ", ") or "none read") .. ".")
+        UF.say("If your ground spell is in that list, add it: /ubf ground add Spell Name")
+    end
     for _, l in ipairs(lines) do UF.say(l) end
     UF.say("To watch presses and releases type /ubf ground debug, then try a spell.")
 end
