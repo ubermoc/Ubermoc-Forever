@@ -1,3 +1,6 @@
+UbermocForever 1.3.25
+- Added: aim dot for ground spells. A white dot shows where a ground spell will land, only while you are aiming one. Options window, second row: Aim dot On/Off, Aim distance (Closest to Furthest, moves the aim point up or down the screen, not exact yards), Dot size. Game settings it changes are saved and put back. Hold to aim and release to cast is not part of this version.
+
 UbermocForever 1.3.24
 - Changed: the A and B pictures on quest buttons are part of cinematic mode. The separate Quest icons button and /ubf quest are gone; the one button is now "Cinematic mode: On/Off".
 

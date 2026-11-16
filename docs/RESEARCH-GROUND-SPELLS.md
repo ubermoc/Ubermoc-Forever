@@ -1,0 +1,33 @@
+# Research: ground-target spells, a mark, hold to aim, release to cast (2026-11-16)
+
+Source read: `UbermocUI/Aim.lua` (507 lines, the user's own addon). Not copied.
+
+## What UbermocUI does
+- **Mark:** a frame `UbermocAimMark` (strata TOOLTIP, no mouse) with a dot or cross texture, white by default, 80 % opacity, size and
+  offset adjustable. Shown while `SpellIsTargeting()` is true (the game is waiting for a ground spot) or while a ground spell's button is
+  held. Placed at `CENTER` of `UIParent` horizontally and at `GetScreenHeight() * CursorCenteredYPos` vertically.
+- **"Distance":** there is no yard setting. A ground spell lands where the game's centred pointer rests while the controller steers the
+  camera. UbermocUI moves that pointer up or down with the game's own CVar `CursorCenteredYPos` (0.3 to 0.9 of the screen height); higher
+  on screen = further from the character. Exact yards cannot be set by an addon (it depends on camera angle and terrain).
+- **Pointer:** CVar `GamePadCursorForTargeting` set to `0` so the aim stays at the centred pointer instead of a stick-moved cursor
+  (old value saved, restored when the option is off).
+- **Hold to aim, release to cast:** the game's own "Press and Hold Casting" (`ActionButtonUseKeyHeldSpell`, `ActionButtonUseKeyDown`)
+  only releases for spells with a `typerelease` action (empowered spells). So UbermocUI sets, **out of combat, on every action button
+  holding a ground spell**: attribute `typerelease = "macro"` and `macrotext = "/stopspelltarget\n/cast [@cursor] <Spell Name>"`, plus
+  `HookScript("PreClick")` to know the button is held. Which spells are "ground" is a list of spell IDs (Heroic Leap 6544, Blizzard 190356,
+  Flamestrike 2120, Rain of Fire 5740, Death and Decay 43265, Healing Rain 73920 ...), plus any spell that starts a reticle when pressed
+  (learned by checking `SpellIsTargeting()` 0.1 s after a click).
+- It also writes fields on the buttons (`b.ubGround`, `b.ubWatch`).
+
+## Risks for Ubermoc Forever
+1. **Taint.** Setting attributes on Blizzard action buttons, hooking their `PreClick` and writing fields on them is exactly what caused the
+   "secret value" and `MainActionBar:SetPointBase` errors earlier (see `LUA-WOW-GUIDE.md` section 3). Copying that part is the risky piece.
+2. Must not run together with UbermocUI's aiming (both change the same CVars and buttons).
+3. CVars changed must be saved first and restored.
+
+## Pieces, easiest first
+A. **The mark** (low risk): a white dot, shown only while `SpellIsTargeting()`, at the centred-pointer position; size, opacity, offsets adjustable.
+B. **Aim height** (low risk): our setting moves `CursorCenteredYPos`; shown as "closer / further", not yards. CVars saved and restored.
+C. **Hold to aim, release to cast** (the risky one): needs either UbermocUI's button attributes (taint risk), or our own secure button
+   (macro `/cast [@cursor] Spell`) triggered by our own override binding on release. Needs an in-game test of what the game does when the
+   key is released (`OnGamePadButtonUp` on a capture frame while `SpellIsTargeting()`), because casting at the cursor is a protected action.

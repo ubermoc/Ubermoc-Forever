@@ -267,7 +267,7 @@ nav = L("""function()
     -- back up to the third row, then A on it, then B
     for i = 1, 60 do press("PADDUP") end
     local top = where()
-    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, layers, first row ... settle on a list row
+    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, cinematic row, aim row, layers, first row ... settle on a list row
     local row = where()
     press("PAD1")                                                  -- A on a row opens the picker
     local inPicker = (UF.Nav.focus ~= nil) and (UF.Nav.focus.navRow == nil) and (UF.Nav.focus.navScroll ~= nil)
@@ -722,5 +722,24 @@ r = L("""function()
 end""")()
 assert str(r) == "false,true,true,false,05nil", r
 print("Cinematic camera: talking, on/off, settings put back: OK")
+# Aim mark: settings cycle, CVars saved first and put back
+r = L("""function()
+    local UF = UbermocForever
+    local A = UF.Aim
+    local cv = { GamePadCursorForTargeting = "1", CursorCenteredYPos = "0.50" }
+    GetCVar = function(k) return cv[k] end
+    SetCVar = function(k, v) cv[k] = v end
+    C_CVar = nil
+    UbermocForeverDB.aim = nil; UbermocForeverDB.aimBackup = nil
+    A.apply()
+    local out = { cv.GamePadCursorForTargeting, cv.CursorCenteredYPos, A.distanceName() }
+    A.nextDistance(); A.nextDistance()
+    out[#out + 1] = A.distanceName() .. cv.CursorCenteredYPos
+    A.toggle()
+    out[#out + 1] = cv.GamePadCursorForTargeting .. cv.CursorCenteredYPos
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "0,0.50,Game's own,Close0.50,10.50", r
+print("Aim dot: settings step, game settings saved and put back: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

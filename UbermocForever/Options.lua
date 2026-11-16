@@ -15,7 +15,7 @@ local ROW_H = 30
 local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
-local cineBtn   -- declared here, above every function that uses it
+local cineBtn, aimBtn, distBtn, sizeBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
@@ -56,6 +56,11 @@ function UF.RefreshOptions()
     local setId = UF.activeSet()
     local d = UF.DB()
     local set = UF.SETS[setId]
+    if aimBtn and UF.Aim then
+        aimBtn:SetText("Aim dot: " .. (UF.Aim.cfg().on and "On" or "Off"))
+        distBtn:SetText("Aim distance: " .. UF.Aim.distanceName())
+        sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
+    end
     if cineBtn then cineBtn:SetText("Cinematic mode: " .. (d.cinema == false and "Off" or "On")) end
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
     -- A short name on the button, sized to fit: the full name is in the line to its left.
@@ -388,6 +393,25 @@ local function build()
         GameTooltip:Show()
     end)
     cineBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- Second row: the aim dot for ground spells (Aim.lua).
+    local function aimButton(width, prev, click, tip)
+        local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+        b:SetSize(width, 22)
+        if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36) end
+        b:SetScript("OnClick", function() click(); UF.RefreshOptions() end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText(tip[1])
+            GameTooltip:AddLine(tip[2], 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        return b
+    end
+    aimBtn = aimButton(150, nil, function() UF.Aim.toggle() end, { "Aim dot", "A white dot shows where a ground spell (Heroic Leap, Blizzard, Rain of Fire) will land, only while you are aiming it." })
+    distBtn = aimButton(190, aimBtn, function() UF.Aim.nextDistance() end, { "Aim distance", "How far from your character the aim point rests (higher on the screen is further). Exact yards cannot be set. Press to step through the choices." })
+    sizeBtn = aimButton(130, distBtn, function() UF.Aim.nextSize() end, { "Dot size", "Small, medium or large." })
     info:SetPoint("RIGHT", win.controllerBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
@@ -418,14 +442,14 @@ local function build()
     for i = 1, 4 do
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
         b:SetSize(widths[i], 24)
-        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36)
+        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -64)
         else b:SetPoint("LEFT", layerButtons[i - 1], "RIGHT", 6, 0) end
         b:SetScript("OnClick", function() layer = i; UF.RefreshOptions() end)
         layerButtons[i] = b
     end
 
     local sf = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -68)
+    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -96)
     sf:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -28, 8)
     win.scroll = sf
     content = CreateFrame("Frame", nil, sf)
@@ -498,14 +522,15 @@ local function build()
         if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
         out[1] = header
         out[2] = { cineBtn }
-        out[3] = layerButtons
+        out[3] = { aimBtn, distBtn, sizeBtn }
+        out[4] = layerButtons
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end
         end
         out[#out + 1] = { checks, reset }
         return out
     end
-    local function startRow() return pickerOpen() and 2 or 4 end
+    local function startRow() return pickerOpen() and 2 or 5 end
     local navMap = {
         PADDUP = function() Nav.Move("UP", navRows, startRow()) end,
         PADDDOWN = function() Nav.Move("DOWN", navRows, startRow()) end,
@@ -540,7 +565,7 @@ local function build()
         UF.RefreshOptions()
         navToken = Nav.Push(navMap)
         Nav.ClearFocus()
-        Nav.Move("DOWN", navRows, 4)   -- highlight the first row
+        Nav.Move("DOWN", navRows, 5)   -- highlight the first row
     end)
     win:SetScript("OnHide", function()
         picker:Hide()
