@@ -769,9 +769,27 @@ local function tooltipPlace(f)
     end
 end
 
+-- The action bars are the game's protected, edit-mode managed frames. Running one of their scripts from here (the tooltip's
+-- OnEnter / OnLeave) leaves values tainted that the bars use later, which showed as blocked-action and "secret value"
+-- errors in ActionButton.lua and EditMode. So no tooltip is ever raised on them.
+local BAR_NAMES = { "^ActionButton%d", "^MultiBar", "^MainActionBar", "^MainMenuBar", "^StanceButton", "^PetActionButton",
+                    "^OverrideActionBar", "^ExtraActionButton", "^PossessButton", "ActionBar" }
+local function onActionBar(f)
+    local g, depth = f, 0
+    while g and depth < 5 do
+        local n = g.GetName and g:GetName()
+        if n then
+            for _, pat in ipairs(BAR_NAMES) do if n:find(pat) then return true end end
+        end
+        g, depth = g.GetParent and g:GetParent(), depth + 1
+    end
+    return false
+end
+G.onActionBar = onActionBar
+
 local function tooltipShow(f)
     tooltipHide()
-    if not f or InCombatLockdown() then return end
+    if not f or InCombatLockdown() or G.placing or onActionBar(f) then return end
     local enter = f.GetScript and f:GetScript("OnEnter")
     if not enter then return end
     tipFor = f

@@ -1,3 +1,6 @@
+UbermocForever 1.3.8
+- Fixed: no tooltip is raised on the action bars any more. Running the bars' own tooltip scripts from the addon left values tainted, which showed as "secret value" cooldown errors and a blocked MainActionBar action after binding a spell.
+
 UbermocForever 1.3.7
 - Changed: "Bind to action bar" no longer picks the spell up. The highlight goes over the action bars and picking a slot places the spell in one step, so it never sits on the cursor.
 
