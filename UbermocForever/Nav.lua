@@ -94,6 +94,13 @@ function Nav.Push(map, secure)
     return entry
 end
 
+-- Change what an entry on the stack takes (the same entry, new keys), e.g. to capture button presses.
+function Nav.Update(entry, map, secure)
+    if not entry then return end
+    entry.map, entry.secure = map, secure
+    rebind()
+end
+
 function Nav.Count() return #stack end
 
 function Nav.Pop(entry)

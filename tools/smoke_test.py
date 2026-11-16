@@ -680,5 +680,24 @@ r = L("""function()
 end""")()
 assert str(r) == "16-17|5-7-8-10|18|nil|16-17", r
 print("Where an item goes: weapons, armor slots, ranged only for scopes, potions nowhere: OK")
+# Binding a spell by pressing buttons: a combination with a slot, one with no bind, one used for something else
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local function btn(action) return { IsShown = function() return true end, action = action, GetParent = function() return nil end } end
+    for i = 1, 12 do _G["MultiBarRightButton" .. i] = btn(24 + i) end
+    for i = 1, 12 do _G["ActionButton" .. i] = btn(i) end
+    local binds = { ["SHIFT-PAD1"] = "MULTIACTIONBAR3BUTTON2", ["PAD3"] = "ACTIONBUTTON3", ["CTRL-PAD2"] = "TOGGLEWORLDMAP" }
+    GetBindingAction = function(k) return binds[k] or "" end
+    local used = { [24 + 1] = true, [24 + 2] = true }
+    GetActionInfo = function(slot) return used[slot] and "spell" or nil end
+    local s1, a1 = G.slotForKey("SHIFT-PAD1")
+    local s2 = G.slotForKey("PAD3")
+    local s3, a3 = G.slotForKey("CTRL-PAD2")
+    local s4, a4 = G.slotForKey("SHIFT-CTRL-PAD1")
+    local free, bind = G.freeSlot()
+    return table.concat({ tostring(s1), a1, tostring(s2), tostring(s3), tostring(a4 == nil), tostring(free), bind }, ",")
+end""")()
+assert str(r) == "26,MULTIACTIONBAR3BUTTON2,3,nil,true,27,MULTIACTIONBAR3BUTTON3", r
+print("Binding by buttons: slot of a combination, free slot for a new one: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

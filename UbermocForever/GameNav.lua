@@ -171,7 +171,6 @@ local function closeMenus()
 end
 
 function G.windows()
-    if G.placing then return barFrames(), nil end
     for _, n in ipairs(POPUPS) do
         local p = _G[n]
         if shown(p) then return { p }, p end
@@ -507,6 +506,8 @@ function G.beginPlace(from, spell)
     G.placing = { from = from, spell = spell }
     focus = nil
     G.scrolled = nil
+    if G.applyMap then G.applyMap() end
+    UF.say("Hold your buttons and press the one to put this spell on. B cancels.")
 end
 
 function G.endPlace(cancel)
@@ -515,6 +516,7 @@ function G.endPlace(cancel)
     if cancel and ClearCursor then pcall(ClearCursor) end
     focus = nil
     if p and p.from then G.restore = p.from end
+    if G.applyMap then G.applyMap() end
 end
 
 -- The action slot (1 to 180) a bar button stands for. The game's own methods first, then the number it keeps, then the
@@ -547,37 +549,80 @@ local function slotOf(f)
 end
 G.slotOf = slotOf
 
-local function placeHere()
-    if not (G.placing and focus) then return end
-    local sp = G.placing.spell
-    local slot = slotOf(focus)
-    if not slot then
-        UF.say("Could not tell which action slot " .. (focus.GetName and focus:GetName() or "that button") .. " is.")
-        return   -- stay in placing mode so another slot can be tried
-    end
+-- Put the spell being placed into an action slot. Returns true when the slot now holds it.
+local function placeSpell(slot)
+    local sp = G.placing and G.placing.spell
     if not (sp and C_SpellBook and C_SpellBook.PickupSpellBookItem and C_ActionBar and C_ActionBar.PutActionInSlot) then
         UF.say("This game version cannot place a spell from here.")
-        G.endPlace(false)
-        return
+        return false
     end
     local ok, err = pcall(C_SpellBook.PickupSpellBookItem, sp.slotIndex, sp.spellBank)
     if not ok then UF.check("Pick up the spell to place it", false, tostring(err)) end
     if not (GetCursorInfo and GetCursorInfo()) then
         UF.say("That spell cannot go on an action bar.")
-        G.endPlace(false)
-        return
+        return false
     end
     local ok2, err2 = pcall(C_ActionBar.PutActionInSlot, slot)
     if not ok2 then UF.check("Place the spell in slot " .. slot, false, tostring(err2)) end
     if ClearCursor then pcall(ClearCursor) end   -- whatever was in that slot lands on the cursor: let it go
-    local placed = GetActionInfo and GetActionInfo(slot)
-    if ok2 and placed then
-        UF.say("Spell placed on the action bar (slot " .. slot .. ").")
+    return (ok2 and GetActionInfo and GetActionInfo(slot)) and true or false
+end
+
+-- The first empty slot on a bar that is showing: the side bars first (bars 4 and 5), then the others. Returns the slot and the
+-- name of the key bind that triggers it.
+local FREE_ORDER = { { "MultiBarRightButton", "MULTIACTIONBAR3BUTTON" }, { "MultiBarLeftButton", "MULTIACTIONBAR4BUTTON" },
+                     { "MultiBarBottomRightButton", "MULTIACTIONBAR2BUTTON" }, { "MultiBarBottomLeftButton", "MULTIACTIONBAR1BUTTON" },
+                     { "MultiBar5Button", "MULTIACTIONBAR5BUTTON" }, { "MultiBar6Button", "MULTIACTIONBAR6BUTTON" },
+                     { "MultiBar7Button", "MULTIACTIONBAR7BUTTON" } }
+function G.freeSlot()
+    for _, bar in ipairs(FREE_ORDER) do
+        for i = 1, 12 do
+            local f = _G[bar[1] .. i]
+            if f and f.IsShown and f:IsShown() then
+                local slot = slotOf(f)
+                if slot and GetActionInfo and not GetActionInfo(slot) then return slot, bar[2] .. i, bar[1] .. i end
+            end
+        end
+    end
+end
+
+-- A button combination was pressed while placing a spell. A combination that already triggers an action slot gets the spell
+-- in that slot. A combination with no bind at all (a back button pair, say) is given one: the spell goes into the first
+-- empty slot and the combination is bound to it. A combination that does something else is left alone.
+function G.placeKey(key)
+    if not G.placing or InCombatLockdown() then return end
+    local slot, action = G.slotForKey(key)
+    if slot then
+        if placeSpell(slot) then UF.say(("Spell placed on the slot that %s triggers (slot %d)."):format(key, slot))
+        else UF.say(("The spell was not placed in slot %d. /ubf check shows why."):format(slot)) end
+        G.endPlace(false)
+        return
+    end
+    if action and action ~= "" then
+        UF.say(("%s is already used for %s (%s). Press another combination, or B to cancel."):format(
+            key, UF.actionName and UF.actionName(action) or action, action))
+        return
+    end
+    local free, bind, frameName = G.freeSlot()
+    if not free then
+        UF.say("There is no empty slot on a visible action bar to put it in.")
+        G.endPlace(false)
+        return
+    end
+    if placeSpell(free) then
+        if UF.setBind and UF.setBind(key, bind) then
+            UF.say(("Spell placed on %s (slot %d) and %s is now bound to it."):format(frameName, free, key))
+        else
+            UF.say(("Spell placed on %s (slot %d), but %s could not be bound to it."):format(frameName, free, key))
+        end
     else
-        UF.say("The spell was not placed in slot " .. slot .. ". /ubf check shows why.")
+        UF.say(("The spell was not placed in slot %d. /ubf check shows why."):format(free))
     end
     G.endPlace(false)
 end
+
+-- (a click while placing, kept for the old route: nothing to do now)
+local function placeHere() end
 G.placeHere = placeHere
 
 ----------------------------------------------------------------------
@@ -1005,7 +1050,7 @@ local function legendTexts()
     local t = { PADDUP = "Move" }
     local inMenu = wins[1] and wins[1] == _G.UbermocForeverItemMenu
     if G.placing then
-        t.PAD1, t.PAD2 = "Place here", "Cancel"
+        t.PAD2 = "Cancel"
         return t
     end
     if popup then
@@ -1094,9 +1139,46 @@ local function release()
     barSig, anchoredTo = nil, nil
 end
 
-local function engage()
+-- Placing a spell: no highlight. The next button you press, with whatever paddles you hold (the game turns a held paddle
+-- into Shift or Ctrl), says which action slot it goes in: the slot that exact combination triggers, found from the player's
+-- own key binds. A plain B cancels.
+local PAD_KEYS = { "PAD1", "PAD2", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER",
+                   "PADDUP", "PADDDOWN", "PADDLEFT", "PADDRIGHT", "PADLSTICK", "PADRSTICK" }
+local MODS = { "", "SHIFT-", "CTRL-", "SHIFT-CTRL-" }
+local BIND_FRAMES = { ACTIONBUTTON = "ActionButton", MULTIACTIONBAR1BUTTON = "MultiBarBottomLeftButton",
+                      MULTIACTIONBAR2BUTTON = "MultiBarBottomRightButton", MULTIACTIONBAR3BUTTON = "MultiBarRightButton",
+                      MULTIACTIONBAR4BUTTON = "MultiBarLeftButton", MULTIACTIONBAR5BUTTON = "MultiBar5Button",
+                      MULTIACTIONBAR6BUTTON = "MultiBar6Button", MULTIACTIONBAR7BUTTON = "MultiBar7Button" }
+
+-- The action slot a key combination triggers, and the bind it found: slot, action, or nil, action.
+function G.slotForKey(key)
+    local action = GetBindingAction and GetBindingAction(key)
+    if not action or action == "" then return nil, nil end
+    local base, n = action:match("^(.-BUTTON)(%d+)$")
+    local frameName = base and BIND_FRAMES[base]
+    local f = frameName and _G[frameName .. n]
+    local slot = f and G.slotOf(f)
+    return slot, action
+end
+
+local function captureMap()
+    local map = {}
+    for _, mod in ipairs(MODS) do
+        for _, k in ipairs(PAD_KEYS) do
+            local key = mod .. k
+            map[key] = function()
+                if key == "PAD2" then G.endPlace(true); UF.say("Binding cancelled."); return end
+                if G.placeKey then G.placeKey(key) end
+            end
+        end
+    end
+    return map
+end
+
+local function entryMaps()
+    if G.placing then return captureMap(), nil end
     local c, b, rc = buttons()
-    entry = UF.Nav.Push({
+    return {
         PADDUP = function() move("UP") end,
         PADDDOWN = function() move("DOWN") end,
         PADDLEFT = function() move("LEFT") end,
@@ -1115,7 +1197,18 @@ local function engage()
         PAD1 = { c:GetName(), "LeftButton" },
         PAD3 = { rc:GetName(), "RightButton" },
         PAD2 = { b:GetName(), "LeftButton" },
-    })
+    }
+end
+
+local function engage()
+    local m, s = entryMaps()
+    entry = UF.Nav.Push(m, s)
+end
+
+function G.applyMap()
+    if not entry or InCombatLockdown() then return end
+    local m, s = entryMaps()
+    UF.Nav.Update(entry, m, s)
 end
 
 ----------------------------------------------------------------------
@@ -1223,6 +1316,12 @@ function G.update()
             local d = G.dialogStart()
             if d and G.inside(d, fresh) then setFocus(d)
             elseif best then setFocus(best.frame) end
+        end
+        if G.placing then
+            -- placing a spell: no highlight, the next button press picks the slot
+            drawAt(nil)
+            pcall(updateBar)
+            return
         end
         if G.restore then
             local back = G.restore
