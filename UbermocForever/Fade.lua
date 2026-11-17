@@ -134,11 +134,6 @@ F.CATEGORIES = {
         E("tr_tasks", "Tasks", { "InitiativeTasksObjectiveTracker", "AdventureObjectiveTracker" }, PART),
         E("tr_widget", "Objective widgets", { "UIWidgetObjectiveTracker", "ObjectiveTrackerUIWidgetContainer" }, PART),
     } },
-    { name = "Menus and bars", elements = {
-        E("bagtoggle", "Bag bar expand button", { "BagBarExpandToggle" }, PART),
-        E("xpmain", "Experience / reputation bar (main)", { "MainStatusTrackingBarContainer" }, PART),
-        E("xpsecond", "Experience / reputation bar (second)", { "SecondaryStatusTrackingBarContainer" }, PART),
-    } },
     { name = "Alerts and text", elements = {
         E("alerts", "Alert popups", { "AlertFrame" }),
         E("zonetext", "Zone name", { "ZoneTextFrame" }),
@@ -238,6 +233,11 @@ local function store()
                 d.fade[old] = nil
             end
         end
+    end
+    if not d.fadeNoParts then   -- 1.3.95: parts of the bags and the XP bars were removed (they sat inside the Bars page's elements and fought them)
+        d.fadeNoParts = true
+        d.fade.bagtoggle, d.fade.xpmain, d.fade.xpsecond = nil, nil, nil
+        -- the frames those settings had made independent of their parent are given back by apply() when the key is no longer known (not needed: nothing applies to them now)
     end
     return d.fade
 end

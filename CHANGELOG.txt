@@ -1,3 +1,6 @@
+UbermocForever 1.3.95
+- Fixed: the XP bar set to "never show" could still show. The Fading page had separate parts inside the XP bars manager (main bar, second bar) and the bags (expand button): a setting on a part makes it ignore its parent's opacity, so it could stay visible while the whole was hidden. Those three parts are removed (the saved values for them are dropped once); the XP bars and the bags are each one element, set on the Bars page. Untested in the game.
+
 UbermocForever 1.3.94
 - Fixed: gamepad layout, Other binds: a controller key bound to an action button of ANOTHER layer's bar (for example Ctrl + left stick click on a button of bar 2) did not show at all; it now gets a slot with the ability's icon (the game's own picture of the action), with the controller button above. This covers the stick clicks (L3, R3) when they are bound that way. Untested in the game.
 
