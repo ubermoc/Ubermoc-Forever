@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local CP = {}
 UF.ChatPage = CP
 
-local page, topRow, pickBtns, stateRows, titleFS, hideBtn, resetBtn, noteFS
+local page, topRow, editBtn, pickBtns, stateRows, titleFS, hideBtn, resetBtn, noteFS
 local sel
 local SHORT = { chat = "Window", chattabs = "Tabs", chatedit = "Edit box", chatbtns = "Buttons", quickjoin = "Quick join" }
 local WIDTHS = { chat = 110, chattabs = 90, chatedit = 110, chatbtns = 110, quickjoin = 120 }
@@ -27,6 +27,7 @@ function CP.refresh()
     topRow.vis:SetText("Visible: " .. Ch.visibleName())
     topRow.out:SetText("Fade-out: " .. Ch.fadeName())
     topRow.reveal:SetText("Reveal on message: " .. (Ch.cfg().reveal and "On" or "Off"))
+    editBtn:SetText("Edit box fade: " .. (Ch.cfg().editFade and "On" or "Off"))
     for _, b in ipairs(pickBtns) do
         local fs = b:GetFontString()
         local set = F.get(b.element.key) ~= nil
@@ -77,6 +78,9 @@ function CP.build(parent, inset)
     topRow.vis:SetScript("OnClick", function() Ch.nextVisible(); CP.refresh() end)
     topRow.out:SetScript("OnClick", function() Ch.nextFade(); CP.refresh() end)
     topRow.reveal:SetScript("OnClick", function() Ch.toggleReveal(); CP.refresh() end)
+    editBtn = button(page, 200, 24); editBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -52)
+    editBtn:SetScript("OnClick", function() Ch.toggleEdit(); CP.refresh() end)
+    tip(editBtn, "Edit box fade", "The chat edit box (where you type) is hidden until you use it, stays while you type, then fades out Visible seconds after you send or close it. A setting for the edit box below takes over when it has one.")
     tip(topRow.fade, "Chat fade", "Every chat line fades out by itself a few seconds after it appears, in every chat window. Off puts your old chat settings back.")
     tip(topRow.vis, "Visible", "How long a line stays (and a faded chat window stays shown after a message) before it fades. Press to step through the choices.")
     tip(topRow.out, "Fade-out", "How long the fade-out takes. Press to step through the choices.")
@@ -84,14 +88,14 @@ function CP.build(parent, inset)
 
     -- One part of the chat at a time, with the same situations as the Fading page
     local head2 = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    head2:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -62)
+    head2:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -92)
     head2:SetText("Opacity of each part of the chat")
     pickBtns = {}
     local prev
     for _, e in ipairs(F.CHAT) do
         local b = button(page, WIDTHS[e.key] or 110, 24, SHORT[e.key])
         b.element = e
-        if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -84) end
+        if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -114) end
         b:SetScript("OnClick", function() sel = e; CP.refresh() end)
         pickBtns[#pickBtns + 1] = b
         prev = b
@@ -99,12 +103,12 @@ function CP.build(parent, inset)
     sel = F.CHAT[1]
 
     titleFS = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    titleFS:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -124)
+    titleFS:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -154)
     stateRows = {}
     for i, st in ipairs(F.STATES) do
         local fr = CreateFrame("Frame", nil, page)
         fr:SetSize(440, 26)
-        fr:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -156 - (i - 1) * 34)
+        fr:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -186 - (i - 1) * 34)
         local lab = fr:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         lab:SetPoint("LEFT", 0, 0); lab:SetWidth(120); lab:SetJustifyH("LEFT"); lab:SetText(st.label)
         local normal = button(fr, 62, 24, "Normal"); normal:SetPoint("LEFT", 124, 0)
@@ -119,7 +123,7 @@ function CP.build(parent, inset)
         plus:SetScript("OnClick", function() F.step(sel.key, st.key, 1); CP.refresh() end)
         stateRows[i] = { frame = fr, state = st.key, value = value, normal = normal, zero = zero, minus = minus, plus = plus }
     end
-    local y = -156 - #F.STATES * 34
+    local y = -186 - #F.STATES * 34
     hideBtn = button(page, 200, 24); hideBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y - 6)
     hideBtn:SetScript("OnClick", function() F.toggleHide(sel.key); CP.refresh() end)
     resetBtn = button(page, 200, 24, "Reset this part"); resetBtn:SetPoint("LEFT", hideBtn, "RIGHT", 8, 0)
@@ -139,9 +143,10 @@ function CP.navRows()
     local out = {}
     if not page then return out end
     out[1] = { topRow.fade, topRow.vis, topRow.out, topRow.reveal }
+    out[2] = { editBtn }
     local picks = {}
     for _, b in ipairs(pickBtns) do picks[#picks + 1] = b end
-    out[2] = picks
+    out[3] = picks
     for _, r in ipairs(stateRows) do out[#out + 1] = { r.normal, r.zero, r.minus, r.plus } end
     out[#out + 1] = { hideBtn, resetBtn }
     return out

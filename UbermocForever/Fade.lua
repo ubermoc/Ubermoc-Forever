@@ -286,14 +286,21 @@ function F.active()
 end
 
 -- The opacity wanted for an element now: 0 when hidden, else the first active situation it has a value for, else nil (left alone).
+-- Settings that come from another page rather than from the element's own situations (the chat edit box fading by itself, Chat.lua):
+-- used only when the element has no value of its own for the situation that is on.
+F.implicit = {}
+local function implicitGoal(key)
+    local fn = F.implicit[key]
+    return fn and fn() or nil
+end
 function F.goal(key, active)
     local o = store()[key]
-    if not o then return nil end
+    if not o then return implicitGoal(key) end
     if o.hide then return 0 end
     for _, st in ipairs(F.STATES) do
         if active[st.key] and o[st.key] ~= nil then return o[st.key] end
     end
-    return nil
+    return implicitGoal(key)
 end
 
 ----------------------------------------------------------------------

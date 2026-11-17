@@ -20,6 +20,7 @@ local function cfg()
     c.visible = c.visible or 5
     c.fade = c.fade or 3
     if c.reveal == nil then c.reveal = true end
+    if c.editFade == nil then c.editFade = true end
     return c
 end
 Ch.cfg = cfg
@@ -62,6 +63,7 @@ end
 function Ch.toggle() local c = cfg(); c.on = not c.on; Ch.apply() end
 function Ch.nextVisible() local c = cfg(); c.visible = Ch.VISIBLE[(stepOf(Ch.VISIBLE, c.visible) % #Ch.VISIBLE) + 1]; Ch.apply() end
 function Ch.nextFade() local c = cfg(); c.fade = Ch.FADE[(stepOf(Ch.FADE, c.fade) % #Ch.FADE) + 1]; Ch.apply() end
+function Ch.toggleEdit() local c = cfg(); c.editFade = not c.editFade; if UF.Fade then UF.Fade.evaluate() end end
 function Ch.toggleReveal() local c = cfg(); c.reveal = not c.reveal end
 function Ch.visibleName() return cfg().visible .. " s" end
 function Ch.fadeName() return cfg().fade .. " s" end
@@ -93,7 +95,7 @@ function Ch.pollTyping()
     local F = UF.Fade
     if not F then return end
     local c = cfg()
-    local now = (c.on and _G.ACTIVE_CHAT_EDIT_BOX ~= nil) and true or false
+    local now = ((c.on or c.editFade) and _G.ACTIVE_CHAT_EDIT_BOX ~= nil) and true or false
     if now == typing then return end
     typing = now
     for _, k in ipairs({ "chat", "chatedit" }) do
@@ -111,8 +113,11 @@ drv:SetScript("OnUpdate", function(_, dt)
 end)
 
 -- (the Chat page of the options window sets all of this: ChatPage.lua)
+-- The edit box fades by itself when this is on and the Fading-style setting of "chatedit" is not set: hidden (0) until it is used.
+function Ch.registerEdit() UF.Fade.implicit.chatedit = function() return cfg().editFade and 0 or nil end end   -- Fade.lua loads after this file: called at login
 -- The game builds and restyles its chat windows around login, so apply again a little later (as Ubermoc UI does).
 UF.OnLogin(function()
+    Ch.registerEdit()
     Ch.apply()
     hookLines()
     if C_Timer and C_Timer.After then C_Timer.After(1, function() Ch.apply(); hookLines() end); C_Timer.After(4, Ch.apply) end
