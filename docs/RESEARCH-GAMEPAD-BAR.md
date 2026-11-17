@@ -63,3 +63,8 @@ a slight red hue on the button picture of an ability that is out of range, norma
   only while `IsInDefaultPosition()`; released (saved points, alpha 1, no ignore) when the option or the layout is turned off or Edit Mode opens.
 - Not verified in the game: all of it; also whether `MainMenuBarEndCapMixin:UpdateVisibility` (it hides a cap that does not fit on the screen, measured from its anchor) behaves with the cap anchored to our row, and whether moving a cap while in combat
   is allowed (it is not tried: placing waits for the fight to end).
+
+## Buffs, debuffs and the unit frame settings (research, not built)
+- Settings: `Enum.EditModeUnitFrameSetting.CastBarUnderneath = 1` (player frame) and `BuffsOnTop = 2` (target frame), `Blizzard_EditMode/Shared/EditModeSettingDisplayInfo.lua:203,217`; the game changes one through `EditModeManagerFrame:OnSystemSettingChange(systemFrame, setting, value)` (`EditModeManager.lua:400`) and saves with `EditModeManagerFrame:SaveLayouts()` (`:1655`). Both are the game's own Edit Mode code: calling them from our code runs them under our taint (the same class of problem as the marker menu, docs/LUA-WOW-GUIDE.md section 3). Unverified: whether it is refused or spreads taint into Edit Mode.
+- Buffs and debuffs are two Edit Mode systems, `BuffFrame` and `DebuffFrame` (`Blizzard_BuffFrame/BuffFrame.xml:6,87`), aura containers that lay their icons out themselves (flow layout, `Blizzard_AuraContainerFlowLayout.lua`) from an anchor point; placing them like the stance bar (SetPointBase, only at the default position) is possible, but which side they grow to when centred needs the layout's anchor point, not yet read.
+- Nothing from here is built; the user chose "try it as a button" and the taint question is open.
