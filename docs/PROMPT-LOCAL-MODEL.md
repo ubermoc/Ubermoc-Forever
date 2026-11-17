@@ -32,6 +32,15 @@ Steps:
    ~/Downloads/"WoW Forever Tools and Research"/.venv/bin/python tools/smoke_test.py > /tmp/st.txt 2>&1; echo exit=$?; tail -3 /tmp/st.txt
 6. Install with: bash tools/install.sh (the user types /reload in the game). Bump "## Version" in UbermocForever/UbermocForever.toc (next is 1.3.71), add a short CHANGELOG.txt entry on top ("untested in the game"), and add one line to README.md and docs/DESCRIPTION.md only if the visible behaviour changed.
 
+DESIGN DECISIONS ALREADY MADE (from an earlier attempt's research; verify the lines you rely on, but do not re-plan)
+- Do NOT write a long plan or a plan document. Start with the branch, then do the steps.
+- Opening a context menu closes every other game menu first (Blizzard_Menu/Menu.lua OpenMenuInternal calls CloseMenus), and a menu closes itself when its owner region is not visible (Menu.lua, the proxy OnUpdate, around lines 2547-2553). So the owner region of OUR menu cannot be the game's menu entry we were called from. Use _G.TargetFrame as the owner (the game's own target frame anchors the unit menu to it, TargetFrame.lua TargetFrame_OpenMenu), and if it is not visible, M.open returns false and GameNav keeps its old submenu path.
+- MenuUtil.CreateContextMenu(owner, generator) returns the menu proxy; the target frame itself calls menu:ClearAllPoints(); menu:SetPoint("LEFT", self, "RIGHT") on it, so do the same.
+- Entries: root:CreateButton(text, nil, marker) (Button elements, which GameNav's scan accepts) plus an initializer with AttachTexture for the icon, as the game's marker entry does (UnitPopupSharedButtonMixins.lua around 2597-2628). Do NOT use CreateRadio and do NOT call GetRaidTargetIndex (that comparison is what raised the warning).
+- The title: UnitName("target") may be a secret value for our code; if it is nil or secret use _G.RAID_TARGET_ICON.
+- Keep the file loadable in the offline test: guard every Blizzard call with an existence check or pcall.
+- Pure helpers to unit test: M.order() (the nine texts, 8 down to 1 then None, no holes) and M.markerNumber(text) (None gives 0, a marker name gives its number, anything else or a non-string gives nil). G.markerOf must also accept entries inside OUR menu (M.menu) as well as the old submenu, and the existing marker test must still pass.
+
 HOW TO WORK
 - First: git checkout -b local-model/marker-menu. Never commit to main, never release.
 - Commit with: git -c user.name=Claude -c user.email=noreply@anthropic.com commit ... and push the branch only.
