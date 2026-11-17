@@ -525,6 +525,7 @@ local function build()
     -- The bottom bar: the legend on the left, the action buttons on the right (the game's magic buttons).
     legend = UF.CreateLegend(win)
     legend:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", 12, 3)
+    legend:SetMaxWidth(WIN_W - 12 - 120 - 60 - 20)   -- the room left of the Checks and Reset buttons
     legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next" })
 
     local reset = bottomButton("Reset to default", 120)

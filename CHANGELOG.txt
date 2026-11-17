@@ -1,3 +1,6 @@
+UbermocForever 1.3.46
+- Changed: every legend now fits the room it has. When its entries are wider than the space, it shrinks (down to 75 %) before it wraps onto another row. The options window legend is limited to the space left of the Checks and Reset buttons, so it can no longer run into them.
+
 UbermocForever 1.3.45
 - Changed: in the options window header, pressing up on the Page or controller button goes to the X above them.
 

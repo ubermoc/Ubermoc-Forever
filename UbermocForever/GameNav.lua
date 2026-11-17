@@ -1238,7 +1238,8 @@ local function updateBar()
         if ww > 0 then maxW = math.max(220, ww - 20) end
     end
     barLegend:SetMaxWidth(maxW)
-    b:SetSize(barLegend:GetWidth(), barLegend:GetHeight())
+    local sc = barLegend:GetScale() or 1   -- the legend may have shrunk to fit
+    b:SetSize(barLegend:GetWidth() * sc, barLegend:GetHeight() * sc)
     if not b:IsShown() then b:Show() end
 end
 

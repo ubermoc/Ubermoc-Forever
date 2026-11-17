@@ -12,6 +12,13 @@ local _, UF = ...
 -- (the triggers and D-pad are used by the bar shown over the game's own windows, see GameNav.lua)
 local ROLES = { "PAD1", "PAD2", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER", "PADDUP" }
 
+-- How much a legend of this natural width is shrunk to fit the room it has: not at all when it fits, else down to a quarter smaller.
+local MIN_SCALE = 0.75
+function UF.legendScale(total, maxWidth)
+    if not maxWidth or total <= maxWidth then return 1 end
+    return math.max(MIN_SCALE, maxWidth / total)
+end
+
 function UF.CreateLegend(parent)
     local legend = CreateFrame("Frame", nil, parent)
     legend:SetHeight(22)
@@ -37,6 +44,20 @@ function UF.CreateLegend(parent)
     end
 
     function legend:Refresh()
+        -- First the natural width of everything on one row; with a limit it is shrunk to fit, and only wraps when that is not enough.
+        local total, n = 0, 0
+        for i, pad in ipairs(ROLES) do
+            local t = self.texts[pad]
+            if t then
+                self.items[i]:SetText(UF.glyph(pad) .. " " .. t)
+                total = total + (self.items[i]:GetStringWidth() or 0) + 10
+                n = n + 1
+            end
+        end
+        total = math.max(0, total - 10)
+        local scale = UF.legendScale(total, self.maxWidth)
+        self:SetScale(scale)
+        local limit = self.maxWidth and (self.maxWidth / scale) or nil
         local x, row, widest = 0, 0, 0
         for i, pad in ipairs(ROLES) do
             local fs = self.items[i]
@@ -44,7 +65,7 @@ function UF.CreateLegend(parent)
             if t then
                 fs:SetText(UF.glyph(pad) .. " " .. t)
                 local w = fs:GetStringWidth()
-                if self.maxWidth and x > 0 and x + w > self.maxWidth then
+                if limit and x > 0 and x + w > limit then
                     x, row = 0, row + 1
                 end
                 fs:ClearAllPoints()

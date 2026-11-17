@@ -911,5 +911,13 @@ r = L("""function()
 end""")()
 assert str(r) == "R1,L1,L2,L2,R1,none", r
 print("Fading page: moving by position across both columns: OK")
+# Legends: shrink to fit the room they have, never below 75 %
+r = L("""function()
+    local f = UbermocForever.legendScale
+    local function s(total, max) return string.format("%.2f", f(total, max)) end
+    return s(300, 400) .. "," .. s(500, 400) .. "," .. s(500, nil) .. "," .. s(900, 400)
+end""")()
+assert str(r) == "1.00,0.80,1.00,0.75", r
+print("Legends: shrink to fit, no further than 75 %: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
