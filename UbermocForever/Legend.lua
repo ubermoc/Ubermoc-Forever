@@ -14,9 +14,9 @@ local ROLES = { "PAD1", "PAD2", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER", 
 
 -- How much a legend of this natural width is shrunk to fit the room it has: not at all when it fits, else down to a quarter smaller.
 local MIN_SCALE = 0.75
-function UF.legendScale(total, maxWidth)
+function UF.legendScale(total, maxWidth, noWrap)
     if not maxWidth or total <= maxWidth then return 1 end
-    return math.max(MIN_SCALE, maxWidth / total)
+    return math.max(noWrap and 0.5 or MIN_SCALE, maxWidth / total)
 end
 
 function UF.CreateLegend(parent)
@@ -36,9 +36,10 @@ function UF.CreateLegend(parent)
     end
 
     -- With a maximum width (the bar under a game window) the items wrap onto more rows instead of running wider than the window.
-    function legend:SetMaxWidth(w)
-        if self.maxWidth ~= w then
-            self.maxWidth = w
+    -- noWrap: one row only (a bar that has no room for a second): it shrinks further instead of wrapping.
+    function legend:SetMaxWidth(w, noWrap)
+        if self.maxWidth ~= w or self.noWrap ~= noWrap then
+            self.maxWidth, self.noWrap = w, noWrap
             self:Refresh()
         end
     end
@@ -55,7 +56,7 @@ function UF.CreateLegend(parent)
             end
         end
         total = math.max(0, total - 10)
-        local scale = UF.legendScale(total, self.maxWidth)
+        local scale = UF.legendScale(total, self.maxWidth, self.noWrap)
         self:SetScale(scale)
         local limit = self.maxWidth and (self.maxWidth / scale) or nil
         local x, row, widest = 0, 0, 0
@@ -65,7 +66,7 @@ function UF.CreateLegend(parent)
             if t then
                 fs:SetText(UF.glyph(pad) .. " " .. t)
                 local w = fs:GetStringWidth()
-                if limit and x > 0 and x + w > limit then
+                if limit and not self.noWrap and x > 0 and x + w > limit then
                     x, row = 0, row + 1
                 end
                 fs:ClearAllPoints()

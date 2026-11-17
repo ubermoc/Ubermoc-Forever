@@ -10,9 +10,9 @@
 ----------------------------------------------------------------------
 local _, UF = ...
 
-local WIN_W, WIN_H = 680, 560
+local WIN_W, WIN_H = 740, 560
 local ROW_H = 30
-local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
+local LIST_W = 680            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
 local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading)
@@ -315,7 +315,7 @@ local function buildPicker()
             if r.pad == picker.pad and r:IsShown() then UF.Nav.SetFocus(r.btn); break end
         end
         if win and win:IsShown() then
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADRTRIGGER = "Page" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         end
     end)
 end
@@ -525,7 +525,7 @@ local function build()
     -- The bottom bar: the legend on the left, the action buttons on the right (the game's magic buttons).
     legend = UF.CreateLegend(win)
     legend:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", 12, 3)
-    legend:SetMaxWidth(WIN_W - 12 - 120 - 60 - 20)   -- the room left of the Checks and Reset buttons
+    legend:SetMaxWidth(WIN_W - 12 - 120 - 60 - 20, true)   -- the room left of the Checks and Reset buttons: one row, shrinking if it must
     legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next" })
 
     local reset = bottomButton("Reset to default", 120)
@@ -552,9 +552,9 @@ local function build()
         for _, f in ipairs(one) do if f then f:SetShown(n == 1) end end
         fadeFrame:SetShown(n == 2)
         if n == 2 then
-            legend:Set({ PAD1 = "Press", PAD2 = "Back", PADRTRIGGER = "Page" })
+            legend:Set({ PAD1 = "Press", PAD2 = "Back", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         else
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADRTRIGGER = "Page" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         end
         UF.RefreshOptions()
     end
@@ -625,6 +625,7 @@ local function build()
     local navToken
     win:SetScript("OnShow", function()
         pcall(UF.detect)
+        if legend then legend:Refresh() end   -- measured again now that the text exists, so it fits
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(true) then SetGamePadCursorControl(true) end
         UF.RefreshOptions()
         navToken = Nav.Push(navMap)
