@@ -62,6 +62,10 @@ Web sources (warcraft.wiki.gg API pages) describe retail and can differ from For
   wrong guesses (1.3.62, 1.3.64) cost the user two game tests before the log was read.
 - `InCombatLockdown()` before touching any secure attribute, binding or protected frame.
 
+- **Secret values.** Some game answers (`IsMouseOver`, `IsIgnoringParentAlpha`, unit data) come back as *secret* values for frames or data our addon may not read; comparing them or using them in `if`/`and`/`or`
+  raises an error ("attempt to perform boolean test on ... a secret boolean value"). Check with `issecretvalue(v)` (documented in `FrameScriptDocumentation.lua`) before any test, and treat a secret as "unknown". `pcall` does not help: the
+  error is raised on the test, after the call (Fade.lua `plain`, 1.3.70: 340 errors in a report).
+
 ## 4. Frame facts worth knowing
 - New drop-downs (`DropdownButton`) open on **mouse down**; a forwarded click does not send it. Run `OnMouseDown`/`OnMouseUp`
   or `SetMenuOpen`. Large side tabs are plain Frames (no `Click`), found by `SelectedTexture` + `TabGlow`, pressed by

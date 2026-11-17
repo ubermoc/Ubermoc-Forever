@@ -158,7 +158,7 @@ local function keepVisible(on)
             local f = _G[n]
             if f and f.SetIgnoreParentAlpha and kept[f] == nil and not (f.IsForbidden and f:IsForbidden()) then
                 local ok, was = pcall(f.IsIgnoringParentAlpha, f)
-                kept[f] = ok and was or false
+                kept[f] = (ok and not (issecretvalue and issecretvalue(was)) and was) and true or false
                 pcall(f.SetIgnoreParentAlpha, f, true)
             end
         end

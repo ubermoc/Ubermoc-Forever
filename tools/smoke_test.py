@@ -906,6 +906,16 @@ r = L("""function()
 end""")()
 assert str(r) == "8,0,nil,nil", r
 print("Markers: entries of the marker submenu are recognised by name: OK")
+# Secret values from the game count as "no" instead of raising an error when tested
+r = L("""function()
+    local F = UbermocForever.Fade
+    issecretvalue = function(v) return v == "secret" end
+    local out = { tostring((F._plain("secret"))), tostring(F._plain(true)), tostring(F._plain(false)) }
+    issecretvalue = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "nil,true,false", r
+print("Secret values: treated as unknown, real booleans kept: OK")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()
     local UF = UbermocForever

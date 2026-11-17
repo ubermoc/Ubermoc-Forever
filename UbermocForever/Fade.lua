@@ -189,6 +189,14 @@ F.CHAT = {
     E("quickjoin", "Quick join button", { "QuickJoinToastButton" }),
 }
 
+-- Some frames hand out SECRET values (a boolean from IsMouseOver or IsIgnoringParentAlpha on a frame this addon cannot read, such as the combo
+-- point frame): a test on one raises an error (340 times in a report). A secret value counts as "no".
+local function plain(v)
+    if issecretvalue and issecretvalue(v) then return nil end
+    return v
+end
+
+F._plain = plain   -- for the offline test
 local FADE_TIME = 0.4
 local STEP = 0.1   -- the page's - and + buttons move the value by this much
 
@@ -362,7 +370,7 @@ local function setIndependent(f, on)
     if on then
         if ignoring[f] == nil then
             local ok, was = pcall(f.IsIgnoringParentAlpha, f)
-            ignoring[f] = ok and was or false
+            ignoring[f] = (ok and plain(was)) and true or false
             pcall(f.SetIgnoreParentAlpha, f, true)
         end
     elseif ignoring[f] ~= nil then
@@ -395,7 +403,7 @@ local function hovering(key)
             local target = f.IsMouseOver and f or (f.GetParent and f:GetParent())
             if target and target.IsMouseOver then
                 local ok, over = pcall(target.IsMouseOver, target)
-                if ok and over then return true end
+                if ok and plain(over) then return true end
             end
         end
     end
