@@ -389,27 +389,33 @@ end
 -- The game draws an empty-slot picture behind an empty button on the main bar only (the other bars show their empty buttons only while an
 -- ability is dragged): while the layout is on every empty button shown in the row gets the same picture, the game's own atlas, drawn on our
 -- root frame behind the game's button.
+-- The game's button has two textures for an empty slot (ActionButtonTemplate.xml, BACKGROUND layer): SlotBackground
+-- ("UI-HUD-ActionBar-IconFrame-Background", the dark fill) and SlotArt ("ui-hud-actionbar-iconframe-slot", the slot frame) drawn over it.
+-- Forever never hides either (its UpdateButtonArt does nothing), so the main bar shows both: we draw both, in the same order.
+local SLOT_BACK, SLOT_ART = "UI-HUD-ActionBar-IconFrame-Background", "ui-hud-actionbar-iconframe-slot"
 local slotPool = {}
 local function slotFor(k)
     local t = slotPool[k]
     if not t then
-        t = root:CreateTexture(nil, "BACKGROUND")
+        t = { back = root:CreateTexture(nil, "BACKGROUND", nil, -2), art = root:CreateTexture(nil, "BACKGROUND", nil, -1) }
+        t.back:SetAtlas(SLOT_BACK); t.art:SetAtlas(SLOT_ART)
+        t.art:SetAllPoints(t.back)
+        function t:SetAlpha(a) self.back:SetAlpha(a); self.art:SetAlpha(a) end
+        function t:Show() self.back:Show(); self.art:Show() end
+        function t:Hide() self.back:Hide(); self.art:Hide() end
         slotPool[k] = t
     end
     return t
-end
-local function ownBackShown(btn)
-    local sb = btn.SlotBackground
-    if not (sb and sb.IsShown) then return false end
-    local ok, v = pcall(sb.IsShown, sb)
-    return ok and not (issecretvalue and issecretvalue(v)) and v == true
 end
 local extraPool = {}
 local function extraFor(k)
     local f = extraPool[k]
     if not f then
         f = CreateFrame("Frame", nil, root)
-        f.bg = f:CreateTexture(nil, "BACKGROUND")
+        f.back = f:CreateTexture(nil, "BACKGROUND", nil, -2)
+        f.back:SetAllPoints(f)
+        f.back:SetAtlas(SLOT_BACK)
+        f.bg = f:CreateTexture(nil, "BACKGROUND", nil, -1)
         f.bg:SetAllPoints(f)
         f.icon = f:CreateTexture(nil, "ARTWORK")
         f.icon:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -3); f.icon:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, 3)
@@ -495,11 +501,10 @@ function B.layout()
         if #shownList + #ex > 0 then L.x0, L.x1 = xs[1], xs[#shownList + #ex] + s end   -- where the shown buttons start and end (for the end caps)
         for k, btn in ipairs(shownList) do
             L.shown[btn] = true
-            if isEmpty(btn) and not ownBackShown(btn) then
+            if isEmpty(btn) then
                 slotN = slotN + 1
                 local t = slotFor(slotN)
-                t:ClearAllPoints(); t:SetPoint("BOTTOMLEFT", root, "BOTTOMLEFT", xs[k], 0); t:SetSize(s, s)
-                t:SetAtlas("ui-hud-actionbar-iconframe-slot")
+                t.back:ClearAllPoints(); t.back:SetPoint("BOTTOMLEFT", root, "BOTTOMLEFT", xs[k], 0); t.back:SetSize(s, s)
                 t:Show()
                 L.slotbg[#L.slotbg + 1] = t
             end

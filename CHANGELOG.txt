@@ -1,3 +1,6 @@
+UbermocForever 1.3.104
+- Fixed: gamepad layout: an empty button in the row had only the slot frame, not the dark fill the main bar draws behind it. Every empty button now gets both of the game's own empty-slot textures (UI-HUD-ActionBar-IconFrame-Background with ui-hud-actionbar-iconframe-slot over it), as on the main bar, including the icon slots for binds to another layer's button. Untested in the game.
+
 UbermocForever 1.3.103
 - Changed: a new install starts with the author's own settings, copied once into a brand-new saved-variables table: the gamepad layout on (size 40, no gap, no extra height, Other binds off), the fading values for about 80 parts (most at 40% when out of combat and 0% on a flight, the minimap parts 30% / 70%, the objective tracker hidden, the micro menu, bags, XP bars and gamepad bar hidden), the menu on the left, the aim dot, the cinematic bars and edges, and the chat page (5 s then 3 s). An install that already has settings is not changed. Untested in the game.
 
