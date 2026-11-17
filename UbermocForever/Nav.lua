@@ -143,9 +143,27 @@ end)
 function Nav.TakePopup(dialog)
     local b1 = dialog.GetButton1 and dialog:GetButton1()
     local b2 = dialog.GetButton2 and dialog:GetButton2()
+    local b3 = dialog.GetButton3 and dialog:GetButton3()
+    -- the window says which controller button does what (the game's own button pictures), under its own text
+    pcall(function()
+        local fs = dialog.GetTextFontString and dialog:GetTextFontString()
+        if not fs then return end
+        local parts = {}
+        local function add(pad, b)
+            if b and b:IsShown() and b.GetText and b:GetText() and b:GetText() ~= "" then
+                parts[#parts + 1] = (UF.glyph and UF.glyph(pad) or pad) .. " " .. b:GetText()
+            end
+        end
+        add("PAD1", b1); add("PAD2", b2); add("PAD3", b3)
+        if #parts > 0 then
+            fs:SetText((fs:GetText() or "") .. "\n\n" .. table.concat(parts, "     "))
+            if dialog.Resize then dialog:Resize(dialog.which) end
+        end
+    end)
     dialog.ubfNav = Nav.Push({
         PAD1 = function() if b1 and b1:IsEnabled() then b1:Click() end end,
         PAD2 = function() if b2 and b2:IsShown() then b2:Click() end end,
+        PAD3 = function() if b3 and b3:IsShown() then b3:Click() end end,
     })
 end
 
