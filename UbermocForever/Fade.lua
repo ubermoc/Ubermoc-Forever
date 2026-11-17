@@ -196,7 +196,8 @@ F.GBAR = {
     E("gbar", "Gamepad bar", { "UbermocForeverGamepadBar" }),
     E("micro", "Micro menu", { "MicroMenuContainer" }),
     E("bags", "Bag bar", { "BagsBar" }),
-    E("xpall", "Experience bars (all of them)", { "StatusTrackingBarManager" }),
+    -- the mouse is over the bars themselves, not over the manager frame (whose area is larger and overlaps what sits at the bottom of the screen)
+    E("xpall", "Experience bars (all of them)", { "StatusTrackingBarManager" }, { hover = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" } }),
 }
 
 local FADE_TIME = 0.4
@@ -412,7 +413,7 @@ F._apply = apply   -- for the offline test
 local function hovering(key)
     local e = byKey[key]
     if not e or e.plates then return false end
-    for _, name in ipairs(e.frames) do
+    for _, name in ipairs(e.hover or e.frames) do
         local f = frameOf(name)
         if f then
             local target = f.IsMouseOver and f or (f.GetParent and f:GetParent())

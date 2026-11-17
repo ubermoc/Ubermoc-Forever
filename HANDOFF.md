@@ -1,4 +1,4 @@
-Confirmed in the game by the user 2026-11-17: everything through 1.3.93 (gamepad layout, question windows, Fading page changes, auction Y entries, Select default binds, fresh start). 1.3.94 to 1.3.100 confirmed later the same day: everything through 1.3.96 is tested; not released (latest release 1.3.72).
+Confirmed in the game by the user 2026-11-17: everything through 1.3.93 (gamepad layout, question windows, Fading page changes, auction Y entries, Select default binds, fresh start). 1.3.94 to 1.3.101 confirmed later the same day: everything through 1.3.96 is tested; not released (latest release 1.3.72).
 
 # Hand-off: Ubermoc Forever
 
