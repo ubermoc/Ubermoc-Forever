@@ -957,6 +957,64 @@ r = L("""function()
 end""")()
 assert str(r) == "nil,true,false", r
 print("Secret values: treated as unknown, real booleans kept: OK")
+# Gamepad layout: which layer is held, even centred rows, empty buttons removed, everything put back when it is turned off
+r = L("""function()
+    local UF = UbermocForever
+    local B = UF.GamepadBar
+    local out = { B.layerFor(false, false), B.layerFor(true, false), B.layerFor(false, true), B.layerFor(true, true), B.layerFor(true, true, true) }
+    local xs = B.rowX(3, 44, 6, 594)
+    out[#out + 1] = xs[1] .. "/" .. xs[2] .. "/" .. xs[3]                         -- centred, evenly spaced
+    out[#out + 1] = #B.rowX(0, 44, 6, 594)
+    -- layout with plain-table buttons: bar 1..4, 12 buttons each, the first three of every bar filled
+    local function mk(bar, n)
+        local b = { action = (bar - 1) * 100 + n, pts = { { "CENTER", "parent", "CENTER", 0, 0 } }, alpha = 1, scale = 1 }
+        function b:GetNumPoints() return #self.pts end
+        function b:GetPoint(i) local p = self.pts[i]; return p[1], p[2], p[3], p[4], p[5] end
+        function b:GetScale() return self.scale end
+        function b:SetScale(v) self.scale = v end
+        function b:GetWidth() return 40 end
+        function b:GetHeight() return 40 end
+        function b:SetSize() end
+        function b:GetParent() return { GetEffectiveScale = function() return 1 end } end
+        function b:ClearAllPoints() self.pts = {} end
+        function b:SetPoint(a, rel, c, x, y) self.pts[#self.pts + 1] = { a, rel, c, x, y } end
+        function b:SetIgnoreParentAlpha(v) self.ignore = v end
+        function b:SetAlpha(v) self.alpha = v end
+        function b:GetAlpha() return self.alpha end
+        function b:SetFrameLevel() end
+        return b
+    end
+    local names = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarRightButton" }
+    local btns = {}
+    for bar = 1, 4 do for n = 1, 12 do local b = mk(bar, n); btns[#btns + 1] = b; _G[names[bar] .. n] = b end end
+    HasAction = function(a) return ((a - 1) % 100) % 12 < 3 end   -- slots 1..3 are filled (the actions here run 1, 2, 3 ... within each hundred)
+    local root = { }
+    for _, m in ipairs({ "SetSize", "SetFrameStrata", "ClearAllPoints", "SetPoint", "Show", "Hide" }) do root[m] = function() end end
+    function root:GetEffectiveScale() return 1 end
+    function root:GetFrameLevel() return 5 end
+    local realCF = CreateFrame
+    CreateFrame = function(kind, name, ...) if name == "UbermocForeverGamepadBar" then return root end return realCF(kind, name, ...) end
+    UbermocForeverDB.gbar = { on = true }
+    local realTalk = UF.Cinematic.talking
+    UF.Cinematic.talking = function() return false end   -- the test stub's windows look open: not talking
+    IsShiftKeyDown = function() return true end; IsControlKeyDown = function() return false end; IsAltKeyDown = function() return false end
+    B.layout()
+    local first = btns[1]
+    out[#out + 1] = tostring(first.pts[1][4]) .. "," .. tostring(btns[3].pts[1][4]) .. "," .. tostring(btns[4].pts[1][4])   -- centred 3, the fourth out of sight
+    out[#out + 1] = tostring(btns[1].alpha) .. tostring(btns[13].alpha) .. tostring(btns[14].alpha) .. tostring(btns[16].alpha)   -- layer 2 is held: bar 1 hidden, bar 2's first three shown, its fourth (empty) hidden
+    out[#out + 1] = tostring(btns[1].ignore)
+    UbermocForeverDB.gbar.on = false
+    B.layout()
+    out[#out + 1] = tostring(btns[1].pts[1][1]) .. tostring(btns[1].ignore) .. tostring(btns[1].alpha)           -- put back
+    CreateFrame = realCF
+    UF.Cinematic.talking = realTalk
+    for bar = 1, 4 do for n = 1, 12 do _G[names[bar] .. n] = nil end end
+    IsShiftKeyDown, IsControlKeyDown, IsAltKeyDown, HasAction = nil, nil, nil, nil
+    UbermocForeverDB.gbar = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,CENTERfalse1", r
+print("Gamepad layout: layers, even centring, empty buttons removed, put back when off: OK  (" + str(r) + ")")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()
     local UF = UbermocForever

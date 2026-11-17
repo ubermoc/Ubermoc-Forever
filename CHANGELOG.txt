@@ -1,3 +1,6 @@
+UbermocForever 1.3.73
+- Added: the gamepad layout (new Bars page, the fourth page of the options window; off to start with). One row of the game's own action buttons at the bottom: nothing held shows action bar 1, the first modifier bar 2, the second bar 3, both bar 4. The game's bottom art goes (main bar art and end caps, bars 2 to 4, micro menu, bags, experience bar, the keys' labels); a part you set on the Fading page keeps your setting. Buttons with nothing on them are removed and the rest are centred and evenly spaced. Settings: Gamepad layout On/Off, Hide empty buttons, Hide the game's art, button size, gap and height. /ubf bars reports what it found. Untested in the game.
+
 UbermocForever 1.3.72
 - Fixed: the title of the marker menu always showed "Target Marker Icon" instead of the target's name (a check on secret values was written wrong: pcall's first result is always true). Found in review of the 1.3.71 code. Untested in the game.
 

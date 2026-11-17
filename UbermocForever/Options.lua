@@ -15,7 +15,7 @@ local ROW_H = 30
 local LIST_W = 680            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
-local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading, 3 = chat)
+local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading, 3 = chat, 4 = bars)
 local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end
 function UF.optionsPage() return pageNo end   -- for the offline test   -- for the offline test
@@ -67,9 +67,10 @@ function UF.RefreshOptions()
         barsBtn:SetText("Bars: " .. UF.Cinematic.barsName())
         edgesBtn:SetText("Edges: " .. UF.Cinematic.edgesName())
     end
-    if pageBtn then pageBtn:SetText(pageNo == 2 and "Page: Fading" or pageNo == 3 and "Page: Chat" or "Page: Settings") end
+    if pageBtn then pageBtn:SetText(pageNo == 2 and "Page: Fading" or pageNo == 3 and "Page: Chat" or pageNo == 4 and "Page: Bars" or "Page: Settings") end
     if pageNo == 2 and UF.FadePage then UF.FadePage.refresh() end
     if pageNo == 3 and UF.ChatPage then UF.ChatPage.refresh() end
+    if pageNo == 4 and UF.BarsPage then UF.BarsPage.refresh() end
     if cineBtn then cineBtn:SetText("Cinematic mode: " .. (d.cinema == false and "Off" or "On")) end
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
     -- A short name on the button, sized to fit: the full name is in the line to its left.
@@ -549,11 +550,13 @@ local function build()
         pageNo = n
         local fadeFrame = UF.FadePage.build(win, inset)
         local chatFrame = UF.ChatPage.build(win, inset)
+        local barsFrame = UF.BarsPage.build(win, inset)
         local one = { cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, win.scroll }
         for _, b in ipairs(layerButtons) do one[#one + 1] = b end
         for _, f in ipairs(one) do if f then f:SetShown(n == 1) end end
         fadeFrame:SetShown(n == 2)
         chatFrame:SetShown(n == 3)
+        barsFrame:SetShown(n == 4)
         if n ~= 1 then
             legend:Set({ PAD1 = "Press", PAD2 = "Back", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         else
@@ -561,7 +564,7 @@ local function build()
         end
         UF.RefreshOptions()
     end
-    pageBtn:SetScript("OnClick", function() showPage(pageNo % 3 + 1) end)
+    pageBtn:SetScript("OnClick", function() showPage(pageNo % 4 + 1) end)
     local function pickerOpen() return picker and picker:IsShown() end
     local function navRows()
         local out = {}
@@ -574,6 +577,9 @@ local function build()
             return out
         elseif pageNo == 3 then
             for _, r in ipairs(UF.ChatPage.navRows()) do out[#out + 1] = r end
+            return out
+        elseif pageNo == 4 then
+            for _, r in ipairs(UF.BarsPage.navRows()) do out[#out + 1] = r end
             return out
         end
         out[2] = { cineBtn, barsBtn, edgesBtn }
@@ -607,8 +613,8 @@ local function build()
             end
         end,
         -- the triggers go through the pages: settings, fading
-        PADLTRIGGER = function() if not pickerOpen() then showPage((pageNo + 1) % 3 + 1) end end,
-        PADRTRIGGER = function() if not pickerOpen() then showPage(pageNo % 3 + 1) end end,
+        PADLTRIGGER = function() if not pickerOpen() then showPage((pageNo + 2) % 4 + 1) end end,
+        PADRTRIGGER = function() if not pickerOpen() then showPage(pageNo % 4 + 1) end end,
         PADLSHOULDER = function() if not pickerOpen() and pageNo == 1 then layer = layer == 1 and 4 or layer - 1; UF.RefreshOptions() end end,
         PADRSHOULDER = function() if not pickerOpen() and pageNo == 1 then layer = layer == 4 and 1 or layer + 1; UF.RefreshOptions() end end,
         PAD2 = function() if pickerOpen() then picker:Hide() else win:Hide() end end,
