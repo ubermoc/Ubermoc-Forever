@@ -1,3 +1,6 @@
+UbermocForever 1.3.69
+- Fixed: the submenu warning came thousands of times within seconds (user report on an enemy player). Opening a submenu is now never repeated within half a second, and more than 8 tries in 2 seconds pauses it for 5 seconds with one chat line. /ubf targetmenu also counts how often A was pressed. The cause of the repeating press is not found yet; this stops the flood. Untested in the game.
+
 UbermocForever 1.3.68
 - Added: /ubf targetmenu also says how many submenus A opened since login and from which menu entry, to find which entry raises the "fontString is nil" warning when the target is an enemy player. No other change.
 

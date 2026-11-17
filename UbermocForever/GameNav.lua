@@ -430,6 +430,7 @@ local function buttons()
     if not clicker then
         clicker = secureButton("UbermocForeverGameClick")
         clicker:HookScript("PostClick", function()
+            G.clicks = (G.clicks or 0) + 1      -- for /ubf targetmenu
             if G.placing then pcall(G.placeHere); return end
             -- Some of the game's buttons act on the mouse going down or up and have no OnClick at all (the newer drop-down
             -- buttons open on mouse DOWN: DropdownButtonMixin:OnMouseDown_Intrinsic). A click from here sends neither, so
@@ -441,6 +442,21 @@ local function buttons()
             if not f or InCombatLockdown() or not f.GetScript then return end
             local isDrop = f.SetMenuOpen and f.IsMenuOpen
             if G.opensSubmenu(f) then
+                -- A user report on 1.3.68: the warning from opening a submenu came thousands of times within seconds. Whatever repeats the press, a
+                -- submenu is never opened twice within half a second, and more than 8 tries in 2 seconds pauses it for 5 seconds (said once in chat).
+                local now = GetTime and GetTime() or 0
+                if G.subPause and now < G.subPause then return end
+                if G.subAt and now - G.subAt < 0.5 then return end
+                G.subAt = now
+                G.subWin = G.subWin or {}
+                G.subWin[#G.subWin + 1] = now
+                while #G.subWin > 0 and now - G.subWin[1] > 2 do table.remove(G.subWin, 1) end
+                if #G.subWin > 8 then
+                    G.subPause = now + 5
+                    G.subWin = {}
+                    UF.say("Opening menu entries' submenus was paused for 5 seconds: it was being repeated too fast.")
+                    return
+                end
                 G.subTries = (G.subTries or 0) + 1
                 G.lastSub = entryText(f) or "(no text)"       -- for /ubf targetmenu: which entry the submenu was opened from
                 local down = f:GetScript("OnMouseDown")
