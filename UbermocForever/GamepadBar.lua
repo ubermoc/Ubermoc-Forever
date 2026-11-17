@@ -413,7 +413,18 @@ local PART_FRAMES = {
     { name = "BagsBar", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 0 },
     { name = "MicroMenuContainer", point = "BOTTOMRIGHT", rel = "BagsBar", relPoint = "TOPRIGHT", x = 0, y = 2 },
     { name = "StatusTrackingBarManager", point = "TOP", rel = "UIParent", relPoint = "TOP", x = 0, y = 0 },
+    -- the stance bar: centred above the player frame's portrait, at 3/4 of its size
+    { name = "StanceBar", point = "BOTTOM", relPath = "PlayerFrame.PlayerFrameContainer.PlayerPortrait", relPoint = "TOP", x = 0, y = 4, scale = 0.75 },
 }
+local function resolvePath(path)
+    local o = _G
+    for k in string.gmatch(path, "[^.]+") do
+        if type(o) ~= "table" then return nil end
+        o = o[k]
+    end
+    return o
+end
+local partScale = setmetatable({}, { __mode = "k" })
 local partSaved = setmetatable({}, { __mode = "k" })
 local partHooked = setmetatable({}, { __mode = "k" })
 local partBusy = setmetatable({}, { __mode = "k" })
@@ -431,7 +442,7 @@ local function placePart(def)
     if not f or partBusy[f] then return end
     if InCombatLockdown() then pending = true; return end
     if not partsOn or not inDefaultPosition(f) then return end
-    local rel = _G[def.rel]
+    local rel = def.relPath and resolvePath(def.relPath) or _G[def.rel]
     if not rel then return end
     partBusy[f] = true
     pcall(function()
@@ -444,6 +455,10 @@ local function placePart(def)
         local set = f.SetPointBase or f.SetPoint
         clear(f)
         set(f, def.point, rel, def.relPoint, def.x, def.y)
+        if def.scale and f.SetScale then
+            if not partScale[f] then partScale[f] = f:GetScale() or 1 end
+            f:SetScale(def.scale)
+        end
     end)
     partBusy[f] = false
     if not partHooked[f] then
@@ -464,6 +479,7 @@ local function restorePart(def)
         local set = f.SetPointBase or f.SetPoint
         clear(f)
         for _, p in ipairs(pts) do set(f, p[1], p[2], p[3], p[4], p[5]) end
+        if partScale[f] then f:SetScale(partScale[f]); partScale[f] = nil end
     end)
     partBusy[f] = false
 end

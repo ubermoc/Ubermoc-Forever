@@ -1,3 +1,6 @@
+UbermocForever 1.3.80
+- Added: gamepad layout: the stance bar sits centred above the player frame's portrait at 3/4 of its size (only while the game still has it at its default position; turning the layout off puts it back). Untested in the game.
+
 UbermocForever 1.3.79
 - Changed: gamepad layout: the bags start in the bottom right corner and the micro menu above them (was the other way round). Untested in the game.
 
