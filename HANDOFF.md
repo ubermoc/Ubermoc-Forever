@@ -1,4 +1,4 @@
-Confirmed in the game by the user 2026-11-17: everything through 1.3.103 (see AGENTS.md). Released: 1.3.103. Untested in the game, not released: 1.3.104 (empty slots get the dark fill as well as the frame), 1.3.105 (A forward / X back on stepping settings, numbers one at a time), 1.3.106 (game cursor clicks R2/R1 switched off while our windows have the buttons: RT now changes pages), 1.3.107 (gamepad row: buttons above the game's bar frames, only the held layer takes the mouse: dragging and tooltips).
+Confirmed in the game by the user 2026-11-17: everything through 1.3.103 (see AGENTS.md). Released: 1.3.103. Untested in the game, not released: 1.3.104 (empty slots get the dark fill as well as the frame), 1.3.105 (A forward / X back on stepping settings, numbers one at a time), 1.3.106 (game cursor clicks R2/R1 switched off while our windows have the buttons: RT now changes pages), 1.3.107 (gamepad row: buttons above the game's bar frames, only the held layer takes the mouse: dragging and tooltips), 1.3.108 (fast loot, Loot.lua, options button next to the aim dot).
 
 # Hand-off: Ubermoc Forever
 

@@ -16,7 +16,7 @@ local LIST_W = 680            -- width of the rows inside the inset (the inset i
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
 local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading, 3 = chat, 4 = bars)
-local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn   -- declared here, above every function that uses it
+local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, lootBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end
 function UF.optionsPage() return pageNo end   -- for the offline test   -- for the offline test
 
@@ -63,6 +63,7 @@ function UF.RefreshOptions()
         distBtn:SetText("Aim distance: " .. UF.Aim.distanceName())
         sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
     end
+    if lootBtn and UF.Loot then lootBtn:SetText("Fast loot: " .. (UF.Loot.enabled() and "On" or "Off")) end
     if barsBtn and UF.Cinematic then
         barsBtn:SetText("Bars: " .. UF.Cinematic.barsName())
         edgesBtn:SetText("Edges: " .. UF.Cinematic.edgesName())
@@ -442,6 +443,7 @@ local function build()
     aimBtn = aimButton(120, nil, function() UF.Aim.toggle() end, { "Aim dot", "A white dot shows where a ground spell (Heroic Leap, Blizzard, Rain of Fire) will land, only while you are aiming it." })
     distBtn = aimButton(180, aimBtn, UF.Aim.nextDistance, { "Aim distance", "How far from your character the aim point rests (higher on the screen is further). Exact yards cannot be set. A steps forward, X steps back." })
     sizeBtn = aimButton(100, distBtn, UF.Aim.nextSize, { "Dot size", "Small, medium or large." })
+    lootBtn = aimButton(130, sizeBtn, function() UF.Loot.toggle() end, { "Fast loot", "With the game's Auto Loot on, everything is taken the moment the loot opens, and the loot window only shows if something is left (full bags, an item that asks first). Not while you are the master looter. The game's Auto Loot is switched on once for each character." })
     info:SetPoint("RIGHT", pageBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
@@ -551,7 +553,7 @@ local function build()
         local fadeFrame = UF.FadePage.build(win, inset)
         local chatFrame = UF.ChatPage.build(win, inset)
         local barsFrame = UF.BarsPage.build(win, inset)
-        local one = { cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, win.scroll }
+        local one = { cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, lootBtn, win.scroll }
         for _, b in ipairs(layerButtons) do one[#one + 1] = b end
         for _, f in ipairs(one) do if f then f:SetShown(n == 1) end end
         fadeFrame:SetShown(n == 2)
@@ -596,7 +598,7 @@ local function build()
             return out
         end
         out[2] = { cineBtn, barsBtn, edgesBtn }
-        out[3] = { aimBtn, distBtn, sizeBtn }
+        out[3] = { aimBtn, distBtn, sizeBtn, lootBtn }
         out[4] = layerButtons
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end

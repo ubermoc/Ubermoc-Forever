@@ -1505,6 +1505,36 @@ end""")()
 assert str(r) == "NONE/PAD4,PADRTRIGGER/PAD4/nil", r
 print("Cursor clicks: R2 taken from the game's cursor while a window is open, given back: OK")
 
+# Fast loot: every slot at once with Auto Loot on, nothing as the master looter or with it switched off
+r = L("""function()
+    local Lt = UbermocForever.Loot
+    local oldG, oldN, oldS, oldP, oldM = GetCVar, GetNumLootItems, LootSlot, C_PartyInfo, IsModifiedClick
+    local cv = { autoLootDefault = "1" }
+    local taken = {}
+    GetCVar = function(k) return cv[k] end
+    GetNumLootItems = function() return 3 end
+    LootSlot = function(i) taken[#taken + 1] = i end
+    IsModifiedClick = function() return false end
+    local method, pid = 3, nil
+    C_PartyInfo = { GetLootMethod = function() return method, pid end }
+    local out = {}
+    Lt.onReady(true); out[#out + 1] = table.concat(taken, ""); taken = {}
+    method, pid = 2, 0
+    Lt.onReady(true); out[#out + 1] = "[" .. table.concat(taken, "") .. "]"; taken = {}     -- we are the master looter
+    method, pid = 2, 3
+    Lt.onReady(true); out[#out + 1] = table.concat(taken, ""); taken = {}                   -- someone else is
+    cv.autoLootDefault = "0"
+    Lt.onReady(false); out[#out + 1] = "[" .. table.concat(taken, "") .. "]"; taken = {}    -- the game's Auto Loot off
+    cv.autoLootDefault = "1"
+    Lt.toggle(); out[#out + 1] = tostring(Lt.enabled())
+    Lt.onReady(true); out[#out + 1] = "[" .. table.concat(taken, "") .. "]"
+    Lt.toggle()
+    GetCVar, GetNumLootItems, LootSlot, C_PartyInfo, IsModifiedClick = oldG, oldN, oldS, oldP, oldM
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "321,[],321,[],false,[]", r
+print("Fast loot: all slots at once, not as master looter, follows Auto Loot and the option: OK")
+
 # Fading page: elements the gamepad layout hides for good are not listed
 r = L("""function()
     local UF = UbermocForever
