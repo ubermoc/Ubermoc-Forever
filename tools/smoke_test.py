@@ -938,5 +938,21 @@ r = L("""function()
 end""")()
 assert str(r) == "nil,pop,nil,nil", r
 print("Character window: A on a gear slot opens the equipment flyout: OK")
+# Cinematic: the "experimental feature" popup is closed (accepted) only while our own settings change
+r = L("""function()
+    local C = UbermocForever.Cinematic
+    local hidden = {}
+    StaticPopup_Hide = function(w) hidden[#hidden + 1] = w end
+    local realTime = GetTime
+    GetTime = function() return 1000 end                    -- long after any earlier guard
+    local a = C.onPopup("EXPERIMENTAL_CVAR_WARNING")        -- no guard: left alone
+    C.guard(3)
+    local b = C.onPopup("EXPERIMENTAL_CVAR_WARNING")        -- while we change settings: closed
+    local c = C.onPopup("SOMETHING_ELSE")                   -- another popup: left alone
+    GetTime = realTime
+    return tostring(a) .. tostring(b) .. tostring(c) .. #hidden
+end""")()
+assert str(r) == "falsetruefalse1", r
+print("Cinematic: the experimental camera popup is accepted by itself: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

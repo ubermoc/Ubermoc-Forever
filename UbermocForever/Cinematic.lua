@@ -53,6 +53,20 @@ end
 ----------------------------------------------------------------------
 -- Saved CVars: saved first (in the saved variables), so a reload or crash in the middle of a talk still puts them back.
 ----------------------------------------------------------------------
+-- The game asks "experimental feature turned on" (StaticPopup EXPERIMENTAL_CVAR_WARNING, raised on EXPERIMENTAL_CVAR_CONFIRMATION_NEEDED, Accept or
+-- Disable) when a test_ camera setting is changed. Its Accept does nothing but leave the setting on, so while our own settings are being changed (and
+-- for a moment after) that popup is closed the instant it shows, which is the same as accepting it. Other times it is left alone.
+local guardUntil = 0
+function C.guard(sec) guardUntil = math.max(guardUntil, (GetTime and GetTime() or 0) + sec) end
+function C.onPopup(which)
+    if which == "EXPERIMENTAL_CVAR_WARNING" and (GetTime and GetTime() or 0) < guardUntil then
+        if StaticPopup_Hide then pcall(StaticPopup_Hide, which) end
+        return true
+    end
+    return false
+end
+if hooksecurefunc then hooksecurefunc("StaticPopup_Show", function(which) C.onPopup(which) end) end
+
 local function put(cvar, value)
     local cur = getCVar(cvar)
     if cur == nil then return end   -- this game build does not have it
@@ -63,6 +77,7 @@ local function put(cvar, value)
 end
 
 function C.restoreCVars()
+    C.guard(3)
     local d = UF.DB()
     local b = d.cinemaBackup
     if not b then return end
@@ -208,6 +223,7 @@ local function start()
     local em = _G.EditModeManagerFrame
     if em and em.IsShown and em:IsShown() then return end
     S.active, S.goal = true, 1
+    C.guard(4)
     for cvar, v in pairs(FACE_CVARS) do put(cvar, v) end
     for _, cvar in ipairs(PLATE_CVARS) do put(cvar, "0") end
     S.oldZoom = GetCameraZoom and GetCameraZoom()

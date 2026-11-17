@@ -55,3 +55,10 @@ under `UIParent` (children of `WorldFrame`) are not faded either. So while a tal
 (the original value is kept and put back), except the quest/gossip window, tooltips, question windows and our own frames. The API is
 `IsIgnoringParentAlpha` (UbermocUI and 1.3.3 to 1.3.33 used `GetIgnoreParentAlpha`, which is not in the game's API list).
 Not yet tested in the game: what else is left on screen is the thing to report.
+
+## The "experimental feature" warning (1.3.49), source: `Blizzard_Game/Shared/EventRouting.lua`, `EventImplementation.lua`, `Blizzard_StaticPopup_Game/GameDialogDefs.lua`
+Changing a `test_` camera setting (we set `test_cameraTargetFocusInteract*` so the camera turns to the NPC) makes the game fire `EXPERIMENTAL_CVAR_CONFIRMATION_NEEDED`.
+Its handler is `GameEvent.HandleExperimentalCVarConfirmationNeeded`, which only calls `StaticPopup_Show("EXPERIMENTAL_CVAR_WARNING")` (Accept / Disable). Accept has no
+action of its own (the setting stays on); Disable runs `ResetTestCvars()`. The event goes through the game's own event router, not `UIParent` (UbermocUI unregisters it
+from `UIParent`, which may not reach this router). So 1.3.49 hooks `StaticPopup_Show` and closes that one popup while our settings change and for 3 to 4 seconds after.
+Not yet tested in the game: that the popup no longer shows, and that the camera setting stays on without it.
