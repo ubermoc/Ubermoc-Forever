@@ -69,9 +69,40 @@ local function carrier(key)
     return b
 end
 
+-- The game's own controller cursor clicks with R2 (left click, GamePadCursorLeftClick) and R1 (right click,
+-- GamePadCursorRightClick) by default, and that took the right trigger from our windows (the left one worked). While any
+-- window has the buttons they are set to NONE and put back after, only when they are at those defaults, the same way
+-- Ubermoc UI does it (PadCursor.lua manageClicks). The values taken are kept in the saved settings, so a /reload or a
+-- crash while a window was open still gives them back at the next login.
+local CLICK_CVARS = { left = { "GamePadCursorLeftClick", "PADRTRIGGER" }, right = { "GamePadCursorRightClick", "PADRSHOULDER" } }
+function Nav.manageClicks(taking)
+    if InCombatLockdown() then return end
+    local db = UF.DB and UF.DB()
+    if not db then return end
+    for which, def in pairs(CLICK_CVARS) do
+        local name, default = def[1], def[2]
+        local ok, current = pcall(GetCVar, name)
+        if ok and current ~= nil then
+            local backup = db.clickBackup
+            if taking then
+                if current == default then
+                    db.clickBackup = backup or {}
+                    db.clickBackup[which] = current
+                    pcall(SetCVar, name, "NONE")
+                end
+            elseif backup and backup[which] then
+                if current == "NONE" then pcall(SetCVar, name, backup[which]) end
+                backup[which] = nil
+                if next(backup) == nil then db.clickBackup = nil end
+            end
+        end
+    end
+end
+
 -- Take every button any window on the stack wants. Out of combat only (the game blocks it in combat).
 local function rebind()
     if InCombatLockdown() then return end
+    Nav.manageClicks(#stack > 0)
     local o = getOwner()
     pcall(ClearOverrideBindings, o)
     -- key -> { button name, mouse button }; an entry's `secure` keys (a real secure button, for clicking the game's own
@@ -121,8 +152,11 @@ after:RegisterEvent("PLAYER_REGEN_ENABLED")
 -- the buttons fire abilities, and it is up to the player to close the window. Any button held at that moment is let go.
 after:RegisterEvent("PLAYER_REGEN_DISABLED")
 after:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_REGEN_DISABLED" then held = nil else rebind() end
+    if event == "PLAYER_REGEN_DISABLED" then held = nil
+    elseif event == "PLAYER_LOGIN" then if #stack == 0 then Nav.manageClicks(false) end
+    else rebind() end
 end)
+after:RegisterEvent("PLAYER_LOGIN")   -- cursor clicks taken before a /reload or a crash are given back
 
 -- Hold the D-pad to keep moving.
 local repeater = CreateFrame("Frame")

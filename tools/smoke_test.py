@@ -1483,6 +1483,25 @@ end""")()
 assert str(r) == "41/39,30/64,4/1,Thick,Off,-1", r
 print("Stepping settings: one at a time, forward and back, wrapping: OK")
 
+# The game's cursor clicks (R2 / R1) are switched off while one of our windows has the buttons, and given back after
+r = L("""function()
+    local Nav = UbermocForever.Nav
+    local oldG, oldS = GetCVar, SetCVar
+    local cv = { GamePadCursorLeftClick = "PADRTRIGGER", GamePadCursorRightClick = "PAD4" }
+    GetCVar = function(k) return cv[k] end
+    SetCVar = function(k, v) cv[k] = v end
+    local out = {}
+    local e = Nav.Push({ PADRTRIGGER = function() end })   -- another window may already be open: still taken
+    out[#out + 1] = cv.GamePadCursorLeftClick .. "/" .. cv.GamePadCursorRightClick
+    Nav.Pop(e)
+    Nav.manageClicks(false)   -- what happens when the last window closes
+    out[#out + 1] = cv.GamePadCursorLeftClick .. "/" .. cv.GamePadCursorRightClick .. "/" .. tostring(UbermocForeverDB.clickBackup)
+    GetCVar, SetCVar = oldG, oldS
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "NONE/PAD4,PADRTRIGGER/PAD4/nil", r
+print("Cursor clicks: R2 taken from the game's cursor while a window is open, given back: OK")
+
 # Fading page: elements the gamepad layout hides for good are not listed
 r = L("""function()
     local UF = UbermocForever
