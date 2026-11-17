@@ -9,8 +9,8 @@ local ADDON, UF = ...
 local Ch = {}
 UF.Chat = Ch
 
-Ch.VISIBLE = { 5, 10, 20, 30, 60, 120 }   -- seconds a line stays before it starts to fade
-Ch.FADE = { 1, 2, 3, 5, 10 }              -- seconds the fade-out takes
+Ch.VISIBLE = { 1, 120 }   -- seconds a line stays before it starts to fade, one at a time
+Ch.FADE = { 1, 10 }       -- seconds the fade-out takes
 
 Ch.PARTS = { "chat", "chattabs", "chatedit", "chatbtns", "quickjoin" }   -- the parts of the chat (Fade.lua F.CHAT)
 
@@ -63,13 +63,9 @@ function Ch.apply()
     if not c.on and next(d.chatBackup) == nil then d.chatBackup = nil end
 end
 
-local function stepOf(list, v)
-    for i, x in ipairs(list) do if x == v then return i end end
-    return 1
-end
 function Ch.toggle() local c = cfg(); c.on = not c.on; Ch.apply() end
-function Ch.nextVisible() local c = cfg(); c.visible = Ch.VISIBLE[(stepOf(Ch.VISIBLE, c.visible) % #Ch.VISIBLE) + 1]; Ch.apply() end
-function Ch.nextFade() local c = cfg(); c.fade = Ch.FADE[(stepOf(Ch.FADE, c.fade) % #Ch.FADE) + 1]; Ch.apply() end
+function Ch.nextVisible(dir) local c = cfg(); c.visible = UF.stepRange(c.visible, Ch.VISIBLE[1], Ch.VISIBLE[2], dir); Ch.apply() end
+function Ch.nextFade(dir) local c = cfg(); c.fade = UF.stepRange(c.fade, Ch.FADE[1], Ch.FADE[2], dir); Ch.apply() end
 function Ch.autoOn(key) return cfg().auto[key] and true or false end
 function Ch.toggleAuto(key) local c = cfg(); c.auto[key] = not c.auto[key]; if UF.Fade then UF.Fade.evaluate() end end
 function Ch.toggleReveal() local c = cfg(); c.reveal = not c.reveal end

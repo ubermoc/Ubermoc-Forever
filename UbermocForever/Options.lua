@@ -411,7 +411,7 @@ local function build()
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
         b:SetSize(width, 22)
         b:SetPoint("LEFT", prev, "RIGHT", 6, 0)
-        b:SetScript("OnClick", function() click(); UF.RefreshOptions() end)
+        UF.cycleButton(b, click, UF.RefreshOptions)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
             GameTooltip:SetText(tip[1])
@@ -421,15 +421,15 @@ local function build()
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         return b
     end
-    barsBtn = cineButton(140, cineBtn, function() UF.Cinematic.nextBars() end, { "Black bars", "How thick the black bars at the top and bottom are during a talk. Press to step through the choices; a short preview shows it." })
-    edgesBtn = cineButton(150, barsBtn, function() UF.Cinematic.nextEdges() end, { "Dark edges", "How far the dark, cloudy edges come in during a talk. Press to step through the choices; a short preview shows it." })
+    barsBtn = cineButton(140, cineBtn, UF.Cinematic.nextBars, { "Black bars", "How thick the black bars at the top and bottom are during a talk. A steps forward, X steps back; a short preview shows it." })
+    edgesBtn = cineButton(150, barsBtn, UF.Cinematic.nextEdges, { "Dark edges", "How far the dark, cloudy edges come in during a talk. A steps forward, X steps back; a short preview shows it." })
 
     -- Second row: the aim dot for ground spells (Aim.lua).
     local function aimButton(width, prev, click, tip)
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
         b:SetSize(width, 22)
         if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36) end
-        b:SetScript("OnClick", function() click(); UF.RefreshOptions() end)
+        UF.cycleButton(b, click, UF.RefreshOptions)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
             GameTooltip:SetText(tip[1])
@@ -440,8 +440,8 @@ local function build()
         return b
     end
     aimBtn = aimButton(120, nil, function() UF.Aim.toggle() end, { "Aim dot", "A white dot shows where a ground spell (Heroic Leap, Blizzard, Rain of Fire) will land, only while you are aiming it." })
-    distBtn = aimButton(180, aimBtn, function() UF.Aim.nextDistance() end, { "Aim distance", "How far from your character the aim point rests (higher on the screen is further). Exact yards cannot be set. Press to step through the choices." })
-    sizeBtn = aimButton(100, distBtn, function() UF.Aim.nextSize() end, { "Dot size", "Small, medium or large." })
+    distBtn = aimButton(180, aimBtn, UF.Aim.nextDistance, { "Aim distance", "How far from your character the aim point rests (higher on the screen is further). Exact yards cannot be set. A steps forward, X steps back." })
+    sizeBtn = aimButton(100, distBtn, UF.Aim.nextSize, { "Dot size", "Small, medium or large." })
     info:SetPoint("RIGHT", pageBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
@@ -557,12 +557,25 @@ local function build()
         fadeFrame:SetShown(n == 2)
         chatFrame:SetShown(n == 3)
         barsFrame:SetShown(n == 4)
-        if n ~= 1 then
-            legend:Set({ PAD1 = "Press", PAD2 = "Back", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
-        else
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
-        end
+        win.updateLegend()
         UF.RefreshOptions()
+    end
+    -- The legend fits the page, and the highlighted button: on a button that steps through values A is Next and X is Previous.
+    local legendKey
+    function win.updateLegend()
+        local f = Nav.focus
+        local stepping = f and f.ufBack and f.IsVisible and f:IsVisible() and not (picker and picker:IsShown())
+        local key = pageNo .. (stepping and "s" or "")
+        if key == legendKey then return end
+        legendKey = key
+        local t
+        if pageNo ~= 1 then
+            t = { PAD1 = "Press", PAD2 = "Back", PADLTRIGGER = "Page", PADRTRIGGER = "Page" }
+        else
+            t = { PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" }
+        end
+        if stepping then t.PAD1 = "Next"; t.PAD3 = "Previous" end
+        legend:Set(t)
     end
     pageBtn:SetScript("OnClick", function() showPage(pageNo % 4 + 1) end)
     local function pickerOpen() return picker and picker:IsShown() end
@@ -619,7 +632,11 @@ local function build()
         PADRSHOULDER = function() if not pickerOpen() and pageNo == 1 then layer = layer == 4 and 1 or layer + 1; UF.RefreshOptions() end end,
         PAD2 = function() if pickerOpen() then picker:Hide() else win:Hide() end end,
         PAD3 = function()
-            if pickerOpen() or pageNo ~= 1 then return end
+            if pickerOpen() then return end
+            -- a button that steps through values: X steps back
+            local fb = Nav.focus
+            if fb and fb.ufBack and fb:IsVisible() and (not fb.IsEnabled or fb:IsEnabled()) then fb.ufBack(); return end
+            if pageNo ~= 1 then return end
             local f = Nav.focus
             local r = (f and f.navRow) or hovered
             if r then
@@ -634,6 +651,8 @@ local function build()
             StaticPopup_Show("UBERMOCFOREVER_RESET", (UF.SETS[UF.activeSet()] or {}).name or "this controller")
         end,
     }
+    -- after every controller press the legend follows the highlighted button
+    for k, fn in pairs(navMap) do navMap[k] = function(...) fn(...); win.updateLegend() end end
     local navToken
     win:SetScript("OnShow", function()
         pcall(UF.detect)

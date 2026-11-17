@@ -285,8 +285,8 @@ function C.preview()
     S.previewUntil = GetTime() + 2.5
     if drv then drv:Show() end
 end
-function C.nextBars() local d = UF.DB(); d.cinemaBars = ((d.cinemaBars or DEFAULT_BARS) % #C.BAR_STEPS) + 1; C.preview() end
-function C.nextEdges() local d = UF.DB(); d.cinemaEdges = ((d.cinemaEdges or DEFAULT_EDGES) % #C.EDGE_STEPS) + 1; C.preview() end
+function C.nextBars(dir) local d = UF.DB(); d.cinemaBars = UF.stepIndex(d.cinemaBars or DEFAULT_BARS, #C.BAR_STEPS, dir); C.preview() end
+function C.nextEdges(dir) local d = UF.DB(); d.cinemaEdges = UF.stepIndex(d.cinemaEdges or DEFAULT_EDGES, #C.EDGE_STEPS, dir); C.preview() end
 function C.barsName() return barStep().name end
 function C.edgesName() return edgeStep().name end
 C._sweep, C._undim = sweep, undim   -- for the offline test

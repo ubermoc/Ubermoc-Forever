@@ -792,12 +792,14 @@ r = L("""function()
     local out = { tostring(f.fading), f.vis, f.dur }
     Ch.nextVisible(); Ch.nextFade()
     out[#out + 1] = f.vis .. "/" .. f.dur
+    Ch.nextVisible(-1); Ch.nextVisible(-1); Ch.nextFade(-1)
+    out[#out + 1] = f.vis .. "/" .. f.dur
     Ch.toggle()
     out[#out + 1] = tostring(f.fading) .. f.vis .. "/" .. f.dur .. tostring(UbermocForeverDB.chatBackup)
     ChatFrame1 = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "true,5,3,10/5,false120/3nil", r
+assert str(r) == "true,5,3,6/4,4/3,false120/3nil", r
 print("Chat fade: starting values, steps, own settings put back: OK")
 # Chat: a new line reveals the chat for the "visible" time; the edit box in use holds it, then the same wait applies
 r = L("""function()
@@ -1459,6 +1461,27 @@ r = L("""function()
 end""")()
 assert str(r) == "PADDUP=MultiBar5Button3,|,PADDDOWN=MultiBarLeftButton1", r
 print("Gamepad layout: buttons of bars 5 to 8: OK")
+
+# Stepping settings: one at a time, A forward and X back, both wrap; a stepping button carries ufBack for X
+r = L("""function()
+    local B, C, A = UbermocForever.GamepadBar, UbermocForever.Cinematic, UbermocForever.Aim
+    local out = {}
+    out[#out + 1] = UbermocForever.stepRange(40, 30, 64, 1) .. "/" .. UbermocForever.stepRange(40, 30, 64, -1)
+    out[#out + 1] = UbermocForever.stepRange(64, 30, 64, 1) .. "/" .. UbermocForever.stepRange(30, 30, 64, -1)
+    out[#out + 1] = UbermocForever.stepIndex(1, 4, -1) .. "/" .. UbermocForever.stepIndex(4, 4, 1)
+    local db = UbermocForeverDB
+    local d0 = db.cinemaBars
+    db.cinemaBars = 1; C.nextBars(-1); out[#out + 1] = C.barsName(); C.nextBars(1); out[#out + 1] = C.barsName()
+    db.cinemaBars = d0
+    local b = CreateFrame("Button")
+    local got = {}
+    UbermocForever.cycleButton(b, function(d) got[#got + 1] = d end)
+    b.ufBack()
+    out[#out + 1] = table.concat(got, ";")
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "41/39,30/64,4/1,Thick,Off,-1", r
+print("Stepping settings: one at a time, forward and back, wrapping: OK")
 
 # Fading page: elements the gamepad layout hides for good are not listed
 r = L("""function()

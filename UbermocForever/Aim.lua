@@ -139,12 +139,12 @@ end)
 
 -- Settings buttons (the options window calls these).
 function A.toggle() local a = cfg(); a.on = not a.on; A.apply() end
-function A.nextDistance()
+function A.nextDistance(dir)
     local a = cfg()
-    a.dist = (a.dist % #A.DISTANCES) + 1
+    a.dist = UF.stepIndex(a.dist, #A.DISTANCES, dir)
     A.apply()
 end
-function A.nextSize() local a = cfg(); a.size = (a.size % #A.SIZES) + 1; sigSeen = nil end
+function A.nextSize(dir) local a = cfg(); a.size = UF.stepIndex(a.size, #A.SIZES, dir); sigSeen = nil end
 function A.distanceName() local s = A.DISTANCES[cfg().dist]; return s and s.name or "Game's own" end
 function A.sizeName() return (A.SIZES[cfg().size] or A.SIZES[2]).name end
 

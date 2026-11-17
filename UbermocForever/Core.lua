@@ -266,3 +266,17 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         UF.ToggleOptions()
     end
 end
+
+-- Settings that step through values: A (or a left click) goes forward, X (or a right click) goes back; both wrap around.
+function UF.stepRange(v, lo, hi, dir)
+    v = (tonumber(v) or lo) + (dir or 1)
+    if v > hi then return lo elseif v < lo then return hi end
+    return v
+end
+function UF.stepIndex(i, n, dir) return (((i or 1) - 1 + (dir or 1)) % n) + 1 end
+-- A button that steps a setting: step(dir) is called with 1 or -1, then after(). Nav (Options.lua) presses b.ufBack on X.
+function UF.cycleButton(b, step, after)
+    if b.RegisterForClicks then b:RegisterForClicks("LeftButtonUp", "RightButtonUp") end
+    b.ufBack = function() step(-1); if after then after() end end
+    b:SetScript("OnClick", function(_, button) step(button == "RightButton" and -1 or 1); if after then after() end end)
+end

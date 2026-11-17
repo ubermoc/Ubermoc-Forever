@@ -21,9 +21,9 @@ local ADDON, UF = ...
 local B = {}
 UF.GamepadBar = B
 
-B.SIZES = { 36, 40, 44, 48, 52 }        -- button size
-B.GAPS = { 0, 2, 4, 6, 8, 12 }          -- space between buttons
-B.RAISES = { 0, 12, 24, 48, 96, 150 }   -- how far above the bottom edge of the screen
+B.SIZE_RANGE = { 30, 64 }    -- button size, one at a time
+B.GAP_RANGE = { 0, 20 }      -- space between buttons
+B.RAISE_RANGE = { 0, 300 }   -- how far above the bottom edge of the screen
 
 -- The game's buttons of each layer: action bar 1 is the main bar, then the first three multi bars (the bindings MULTIACTIONBAR1..3 of Binds.lua).
 local BAR_BUTTONS = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarRightButton" }
@@ -133,13 +133,10 @@ function B.moreButtons(i, getAction)
     return out
 end
 
-local function stepOf(list, v)
-    for i, x in ipairs(list) do if x == v then return i end end
-    return 1
-end
-function B.nextSize() local c = cfg(); c.size = B.SIZES[(stepOf(B.SIZES, c.size) % #B.SIZES) + 1]; B.layoutSoon() end
-function B.nextGap() local c = cfg(); c.gap = B.GAPS[(stepOf(B.GAPS, c.gap) % #B.GAPS) + 1]; B.layoutSoon() end
-function B.nextRaise() local c = cfg(); c.raise = B.RAISES[(stepOf(B.RAISES, c.raise) % #B.RAISES) + 1]; B.layoutSoon() end
+-- dir: 1 forward (A), -1 back (X)
+function B.nextSize(dir) local c = cfg(); c.size = UF.stepRange(c.size, B.SIZE_RANGE[1], B.SIZE_RANGE[2], dir); B.layoutSoon() end
+function B.nextGap(dir) local c = cfg(); c.gap = UF.stepRange(c.gap, B.GAP_RANGE[1], B.GAP_RANGE[2], dir); B.layoutSoon() end
+function B.nextRaise(dir) local c = cfg(); c.raise = UF.stepRange(c.raise, B.RAISE_RANGE[1], B.RAISE_RANGE[2], dir); B.layoutSoon() end
 function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if c.on and C_Timer then C_Timer.After(2, function() B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end) end; if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end; if c.on and UF.tryBarsPrompt then C_Timer.After(1.5, UF.tryBarsPrompt) end end
 function B.toggleExtras() local c = cfg(); c.extras = not c.extras; B.layoutSoon() end
 function B.toggleColor() local c = cfg(); c.faceColor = not c.faceColor; B.layoutSoon() end

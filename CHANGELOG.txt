@@ -1,3 +1,7 @@
+UbermocForever 1.3.105
+- Changed: options window: a button that steps through values (button size, gap, height, chat line time and fade time, black bars, dark edges, aim distance, dot size) now goes forward with A and back with X (a right click with the mouse also goes back), and wraps around at both ends. The legend shows "Next" and "Previous" while such a button is highlighted.
+- Changed: the numbers step one at a time and go further: button size 30 to 64, gap 0 to 20, height 0 to 300, chat lines 1 to 120 seconds, chat fade 1 to 10 seconds. Untested in the game.
+
 UbermocForever 1.3.104
 - Fixed: gamepad layout: an empty button in the row had only the slot frame, not the dark fill the main bar draws behind it. Every empty button now gets both of the game's own empty-slot textures (UI-HUD-ActionBar-IconFrame-Background with ui-hud-actionbar-iconframe-slot over it), as on the main bar, including the icon slots for binds to another layer's button. Untested in the game.
 
