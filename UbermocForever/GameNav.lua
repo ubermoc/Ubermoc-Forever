@@ -1061,6 +1061,7 @@ local function startFocus()
 end
 
 local function move(dir)
+    G.userMoved = true
     rescan()
     if G.direct then
         local a = G.direct
@@ -1405,6 +1406,7 @@ function G.update()
         for _, w in ipairs(wins) do G.known[w] = true end
         rescan()
         startFocus()
+        G.settle, G.userMoved = (GetTime and GetTime() or 0) + 1.0, false
         pcall(updateBar)
     elseif not want and entry then
         release()
@@ -1435,6 +1437,7 @@ function G.update()
             local d = G.dialogStart()
             if d and G.inside(d, fresh) then startFocus()
             elseif best then G.direct = nil; setFocus(best.frame) end
+            G.settle, G.userMoved = (GetTime and GetTime() or 0) + 1.0, false
         end
         if G.placing then
             -- placing a spell: no highlight, the next button press picks the slot
@@ -1462,6 +1465,13 @@ function G.update()
                 G.retry.tries = G.retry.tries - 1
                 if G.retry.tries <= 0 then G.retry = nil end
             end
+        end
+        -- A quest or gossip window fills its list a moment after it opens, so the first pick can land on a fallback (its close
+        -- or Goodbye button). For a second, until the player moves, the window's own first choice is looked for again.
+        if G.settle and not G.userMoved and (GetTime and GetTime() or 0) < G.settle and not popup and not G.placing then
+            rescan()
+            local d = G.dialogStart and G.dialogStart()
+            if d and d ~= focus and d ~= G.direct then startFocus() end
         end
         if G.direct then
             -- the quest window's action can change (Accept, then Complete): follow it, or leave direct mode
