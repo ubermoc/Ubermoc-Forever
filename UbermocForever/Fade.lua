@@ -399,6 +399,21 @@ function F.wanted(key, active, isOver)
     return goal
 end
 
+-- Reveals (used by Chat.lua): an element that has a setting is shown fully for a while (a new chat message) or until released (the chat
+-- edit box in use), then fades back over its own time instead of the usual quick one. Hidden-for-good elements stay hidden.
+local revealUntil, held, revealFade = {}, {}, {}
+function F.reveal(key, seconds, fadeSeconds)
+    revealUntil[key] = GetTime() + (seconds or 5)
+    revealFade[key] = fadeSeconds
+    driver:Show()
+end
+function F.hold(key, on)
+    held[key] = on or nil
+    driver:Show()
+end
+local function revealed(key) return held[key] or (revealUntil[key] and GetTime() < revealUntil[key]) end
+F._revealed = function(key) return revealed(key) and true or false end   -- for the offline test
+
 local reapply = 0
 local function tick(self, dt)
     local active = F.active()
@@ -410,13 +425,15 @@ local function tick(self, dt)
     for key in pairs(byKey) do
         local goal = F.goal(key, active)
         if goal ~= nil and F.mouse() ~= nil and goal < F.mouse() then goal = F.wanted(key, active, hovering(key)) end
+        if goal ~= nil and not F.hidden(key) and revealed(key) then goal = 1 end
         local c = cur[key] or 1
         if goal ~= nil or touchedKeys[key] then
             any = true
             local target = goal or 1
             local before = c
             if c < target then c = math.min(target, c + dt / FADE_TIME)
-            elseif c > target then c = math.max(target, c - dt / FADE_TIME) end
+            elseif c > target then c = math.max(target, c - dt / (revealFade[key] or FADE_TIME)) end
+            if c == target and not revealed(key) then revealFade[key] = nil end
             cur[key] = c
             if c ~= before or force then apply(key, c, goal ~= nil or c ~= 1) end   -- the game resets some frames' opacity by itself: re-applied twice a second
             touchedKeys[key] = (goal ~= nil) or (c ~= 1) or nil

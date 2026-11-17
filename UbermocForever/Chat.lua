@@ -64,8 +64,53 @@ function Ch.nextFade() local c = cfg(); c.fade = Ch.FADE[(stepOf(Ch.FADE, c.fade
 function Ch.visibleName() return cfg().visible .. " s" end
 function Ch.fadeName() return cfg().fade .. " s" end
 
+-- A new line reveals a chat window that is faded on the Fading page; the edit box in use keeps the chat and itself shown until the
+-- message is sent (or given up), then they wait the same "visible" time and fade over the same fade-out time. Elements with no fading
+-- setting are left alone. Source: ChatFrameUtil.ActivateChat/DeactivateChat set ACTIVE_CHAT_EDIT_BOX (Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua).
+local SHOWN = { "chat", "chattabs" }
+local function onLine()
+    local c = cfg()
+    local F = UF.Fade
+    if not (c.on and F) then return end
+    for _, k in ipairs(SHOWN) do F.reveal(k, c.visible, c.fade) end
+end
+Ch.onLine = onLine
+local hooked = {}
+local function hookLines()
+    for _, f in ipairs(frames()) do
+        if f.AddMessage and not hooked[f] then
+            hooked[f] = true
+            hooksecurefunc(f, "AddMessage", onLine)
+        end
+    end
+end
+Ch.hookLines = hookLines
+
+local typing = false
+function Ch.pollTyping()
+    local F = UF.Fade
+    if not F then return end
+    local c = cfg()
+    local now = (c.on and _G.ACTIVE_CHAT_EDIT_BOX ~= nil) and true or false
+    if now == typing then return end
+    typing = now
+    for _, k in ipairs({ "chat", "chattabs", "chatedit" }) do
+        F.hold(k, now)
+        if not now then F.reveal(k, c.visible, c.fade) end   -- done typing: wait, then fade
+    end
+end
+local acc = 0
+local drv = CreateFrame("Frame")
+drv:SetScript("OnUpdate", function(_, dt)
+    acc = acc + dt
+    if acc < 0.1 then return end
+    acc = 0
+    Ch.pollTyping()
+end)
+
 -- The game builds and restyles its chat windows around login, so apply again a little later (as Ubermoc UI does).
 UF.OnLogin(function()
     Ch.apply()
-    if C_Timer and C_Timer.After then C_Timer.After(1, Ch.apply); C_Timer.After(4, Ch.apply) end
+    hookLines()
+    if C_Timer and C_Timer.After then C_Timer.After(1, function() Ch.apply(); hookLines() end); C_Timer.After(4, Ch.apply) end
 end)

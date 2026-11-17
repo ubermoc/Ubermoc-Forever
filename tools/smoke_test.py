@@ -799,6 +799,36 @@ r = L("""function()
 end""")()
 assert str(r) == "true,5,3,10/5,false120/3nil", r
 print("Chat fade: starting values, steps, own settings put back: OK")
+# Chat: a new line reveals the chat for the "visible" time; the edit box in use holds it, then the same wait applies
+r = L("""function()
+    local UF = UbermocForever
+    local F, Ch = UF.Fade, UF.Chat
+    UbermocForeverDB.chat = nil
+    local realTime = GetTime
+    local now = 5000
+    GetTime = function() return now end
+    local out = {}
+    out[#out + 1] = tostring(F._revealed("chat"))
+    Ch.onLine()                                   -- a line arrives
+    out[#out + 1] = tostring(F._revealed("chat")) .. tostring(F._revealed("chattabs"))
+    now = now + 4.9; out[#out + 1] = tostring(F._revealed("chat"))
+    now = now + 0.2; out[#out + 1] = tostring(F._revealed("chat"))           -- after 5 s it lets go
+    ACTIVE_CHAT_EDIT_BOX = {}                     -- the edit box is opened
+    Ch.pollTyping()
+    now = now + 100
+    out[#out + 1] = tostring(F._revealed("chatedit")) .. tostring(F._revealed("chat"))   -- still held a long time later
+    ACTIVE_CHAT_EDIT_BOX = nil                    -- message sent
+    Ch.pollTyping()
+    out[#out + 1] = tostring(F._revealed("chatedit"))
+    now = now + 4.9; out[#out + 1] = tostring(F._revealed("chatedit"))
+    now = now + 0.2; out[#out + 1] = tostring(F._revealed("chatedit"))
+    UbermocForeverDB.chat.on = false
+    Ch.onLine(); now = now + 1
+    GetTime = realTime
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "false,truetrue,true,false,truetrue,true,true,false", r
+print("Chat: new lines reveal the chat, the edit box in use holds it, then wait and fade: OK")
 # Cinematic: nameplates are put back, but not during combat (the game does not allow it)
 r = L("""function()
     local UF = UbermocForever
