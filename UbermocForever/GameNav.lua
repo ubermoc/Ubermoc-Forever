@@ -179,6 +179,9 @@ function G.windows()
     if #drop > 0 then return drop, nil end
     local menu = _G.UbermocForeverItemMenu
     if shown(menu) then return { menu }, nil end   -- the item menu is on top of everything
+    -- the game's equipment flyout (the items that fit a gear slot, opened from the character window) takes the highlight like a menu
+    local fly = _G.EquipmentFlyoutFrame
+    if shown(fly) then return { fly }, nil end
     local list, seen = {}, {}
     if GetUIPanel then
         for _, side in ipairs({ "left", "center", "right", "doublewide", "fullscreen" }) do
@@ -469,10 +472,28 @@ local function trainButton(f)
 end
 G.trainButton = trainButton
 
+-- On a gear slot of the character window, A opens the game's equipment flyout: the items that fit that slot. That is what the game's
+-- own controller code does (PaperDollFrameMixin:OpenEquipmentFlyoutForFocusedButton clicks the slot's popout button), so the popout button
+-- is clicked instead of the slot. A slot with nothing to offer keeps the plain click.
+local function flyoutOpener(f)
+    if not f or not f.popoutButton or not f.GetParent then return nil end
+    if (InRepairMode and InRepairMode()) or (SpellCanTargetItem and SpellCanTargetItem()) then return nil end
+    local parent = f:GetParent()
+    local fs = parent and parent.flyoutSettings
+    if not (fs and fs.getItemsFunc) then return nil end
+    local ok, has = pcall(function()
+        local t = {}
+        fs.getItemsFunc(f:GetID(), t)
+        return next(t) ~= nil
+    end)
+    if ok and has then return f.popoutButton end
+end
+G.flyoutOpener = flyoutOpener
+
 local function setTargets()
     if InCombatLockdown() then return end
     local c, b, rc = buttons()
-    c:SetAttribute("clickbutton", (not G.placing) and (focus or G.direct) or nil)
+    c:SetAttribute("clickbutton", (not G.placing) and (flyoutOpener(focus) or focus or G.direct) or nil)
     local menuUp = wins[1] and wins[1] == _G.UbermocForeverItemMenu
     local train = trainButton(focus)
     rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and (train or (not mailIndex(focus) and focus or nil)) or nil)
@@ -494,6 +515,12 @@ function G.fallbackClose()
     if G.placing then G.endPlace(true); return end
     if closeMenus() then return end
     local w = G.windowOfFocus() or wins[#wins]
+    if w and w == _G.EquipmentFlyoutFrame then
+        -- B closes the flyout (the game's own function), and the highlight goes back to the gear slot
+        if w.button then G.restore = w.button end
+        if EquipmentFlyout_Hide then secureCall(EquipmentFlyout_Hide) else secureCall(w.Hide, w) end
+        return
+    end
     if w then secureCall(HideUIPanel, w) end
 end
 
@@ -1492,6 +1519,13 @@ function G.update()
             pcall(updateBar)
             return
         end
+        -- the flyout closed (an item was chosen, or it was closed): the highlight goes back to the gear slot it came from
+        if wins[1] and wins[1] == _G.EquipmentFlyoutFrame then
+            G.flyoutFrom = wins[1].button or G.flyoutFrom
+        elseif G.flyoutFrom then
+            G.restore = G.restore or G.flyoutFrom
+            G.flyoutFrom = nil
+        end
         if G.restore then
             local back = G.restore
             G.restore = nil
@@ -1500,6 +1534,7 @@ function G.update()
         local menu = _G.UbermocForeverItemMenu
         local needNew = (popup and focus and not G.inside(focus, popup))
             or (wins[1] and wins[1] == menu and focus and not G.inside(focus, menu))
+            or (wins[1] and wins[1] == _G.EquipmentFlyoutFrame and focus and not G.inside(focus, wins[1]))
             or (#wins == 1 and focus and wins[1].ubfMenuLike == nil and #openMenus() > 0 and not G.inside(focus, wins[1]))
         if G.retry then
             -- a move that scrolled the list first: the new buttons are there a moment later

@@ -12,6 +12,7 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
 - Quest and gossip windows show the A or B picture on the game's own Accept, Decline and Goodbye buttons, which keep their normal look. They are part of cinematic mode: /ubf cinema off hides them.
 - A white aim dot for ground spells (Heroic Leap, Blizzard, Rain of Fire), shown only while you aim one, with an aim distance and dot size setting in the options window.
 - A Fading page in the options window: set how see-through each part of the game's interface is (unit frames, action bars, minimap and trackers, chat and menus) when talking to an NPC, in combat, on a flight path and out of combat, from 0 to 100 % or hidden for good. Parts you do not set are never touched.
+- On the character window, A on a gear slot opens the list of items that fit it (the game's own equipment flyout); A equips the one you pick, B closes the list.
 - Start steps like Esc: it closes what is open, clears your target, then opens the game menu.
 - An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
 - Move around the game's own windows (bags, character, spellbook, professions, map, mail, the game menu and question windows) with a highlight, without Blizzard's built-in controller interface:

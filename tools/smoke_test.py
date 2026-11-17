@@ -919,5 +919,24 @@ r = L("""function()
 end""")()
 assert str(r) == "1.00,0.80,1.00,0.75", r
 print("Legends: shrink to fit, no further than 75 %: OK")
+# Character window: A on a gear slot clicks its popout button (opens the equipment flyout) when it has items to offer
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local items = {}
+    local pop = { n = "pop" }
+    local parent = { flyoutSettings = { getItemsFunc = function(id, t) for k, v in pairs(items) do t[k] = v end end } }
+    local slot = { popoutButton = pop, GetParent = function() return parent end, GetID = function() return 1 end }
+    local out = {}
+    out[#out + 1] = tostring((G.flyoutOpener(slot)))                 -- nothing fits: nil
+    items = { [100] = 5 }
+    out[#out + 1] = G.flyoutOpener(slot) == pop and "pop" or "no"   -- something fits: the popout button
+    InRepairMode = function() return true end
+    out[#out + 1] = tostring((G.flyoutOpener(slot)))                 -- repair mode: left alone
+    InRepairMode = nil
+    out[#out + 1] = tostring((G.flyoutOpener({ GetParent = function() return parent end })))   -- a button with no popout: nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "nil,pop,nil,nil", r
+print("Character window: A on a gear slot opens the equipment flyout: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

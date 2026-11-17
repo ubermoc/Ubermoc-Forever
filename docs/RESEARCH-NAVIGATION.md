@@ -261,3 +261,14 @@ Replaces the guesses from the GitHub pages above. Files: `Code/Dialogue/Dialogue
   press focuses an option without clicking it; the next one clicks. `GamePadClickFirstObject` (default false, `Initialization.lua` line 55) makes
   the first press click. So it does not pre-highlight the first choice; ours (highlight on the first choice of a list) is one press faster.
 - D-pad up/down moves the focus by index and scrolls the text by three buttons when the focus nears an edge (`ScrollBy`).
+
+## Equipment flyout from a gear slot (1.3.48), source: `Blizzard_FrameXML/EquipmentFlyout.lua`, `Camelot/EquipmentFlyout.lua`, `Blizzard_UIPanels_Game/Camelot/PaperDollFrame.lua`
+- The flyout is `EquipmentFlyoutFrame`; `EquipmentFlyout_Show(slotButton)` fills it from `slotButton:GetParent().flyoutSettings.getItemsFunc(slotID, table)`.
+  It stays open only while the slot's `popoutButton` is locked (`flyoutLocked`), otherwise `EquipmentFlyout_OnUpdate` hides it unless the SHOWITEMFLYOUT
+  modifier is held.
+- The game's own controller code (`PaperDollFrameMixin:OpenEquipmentFlyoutForFocusedButton`, ~line 1604) opens it by calling `slot.popoutButton:Click()`, only
+  when `getItemsFunc` returns something and not in repair mode or while a spell targets an item. Ours does the same (`G.flyoutOpener`), by setting A's click
+  target to the popout button.
+- Flyout item buttons run `EquipmentFlyoutButton_OnClick` (their `onClickFunc` equips) and the flyout hides itself when locked. B closes it with
+  `EquipmentFlyout_Hide()`; its `OnHide` unlocks the popout button. Not yet tested in the game: that our highlight scan finds the flyout's buttons and that
+  A on one equips the item.
