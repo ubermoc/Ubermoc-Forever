@@ -1,3 +1,5 @@
+Confirmed in the game by the user 2026-11-17: everything through 1.3.93 (gamepad layout, question windows, Fading page changes, auction Y entries, Select default binds, fresh start). Untested: 1.3.94, 1.3.95, 1.3.96.
+
 # Hand-off: Ubermoc Forever
 
 Written 2026-11-15 at the end of the first working session, updated at the end of its last stretch. Read this whole
