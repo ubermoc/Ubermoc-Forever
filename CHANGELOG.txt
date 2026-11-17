@@ -1,3 +1,6 @@
+UbermocForever 1.3.40
+- Removed: release to cast for ground spells (hold to aim, let go to cast), its Release button, its /ubf ground commands and its code. It worked sometimes and not others. The aim dot stays. The game's press-and-hold settings that it changed are put back once on the next login.
+
 UbermocForever 1.3.39
 - Added: "Bars" (Off, Thin, Medium, Thick) and "Edges" (Off, Narrow, Medium, Wide) buttons next to Cinematic mode in the options window, to set how thick the black bars are and how far the dark edges come in. Each press shows a short preview. Medium is what it was before.
 

@@ -15,7 +15,7 @@ local ROW_H = 30
 local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
-local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, castBtn   -- declared here, above every function that uses it
+local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
@@ -60,7 +60,6 @@ function UF.RefreshOptions()
         aimBtn:SetText("Aim dot: " .. (UF.Aim.cfg().on and "On" or "Off"))
         distBtn:SetText("Aim distance: " .. UF.Aim.distanceName())
         sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
-        if castBtn and UF.GroundCast then castBtn:SetText("Release: " .. (UF.GroundCast.enabled() and "On" or "Off")) end
     end
     if barsBtn and UF.Cinematic then
         barsBtn:SetText("Bars: " .. UF.Cinematic.barsName())
@@ -433,7 +432,6 @@ local function build()
     aimBtn = aimButton(120, nil, function() UF.Aim.toggle() end, { "Aim dot", "A white dot shows where a ground spell (Heroic Leap, Blizzard, Rain of Fire) will land, only while you are aiming it." })
     distBtn = aimButton(180, aimBtn, function() UF.Aim.nextDistance() end, { "Aim distance", "How far from your character the aim point rests (higher on the screen is further). Exact yards cannot be set. Press to step through the choices." })
     sizeBtn = aimButton(100, distBtn, function() UF.Aim.nextSize() end, { "Dot size", "Small, medium or large." })
-    castBtn = aimButton(130, sizeBtn, function() UF.GroundCast.toggle() end, { "Release to cast", "For ground spells on your action bars: hold the button to aim, let go to cast. Off gives the buttons back to the game." })
     info:SetPoint("RIGHT", win.controllerBtn, "LEFT", -8, 0)
 
     -- What the game itself calls the device: on a Steam Deck, Steam Input can hand the game a pad it calls "Xbox", in
@@ -544,7 +542,7 @@ local function build()
         if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
         out[1] = header
         out[2] = { cineBtn, barsBtn, edgesBtn }
-        out[3] = { aimBtn, distBtn, sizeBtn, castBtn }
+        out[3] = { aimBtn, distBtn, sizeBtn }
         out[4] = layerButtons
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end

@@ -61,3 +61,9 @@ UbermocUI `Aim.lua` learns a ground spell by hooking `PreClick` of each bar butt
 `ActionButtonUseKeyDown` and `ActionButtonUseKeyHeldSpell`. The override-key method and the `IsCurrentAction` scan of 1.3.27 to 1.3.31 were
 replaced by this, because it is the one the user has seen work. Ours keeps its marks in its own tables (no fields written on the game's
 buttons) and saves/restores those two CVars (`groundBackup`). Whether the earlier taint errors came from this kind of attribute is not proven.
+
+## 1.3.40: release to cast removed
+Built in 1.3.27 to 1.3.32 (override keys first, then UbermocUI's method of putting `typerelease` on the bar button). The user found it
+inconsistent in the game ("sometimes it works, sometimes it doesn't"), so the code, the options button and the slash commands were removed. The
+research above stays as a record. If it is tried again: log every key down and up on the real button (`PreClick` with `down`) before building more.
+The aim dot (`Aim.lua`) is kept.

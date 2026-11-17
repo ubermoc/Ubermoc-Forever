@@ -130,15 +130,6 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if msg == "cinema off" and UF.Cinematic then UF.Cinematic.stopNow() end
         if UF.DialogButtons then UF.DialogButtons.refresh() end
         UF.say("The cinematic camera while talking to an NPC is " .. (msg == "cinema on" and "on." or "off."))
-    elseif msg:match("^ground add ") or msg:match("^ground remove ") then
-        local verb, name = msg:match("^ground (%a+) (.+)$")   -- the name is matched without regard to capitals
-        if UF.GroundCast then UF.GroundCast.addName(name, verb == "remove") end
-    elseif msg == "ground" then
-        if UF.GroundCast then UF.GroundCast.report() end
-    elseif msg == "ground debug" then
-        if UF.GroundCast then UF.GroundCast.setDebug(not UF.GroundCast.debug) end
-    elseif msg == "hold" then
-        if UF.Aim then UF.Aim.holdReport() end
     elseif msg == "dialog" then
         if UF.GameNav and UF.GameNav.dialogReport then UF.GameNav.dialogReport() end
     elseif msg == "item" then

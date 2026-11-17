@@ -774,42 +774,6 @@ r = L("""function()
 end""")()
 assert str(r) == "0,0.60,Middle,Far0.72,10.50", r
 print("Aim dot: settings step, game settings saved and put back: OK")
-# Release to cast: ground spells found on bars get a secure button on their key; others do not
-r = L("""function()
-    local UF = UbermocForever
-    local R = UF.GroundCast
-    UbermocForeverDB.ground = nil
-    local acts = { [1] = { "spell", 6544 }, [2] = { "spell", 585 }, [3] = { "macro", 6544 } }
-    GetActionInfo = function(s) local a = acts[s]; if a then return a[1], a[2] end end
-    C_Spell = { GetSpellName = function(id) return ({ [6544] = "Heroic Leap", [585] = "Smite", [9999] = "Odd Spell" })[id] end }
-    local ok1 = R.groundSpellOf(1)
-    local ok2 = R.groundSpellOf(2)
-    local ok3 = R.groundSpellOf(3)
-    acts[2] = { "spell", 9999 }
-    R.addName("odd spell")
-    local ok4 = R.groundSpellOf(2)
-    R.addName("odd spell", true)
-    local ok5 = R.groundSpellOf(2)
-    return tostring(ok1) .. "," .. tostring(ok2) .. "," .. tostring(ok3) .. "," .. tostring(ok4) .. "," .. tostring(ok5)
-end""")()
-assert str(r) == "Heroic Leap,nil,nil,Odd Spell,nil", r
-print("Release to cast: ground spells recognised, own list add/remove: OK")
-# Release to cast: a spell whose button starts an aim is learned
-r = L("""function()
-    local UF = UbermocForever
-    local R = UF.GroundCast
-    UbermocForeverDB.ground = nil
-    local acts = { [5] = { "spell", 9999 }, [6] = { "spell", 585 } }
-    GetActionInfo = function(s) local a = acts[s]; if a then return a[1], a[2] end end
-    C_Spell = { GetSpellName = function(id) return ({ [9999] = "Odd Leap", [585] = "Smite" })[id] end }
-    local before = tostring(R.groundSpellOf(5))
-    R.learnFrom({ action = 5 })
-    local after = tostring(R.groundSpellOf(5))
-    R.learnFrom({ action = 6 })   -- also learned here (the caller only calls this when an aim started)
-    return before .. "," .. after
-end""")()
-assert str(r) == "nil,Odd Leap", r
-print("Release to cast: a spell that starts an aim is learned: OK")
 # Cinematic: nameplates are put back, but not during combat (the game does not allow it)
 r = L("""function()
     local UF = UbermocForever

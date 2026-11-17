@@ -13,7 +13,6 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 - Cinematic camera while you talk to a quest giver or gossip NPC: the camera moves in and turns to the NPC, black bars (thickness adjustable) and dark cloudy edges (how far they come in adjustable) come in, nameplates and everything else except the dialog and tooltips are hidden, while the game's own quest window stays exactly as it is. Everything is put back when the talk ends. /ubf cinema off turns it off.
 - Quest and gossip windows show the A or B picture on the game's own Accept, Decline and Goodbye buttons, which keep their normal look. They are part of cinematic mode: /ubf cinema off hides them.
 - A white aim dot for ground spells (Heroic Leap, Blizzard, Rain of Fire), shown only while you aim one, with an aim distance and dot size setting in the options window.
-- Ground spells (Heroic Leap, Blizzard, Rain of Fire ...): hold the button to aim, let go to cast at the aim dot. Spells missing from the built-in list: /ubf ground add Spell Name.
 - Start steps like Esc: it closes what is open, clears your target, then opens the game menu.
 - An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
 - Move around the game's own windows (bags, character, spellbook, professions, map, mail, the game menu and question windows) with a highlight, without Blizzard's built-in controller interface:

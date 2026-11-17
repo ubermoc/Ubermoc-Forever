@@ -4,7 +4,6 @@
 -- pressed) a white dot shows where the spell will land. It is only there while that is happening. "Aim distance" moves
 -- where the game's centred pointer rests (higher on the screen = further from the character); an addon cannot set an
 -- exact number of yards. The game settings changed are saved first and put back. Notes: docs/RESEARCH-GROUND-SPELLS.md.
--- Not built yet: hold to aim, release to cast (it needs secure buttons; see the notes).
 ----------------------------------------------------------------------
 local ADDON, UF = ...
 local A = {}
@@ -147,13 +146,15 @@ function A.nextDistance()
 end
 function A.nextSize() local a = cfg(); a.size = (a.size % #A.SIZES) + 1; sigSeen = nil end
 function A.distanceName() local s = A.DISTANCES[cfg().dist]; return s and s.name or "Game's own" end
--- What the game says about Press and Hold Casting (the game's own setting, in Settings > Gameplay > Combat when it exists).
-function A.holdReport()
-    local v = getCVar("ActionButtonUseKeyHeldSpell")
-    local k = getCVar("ActionButtonUseKeyDown")
-    UF.say("Press and Hold Casting setting in this game: " .. (v == nil and "not found (this game has no such setting)" or ("found, value " .. tostring(v)))
-        .. ". Cast on key press: " .. (k == nil and "not found" or tostring(k)) .. ".")
-end
 function A.sizeName() return (A.SIZES[cfg().size] or A.SIZES[2]).name end
 
-UF.OnLogin(function() A.apply() end)
+-- Release to cast was removed (1.3.40). If an earlier version changed the game's press-and-hold settings, they are put back once.
+UF.OnLogin(function()
+    local d = UF.DB()
+    if d.groundBackup then
+        for c, v in pairs(d.groundBackup) do pcall(setCVar, c, v) end
+        d.groundBackup = nil
+    end
+    d.ground = nil
+    A.apply()
+end)
