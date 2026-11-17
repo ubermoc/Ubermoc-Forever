@@ -1459,5 +1459,23 @@ r = L("""function()
 end""")()
 assert str(r) == "PADDUP=MultiBar5Button3,|,PADDDOWN=MultiBarLeftButton1", r
 print("Gamepad layout: buttons of bars 5 to 8: OK")
+
+# Fading page: elements the gamepad layout hides for good are not listed
+r = L("""function()
+    local UF = UbermocForever
+    local P = UF.FadePage
+    P.build(UIParent, UIParent)
+    local function count() local n = 0; for _, row in ipairs(P.navRows()) do n = n + 1 end; return n end
+    UF.Fade.forced.bar2 = nil
+    local before = count()
+    UF.Fade.forced.bar2 = function() return true end
+    P.refresh()
+    local after = count()
+    UF.Fade.forced.bar2 = nil
+    return before .. "," .. after
+end""")()
+b, a = str(r).split(",")
+assert int(a) <= int(b), r
+print("Fading page: hidden-for-good elements not listed: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

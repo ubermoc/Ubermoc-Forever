@@ -20,18 +20,30 @@ local function button(parent, w, h, text)
     return b
 end
 
+-- An element the gamepad layout hides for good (the game's bottom art while the layout is on) has no setting to offer: it is not listed.
+local function offered(e)
+    local fc = UF.Fade.forced and UF.Fade.forced[e.key]
+    return not (fc and fc())
+end
+local function categoryOffered(c)
+    for _, e in ipairs(c.elements) do if offered(e) then return true end end
+    return false
+end
+
 local function layout()
     local y = 0
     for ci, c in ipairs(UF.Fade.CATEGORIES) do
         local h = headers[ci]
+        local catOn = categoryOffered(c)
         h:ClearAllPoints()
         h:SetPoint("TOPLEFT", listChild, "TOPLEFT", 0, -y)
         h.fadeY = y
         h:SetText((openCat == ci and "[-] " or "[+] ") .. c.name)
-        y = y + ROW + 2
+        h:SetShown(catOn)
+        if catOn then y = y + ROW + 2 end
         for ei, e in ipairs(c.elements) do
             local b = items[ci][ei]
-            if openCat == ci then
+            if openCat == ci and catOn and offered(e) then
                 b:ClearAllPoints()
                 b:SetPoint("TOPLEFT", listChild, "TOPLEFT", 18, -y)
                 b.fadeY = y
@@ -41,7 +53,7 @@ local function layout()
                 b:Hide()
             end
         end
-        if openCat == ci then y = y + 4 end
+        if openCat == ci and catOn then y = y + 4 end
     end
     listChild:SetHeight(math.max(y, 10))
 end
@@ -59,6 +71,12 @@ end
 
 function P.refresh()
     if not page then return end
+    if sel and not offered(sel) then
+        sel = nil
+        for _, c in ipairs(UF.Fade.CATEGORIES) do
+            for _, e in ipairs(c.elements) do if not sel and offered(e) then sel = e end end
+        end
+    end
     layout()
     local F = UF.Fade
     for ci, c in ipairs(F.CATEGORIES) do
@@ -240,9 +258,11 @@ function P.navRows()
     local out = {}
     if not page then return out end
     for ci, c in ipairs(UF.Fade.CATEGORIES) do
-        out[#out + 1] = { headers[ci] }
-        if openCat == ci then
-            for ei = 1, #c.elements do out[#out + 1] = { items[ci][ei] } end
+        if categoryOffered(c) then
+            out[#out + 1] = { headers[ci] }
+            if openCat == ci then
+                for ei, e in ipairs(c.elements) do if offered(e) then out[#out + 1] = { items[ci][ei] } end end
+            end
         end
     end
     if sel then

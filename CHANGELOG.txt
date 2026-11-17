@@ -1,3 +1,6 @@
+UbermocForever 1.3.92
+- Changed: while the gamepad layout is on, the elements it hides for good (the main bar and its art, action bars 2 to 4, and the end caps unless you keep them) are no longer listed on the Fading page, since nothing set there could take effect. A category with nothing left to offer disappears too. Untested in the game.
+
 UbermocForever 1.3.91
 - Changed: the micro menu, bags and XP bar (all of them) are removed from the Fading page: their fading is set only on the Bars page (same settings, same saved values), so nothing is in two places. The "(Bars page)" label of 1.3.77 is gone with them. The extra XP bar parts and the bag expand button stay on the Fading page.
 
