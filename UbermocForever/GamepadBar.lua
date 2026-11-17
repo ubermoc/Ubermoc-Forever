@@ -8,7 +8,7 @@
 -- which stay and have their own fading on the Bars page. Where they sit to start with: the micro menu in the bottom right corner, the bags
 -- just above it, the experience bar flush against the top of the screen; only while the game still has them at their default position,
 -- so the game's Edit Mode (the Move bars button) can put them anywhere else. Cooldowns use the game's own countdown numbers with a bright
--- edge line sweeping round instead of the dark swipe; an ability out of range gets a red overlay. Everything that the layout changes is set on the Bars page,
+-- edge line sweeping round instead of the dark swipe; an ability out of range gets a red hue on its button picture. Everything that the layout changes is set on the Bars page,
 -- and the game's Edit Mode (a button there) moves the parts that are the game's. Buttons with nothing on them are removed and the rest are
 -- centred and spaced evenly (Hide empty buttons).
 --
@@ -204,7 +204,7 @@ styleCooldown = function(btn, on)
 end
 
 -- Out of range: the game tells each action button through ACTION_RANGE_CHECK_UPDATE (slot, in range, checks range), and only tints the key text
--- red (ActionButton_UpdateRangeIndicator), which is hidden here. The slots that are out of range are kept and get a red overlay.
+-- red (ActionButton_UpdateRangeIndicator), which is hidden here. The slots that are out of range are kept and tint the button picture red.
 local outOfRange = {}
 
 local function release(btn)
@@ -248,10 +248,9 @@ function B.refresh()
             wantAlpha[btn] = a
             local label = L.labels and L.labels[btn]
             if label then label:SetAlpha(shown) end
-            local ov = L.overlays and L.overlays[btn]
-            if ov then
+            if label then
                 local act = actionOf(btn)
-                ov:SetShown(shown == 1 and act ~= nil and outOfRange[act] == true)
+                label:SetRed(shown == 1 and act ~= nil and outOfRange[act] == true)   -- out of range: the button picture gets a slight red hue
             end
             local ok, cur = pcall(btn.GetAlpha, btn)
             if not ok or cur ~= a then pcall(btn.SetAlpha, btn, a) end
@@ -277,17 +276,6 @@ local function ensureRoot()
     top:SetFrameStrata("HIGH")
 end
 
-local overlayPool = {}
-local function overlayFor(k)
-    local t = overlayPool[k]
-    if not t then
-        t = top:CreateTexture(nil, "OVERLAY")
-        t:SetColorTexture(1, 0.1, 0.1, 0.38)   -- red, over the button, only while the ability is out of range
-        overlayPool[k] = t
-    end
-    return t
-end
-
 -- The bound-button pictures: the game's own button atlas (the game's strings are "|A:Gamepad_Ltr_X_64:24:24|a", Layouts.lua UF.glyph),
 -- drawn as a texture so the four face buttons (A B X Y, which the game draws in colour) can be made black and white to match the rest of the
 -- screen, with the coloured pictures as an option. Anything that is not an atlas (a plain text label) is shown as text.
@@ -304,6 +292,11 @@ local function labelFor(k)
         l = { tex = top:CreateTexture(nil, "OVERLAY"), fs = top:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") }
         function l:SetAlpha(a) self.tex:SetAlpha(a); self.fs:SetAlpha(a) end
         function l:Hide() self.tex:Hide(); self.fs:Hide() end
+        function l:SetRed(on)
+            local g = on and 0.45 or 1
+            pcall(function() if self.tex.SetVertexColor then self.tex:SetVertexColor(1, g, g) end end)
+            pcall(function() if self.fs.SetTextColor then self.fs:SetTextColor(1, g, g) end end)
+        end
         labelPool[k] = l
     end
     return l
@@ -347,11 +340,11 @@ function B.layout()
         carrying = ok and ct ~= nil   -- something is being dragged: every slot stays so it can be dropped on
     end
     layers = {}
-    local labelN, overlayN = 0, 0
+    local labelN = 0
     local W = B.rowWidth(PER_BAR, s, g)
     for i = 1, #BAR_BUTTONS do
         local all = layerButtons(i)
-        local L = { buttons = all, shown = {}, labels = {}, overlays = {} }
+        local L = { buttons = all, shown = {}, labels = {} }
         local shownList, hiddenList = {}, {}
         local slotOf = {}
         for n = 1, PER_BAR do
@@ -367,13 +360,6 @@ function B.layout()
         for k, btn in ipairs(shownList) do
             L.shown[btn] = true
             btnPos[btn] = { x = xs[k], s = s }
-            overlayN = overlayN + 1
-            local ov = overlayFor(overlayN)
-            ov:ClearAllPoints()
-            ov:SetPoint("BOTTOMLEFT", root, "BOTTOMLEFT", xs[k], 0)
-            ov:SetSize(s, s)
-            ov:Hide()
-            L.overlays[btn] = ov
             -- which controller button this one is bound to: the game's own button picture, in the corner of the button
             local pad = B.padKey(i, slotOf[btn])
             if pad then
@@ -388,7 +374,6 @@ function B.layout()
         layers[i] = L
     end
     for k = labelN + 1, #labelPool do labelPool[k]:Hide() end
-    for k = overlayN + 1, #overlayPool do overlayPool[k]:Hide() end
     root:SetSize(math.max(W, 10), s)
     root:ClearAllPoints()
     root:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, c.raise)
@@ -408,7 +393,7 @@ function B.layoutSoon()
     end
 end
 
--- An action slot went out of range or came back (ACTION_RANGE_CHECK_UPDATE): its button gets the red overlay or loses it.
+-- An action slot went out of range or came back (ACTION_RANGE_CHECK_UPDATE): its button its button picture turns slightly red or back.
 function B.setRange(slot, inRange, checksRange)
     if type(slot) ~= "number" then return end
     if issecretvalue and (issecretvalue(inRange) or issecretvalue(checksRange)) then return end
