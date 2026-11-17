@@ -995,7 +995,7 @@ r = L("""function()
     function root:GetFrameLevel() return 5 end
     local realCF = CreateFrame
     CreateFrame = function(kind, name, ...) if name == "UbermocForeverGamepadBar" then return root end return realCF(kind, name, ...) end
-    UbermocForeverDB.gbar = { on = true, keepCaps = true, extras = false }
+    UbermocForeverDB.gbar = { on = true, extras = false }
     local function cap()
         local f = { calls = {}, ignore = false, alpha = 1 }
         function f:IsInDefaultPosition() return true end
@@ -1020,7 +1020,7 @@ r = L("""function()
     out[#out + 1] = tostring(btns[1].ignore)
     out[#out + 1] = tostring(btns[1].cooldown.swipe) .. tostring(btns[1].cooldown.edge)     -- no dark swipe, the bright edge on
     local L, R = MainActionBar.EndCaps.LeftEndCap, MainActionBar.EndCaps.RightEndCap
-    out[#out + 1] = L.calls[1] .. "|" .. R.calls[1] .. "|" .. tostring(L.ignore) .. L.alpha           -- the caps hug the shown buttons (225 to 369), on their own opacity
+    out[#out + 1] = #L.calls .. "|" .. #R.calls .. "|" .. tostring(L.ignore) .. L.alpha           -- the end caps are never moved (they are hidden for good while the layout is on)
     UbermocForeverDB.gbar.on = false
     B.layout()
     out[#out + 1] = tostring(MainActionBar.EndCaps.LeftEndCap.ignore) .. MainActionBar.EndCaps.LeftEndCap.alpha   -- the caps back with the bar when it is off
@@ -1034,7 +1034,7 @@ r = L("""function()
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,falsetrue,BOTTOMRIGHT:223.0|BOTTOMLEFT:371.0|true1,false1,CENTERfalse1,truefalse", r
+assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,falsetrue,0|0|false1,false1,CENTERfalse1,truefalse", r
 print("Gamepad layout: layers, even centring, empty buttons removed, put back when off: OK  (" + str(r) + ")")
 # Gamepad layout, part two: forced hiding no mouse-over can lift, Edit Mode suspends fading, bound-button lookup, the Bars page
 r = L("""function()
@@ -1070,7 +1070,7 @@ r = L("""function()
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,8,3,3,4,Normal50%", r
+assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,8,3,2,4,Normal50%", r
 print("Gamepad layout 2: forced art no mouse-over, Edit Mode suspends, bound buttons, Bars page: OK")
 # Gamepad layout, part three: cooldown look, range state, where the micro menu / bags / XP bar start
 r = L("""function()

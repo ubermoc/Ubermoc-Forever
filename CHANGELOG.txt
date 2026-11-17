@@ -1,3 +1,6 @@
+UbermocForever 1.3.96
+- Removed: the "End caps" option of the gamepad layout. The end caps (dragons) are hidden for good while the layout is on (they were glitchy when kept); the placement code is no longer used. Untested in the game.
+
 UbermocForever 1.3.95
 - Fixed: the XP bar set to "never show" could still show. The Fading page had separate parts inside the XP bars manager (main bar, second bar) and the bags (expand button): a setting on a part makes it ignore its parent's opacity, so it could stay visible while the whole was hidden. Those three parts are removed (the saved values for them are dropped once); the XP bars and the bags are each one element, set on the Bars page. Untested in the game.
 

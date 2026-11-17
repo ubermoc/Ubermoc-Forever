@@ -42,7 +42,6 @@ local function cfg()
     local c = d.gbar
     if c.on == nil then c.on = false end
     if c.hideEmpty == nil then c.hideEmpty = true end
-    if c.keepCaps == nil then c.keepCaps = false end
     if c.extras == nil then c.extras = true end          -- other binds of the held combination (jump, target...) get a slot too
     if c.faceColor == nil then c.faceColor = false end   -- the face button pictures are black and white to start with
     c.size = c.size or 44
@@ -142,7 +141,6 @@ function B.nextSize() local c = cfg(); c.size = B.SIZES[(stepOf(B.SIZES, c.size)
 function B.nextGap() local c = cfg(); c.gap = B.GAPS[(stepOf(B.GAPS, c.gap) % #B.GAPS) + 1]; B.layoutSoon() end
 function B.nextRaise() local c = cfg(); c.raise = B.RAISES[(stepOf(B.RAISES, c.raise) % #B.RAISES) + 1]; B.layoutSoon() end
 function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end; if c.on and UF.tryBarsPrompt then C_Timer.After(1.5, UF.tryBarsPrompt) end end
-function B.toggleCaps() local c = cfg(); c.keepCaps = not c.keepCaps; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end
 function B.toggleExtras() local c = cfg(); c.extras = not c.extras; B.layoutSoon() end
 function B.toggleColor() local c = cfg(); c.faceColor = not c.faceColor; B.layoutSoon() end
 function B.toggleEmpty() local c = cfg(); c.hideEmpty = not c.hideEmpty; B.layoutSoon() end
@@ -322,7 +320,6 @@ function B.refresh()
     -- it is multiplied in here (the labels are children of the root frame and follow it by themselves)
     local okF, fade = pcall(root.GetAlpha, root)
     if not okF or type(fade) ~= "number" then fade = 1 end
-    if layers[held] then B.updateCaps(layers[held], fade) end
     for i, L in ipairs(layers) do
         local active = (i == held)
         for _, e in ipairs(L.extras or {}) do
@@ -762,11 +759,7 @@ UF.OnLogin(function()
     if UF.Fade then
         -- hidden for good while the layout is on: the Fading engine does it and no mouse-over opacity lifts it (F.forced)
         for _, key in ipairs(FORCED_KEYS) do
-            if key == "mb_leftcap" or key == "mb_rightcap" then
-                UF.Fade.forced[key] = function() local c = cfg(); return c.on and not c.keepCaps end   -- the end caps are an option
-            else
-                UF.Fade.forced[key] = function() return cfg().on end
-            end
+            UF.Fade.forced[key] = function() return cfg().on end   -- the end caps too: they were an option until 1.3.96 and were glitchy
         end
     end
     local ev = CreateFrame("Frame")
