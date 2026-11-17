@@ -995,7 +995,21 @@ r = L("""function()
     function root:GetFrameLevel() return 5 end
     local realCF = CreateFrame
     CreateFrame = function(kind, name, ...) if name == "UbermocForeverGamepadBar" then return root end return realCF(kind, name, ...) end
-    UbermocForeverDB.gbar = { on = true }
+    UbermocForeverDB.gbar = { on = true, keepCaps = true }
+    local function cap()
+        local f = { calls = {}, ignore = false, alpha = 1 }
+        function f:IsInDefaultPosition() return true end
+        function f:GetNumPoints() return 1 end
+        function f:GetPoint() return "CENTER", nil, "CENTER", 0, 0 end
+        function f:GetEffectiveScale() return 1 end
+        function f:ClearAllPointsBase() end
+        function f:SetPointBase(p, rel, rp, x, y) self.calls[#self.calls + 1] = p .. ":" .. x end
+        function f:SetPoint() end
+        function f:SetIgnoreParentAlpha(v) self.ignore = v end
+        function f:SetAlpha(v) self.alpha = v end
+        return f
+    end
+    MainActionBar = { EndCaps = { LeftEndCap = cap(), RightEndCap = cap() } }
     local realTalk = UF.Cinematic.talking
     UF.Cinematic.talking = function() return false end   -- the test stub's windows look open: not talking
     IsShiftKeyDown = function() return true end; IsControlKeyDown = function() return false end; IsAltKeyDown = function() return false end
@@ -1005,18 +1019,22 @@ r = L("""function()
     out[#out + 1] = tostring(btns[1].alpha) .. tostring(btns[13].alpha) .. tostring(btns[14].alpha) .. tostring(btns[16].alpha)   -- layer 2 is held: bar 1 hidden, bar 2's first three shown, its fourth (empty) hidden
     out[#out + 1] = tostring(btns[1].ignore)
     out[#out + 1] = tostring(btns[1].cooldown.swipe) .. tostring(btns[1].cooldown.edge)     -- no dark swipe, the bright edge on
+    local L, R = MainActionBar.EndCaps.LeftEndCap, MainActionBar.EndCaps.RightEndCap
+    out[#out + 1] = L.calls[1] .. "|" .. R.calls[1] .. "|" .. tostring(L.ignore) .. L.alpha           -- the caps hug the shown buttons (225 to 369), on their own opacity
     UbermocForeverDB.gbar.on = false
     B.layout()
+    out[#out + 1] = tostring(MainActionBar.EndCaps.LeftEndCap.ignore) .. MainActionBar.EndCaps.LeftEndCap.alpha   -- the caps back with the bar when it is off
     out[#out + 1] = tostring(btns[1].pts[1][1]) .. tostring(btns[1].ignore) .. tostring(btns[1].alpha)           -- put back
     out[#out + 1] = tostring(btns[1].cooldown.swipe) .. tostring(btns[1].cooldown.edge)
     CreateFrame = realCF
+    MainActionBar = nil
     UF.Cinematic.talking = realTalk
     for bar = 1, 4 do for n = 1, 12 do _G[names[bar] .. n] = nil end end
     IsShiftKeyDown, IsControlKeyDown, IsAltKeyDown, HasAction = nil, nil, nil, nil
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,falsetrue,CENTERfalse1,truefalse", r
+assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,falsetrue,BOTTOMRIGHT:223.0|BOTTOMLEFT:371.0|true1,false1,CENTERfalse1,truefalse", r
 print("Gamepad layout: layers, even centring, empty buttons removed, put back when off: OK  (" + str(r) + ")")
 # Gamepad layout, part two: forced hiding no mouse-over can lift, Edit Mode suspends fading, bound-button lookup, the Bars page
 r = L("""function()
@@ -1047,12 +1065,12 @@ r = L("""function()
     -- the Bars page
     local page = UF.BarsPage.build(UIParent, UIParent)
     local rows = UF.BarsPage.navRows()
-    out[#out + 1] = #rows .. "," .. #rows[1] .. "," .. #rows[3]
+    out[#out + 1] = #rows .. "," .. #rows[1] .. "," .. #rows[3] .. "," .. #rows[4]
     out[#out + 1] = UF.BarsPage.valueText({}, nil) .. UF.BarsPage.valueText({}, 0.5)
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,7,3,4,Normal50%", r
+assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,8,3,2,4,Normal50%", r
 print("Gamepad layout 2: forced art no mouse-over, Edit Mode suspends, bound buttons, Bars page: OK")
 # Gamepad layout, part three: cooldown look, range state, where the micro menu / bags / XP bar start
 r = L("""function()
@@ -1064,6 +1082,7 @@ r = L("""function()
     B.setRange(7, true, true); out[#out + 1] = tostring(B.isOutOfRange(7))      -- back in range
     B.setRange(7, false, false); out[#out + 1] = tostring(B.isOutOfRange(7))    -- the ability does not check range
     B.setRange("x", false, true)
+    out[#out + 1] = tostring(B.glyphAtlas("|A:Gamepad_Ltr_X_64:24:24|a")) .. "," .. tostring((B.glyphAtlas("X"))) .. "," .. tostring((B.glyphAtlas(nil)))
     -- parts: default position is placed, a part moved in Edit Mode is left alone
     local function part(isDefault)
         local f = { default = isDefault, calls = {} }
@@ -1085,7 +1104,7 @@ r = L("""function()
     MicroMenuContainer, BagsBar, StatusTrackingBarManager = nil, nil, nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "true,false,false,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0,clear/BOTTOMRIGHT>TOPRIGHT:0,2,0,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0/clear/CENTER>CENTER:0,0", r
+assert str(r) == "true,false,false,Gamepad_Ltr_X_64,nil,nil,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0,clear/BOTTOMRIGHT>TOPRIGHT:0,2,0,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0/clear/CENTER>CENTER:0,0", r
 print("Gamepad layout 3: range state, default places only while at the game's default: OK")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()

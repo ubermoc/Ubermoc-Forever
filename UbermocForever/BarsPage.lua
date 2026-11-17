@@ -41,6 +41,8 @@ function BP.refresh()
     rows.size:SetText("Button size: " .. c.size)
     rows.gap:SetText("Gap: " .. c.gap)
     rows.raise:SetText("Height: " .. c.raise)
+    rows.caps:SetText("End caps: " .. (c.keepCaps and "Shown" or "Hidden"))
+    rows.color:SetText("Face buttons: " .. (c.faceColor and "Colored" or "Black and white"))
     for _, b in ipairs(pickBtns) do
         local fs = b:GetFontString()
         local set = F.get(b.part.key) ~= nil
@@ -86,6 +88,12 @@ function BP.build(parent, inset)
     rows.size = button(page, 190); rows.size:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -56)
     rows.gap = button(page, 140); rows.gap:SetPoint("LEFT", rows.size, "RIGHT", 6, 0)
     rows.raise = button(page, 140); rows.raise:SetPoint("LEFT", rows.gap, "RIGHT", 6, 0)
+    rows.caps = button(page, 190); rows.caps:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -90)
+    rows.color = button(page, 250); rows.color:SetPoint("LEFT", rows.caps, "RIGHT", 6, 0)
+    rows.caps:SetScript("OnClick", function() B.toggleCaps(); BP.refresh() end)
+    rows.color:SetScript("OnClick", function() B.toggleColor(); BP.refresh() end)
+    tip(rows.caps, "End caps", "Shown keeps the dragons left and right of the bar and hugs them to the ends of the buttons shown on the layer you hold. They are Edit Mode parts: one you moved there stays where you put it. Hidden (to start with) hides them with the rest of the game's art.")
+    tip(rows.color, "Face buttons", "The pictures for A, B, X and Y are black and white to match the rest of the screen. Colored uses the game's coloured pictures.")
     rows.on:SetScript("OnClick", function() B.toggle(); BP.refresh() end)
     rows.empty:SetScript("OnClick", function() B.toggleEmpty(); BP.refresh() end)
     rows.edit:SetScript("OnClick", function() B.openEditMode() end)
@@ -100,14 +108,14 @@ function BP.build(parent, inset)
     tip(rows.raise, "Height", "How far the row sits above the bottom edge of the screen.")
 
     local head2 = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    head2:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -96)
+    head2:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -130)
     head2:SetText("Fading of the parts the layout leaves adjustable")
     pickBtns = {}
     local prev
     for _, part in ipairs(PARTS) do
         local b = button(page, 150, part.short)
         b.part = part
-        if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -118) end
+        if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -152) end
         b:SetScript("OnClick", function() sel = part; BP.refresh() end)
         pickBtns[#pickBtns + 1] = b
         prev = b
@@ -115,12 +123,12 @@ function BP.build(parent, inset)
     sel = PARTS[1]
 
     titleFS = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    titleFS:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -152)
+    titleFS:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -186)
     stateRows = {}
     for i, st in ipairs(F.STATES) do
         local fr = CreateFrame("Frame", nil, page)
         fr:SetSize(520, 26)
-        fr:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -184 - (i - 1) * 34)
+        fr:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -214 - (i - 1) * 32)
         local lab = fr:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         lab:SetPoint("LEFT", 0, 0); lab:SetWidth(120); lab:SetJustifyH("LEFT"); lab:SetText(st.label)
         local normal = button(fr, 70, "Normal"); normal:SetPoint("LEFT", 124, 0)
@@ -135,14 +143,14 @@ function BP.build(parent, inset)
         plus:SetScript("OnClick", function() F.step(sel.key, st.key, 1); BP.refresh() end)
         stateRows[i] = { frame = fr, state = st.key, value = value, normal = normal, zero = zero, minus = minus, plus = plus }
     end
-    local y = -184 - #F.STATES * 34
-    hideBtn = button(page, 200); hideBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y - 6)
+    local y = -214 - #F.STATES * 32
+    hideBtn = button(page, 200); hideBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y - 4)
     hideBtn:SetScript("OnClick", function() F.toggleHide(sel.key); BP.refresh() end)
     resetBtn = button(page, 200, "Reset this part"); resetBtn:SetPoint("LEFT", hideBtn, "RIGHT", 8, 0)
     resetBtn:SetScript("OnClick", function() F.reset(sel.key); BP.refresh() end)
     note = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     note:SetPoint("TOPLEFT", hideBtn, "BOTTOMLEFT", 0, -12)
-    note:SetWidth(640); note:SetJustifyH("LEFT")
+    note:SetWidth(660); note:SetJustifyH("LEFT")
     note:SetText("To start with, the micro menu sits in the bottom right corner, the bags just above it and the XP bar against the top of the screen; Move bars (Edit Mode) puts any of them elsewhere and they stay there. These fading settings are the same as on the Fading page, and its mouse-over opacity works on them. Everything else the layout hides cannot be shown while it is on, not even with the mouse. Type /ubf bars to see what the layout found.")
     BP.refresh()
     return page
@@ -155,9 +163,10 @@ function BP.navRows()
     if not page then return out end
     out[1] = { rows.on, rows.empty, rows.edit }
     out[2] = { rows.size, rows.gap, rows.raise }
+    out[3] = { rows.caps, rows.color }
     local picks = {}
     for _, b in ipairs(pickBtns) do picks[#picks + 1] = b end
-    out[3] = picks
+    out[4] = picks
     for _, r in ipairs(stateRows) do out[#out + 1] = { r.normal, r.zero, r.minus, r.plus } end
     out[#out + 1] = { hideBtn, resetBtn }
     return out

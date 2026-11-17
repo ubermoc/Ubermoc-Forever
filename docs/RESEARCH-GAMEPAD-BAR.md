@@ -53,3 +53,13 @@ a red overlay on an ability that is out of range, normal in range.
   (`EditModeSystemTemplates.lua`), so `SetPointBase` and `ClearAllPointsBase` are used, only while `IsInDefaultPosition()` is true (a part moved in Edit Mode is left where Edit Mode put it), with a `SetPoint` hook that puts the place back when the game's layout moves it.
   When the layout is turned off, or Edit Mode opens, the saved points come back. The bags are anchored to the micro menu frame (`BOTTOMRIGHT` to `TOPRIGHT`, 2 up), so they follow it.
 - Not verified in the game: all of it; also whether the game's managed frame containers move these parts again faster than the hook puts them back, and how the XP bar looks flush with the top of the screen.
+
+## 1.3.76: face button colour and the end caps (user request, 2026-11-17; the game was down for maintenance, so nothing could be checked in it)
+- The game draws A, B, X and Y in colour (`Gamepad_Ltr_A/B/X/Y_64` atlases, strings built by `SetGamepadBindingStrings` in `Blizzard_SharedXML/SharedConstants.lua`: `"|A:Gamepad_Ltr_X_64:24:24|a"`). Inline markup cannot be desaturated, so
+  the layout takes the atlas name out of `UF.glyph(pad)` (Layouts.lua) and draws a texture (`SetAtlas`, `SetDesaturated`). Only `PAD1..PAD4` are desaturated (the triggers, bumpers and d-pad are already neutral); the option colours them back.
+- The "dragons" are the main bar's end caps: `MainActionBar.EndCaps.LeftEndCap` / `RightEndCap`, frames 154 x 95 with the atlases `ui-hud-actionbar-gryphon-left/right` (`Blizzard_ActionBar/Camelot/MainMenuBarEndCaps.xml`), and Edit Mode systems
+  (`EditModeMainActionBarEndCapLeft/RightSystemTemplate`), anchored to the ends of the game's main bar. Before 1.3.76 they were in the layout's forced-hidden list, no option. They stay anchored to the game's own main bar frame, which the layout does not move,
+  so left alone they would not hug the row. The option moves them with `SetPointBase`/`ClearAllPointsBase` to the ends of the shown buttons of the held layer (`B.updateCaps`), makes them ignore the bar's alpha (it is 0) and sets their alpha to the bar's fading;
+  only while `IsInDefaultPosition()`; released (saved points, alpha 1, no ignore) when the option or the layout is turned off or Edit Mode opens.
+- Not verified in the game: all of it; also whether `MainMenuBarEndCapMixin:UpdateVisibility` (it hides a cap that does not fit on the screen, measured from its anchor) behaves with the cap anchored to our row, and whether moving a cap while in combat
+  is allowed (it is not tried: placing waits for the fight to end).

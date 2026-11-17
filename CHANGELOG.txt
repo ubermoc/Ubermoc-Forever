@@ -1,3 +1,7 @@
+UbermocForever 1.3.76
+- Gamepad layout: the pictures for the face buttons (A, B, X, Y) are black and white to match the rest of the screen; "Face buttons: Colored" on the Bars page brings back the game's colours. (The pictures are now textures of the game's own button atlas, so they can be desaturated.)
+- Gamepad layout: new option "End caps: Shown" (Hidden to start with, as before). The dragons left and right of the main bar were only hidden with the rest of the game's art, and left visible they would have stayed at the ends of the game's own main bar. Now they hug the ends of the buttons shown on the layer you hold (left cap left of the first button, right cap right of the last), on their own opacity that follows the bar's fading. Only while the game still has them at their default position: a cap moved in Edit Mode stays where Edit Mode put it. They are placed out of combat (in a fight they keep the last place). Untested in the game.
+
 UbermocForever 1.3.75
 - Gamepad layout: the bound-button pictures now sit in the middle of the top edge of each button, half of the picture hanging over it.
 - Gamepad layout: cooldowns keep the game's own countdown numbers but lose the dark swipe; the game's bright edge line sweeps round like a clock hand from 12 o'clock back to 12 o'clock, where the ability is ready. An ability out of range gets a red overlay (from the game's own range events).

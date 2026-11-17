@@ -42,6 +42,8 @@ local function cfg()
     local c = d.gbar
     if c.on == nil then c.on = false end
     if c.hideEmpty == nil then c.hideEmpty = true end
+    if c.keepCaps == nil then c.keepCaps = false end
+    if c.faceColor == nil then c.faceColor = false end   -- the face button pictures are black and white to start with
     c.size = c.size or 44
     c.gap = c.gap or 6
     c.raise = c.raise or 24
@@ -99,6 +101,8 @@ function B.nextSize() local c = cfg(); c.size = B.SIZES[(stepOf(B.SIZES, c.size)
 function B.nextGap() local c = cfg(); c.gap = B.GAPS[(stepOf(B.GAPS, c.gap) % #B.GAPS) + 1]; B.layoutSoon() end
 function B.nextRaise() local c = cfg(); c.raise = B.RAISES[(stepOf(B.RAISES, c.raise) % #B.RAISES) + 1]; B.layoutSoon() end
 function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end
+function B.toggleCaps() local c = cfg(); c.keepCaps = not c.keepCaps; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end
+function B.toggleColor() local c = cfg(); c.faceColor = not c.faceColor; B.layoutSoon() end
 function B.toggleEmpty() local c = cfg(); c.hideEmpty = not c.hideEmpty; B.layoutSoon() end
 
 ----------------------------------------------------------------------
@@ -235,6 +239,7 @@ function B.refresh()
     -- it is multiplied in here (the labels are children of the root frame and follow it by themselves)
     local okF, fade = pcall(root.GetAlpha, root)
     if not okF or type(fade) ~= "number" then fade = 1 end
+    if layers[held] then B.updateCaps(layers[held], fade) end
     for i, L in ipairs(layers) do
         local active = (i == held)
         for _, btn in ipairs(L.buttons) do
@@ -283,14 +288,41 @@ local function overlayFor(k)
     return t
 end
 
+-- The bound-button pictures: the game's own button atlas (the game's strings are "|A:Gamepad_Ltr_X_64:24:24|a", Layouts.lua UF.glyph),
+-- drawn as a texture so the four face buttons (A B X Y, which the game draws in colour) can be made black and white to match the rest of the
+-- screen, with the coloured pictures as an option. Anything that is not an atlas (a plain text label) is shown as text.
+local GLYPH = 24
+local FACE_PADS = { PAD1 = true, PAD2 = true, PAD3 = true, PAD4 = true }
+function B.glyphAtlas(markup)
+    if type(markup) ~= "string" then return nil end
+    return markup:match("|A:([^:|]+)")
+end
 local labelPool = {}
 local function labelFor(k)
-    local fs = labelPool[k]
-    if not fs then
-        fs = top:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        labelPool[k] = fs
+    local l = labelPool[k]
+    if not l then
+        l = { tex = top:CreateTexture(nil, "OVERLAY"), fs = top:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") }
+        function l:SetAlpha(a) self.tex:SetAlpha(a); self.fs:SetAlpha(a) end
+        function l:Hide() self.tex:Hide(); self.fs:Hide() end
+        labelPool[k] = l
     end
-    return fs
+    return l
+end
+local function paintLabel(l, pad, x, s, colored)
+    local markup = UF.glyph(pad)
+    local atlas = B.glyphAtlas(markup)
+    l.tex:ClearAllPoints(); l.fs:ClearAllPoints()
+    if atlas then
+        l.tex:SetAtlas(atlas)
+        l.tex:SetSize(GLYPH, GLYPH)
+        l.tex:SetPoint("CENTER", root, "BOTTOMLEFT", x + s / 2, s)   -- middle of the top edge: half the picture hangs over the button
+        l.tex:SetDesaturated((FACE_PADS[pad] and not colored) and true or false)
+        l.tex:Show(); l.fs:Hide()
+    else
+        l.fs:SetPoint("CENTER", root, "BOTTOMLEFT", x + s / 2, s)
+        l.fs:SetText(markup)
+        l.fs:Show(); l.tex:Hide()
+    end
 end
 
 function B.layout()
@@ -303,6 +335,7 @@ function B.layout()
         layers = {}
         if root then root:Hide() end
         B.setParts(false)
+        B.releaseCaps()
         return
     end
     B.setParts(true)
@@ -330,6 +363,7 @@ function B.layout()
             else shownList[#shownList + 1] = btn end
         end
         local xs = B.rowX(#shownList, s, g, W)
+        if #shownList > 0 then L.x0, L.x1 = xs[1], xs[#shownList] + s end   -- where the shown buttons start and end (for the end caps)
         for k, btn in ipairs(shownList) do
             L.shown[btn] = true
             btnPos[btn] = { x = xs[k], s = s }
@@ -344,12 +378,9 @@ function B.layout()
             local pad = B.padKey(i, slotOf[btn])
             if pad then
                 labelN = labelN + 1
-                local fs = labelFor(labelN)
-                fs:ClearAllPoints()
-                fs:SetPoint("CENTER", root, "BOTTOMLEFT", xs[k] + s / 2, s)   -- middle of the top edge: half the picture hangs over the button
-                fs:SetText(UF.glyph(pad))
-                fs:Show()
-                L.labels[btn] = fs
+                local l = labelFor(labelN)
+                paintLabel(l, pad, xs[k], s, c.faceColor)
+                L.labels[btn] = l
             end
         end
         for _, btn in ipairs(hiddenList) do btnPos[btn] = { x = -5000, s = s } end   -- out of sight and out of the mouse's way
@@ -461,6 +492,93 @@ function B.setParts(on)
     if partsOn then B.placeParts() else for _, def in ipairs(PART_FRAMES) do restorePart(def) end end
 end
 
+----------------------------------------------------------------------
+-- The end caps (the dragons left and right of the main bar), an option
+----------------------------------------------------------------------
+-- They are Edit Mode systems of the main bar (MainActionBar.EndCaps.LeftEndCap / RightEndCap, Blizzard_ActionBar/Camelot/MainMenuBarEndCaps.xml)
+-- anchored to the ends of the game's own main bar, which no longer is where the row is. With Keep the end caps on, they hug the ends of the
+-- buttons shown on the held layer (left cap to the left of the first button, right cap to the right of the last), only while the game still has
+-- them at their default position (a cap moved in Edit Mode stays where Edit Mode put it). Placing waits for the end of a fight.
+local CAPS = {
+    { path = "LeftEndCap", point = "BOTTOMRIGHT", relPoint = "BOTTOMLEFT", edge = "x0", dir = -1 },
+    { path = "RightEndCap", point = "BOTTOMLEFT", relPoint = "BOTTOMRIGHT", edge = "x1", dir = 1 },
+}
+local CAP_GAP = 2
+local capTaken = setmetatable({}, { __mode = "k" })
+local capSaved = setmetatable({}, { __mode = "k" })
+local capHooked = setmetatable({}, { __mode = "k" })
+local capBusy = setmetatable({}, { __mode = "k" })
+local lastLayer, lastFade
+
+local function capFrame(def)
+    local bar = _G.MainActionBar
+    local caps = bar and bar.EndCaps
+    return caps and caps[def.path]
+end
+
+local function releaseCap(f)
+    if not capTaken[f] then return end
+    capTaken[f] = nil
+    pcall(f.SetIgnoreParentAlpha, f, false)
+    pcall(f.SetAlpha, f, 1)
+    local pts = capSaved[f]
+    capSaved[f] = nil
+    if pts and not InCombatLockdown() then
+        capBusy[f] = true
+        pcall(function()
+            local clear = f.ClearAllPointsBase or f.ClearAllPoints
+            local set = f.SetPointBase or f.SetPoint
+            clear(f)
+            for _, p in ipairs(pts) do set(f, p[1], p[2], p[3], p[4], p[5]) end
+        end)
+        capBusy[f] = false
+    end
+end
+
+function B.updateCaps(L, fade)
+    local c = cfg()
+    lastLayer, lastFade = L, fade
+    for _, def in ipairs(CAPS) do
+        local f = capFrame(def)
+        if f then
+            if c.on and c.keepCaps and root and not (UF.Fade and UF.Fade.editing and UF.Fade.editing()) and inDefaultPosition(f) then
+                if not capTaken[f] then
+                    capTaken[f] = true
+                    pcall(f.SetIgnoreParentAlpha, f, true)   -- the bar's alpha is 0 (its art is hidden for good); the caps are shown on their own
+                end
+                pcall(f.SetAlpha, f, (L and L.x0) and fade or 0)
+                if L and L.x0 and not InCombatLockdown() and not capBusy[f] then
+                    capBusy[f] = true
+                    pcall(function()
+                        if not capSaved[f] then
+                            local pts = {}
+                            for i = 1, f:GetNumPoints() do pts[i] = { f:GetPoint(i) } end
+                            capSaved[f] = pts
+                        end
+                        local ratio = 1
+                        local ce, re = f:GetEffectiveScale(), root:GetEffectiveScale()
+                        if type(ce) == "number" and type(re) == "number" and ce > 0 and re > 0 then ratio = ce / re end
+                        local clear = f.ClearAllPointsBase or f.ClearAllPoints
+                        local set = f.SetPointBase or f.SetPoint
+                        clear(f)
+                        set(f, def.point, root, "BOTTOMLEFT", (L[def.edge] + def.dir * CAP_GAP) / ratio, 0)
+                    end)
+                    capBusy[f] = false
+                    if not capHooked[f] then
+                        capHooked[f] = true
+                        hooksecurefunc(f, "SetPoint", function(self) if not capBusy[self] and lastLayer then B.updateCaps(lastLayer, lastFade or 1) end end)
+                    end
+                end
+            else
+                releaseCap(f)
+            end
+        end
+    end
+end
+function B.releaseCaps()
+    for _, def in ipairs(CAPS) do local f = capFrame(def); if f then releaseCap(f) end end
+end
+
 -- The Move bars button: the game's own Edit Mode (/editmode does the same: Blizzard_ChatFrameBase/Mainline/SlashCommandsOverrides.lua).
 function B.openEditMode()
     if InCombatLockdown() then UF.say("Edit Mode can't be opened in combat."); return false end
@@ -498,7 +616,11 @@ UF.OnLogin(function()
     if UF.Fade then
         -- hidden for good while the layout is on: the Fading engine does it and no mouse-over opacity lifts it (F.forced)
         for _, key in ipairs(FORCED_KEYS) do
-            UF.Fade.forced[key] = function() return cfg().on end
+            if key == "mb_leftcap" or key == "mb_rightcap" then
+                UF.Fade.forced[key] = function() local c = cfg(); return c.on and not c.keepCaps end   -- the end caps are an option
+            else
+                UF.Fade.forced[key] = function() return cfg().on end
+            end
         end
     end
     local ev = CreateFrame("Frame")
