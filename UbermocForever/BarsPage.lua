@@ -14,9 +14,9 @@ local page, rows, pickBtns, stateRows, titleFS, hideBtn, resetBtn, note
 local sel
 local PARTS = {
     { key = "gbar", short = "Gamepad bar" },
-    { key = "xpall", short = "XP bar", layoutHidden = true },
-    { key = "micro", short = "Micro menu", layoutHidden = true },
-    { key = "bags", short = "Bags", layoutHidden = true },
+    { key = "xpall", short = "XP bar" },
+    { key = "micro", short = "Micro menu" },
+    { key = "bags", short = "Bags" },
 }
 BP.PARTS = PARTS
 
@@ -27,14 +27,9 @@ local function button(parent, w, text)
     return b
 end
 
--- What a situation's value reads as: a part the layout hides to start with says Hidden until it has a setting of its own.
+-- What a situation's value reads as.
 function BP.valueText(part, v)
-    local F = UF.Fade
-    if v == nil then
-        if part.layoutHidden and UF.GamepadBar.cfg().on then return "Hidden" end
-        return "Normal"
-    end
-    return F.percentText(v)
+    return UF.Fade.percentText(v)
 end
 
 function BP.refresh()
@@ -58,7 +53,6 @@ function BP.refresh()
     titleFS:SetText(sel.short)
     for _, r in ipairs(stateRows) do
         r.value:SetText(BP.valueText(sel, F.value(sel.key, r.state)))
-        r.normal:SetText((sel.layoutHidden and c.on) and "Default" or "Normal")
         r.frame:SetAlpha(hid and 0.5 or 1)
     end
     hideBtn:SetText("Hide for good: " .. (hid and "On" or "Off"))
@@ -100,7 +94,7 @@ function BP.build(parent, inset)
     rows.raise:SetScript("OnClick", function() B.nextRaise(); BP.refresh() end)
     tip(rows.on, "Gamepad layout", "One row of action buttons at the bottom of the screen: nothing held shows action bar 1, the first modifier bar 2, the second bar 3, both bar 4 (the layers the default binds fill). Each button shows the controller button it is bound to. The game's bottom art is hidden for good while this is on. Off puts everything back.")
     tip(rows.empty, "Hide empty buttons", "Buttons with nothing on them are removed from the row and the rest are centred and spaced evenly. Changes wait until a fight is over.")
-    tip(rows.edit, "Move bars (Edit Mode)", "Opens the game's Edit Mode, where the experience bar, the micro menu and the bags can be moved. They show while Edit Mode is open. This window closes.")
+    tip(rows.edit, "Move bars (Edit Mode)", "Opens the game's Edit Mode, where the experience bar, the micro menu and the bags can be moved (they stay where you put them). This window closes.")
     tip(rows.size, "Button size", "How big each button is. Press to step through the choices.")
     tip(rows.gap, "Gap", "The space between buttons, the same everywhere in the row.")
     tip(rows.raise, "Height", "How far the row sits above the bottom edge of the screen.")
@@ -149,7 +143,7 @@ function BP.build(parent, inset)
     note = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     note:SetPoint("TOPLEFT", hideBtn, "BOTTOMLEFT", 0, -12)
     note:SetWidth(640); note:SetJustifyH("LEFT")
-    note:SetText("The XP bar, micro menu and bags start hidden while the layout is on (Default); set a value to bring them back, and the mouse-over opacity of the Fading page works on them. They are the same settings as on the Fading page. Everything else the layout hides cannot be shown while it is on, not even with the mouse. Moving needs Edit Mode. Type /ubf bars to see what the layout found.")
+    note:SetText("To start with, the micro menu sits in the bottom right corner, the bags just above it and the XP bar against the top of the screen; Move bars (Edit Mode) puts any of them elsewhere and they stay there. These fading settings are the same as on the Fading page, and its mouse-over opacity works on them. Everything else the layout hides cannot be shown while it is on, not even with the mouse. Type /ubf bars to see what the layout found.")
     BP.refresh()
     return page
 end

@@ -40,3 +40,16 @@ for each layer, how many buttons were found, how many the game shows and how man
   While it is open the layout gives the buttons back (`release`) and takes them again when it closes (polled ten times a second).
 - Not touched: the stance, pet and possess bars and the extra action button (the user did not name them; they stay where the game puts them).
 - Not verified in the game: all of it. Also open: whether the photo from the game (micro menu and bags still visible next to the layout row, no bound-button pictures yet) was the mouse-over opacity lifting them or an explicit Fading page setting that wins over the layout's default.
+
+## 1.3.75: what the user asked for next (2026-11-17, after a photo of 1.3.74 in the game)
+The photo showed the layout row working with the bound-button pictures (X, A, B, Y, d-pad, RT, LT) and the micro menu, bags and XP bar visible beside it. The user's wishes: by default the micro menu bottom right, the bags above it (separate, looking connected),
+the XP bar flush with the top of the screen; the bound-button pictures in the middle of the top edge of each button, half hanging over; cooldowns with the game's countdown timer but no dark sweep (a highlighted line moving round, back at 12 o'clock when ready);
+a red overlay on an ability that is out of range, normal in range.
+- Cooldown: the game's button template makes the cooldown frame with `drawEdge="false"` and a dark `SwipeTexture` (`Blizzard_ActionBar/Mainline/ActionButtonTemplate.xml`, `parentKey="cooldown"`); `ActionButton_ApplyCooldown` only calls `SetCooldown` / `Clear`
+  (`Shared/ActionButton.lua`), so `SetDrawSwipe(false)` and `SetDrawEdge(true)` on `btn.cooldown` stay. The countdown numbers are the game's own (`SetHideCountdownNumbers(false)`).
+- Range: the game's buttons only tint the key text red (`ActionButton_UpdateRangeIndicator`, fed by the event `ACTION_RANGE_CHECK_UPDATE` with slot, in range, checks range); the key text is hidden here, so the layout listens to the same event and puts a red overlay
+  (a colour texture on our own frame, not written on the button) over the button of that slot (`B.setRange`).
+- Places: the micro menu (`MicroMenuContainer`), bags (`BagsBar`) and experience bars (`StatusTrackingBarManager`) are Edit Mode systems. A system's `SetPoint` is `SetPointOverride`, which tells Edit Mode a position changed
+  (`EditModeSystemTemplates.lua`), so `SetPointBase` and `ClearAllPointsBase` are used, only while `IsInDefaultPosition()` is true (a part moved in Edit Mode is left where Edit Mode put it), with a `SetPoint` hook that puts the place back when the game's layout moves it.
+  When the layout is turned off, or Edit Mode opens, the saved points come back. The bags are anchored to the micro menu frame (`BOTTOMRIGHT` to `TOPRIGHT`, 2 up), so they follow it.
+- Not verified in the game: all of it; also whether the game's managed frame containers move these parts again faster than the hook puts them back, and how the XP bar looks flush with the top of the screen.

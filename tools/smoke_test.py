@@ -982,6 +982,7 @@ r = L("""function()
         function b:SetAlpha(v) self.alpha = v end
         function b:GetAlpha() return self.alpha end
         function b:SetFrameLevel() end
+        b.cooldown = { SetDrawSwipe = function(c, v) c.swipe = v end, SetDrawEdge = function(c, v) c.edge = v end, SetHideCountdownNumbers = function() end }
         return b
     end
     local names = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarRightButton" }
@@ -1003,9 +1004,11 @@ r = L("""function()
     out[#out + 1] = tostring(first.pts[1][4]) .. "," .. tostring(btns[3].pts[1][4]) .. "," .. tostring(btns[4].pts[1][4])   -- centred 3, the fourth out of sight
     out[#out + 1] = tostring(btns[1].alpha) .. tostring(btns[13].alpha) .. tostring(btns[14].alpha) .. tostring(btns[16].alpha)   -- layer 2 is held: bar 1 hidden, bar 2's first three shown, its fourth (empty) hidden
     out[#out + 1] = tostring(btns[1].ignore)
+    out[#out + 1] = tostring(btns[1].cooldown.swipe) .. tostring(btns[1].cooldown.edge)     -- no dark swipe, the bright edge on
     UbermocForeverDB.gbar.on = false
     B.layout()
     out[#out + 1] = tostring(btns[1].pts[1][1]) .. tostring(btns[1].ignore) .. tostring(btns[1].alpha)           -- put back
+    out[#out + 1] = tostring(btns[1].cooldown.swipe) .. tostring(btns[1].cooldown.edge)
     CreateFrame = realCF
     UF.Cinematic.talking = realTalk
     for bar = 1, 4 do for n = 1, 12 do _G[names[bar] .. n] = nil end end
@@ -1013,7 +1016,7 @@ r = L("""function()
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,CENTERfalse1", r
+assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,falsetrue,CENTERfalse1,truefalse", r
 print("Gamepad layout: layers, even centring, empty buttons removed, put back when off: OK  (" + str(r) + ")")
 # Gamepad layout, part two: forced hiding no mouse-over can lift, Edit Mode suspends fading, bound-button lookup, the Bars page
 r = L("""function()
@@ -1045,12 +1048,45 @@ r = L("""function()
     local page = UF.BarsPage.build(UIParent, UIParent)
     local rows = UF.BarsPage.navRows()
     out[#out + 1] = #rows .. "," .. #rows[1] .. "," .. #rows[3]
-    out[#out + 1] = UF.BarsPage.valueText({ layoutHidden = true }, nil) .. UF.BarsPage.valueText({}, nil) .. UF.BarsPage.valueText({}, 0.5)
+    out[#out + 1] = UF.BarsPage.valueText({}, nil) .. UF.BarsPage.valueText({}, 0.5)
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,7,3,4,HiddenNormal50%", r
+assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,7,3,4,Normal50%", r
 print("Gamepad layout 2: forced art no mouse-over, Edit Mode suspends, bound buttons, Bars page: OK")
+# Gamepad layout, part three: cooldown look, range state, where the micro menu / bags / XP bar start
+r = L("""function()
+    local UF = UbermocForever
+    local B = UF.GamepadBar
+    local out = {}
+    -- range
+    B.setRange(7, false, true); out[#out + 1] = tostring(B.isOutOfRange(7))     -- out of range
+    B.setRange(7, true, true); out[#out + 1] = tostring(B.isOutOfRange(7))      -- back in range
+    B.setRange(7, false, false); out[#out + 1] = tostring(B.isOutOfRange(7))    -- the ability does not check range
+    B.setRange("x", false, true)
+    -- parts: default position is placed, a part moved in Edit Mode is left alone
+    local function part(isDefault)
+        local f = { default = isDefault, calls = {} }
+        function f:IsInDefaultPosition() return self.default end
+        function f:GetNumPoints() return 1 end
+        function f:GetPoint() return "CENTER", nil, "CENTER", 0, 0 end
+        function f:ClearAllPointsBase() self.calls[#self.calls + 1] = "clear" end
+        function f:SetPointBase(p, rel, rp, x, y) self.calls[#self.calls + 1] = p .. ">" .. tostring(rp) .. ":" .. x .. "," .. y end
+        function f:SetPoint(...) self.calls[#self.calls + 1] = "override" end
+        return f
+    end
+    MicroMenuContainer, BagsBar, StatusTrackingBarManager = part(true), part(true), part(false)   -- the XP bar was moved in Edit Mode
+    B.setParts(true)
+    out[#out + 1] = table.concat(MicroMenuContainer.calls, "/")
+    out[#out + 1] = table.concat(BagsBar.calls, "/")
+    out[#out + 1] = #StatusTrackingBarManager.calls
+    B.setParts(false)                                                            -- off: the saved place comes back
+    out[#out + 1] = table.concat(MicroMenuContainer.calls, "/")
+    MicroMenuContainer, BagsBar, StatusTrackingBarManager = nil, nil, nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true,false,false,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0,clear/BOTTOMRIGHT>TOPRIGHT:0,2,0,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0/clear/CENTER>CENTER:0,0", r
+print("Gamepad layout 3: range state, default places only while at the game's default: OK")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()
     local UF = UbermocForever

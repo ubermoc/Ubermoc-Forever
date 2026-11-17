@@ -5,7 +5,10 @@
 -- always shows what the buttons under your thumbs do right now, and each button shows the controller button it is bound to (the game's own
 -- button pictures, UF.glyph). The game's bottom art is hidden for good while the layout is on (end caps, bar art, page arrows, bars 2 to 4:
 -- through the Fading engine's forced list, Fade.lua: no mouse-over brings it back), except the experience bar, the micro menu and the bags,
--- which are hidden to start with but have their own fading on the Bars page. Everything that the layout changes is set on the Bars page,
+-- which stay and have their own fading on the Bars page. Where they sit to start with: the micro menu in the bottom right corner, the bags
+-- just above it, the experience bar flush against the top of the screen; only while the game still has them at their default position,
+-- so the game's Edit Mode (the Move bars button) can put them anywhere else. Cooldowns use the game's own countdown numbers with a bright
+-- edge line sweeping round instead of the dark swipe; an ability out of range gets a red overlay. Everything that the layout changes is set on the Bars page,
 -- and the game's Edit Mode (a button there) moves the parts that are the game's. Buttons with nothing on them are removed and the rest are
 -- centred and spaced evenly (Hide empty buttons).
 --
@@ -27,10 +30,9 @@ local BAR_BUTTONS = { "ActionButton", "MultiBarBottomLeftButton", "MultiBarBotto
 local PREFIXES = { "", "SHIFT-", "CTRL-", "CTRL-SHIFT-" }   -- same order as UF.LAYERS
 local PER_BAR = 12
 -- The game's bottom art, as Fade.lua element keys (frames: Fade.lua F.CATEGORIES). FORCED: hidden for good while the layout is on.
--- ADJUSTABLE: hidden to start with, with settings of their own on the Bars page (they are the Fading page's elements too: one setting).
+-- (The experience bar, micro menu and bags are not in this list: they stay, with their own fading on the Bars page, the same settings as the Fading page's.)
 local FORCED_KEYS = { "mainbar", "bar2", "bar3", "bar4", "mb_leftcap", "mb_rightcap", "mb_border", "mb_page" }
-local ADJUSTABLE_KEYS = { "xpall", "micro", "bags" }
-B.FORCED_KEYS, B.ADJUSTABLE_KEYS = FORCED_KEYS, ADJUSTABLE_KEYS
+B.FORCED_KEYS = FORCED_KEYS
 -- The binding commands of the four layers (Binds.lua MAIN_BARS), to find which controller button a game button is bound to.
 local CMDS = { "ACTIONBUTTON", "MULTIACTIONBAR1BUTTON", "MULTIACTIONBAR2BUTTON", "MULTIACTIONBAR3BUTTON" }
 
@@ -123,7 +125,7 @@ local function layerButtons(i)
 end
 
 -- Is this slot empty? (A button carries its action number; HasAction tells.)
-local function isEmpty(btn)
+local function actionOf(btn)
     local act = btn.action
     if type(act) ~= "number" and btn.CalculateAction then
         local ok, a = pcall(btn.CalculateAction, btn)
@@ -133,13 +135,19 @@ local function isEmpty(btn)
         local ok, a = pcall(btn.GetAttribute, btn, "action")
         if ok then act = a end
     end
-    if type(act) ~= "number" or not HasAction then return false end
+    return type(act) == "number" and act or nil
+end
+
+local function isEmpty(btn)
+    local act = actionOf(btn)
+    if not act or not HasAction then return false end
     local ok, has = pcall(HasAction, act)
     if not ok then return false end
     if issecretvalue and issecretvalue(has) then return false end
     return not has
 end
 
+local styleCooldown   -- defined below (cooldown look)
 local function reapply(btn)
     local w = btnPos[btn]
     if not w or btnBusy[btn] or not root then return end
@@ -170,6 +178,7 @@ local function take(btn)
         end
     end
     pcall(btn.SetIgnoreParentAlpha, btn, true)   -- the bar's own opacity (the art fades with it) must not carry the buttons
+    styleCooldown(btn, true)
 end
 
 local function dress(btn, hide)   -- the game's key text goes: our own button pictures (below) say what each button is bound to
@@ -178,10 +187,27 @@ local function dress(btn, hide)   -- the game's key text goes: our own button pi
     end)
 end
 
+-- Cooldowns: the game's own countdown numbers stay, the dark swipe goes, and the edge (a bright line, the game's own edge texture) sweeps round
+-- like a clock hand from 12 o'clock back to 12 o'clock, where the ability is ready again.
+styleCooldown = function(btn, on)
+    pcall(function()
+        local cd = btn.cooldown
+        if not cd then return end
+        cd:SetDrawSwipe(not on)
+        cd:SetDrawEdge(on and true or false)
+        if on then cd:SetHideCountdownNumbers(false) end
+    end)
+end
+
+-- Out of range: the game tells each action button through ACTION_RANGE_CHECK_UPDATE (slot, in range, checks range), and only tints the key text
+-- red (ActionButton_UpdateRangeIndicator), which is hidden here. The slots that are out of range are kept and get a red overlay.
+local outOfRange = {}
+
 local function release(btn)
     local st = taken[btn]
     if not st then return end
     taken[btn], btnPos[btn], wantAlpha[btn] = nil, nil, nil
+    styleCooldown(btn, false)
     pcall(function()
         btn:SetAlpha(1)
         btn:SetIgnoreParentAlpha(false)
@@ -217,6 +243,11 @@ function B.refresh()
             wantAlpha[btn] = a
             local label = L.labels and L.labels[btn]
             if label then label:SetAlpha(shown) end
+            local ov = L.overlays and L.overlays[btn]
+            if ov then
+                local act = actionOf(btn)
+                ov:SetShown(shown == 1 and act ~= nil and outOfRange[act] == true)
+            end
             local ok, cur = pcall(btn.GetAlpha, btn)
             if not ok or cur ~= a then pcall(btn.SetAlpha, btn, a) end
             -- layers sit on top of each other: the held one takes the mouse (frame levels only change out of combat)
@@ -241,6 +272,17 @@ local function ensureRoot()
     top:SetFrameStrata("HIGH")
 end
 
+local overlayPool = {}
+local function overlayFor(k)
+    local t = overlayPool[k]
+    if not t then
+        t = top:CreateTexture(nil, "OVERLAY")
+        t:SetColorTexture(1, 0.1, 0.1, 0.38)   -- red, over the button, only while the ability is out of range
+        overlayPool[k] = t
+    end
+    return t
+end
+
 local labelPool = {}
 local function labelFor(k)
     local fs = labelPool[k]
@@ -260,8 +302,10 @@ function B.layout()
         for b in pairs(taken) do release(b) end
         layers = {}
         if root then root:Hide() end
+        B.setParts(false)
         return
     end
+    B.setParts(true)
     ensureRoot()
     local s, g = c.size, c.gap
     local carrying = false
@@ -270,11 +314,11 @@ function B.layout()
         carrying = ok and ct ~= nil   -- something is being dragged: every slot stays so it can be dropped on
     end
     layers = {}
-    local labelN = 0
+    local labelN, overlayN = 0, 0
     local W = B.rowWidth(PER_BAR, s, g)
     for i = 1, #BAR_BUTTONS do
         local all = layerButtons(i)
-        local L = { buttons = all, shown = {}, labels = {} }
+        local L = { buttons = all, shown = {}, labels = {}, overlays = {} }
         local shownList, hiddenList = {}, {}
         local slotOf = {}
         for n = 1, PER_BAR do
@@ -289,13 +333,20 @@ function B.layout()
         for k, btn in ipairs(shownList) do
             L.shown[btn] = true
             btnPos[btn] = { x = xs[k], s = s }
+            overlayN = overlayN + 1
+            local ov = overlayFor(overlayN)
+            ov:ClearAllPoints()
+            ov:SetPoint("BOTTOMLEFT", root, "BOTTOMLEFT", xs[k], 0)
+            ov:SetSize(s, s)
+            ov:Hide()
+            L.overlays[btn] = ov
             -- which controller button this one is bound to: the game's own button picture, in the corner of the button
             local pad = B.padKey(i, slotOf[btn])
             if pad then
                 labelN = labelN + 1
                 local fs = labelFor(labelN)
                 fs:ClearAllPoints()
-                fs:SetPoint("TOPLEFT", root, "BOTTOMLEFT", xs[k] + 2, s - 2)
+                fs:SetPoint("CENTER", root, "BOTTOMLEFT", xs[k] + s / 2, s)   -- middle of the top edge: half the picture hangs over the button
                 fs:SetText(UF.glyph(pad))
                 fs:Show()
                 L.labels[btn] = fs
@@ -306,6 +357,7 @@ function B.layout()
         layers[i] = L
     end
     for k = labelN + 1, #labelPool do labelPool[k]:Hide() end
+    for k = overlayN + 1, #overlayPool do overlayPool[k]:Hide() end
     root:SetSize(math.max(W, 10), s)
     root:ClearAllPoints()
     root:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, c.raise)
@@ -323,6 +375,90 @@ function B.layoutSoon()
     else
         timer = nil; pcall(B.layout)
     end
+end
+
+-- An action slot went out of range or came back (ACTION_RANGE_CHECK_UPDATE): its button gets the red overlay or loses it.
+function B.setRange(slot, inRange, checksRange)
+    if type(slot) ~= "number" then return end
+    if issecretvalue and (issecretvalue(inRange) or issecretvalue(checksRange)) then return end
+    outOfRange[slot] = (checksRange and not inRange) and true or nil
+    B.refresh()
+end
+function B.isOutOfRange(slot) return outOfRange[slot] == true end
+
+----------------------------------------------------------------------
+-- Where the micro menu, the bags and the experience bar sit to start with
+----------------------------------------------------------------------
+-- Only while the game still has them at their default position (a part the user moved in Edit Mode stays where Edit Mode put it). The
+-- game's own parts are Edit Mode systems: their SetPoint is the system's override (it tells Edit Mode a position changed), so the base
+-- functions the system keeps (SetPointBase / ClearAllPointsBase, Blizzard_EditMode/Shared/EditModeSystemTemplates.lua) are used, and a hook
+-- puts the place back whenever the game moves the part again.
+local PART_FRAMES = {
+    { name = "MicroMenuContainer", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 0 },
+    { name = "BagsBar", point = "BOTTOMRIGHT", rel = "MicroMenuContainer", relPoint = "TOPRIGHT", x = 0, y = 2 },
+    { name = "StatusTrackingBarManager", point = "TOP", rel = "UIParent", relPoint = "TOP", x = 0, y = 0 },
+}
+local partSaved = setmetatable({}, { __mode = "k" })
+local partHooked = setmetatable({}, { __mode = "k" })
+local partBusy = setmetatable({}, { __mode = "k" })
+local partsOn = false
+
+local function inDefaultPosition(f)
+    if not f.IsInDefaultPosition then return true end
+    local ok, v = pcall(f.IsInDefaultPosition, f)
+    if not ok or (issecretvalue and issecretvalue(v)) then return true end
+    return v ~= false
+end
+
+local function placePart(def)
+    local f = _G[def.name]
+    if not f or partBusy[f] then return end
+    if InCombatLockdown() then pending = true; return end
+    if not partsOn or not inDefaultPosition(f) then return end
+    local rel = _G[def.rel]
+    if not rel then return end
+    partBusy[f] = true
+    pcall(function()
+        if not partSaved[f] then
+            local pts = {}
+            for i = 1, f:GetNumPoints() do pts[i] = { f:GetPoint(i) } end
+            partSaved[f] = pts
+        end
+        local clear = f.ClearAllPointsBase or f.ClearAllPoints
+        local set = f.SetPointBase or f.SetPoint
+        clear(f)
+        set(f, def.point, rel, def.relPoint, def.x, def.y)
+    end)
+    partBusy[f] = false
+    if not partHooked[f] then
+        partHooked[f] = true
+        hooksecurefunc(f, "SetPoint", function(self) if partsOn and not partBusy[self] then B.placeParts() end end)
+    end
+end
+
+local function restorePart(def)
+    local f = _G[def.name]
+    local pts = f and partSaved[f]
+    if not pts then return end
+    partSaved[f] = nil
+    if InCombatLockdown() then return end
+    partBusy[f] = true
+    pcall(function()
+        local clear = f.ClearAllPointsBase or f.ClearAllPoints
+        local set = f.SetPointBase or f.SetPoint
+        clear(f)
+        for _, p in ipairs(pts) do set(f, p[1], p[2], p[3], p[4], p[5]) end
+    end)
+    partBusy[f] = false
+end
+
+function B.placeParts()
+    if not partsOn then return end
+    for _, def in ipairs(PART_FRAMES) do placePart(def) end
+end
+function B.setParts(on)
+    partsOn = on and true or false
+    if partsOn then B.placeParts() else for _, def in ipairs(PART_FRAMES) do restorePart(def) end end
 end
 
 -- The Move bars button: the game's own Edit Mode (/editmode does the same: Blizzard_ChatFrameBase/Mainline/SlashCommandsOverrides.lua).
@@ -364,10 +500,6 @@ UF.OnLogin(function()
         for _, key in ipairs(FORCED_KEYS) do
             UF.Fade.forced[key] = function() return cfg().on end
         end
-        -- hidden to start with, with settings of their own on the Bars page (an explicit setting wins over this default)
-        for _, key in ipairs(ADJUSTABLE_KEYS) do
-            UF.Fade.implicit[key] = function() return cfg().on and 0 or nil end
-        end
     end
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "MODIFIER_STATE_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "ACTIONBAR_SLOT_CHANGED",
@@ -375,7 +507,9 @@ UF.OnLogin(function()
                          "UPDATE_OVERRIDE_ACTIONBAR", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED", "EDIT_MODE_LAYOUTS_UPDATED", "UPDATE_BINDINGS" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
-    ev:SetScript("OnEvent", function(_, e)
+    pcall(ev.RegisterEvent, ev, "ACTION_RANGE_CHECK_UPDATE")
+    ev:SetScript("OnEvent", function(_, e, slot, inRange, checksRange)
+        if e == "ACTION_RANGE_CHECK_UPDATE" then B.setRange(slot, inRange, checksRange); return end
         if e == "MODIFIER_STATE_CHANGED" then B.refresh(); return end
         if e == "PLAYER_REGEN_ENABLED" and not pending then B.refresh(); return end
         if cfg().on or e == "PLAYER_ENTERING_WORLD" then B.layoutSoon() end

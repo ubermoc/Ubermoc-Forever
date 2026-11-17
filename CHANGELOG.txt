@@ -1,3 +1,8 @@
+UbermocForever 1.3.75
+- Gamepad layout: the bound-button pictures now sit in the middle of the top edge of each button, half of the picture hanging over it.
+- Gamepad layout: cooldowns keep the game's own countdown numbers but lose the dark swipe; the game's bright edge line sweeps round like a clock hand from 12 o'clock back to 12 o'clock, where the ability is ready. An ability out of range gets a red overlay (from the game's own range events).
+- Gamepad layout: the micro menu, the bags and the XP bar are no longer hidden to start with. They start where you asked: the micro menu in the bottom right corner, the bags just above it (anchored to it, separate), the XP bar flush against the top of the screen. This only applies while the game still has them at their default position: a part moved in Edit Mode (Move bars) stays where Edit Mode put it. Their fading on the Bars page is unchanged. Untested in the game.
+
 UbermocForever 1.3.74
 - Added (gamepad layout): each button shows the controller button it is bound to, with the game's own button pictures (the base button, without the modifiers); the game's key text on the buttons stays hidden.
 - Changed: the game's art hidden by the layout (main bar art and end caps, bar border, page arrows, bars 2 to 4) is hidden for good: no mouse-over opacity or reveal lifts it, and the "Hide the game's art" switch is gone. The experience bar, micro menu and bags start hidden but have their own fading on the Bars page (the same settings as on the Fading page); the gamepad bar has its own fading there too (in combat, on a flight path, out of combat, Hide for good).
