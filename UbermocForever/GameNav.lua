@@ -361,7 +361,33 @@ local function secureButton(name)
 end
 
 local focus          -- the highlighted node's frame (declared here so the click handlers below can see it)
-local clicker, backer, rclicker
+local clicker, backer, rclicker, markBtn
+
+-- Choosing a target marker in the unit menu: clicking the game's own menu entry ends in SetRaidTarget, which the game refuses when the click
+-- came through our code (taint log, 1.3.65 to 1.3.66). The game has a secure action for it (SECURE_ACTIONS.raidtarget, SecureTemplates.lua: type
+-- "raidtarget" with the attributes "marker" and "action"), so an entry of the Target Marker Icon submenu is pressed through a secure button of
+-- ours with that type instead. Which marker: the entry's text is the game's own name (RAID_TARGET_1..8, RAID_TARGET_NONE).
+local function entryText(f)
+    local list = { f.fontString, f.Text, f.text }
+    local ok, regions = pcall(function() return { f:GetRegions() } end)
+    if ok then for _, r in ipairs(regions) do list[#list + 1] = r end end
+    for _, r in ipairs(list) do
+        if type(r) == "table" and r.GetText then
+            local okT, t = pcall(r.GetText, r)
+            if okT and type(t) == "string" and t ~= "" then return t end
+        end
+    end
+end
+function G.markerOf(f)
+    if not (f and G.submenu and G.inside(f, G.submenu)) then return nil end
+    local t = entryText(f)
+    if not t then return nil end
+    for i = 1, 8 do
+        local name = _G["RAID_TARGET_" .. i]
+        if name and t == name then return i end
+    end
+    if _G.RAID_TARGET_NONE and t == _G.RAID_TARGET_NONE then return 0 end
+end
 
 -- Mail: the inbox row (or the open letter) the highlight is on, as an inbox index, or nil.
 local function mailIndex(f)
@@ -411,6 +437,7 @@ local function buttons()
             -- buttons too: ConsolePort_Cursor Cursor.lua GetEmuClick). A drop-down that still did not open is toggled
             -- with its own SetMenuOpen call.
             local f = focus
+            if f and G.markerOf(f) and not InCombatLockdown() then closeMenus(); return end   -- a marker was set by the secure button: the menus close
             if not f or InCombatLockdown() or not f.GetScript then return end
             local isDrop = f.SetMenuOpen and f.IsMenuOpen
             if G.opensSubmenu(f) then
@@ -446,6 +473,13 @@ local function buttons()
     end
     -- X: the right click, a button of its own so it can be left without a target where a right click means nothing or is
     -- refused (the game's question windows assert when their buttons get a right click)
+    if not markBtn then
+        markBtn = secureButton("UbermocForeverMarkBtn")
+        markBtn:SetAttribute("type", "raidtarget")
+        markBtn:SetAttribute("unit", "target")
+        markBtn:SetAttribute("action", "set")
+        markBtn:SetAttribute("marker", 1)
+    end
     if not rclicker then
         rclicker = secureButton("UbermocForeverGameRClick")
         -- X on a mail with an item or money takes everything in it (the game's own call, run by this press)
@@ -531,7 +565,12 @@ local function setTargets()
     if InCombatLockdown() then return end
     local c, b, rc = buttons()
     local target = (not G.placing) and (flyoutOpener(focus) or focus or G.direct) or nil
-    if target and target.GetElementDescription and securecallfunction then
+    local mark = G.markerOf(target)
+    if mark then
+        markBtn:SetAttribute("marker", mark == 0 and 1 or mark)
+        markBtn:SetAttribute("action", mark == 0 and "clear" or "set")
+        c:SetAttribute("clickbutton", markBtn)
+    elseif target and target.GetElementDescription and securecallfunction then
         -- An entry of the game's menus: the attribute is written inside securecallfunction, so the frame is stored without our taint
         -- (read by the secure click handler it taints the click, and a marker chosen in the unit menu was refused: taint log, SetRaidTarget).
         -- 1.3.65 tried a frame reference and a restricted snippet instead: the handler then got a handle, not a frame, and every press failed.

@@ -1,3 +1,6 @@
+UbermocForever 1.3.67
+- Changed: choosing a target marker in the target's menu now goes through the game's own secure marker action (a button of ours of type raidtarget) instead of clicking the menu entry, because the click through our code was still refused (SetRaidTarget blocked, even after 1.3.66). The entry is recognised by its text (the game's own marker names), and the menus close after. Untested in the game.
+
 UbermocForever 1.3.66
 - Fixed: 1.3.65 broke A on the game's menu entries (every press raised "SecureTemplates.lua:561: attempt to call a nil value"). The frame-reference hand-over is removed; for menu entries the click target is now written inside securecallfunction so it is stored without our taint (a marker chosen in the target's menu was refused for that taint). Untested in the game.
 

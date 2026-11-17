@@ -328,3 +328,10 @@ BugGrabber: `SecureTemplates.lua:561: attempt to call a nil value` on every A pr
 1.3.66 goes back to a plain frame in `clickbutton` but writes it inside `securecallfunction(c.SetAttribute, c, "clickbutton", frame)`, on the idea that the stored value's taint is the writer's execution taint. This is a
 hypothesis from the taint log, not yet confirmed: if the marker is still refused, read `Logs/taint.log` again (see LUA-WOW-GUIDE section 3). Other untried ideas: the game's own gamepad menu handling (`MenuProxyMixin:FocusGamepad`,
 needs the game's gamepad UI setting, which the user does not have on: the TARGET menu's gamepad-only "Interact" entry was not shown), or a dedicated secure button per marker (`/tm n` macro) outside the menu.
+
+### 1.3.67: the marker, third report with the same refusal
+1.3.66 (attribute written inside `securecallfunction`) did not change it: same stack, `SetRaidTarget` blocked from `Pick`. Instead of passing the menu entry through our click, the game's own secure action is used:
+`SECURE_ACTIONS.raidtarget` (`SecureTemplates.lua`): `type="raidtarget"`, `marker=n`, `action="set"|"clear"|"toggle"`, unit from the `unit` attribute. `GameNav.markerOf(f)` maps an entry of the submenu to a marker by its
+text (`RAID_TARGET_1..8`, `RAID_TARGET_NONE`, the same strings `UnitPopupRaidTargetBaseMixin:GetText` uses), `setTargets` points A at `UbermocForeverMarkBtn`, and the clicker's PostClick closes the menus.
+Still unexplained: why a frame handed to `SECURE_ACTIONS.click` taints (HasAccessConstraints on this client returns a secret for objects the addon has touched, `ObjectSecurity` aspect in the API docs, may be the reason).
+Other menu entries that end in a protected call (Set Focus: `FocusUnit`) may be refused the same way; if one is reported, give it the same treatment with its own secure action.

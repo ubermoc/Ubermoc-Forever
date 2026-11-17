@@ -886,6 +886,26 @@ r = L("""function()
 end""")()
 assert str(r) == "true,false,false,true", r
 print("Menus: an entry with a submenu opens it on mouse-down and the submenu is found: OK")
+# Target markers: an entry of the marker submenu is recognised by the game's own name
+r = L("""function()
+    local G = UbermocForever.GameNav
+    RAID_TARGET_8 = "Skull"; RAID_TARGET_NONE = "None"
+    local sub = {}
+    local function entry(text)
+        local fs = { GetText = function() return text end }
+        return { fontString = fs, GetRegions = function() end }
+    end
+    G.submenu = sub
+    local real = G.inside
+    G.inside = function(f, w) return w == sub end
+    local out = { tostring((G.markerOf(entry("Skull")))), tostring((G.markerOf(entry("None")))), tostring((G.markerOf(entry("Set Focus")))) }
+    G.submenu = nil
+    out[#out + 1] = tostring((G.markerOf(entry("Skull"))))   -- not in a submenu: left to the click
+    G.inside = real
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "8,0,nil,nil", r
+print("Markers: entries of the marker submenu are recognised by name: OK")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()
     local UF = UbermocForever
