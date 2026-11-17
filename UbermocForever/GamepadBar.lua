@@ -410,8 +410,8 @@ function B.isOutOfRange(slot) return outOfRange[slot] == true end
 -- functions the system keeps (SetPointBase / ClearAllPointsBase, Blizzard_EditMode/Shared/EditModeSystemTemplates.lua) are used, and a hook
 -- puts the place back whenever the game moves the part again.
 local PART_FRAMES = {
-    { name = "MicroMenuContainer", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 0 },
-    { name = "BagsBar", point = "BOTTOMRIGHT", rel = "MicroMenuContainer", relPoint = "TOPRIGHT", x = 0, y = 2 },
+    { name = "BagsBar", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 0 },
+    { name = "MicroMenuContainer", point = "BOTTOMRIGHT", rel = "BagsBar", relPoint = "TOPRIGHT", x = 0, y = 2 },
     { name = "StatusTrackingBarManager", point = "TOP", rel = "UIParent", relPoint = "TOP", x = 0, y = 0 },
 }
 local partSaved = setmetatable({}, { __mode = "k" })

@@ -1,3 +1,6 @@
+UbermocForever 1.3.79
+- Changed: gamepad layout: the bags start in the bottom right corner and the micro menu above them (was the other way round). Untested in the game.
+
 UbermocForever 1.3.78
 - Changed: gamepad layout: an ability out of range no longer gets a red overlay over the button; its bound-button picture gets a slight red hue instead. Untested in the game.
 
