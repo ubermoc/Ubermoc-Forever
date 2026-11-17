@@ -410,8 +410,6 @@ function B.isOutOfRange(slot) return outOfRange[slot] == true end
 -- functions the system keeps (SetPointBase / ClearAllPointsBase, Blizzard_EditMode/Shared/EditModeSystemTemplates.lua) are used, and a hook
 -- puts the place back whenever the game moves the part again.
 local PART_FRAMES = {
-    -- the stance bar: centred above the player frame's portrait, at 3/4 of its size
-    { name = "StanceBar", point = "BOTTOM", relPath = "PlayerFrame.PlayerFrameContainer.PlayerPortrait", relPoint = "TOP", x = 0, y = 4, scale = 0.75 },
 }
 local function resolvePath(path)
     local o = _G

@@ -1,3 +1,7 @@
+UbermocForever 1.3.86
+- Removed: the stance bar placement and 3/4 scale (zero taint: the addon no longer moves or resizes any of the game's Edit Mode frames).
+- Fixed: Y at the auction house. "Create auction" now shows whenever an item is in the sell slot (before, only when the button was already enabled), also when the highlight is not on a bag item; if the game's button is greyed out it says to set a price first. It is a secure click on the game's own Create Auction button. Untested in the game.
+
 UbermocForever 1.3.85
 - Added: with the auction house open and an item already in the sell slot, the Y menu on a bag item has a first entry "Create auction" that presses the game's own Create Auction button (only when the button is enabled). Untested in the game.
 

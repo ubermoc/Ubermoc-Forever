@@ -1391,5 +1391,22 @@ r = L("""function()
 end""")()
 assert str(r) == "0.2,0.8,0.2,0.9,0.0,70%,nil", r
 print("Fading: mouse-over opacity raises only, hidden stays hidden: OK")
+
+# Y menu: the auction house's Create Auction button is found only when an item waits in a shown sell frame
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    local out = {}
+    out[#out + 1] = tostring(M.auctionPost())
+    local post = { IsEnabled = function() return true end }
+    local sf = { PostButton = post, IsShown = function() return true end, GetItem = function() return nil end }
+    AuctionHouseFrame = { IsShown = function() return true end, ItemSellFrame = sf }
+    out[#out + 1] = tostring(M.auctionPost())
+    sf.GetItem = function() return {} end
+    out[#out + 1] = tostring(M.auctionPost() == post)
+    AuctionHouseFrame = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "nil,nil,true", r
+print("Y menu: Create auction button found only with an item in the sell slot: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

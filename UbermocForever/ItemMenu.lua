@@ -331,6 +331,36 @@ end
 ----------------------------------------------------------------------
 -- The three kinds of menu
 ----------------------------------------------------------------------
+-- The auction house's Create Auction button, when an item is in its sell slot (AuctionHouseFrame.ItemSellFrame / CommoditiesSellFrame,
+-- Blizzard_AuctionHouseUI/Shared/Blizzard_AuctionHouseFrame.xml; PostButton, Blizzard_AuctionHouseSellFrame.xml:259). The click is a secure
+-- click on the game's own button, like "Pick up / move": nothing of ours is run in the click.
+function M.auctionPost()
+    local ah = _G.AuctionHouseFrame
+    if not (ah and ah.IsShown and ah:IsShown()) then return nil end
+    for _, key in ipairs({ "ItemSellFrame", "CommoditiesSellFrame" }) do
+        local sf = ah[key]
+        if sf and sf.IsShown and sf:IsShown() and sf.PostButton then
+            local ok, has = pcall(function() return sf.GetItem and sf:GetItem() end)
+            if ok and has then return sf.PostButton end
+        end
+    end
+    return nil
+end
+-- Runs before the click: says why nothing will happen when the game's button is greyed out.
+function M.auctionHint()
+    local post = M.auctionPost()
+    if post and post.IsEnabled and not post:IsEnabled() then say("Create Auction is not ready: set a price (and duration) first.") end
+end
+
+local function openAuction()
+    local post = M.auctionPost()
+    if not post then return false end
+    title:SetText("Auction")
+    reset()
+    add("Create auction", { type = "click", clickbutton = post }, M.auctionHint)
+    return true
+end
+
 local function openBag(btn)
     local bag, slot = bagSlot(btn)
     local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
@@ -357,18 +387,8 @@ local function openBag(btn)
         -- At the auction house the right-click on the bag item button puts the item in the sell slot (ContainerFrame.lua: AuctionHouseFrame:SetPostItem)
         local auction = AuctionHouseFrame and AuctionHouseFrame:IsShown()
         local bname = btn.GetName and btn:GetName()
-        -- an item is already in the sell slot: the game's own Create Auction button (PostButton of the shown sell frame) can be pressed from here
-        if auction then
-            for _, key in ipairs({ "ItemSellFrame", "CommoditiesSellFrame" }) do
-                local sf = AuctionHouseFrame[key]
-                local post = sf and sf.IsShown and sf:IsShown() and sf.PostButton
-                local okI, has = pcall(function() return sf.GetItem and sf:GetItem() end)
-                if post and okI and has and post:IsEnabled() then
-                    add("Create auction", { type = "click", clickbutton = post })
-                    break
-                end
-            end
-        end
+        local post = M.auctionPost()
+        if post then add("Create auction", { type = "click", clickbutton = post }, M.auctionHint) end
         if auction and bname and bname ~= "" then
             add("Sell at auction", { type = "macro", macrotext = "/click " .. bname .. " RightButton" })
         end
@@ -473,6 +493,19 @@ end
 function M.open(btn)
     if InCombatLockdown() then return false end
     local kind = M.kind(btn)
+    if not kind and M.auctionPost() then
+        -- not on an item, but an item waits in the auction sell slot: the menu offers Create auction
+        build()
+        M.from = btn
+        local okA, openedA = pcall(openAuction)
+        if okA and openedA then
+            menu:SetHeight(46 + count * 28)
+            M.place(btn)
+            menu:Show()
+            return true
+        end
+        M.from = nil
+    end
     if not kind then
         say("The options menu works on items in your bags, items you are wearing, and spells in the spellbook.")
         return false
