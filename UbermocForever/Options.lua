@@ -15,8 +15,8 @@ local ROW_H = 30
 local LIST_W = 680            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
-local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading)
-local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, chatBtn, chatVisBtn, chatFadeBtn   -- declared here, above every function that uses it
+local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading, 3 = chat)
+local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end
 function UF.optionsPage() return pageNo end   -- for the offline test   -- for the offline test
 
@@ -63,17 +63,13 @@ function UF.RefreshOptions()
         distBtn:SetText("Aim distance: " .. UF.Aim.distanceName())
         sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
     end
-    if chatBtn and UF.Chat then
-        chatBtn:SetText("Chat fade: " .. (UF.Chat.cfg().on and "On" or "Off"))
-        chatVisBtn:SetText("Visible: " .. UF.Chat.visibleName())
-        chatFadeBtn:SetText("Fade-out: " .. UF.Chat.fadeName())
-    end
     if barsBtn and UF.Cinematic then
         barsBtn:SetText("Bars: " .. UF.Cinematic.barsName())
         edgesBtn:SetText("Edges: " .. UF.Cinematic.edgesName())
     end
-    if pageBtn then pageBtn:SetText(pageNo == 2 and "Page: Fading" or "Page: Settings") end
+    if pageBtn then pageBtn:SetText(pageNo == 2 and "Page: Fading" or pageNo == 3 and "Page: Chat" or "Page: Settings") end
     if pageNo == 2 and UF.FadePage then UF.FadePage.refresh() end
+    if pageNo == 3 and UF.ChatPage then UF.ChatPage.refresh() end
     if cineBtn then cineBtn:SetText("Cinematic mode: " .. (d.cinema == false and "Off" or "On")) end
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
     -- A short name on the button, sized to fit: the full name is in the line to its left.
@@ -469,30 +465,20 @@ local function build()
         UF.RefreshOptions()
     end)
 
-    -- Third row: chat lines fading by themselves (Chat.lua).
-    local function chatButton(width, prev, click, tip)
-        local b = aimButton(width, prev, click, tip)
-        if not prev then b:ClearAllPoints(); b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -64) end
-        return b
-    end
-    chatBtn = chatButton(150, nil, function() UF.Chat.toggle() end, { "Chat fade", "Every chat line fades out by itself a few seconds after it appears, in every chat window. Off puts your old chat settings back." })
-    chatVisBtn = chatButton(130, chatBtn, function() UF.Chat.nextVisible() end, { "Visible", "How long a line stays before it starts to fade. Press to step through the choices." })
-    chatFadeBtn = chatButton(140, chatVisBtn, function() UF.Chat.nextFade() end, { "Fade-out", "How long the fade-out takes. Press to step through the choices." })
-
     -- Inside the inset: the four layers across the top, then the list.
     layerButtons = {}
     local widths = { 94, 134, 134, 160 }
     for i = 1, 4 do
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
         b:SetSize(widths[i], 24)
-        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -92)
+        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -64)
         else b:SetPoint("LEFT", layerButtons[i - 1], "RIGHT", 6, 0) end
         b:SetScript("OnClick", function() layer = i; UF.RefreshOptions() end)
         layerButtons[i] = b
     end
 
     local sf = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -124)
+    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -96)
     sf:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -28, 8)
     win.scroll = sf
     content = CreateFrame("Frame", nil, sf)
@@ -562,18 +548,20 @@ local function build()
     local function showPage(n)
         pageNo = n
         local fadeFrame = UF.FadePage.build(win, inset)
-        local one = { cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, chatBtn, chatVisBtn, chatFadeBtn, win.scroll }
+        local chatFrame = UF.ChatPage.build(win, inset)
+        local one = { cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, win.scroll }
         for _, b in ipairs(layerButtons) do one[#one + 1] = b end
         for _, f in ipairs(one) do if f then f:SetShown(n == 1) end end
         fadeFrame:SetShown(n == 2)
-        if n == 2 then
+        chatFrame:SetShown(n == 3)
+        if n ~= 1 then
             legend:Set({ PAD1 = "Press", PAD2 = "Back", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         else
             legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         end
         UF.RefreshOptions()
     end
-    pageBtn:SetScript("OnClick", function() showPage(pageNo == 1 and 2 or 1) end)
+    pageBtn:SetScript("OnClick", function() showPage(pageNo % 3 + 1) end)
     local function pickerOpen() return picker and picker:IsShown() end
     local function navRows()
         local out = {}
@@ -584,18 +572,20 @@ local function build()
         if pageNo == 2 then
             for _, r in ipairs(UF.FadePage.navRows()) do out[#out + 1] = r end
             return out
+        elseif pageNo == 3 then
+            for _, r in ipairs(UF.ChatPage.navRows()) do out[#out + 1] = r end
+            return out
         end
         out[2] = { cineBtn, barsBtn, edgesBtn }
         out[3] = { aimBtn, distBtn, sizeBtn }
-        out[4] = { chatBtn, chatVisBtn, chatFadeBtn }
-        out[5] = layerButtons
+        out[4] = layerButtons
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end
         end
         out[#out + 1] = { checks, reset }
         return out
     end
-    local function startRow() return (pickerOpen() or pageNo == 2) and 2 or 6 end
+    local function startRow() return (pickerOpen() or pageNo ~= 1) and 2 or 5 end
     local navMap = {
         PADDUP = function()
             -- the header's Page and controller buttons sit below the X: up goes to it
@@ -617,13 +607,13 @@ local function build()
             end
         end,
         -- the triggers go through the pages: settings, fading
-        PADLTRIGGER = function() if not pickerOpen() then showPage(pageNo == 1 and 2 or 1) end end,
-        PADRTRIGGER = function() if not pickerOpen() then showPage(pageNo == 1 and 2 or 1) end end,
+        PADLTRIGGER = function() if not pickerOpen() then showPage((pageNo + 1) % 3 + 1) end end,
+        PADRTRIGGER = function() if not pickerOpen() then showPage(pageNo % 3 + 1) end end,
         PADLSHOULDER = function() if not pickerOpen() and pageNo == 1 then layer = layer == 1 and 4 or layer - 1; UF.RefreshOptions() end end,
         PADRSHOULDER = function() if not pickerOpen() and pageNo == 1 then layer = layer == 4 and 1 or layer + 1; UF.RefreshOptions() end end,
         PAD2 = function() if pickerOpen() then picker:Hide() else win:Hide() end end,
         PAD3 = function()
-            if pickerOpen() or pageNo == 2 then return end
+            if pickerOpen() or pageNo ~= 1 then return end
             local f = Nav.focus
             local r = (f and f.navRow) or hovered
             if r then
@@ -634,7 +624,7 @@ local function build()
             end
         end,
         PAD4 = function()
-            if pickerOpen() or pageNo == 2 then return end
+            if pickerOpen() or pageNo ~= 1 then return end
             StaticPopup_Show("UBERMOCFOREVER_RESET", (UF.SETS[UF.activeSet()] or {}).name or "this controller")
         end,
     }
@@ -646,7 +636,7 @@ local function build()
         UF.RefreshOptions()
         navToken = Nav.Push(navMap)
         Nav.ClearFocus()
-        Nav.Move("DOWN", navRows, 6)   -- highlight the first row
+        Nav.Move("DOWN", navRows, 5)   -- highlight the first row
     end)
     win:SetScript("OnHide", function()
         picker:Hide()

@@ -19,6 +19,7 @@ local function cfg()
     if c.on == nil then c.on = true end
     c.visible = c.visible or 5
     c.fade = c.fade or 3
+    if c.reveal == nil then c.reveal = true end
     return c
 end
 Ch.cfg = cfg
@@ -61,17 +62,18 @@ end
 function Ch.toggle() local c = cfg(); c.on = not c.on; Ch.apply() end
 function Ch.nextVisible() local c = cfg(); c.visible = Ch.VISIBLE[(stepOf(Ch.VISIBLE, c.visible) % #Ch.VISIBLE) + 1]; Ch.apply() end
 function Ch.nextFade() local c = cfg(); c.fade = Ch.FADE[(stepOf(Ch.FADE, c.fade) % #Ch.FADE) + 1]; Ch.apply() end
+function Ch.toggleReveal() local c = cfg(); c.reveal = not c.reveal end
 function Ch.visibleName() return cfg().visible .. " s" end
 function Ch.fadeName() return cfg().fade .. " s" end
 
 -- A new line reveals a chat window that is faded on the Fading page; the edit box in use keeps the chat and itself shown until the
 -- message is sent (or given up), then they wait the same "visible" time and fade over the same fade-out time. Elements with no fading
 -- setting are left alone. Source: ChatFrameUtil.ActivateChat/DeactivateChat set ACTIVE_CHAT_EDIT_BOX (Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua).
-local SHOWN = { "chat", "chattabs" }
+local SHOWN = { "chat" }   -- the tabs are not touched: they follow only their own setting on the Chat page
 local function onLine()
     local c = cfg()
     local F = UF.Fade
-    if not (c.on and F) then return end
+    if not (c.on and c.reveal and F) then return end
     for _, k in ipairs(SHOWN) do F.reveal(k, c.visible, c.fade) end
 end
 Ch.onLine = onLine
@@ -94,7 +96,7 @@ function Ch.pollTyping()
     local now = (c.on and _G.ACTIVE_CHAT_EDIT_BOX ~= nil) and true or false
     if now == typing then return end
     typing = now
-    for _, k in ipairs({ "chat", "chattabs", "chatedit" }) do
+    for _, k in ipairs({ "chat", "chatedit" }) do
         F.hold(k, now)
         if not now then F.reveal(k, c.visible, c.fade) end   -- done typing: wait, then fade
     end
@@ -108,6 +110,7 @@ drv:SetScript("OnUpdate", function(_, dt)
     Ch.pollTyping()
 end)
 
+-- (the Chat page of the options window sets all of this: ChatPage.lua)
 -- The game builds and restyles its chat windows around login, so apply again a little later (as Ubermoc UI does).
 UF.OnLogin(function()
     Ch.apply()

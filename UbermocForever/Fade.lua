@@ -134,13 +134,6 @@ F.CATEGORIES = {
         E("tr_tasks", "Tasks", { "InitiativeTasksObjectiveTracker", "AdventureObjectiveTracker" }, PART),
         E("tr_widget", "Objective widgets", { "UIWidgetObjectiveTracker", "ObjectiveTrackerUIWidgetContainer" }, PART),
     } },
-    { name = "Chat", elements = {
-        E("chat", "Chat windows", { "ChatFrame1", "ChatFrame2", "ChatFrame3", "ChatFrame4" }),
-        E("chattabs", "Chat tabs", { "GeneralDockManager", "ChatFrame1Tab", "ChatFrame2Tab", "ChatFrame3Tab", "ChatFrame4Tab" }),
-        E("chatedit", "Chat edit box", { "ChatFrame1EditBox" }),
-        E("chatbtns", "Chat buttons", { "ChatFrame1ButtonFrame", "ChatFrameMenuButton", "ChatFrameChannelButton" }),
-        E("quickjoin", "Quick join button", { "QuickJoinToastButton" }),
-    } },
     { name = "Menus and bars", elements = {
         E("micro", "Micro menu", { "MicroMenuContainer" }),
         E("bags", "Bag bar", { "BagsBar" }),
@@ -185,6 +178,15 @@ F.CATEGORIES = {
         E("npfriendly", "Friendly nameplates", {}, { plates = "friendly" }),
         E("digsite", "Archaeology progress", { "ArcheologyDigsiteProgressBar" }),
     } },
+}
+
+-- The chat parts are set on the Chat page of the options window (ChatPage.lua), not on the Fading page: they are not in F.CATEGORIES.
+F.CHAT = {
+    E("chat", "Chat windows", { "ChatFrame1", "ChatFrame2", "ChatFrame3", "ChatFrame4" }),
+    E("chattabs", "Chat tabs", { "GeneralDockManager", "ChatFrame1Tab", "ChatFrame2Tab", "ChatFrame3Tab", "ChatFrame4Tab" }),
+    E("chatedit", "Chat edit box", { "ChatFrame1EditBox" }),
+    E("chatbtns", "Chat buttons", { "ChatFrame1ButtonFrame", "ChatFrameMenuButton", "ChatFrameChannelButton" }),
+    E("quickjoin", "Quick join button", { "QuickJoinToastButton" }),
 }
 
 local FADE_TIME = 0.4
@@ -299,6 +301,7 @@ end
 ----------------------------------------------------------------------
 local byKey = {}
 for _, c in ipairs(F.CATEGORIES) do for _, e in ipairs(c.elements) do byKey[e.key] = e end end
+for _, e in ipairs(F.CHAT) do byKey[e.key] = e end
 F.byKey = byKey
 
 -- A frame by name or by a dotted path ("MainActionBar.EndCaps.LeftEndCap"); nil when this game does not have it.
@@ -462,6 +465,10 @@ function F.report()
             if F.found(e) > 0 then have = have + 1 else missing[#missing + 1] = e.label end
         end
     end
+    for _, e in ipairs(F.CHAT) do
+        total = total + 1
+        if F.found(e) > 0 then have = have + 1 else missing[#missing + 1] = e.label end
+    end
     UF.say("Fading: " .. have .. " of " .. total .. " elements found in this game.")
     if #missing > 0 then UF.say("Not available: " .. table.concat(missing, ", ") .. ".") end
 end
@@ -499,7 +506,16 @@ function F.applyToList(key)
 end
 
 -- Opacity put back for everything (the options page's "Reset all", and when the addon is switched off).
-function F.resetAll() UF.DB().fade = {}; F.evaluate() end
+function F.resetAll()   -- the Fading page's elements; the chat parts have their own page and are kept
+    local s = store()
+    for key in pairs(s) do
+        local chat = false
+        for _, e in ipairs(F.CHAT) do if e.key == key then chat = true end end
+        if not chat then s[key] = nil end
+    end
+    F.evaluate()
+end
+function F.resetChat() local s = store(); for _, e in ipairs(F.CHAT) do s[e.key] = nil end; F.evaluate() end
 
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED",

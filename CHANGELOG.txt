@@ -1,3 +1,8 @@
+UbermocForever 1.3.55
+- Added: a Chat page (third page of the options window; the Page button and the triggers go through Settings, Fading and Chat). It has chat fade On/Off, Visible, Fade-out and Reveal on message, and the opacity of each chat part (window, tabs, edit box, buttons, quick join) in the three situations, plus Hide for good.
+- Changed: the chat parts are gone from the Fading page (their saved values are kept and now edited on the Chat page; Reset all fading leaves them alone). The chat tabs are never opened by a new message or by typing: they follow only their own setting.
+- Untested in the game.
+
 UbermocForever 1.3.54
 - Added: a chat window (and its tabs) that is faded on the Fading page appears fully when a new line arrives, stays for the Visible time, then fades over the Fade-out time. While you are typing (the edit box in use), the chat window, its tabs and the edit box stay fully shown until the message is sent or given up; then the same wait and fade follow. Needs the chat elements to have a fading setting; untested in the game.
 

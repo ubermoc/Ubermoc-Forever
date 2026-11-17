@@ -810,13 +810,13 @@ r = L("""function()
     local out = {}
     out[#out + 1] = tostring(F._revealed("chat"))
     Ch.onLine()                                   -- a line arrives
-    out[#out + 1] = tostring(F._revealed("chat")) .. tostring(F._revealed("chattabs"))
+    out[#out + 1] = tostring(F._revealed("chat")) .. tostring(F._revealed("chattabs"))   -- the tabs are not opened by a message
     now = now + 4.9; out[#out + 1] = tostring(F._revealed("chat"))
     now = now + 0.2; out[#out + 1] = tostring(F._revealed("chat"))           -- after 5 s it lets go
     ACTIVE_CHAT_EDIT_BOX = {}                     -- the edit box is opened
     Ch.pollTyping()
     now = now + 100
-    out[#out + 1] = tostring(F._revealed("chatedit")) .. tostring(F._revealed("chat"))   -- still held a long time later
+    out[#out + 1] = tostring(F._revealed("chatedit")) .. tostring(F._revealed("chat")) .. tostring(F._revealed("chattabs"))   -- held a long time later; the tabs never
     ACTIVE_CHAT_EDIT_BOX = nil                    -- message sent
     Ch.pollTyping()
     out[#out + 1] = tostring(F._revealed("chatedit"))
@@ -827,7 +827,22 @@ r = L("""function()
     GetTime = realTime
     return table.concat(out, ",")
 end""")()
-assert str(r) == "false,truetrue,true,false,truetrue,true,true,false", r
+assert str(r) == "false,truefalse,true,false,truetruefalse,true,true,false", r
+# Chat page: the chat parts are not on the Fading page, they are on the third page
+r = L("""function()
+    local F = UbermocForever.Fade
+    local out = {}
+    for _, c in ipairs(F.CATEGORIES) do for _, e in ipairs(c.elements) do if e.key:find("^chat") or e.key == "quickjoin" then out[#out + 1] = e.key end end end
+    out[#out + 1] = #F.CHAT .. tostring(F.byKey.chattabs ~= nil)
+    F.set("chat", "idle", 0.3); F.set("minimap", "idle", 0.3)
+    F.resetAll()
+    out[#out + 1] = tostring(F.value("chat", "idle")) .. tostring(F.value("minimap", "idle"))
+    F.resetChat()
+    out[#out + 1] = tostring(F.value("chat", "idle"))
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "5true,0.3nil,nil", r
+print("Chat page: chat parts left the Fading page, Reset all keeps them: OK")
 print("Chat: new lines reveal the chat, the edit box in use holds it, then wait and fade: OK")
 # Cinematic: nameplates are put back, but not during combat (the game does not allow it)
 r = L("""function()
@@ -924,12 +939,20 @@ r = L("""function()
     UbermocForeverDB.fade = nil
     local page = UF.FadePage.build(UIParent, UIParent)
     local rows0 = #UF.FadePage.navRows()
-    -- row layout: 14 headers + the first list's 5 elements + hide + 3 states + copy/paste + apply + reset + reset all
+    -- row layout: 13 headers (chat has its own page now) + the first list's 5 elements + hide + 3 states + copy/paste + apply + reset + reset all
     return tostring(page ~= nil) .. "," .. rows0
 end""")()
-assert str(r) == "true,28", r
+assert str(r) == "true,27", r
 print("Fading page builds with one list open: OK")
-# Options window: the triggers go through the pages (settings, fading)
+r = L("""function()
+    local UF = UbermocForever
+    local page = UF.ChatPage.build(UIParent, UIParent)
+    local rows = UF.ChatPage.navRows()
+    return tostring(page ~= nil) .. "," .. #rows .. "," .. #rows[1] .. "," .. #rows[2]
+end""")()
+assert str(r) == "true,6,4,5", r
+print("Chat page builds: message buttons, five parts, three situations, hide and reset: OK")
+# Options window: the triggers go through the pages (settings, fading, chat)
 r = L("""function()
     local UF = UbermocForever
     local w = UbermocForeverOptions
@@ -946,7 +969,7 @@ r = L("""function()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,1,2,1", r
+assert str(r) == "1,2,3,2,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
