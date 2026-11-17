@@ -268,7 +268,7 @@ nav = L("""function()
     -- back up to the third row, then A on it, then B
     for i = 1, 60 do press("PADDUP") end
     local top = where()
-    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, cinematic row, aim row, chat row, layers, first row ... settle on a list row
+    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, cinematic row, aim row, vendor row, layers, first row ... settle on a list row
     local row = where()
     press("PAD1")                                                  -- A on a row opens the picker
     local inPicker = (UF.Nav.focus ~= nil) and (UF.Nav.focus.navRow == nil) and (UF.Nav.focus.navScroll ~= nil)
@@ -1534,6 +1534,36 @@ r = L("""function()
 end""")()
 assert str(r) == "321,[],321,[],false,[]", r
 print("Fast loot: all slots at once, not as master looter, follows Auto Loot and the option: OK")
+
+# Vendor: the guild bank pays a repair only when allowed and both the allowance and the bank cover it, else your own money
+r = L("""function()
+    local V = UbermocForever.Vendor
+    local p = V.payer
+    local out = {
+        tostring(p(500, true, true, true, -1, 1000, 0)),     -- no allowance limit, the bank has enough
+        tostring(p(500, true, true, true, 400, 1000, 900)),   -- allowance too small: own money
+        tostring(p(500, true, true, true, 600, 300, 900)),    -- bank too poor: own money
+        tostring(p(500, true, true, false, -1, 1000, 900)),   -- not allowed to repair from the bank
+        tostring(p(500, false, true, true, -1, 1000, 900)),   -- Guild bank first is off
+        tostring(p(500, true, false, true, -1, 1000, 100)),   -- no guild, not enough money
+    }
+    local paid
+    local old = { CanMerchantRepair, GetRepairAllCost, IsInGuild, CanGuildBankRepair, GetGuildBankWithdrawMoney, GetGuildBankMoney, GetMoney, RepairAllItems }
+    CanMerchantRepair = function() return true end
+    GetRepairAllCost = function() return 500, true end
+    IsInGuild = function() return true end
+    CanGuildBankRepair = function() return true end
+    GetGuildBankWithdrawMoney = function() return -1 end
+    GetGuildBankMoney = function() return 5000 end
+    GetMoney = function() return 900 end
+    RepairAllItems = function(g) paid = g end
+    V.repair(); out[#out + 1] = tostring(paid)
+    V.toggleGuild(); V.repair(); out[#out + 1] = tostring(paid); V.toggleGuild()
+    CanMerchantRepair, GetRepairAllCost, IsInGuild, CanGuildBankRepair, GetGuildBankWithdrawMoney, GetGuildBankMoney, GetMoney, RepairAllItems = table.unpack(old)
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "guild,self,self,self,self,nil,true,false", r
+print("Vendor: repairs paid by the guild bank first when it can, else your own money: OK")
 
 # Fading page: elements the gamepad layout hides for good are not listed
 r = L("""function()

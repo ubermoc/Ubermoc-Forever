@@ -16,7 +16,7 @@ local LIST_W = 680            -- width of the rows inside the inset (the inset i
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
 local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading, 3 = chat, 4 = bars)
-local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, lootBtn   -- declared here, above every function that uses it
+local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end
 function UF.optionsPage() return pageNo end   -- for the offline test   -- for the offline test
 
@@ -64,6 +64,13 @@ function UF.RefreshOptions()
         sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
     end
     if lootBtn and UF.Loot then lootBtn:SetText("Fast loot: " .. (UF.Loot.enabled() and "On" or "Off")) end
+    if sellBtn and UF.Vendor then
+        local v = UF.Vendor.cfg()
+        sellBtn:SetText("Sell junk: " .. (v.sell and "On" or "Off"))
+        repairBtn:SetText("Repair: " .. (v.repair and "On" or "Off"))
+        guildBtn:SetText("Guild bank first: " .. (v.guild and "On" or "Off"))
+        if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
+    end
     if barsBtn and UF.Cinematic then
         barsBtn:SetText("Bars: " .. UF.Cinematic.barsName())
         edgesBtn:SetText("Edges: " .. UF.Cinematic.edgesName())
@@ -429,7 +436,8 @@ local function build()
     local function aimButton(width, prev, click, tip)
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
         b:SetSize(width, 22)
-        if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36) end
+        if prev == "row3" then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -64)
+        elseif prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36) end
         UF.cycleButton(b, click, UF.RefreshOptions)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
@@ -443,6 +451,10 @@ local function build()
     aimBtn = aimButton(120, nil, function() UF.Aim.toggle() end, { "Aim dot", "A white dot shows where a ground spell (Heroic Leap, Blizzard, Rain of Fire) will land, only while you are aiming it." })
     distBtn = aimButton(180, aimBtn, UF.Aim.nextDistance, { "Aim distance", "How far from your character the aim point rests (higher on the screen is further). Exact yards cannot be set. A steps forward, X steps back." })
     sizeBtn = aimButton(100, distBtn, UF.Aim.nextSize, { "Dot size", "Small, medium or large." })
+    -- Third row: selling junk and repairing at a vendor (Vendor.lua).
+    sellBtn = aimButton(130, "row3", function() UF.Vendor.toggleSell() end, { "Sell junk", "When a vendor opens, every grey item in your bags is sold (the game's own Sell all junk). A chat line says what it made." })
+    repairBtn = aimButton(120, sellBtn, function() UF.Vendor.toggleRepair() end, { "Repair", "When a vendor that repairs opens, all your gear is repaired. A chat line says what it cost." })
+    guildBtn = aimButton(180, repairBtn, function() UF.Vendor.toggleGuild() end, { "Guild bank first", "Repairs are paid from the guild bank when your guild lets you and the bank and your daily allowance cover the whole cost; otherwise from your own money." })
     lootBtn = aimButton(130, sizeBtn, function() UF.Loot.toggle() end, { "Fast loot", "With the game's Auto Loot on, everything is taken the moment the loot opens, and the loot window only shows if something is left (full bags, an item that asks first). Not while you are the master looter. The game's Auto Loot is switched on once for each character." })
     info:SetPoint("RIGHT", pageBtn, "LEFT", -8, 0)
 
@@ -474,14 +486,14 @@ local function build()
     for i = 1, 4 do
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
         b:SetSize(widths[i], 24)
-        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -64)
+        if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -92)
         else b:SetPoint("LEFT", layerButtons[i - 1], "RIGHT", 6, 0) end
         b:SetScript("OnClick", function() layer = i; UF.RefreshOptions() end)
         layerButtons[i] = b
     end
 
     local sf = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -96)
+    sf:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -124)
     sf:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -28, 8)
     win.scroll = sf
     content = CreateFrame("Frame", nil, sf)
@@ -553,7 +565,7 @@ local function build()
         local fadeFrame = UF.FadePage.build(win, inset)
         local chatFrame = UF.ChatPage.build(win, inset)
         local barsFrame = UF.BarsPage.build(win, inset)
-        local one = { cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, lootBtn, win.scroll }
+        local one = { cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, win.scroll }
         for _, b in ipairs(layerButtons) do one[#one + 1] = b end
         for _, f in ipairs(one) do if f then f:SetShown(n == 1) end end
         fadeFrame:SetShown(n == 2)
@@ -599,14 +611,15 @@ local function build()
         end
         out[2] = { cineBtn, barsBtn, edgesBtn }
         out[3] = { aimBtn, distBtn, sizeBtn, lootBtn }
-        out[4] = layerButtons
+        out[4] = { sellBtn, repairBtn, guildBtn }
+        out[5] = layerButtons
         for _, r in ipairs(rows) do
             if r:IsShown() then out[#out + 1] = { r.btn } end
         end
         out[#out + 1] = { checks, reset }
         return out
     end
-    local function startRow() return (pickerOpen() or pageNo ~= 1) and 2 or 5 end
+    local function startRow() return (pickerOpen() or pageNo ~= 1) and 2 or 6 end
     local navMap = {
         PADDUP = function()
             -- the header's Page and controller buttons sit below the X: up goes to it
@@ -663,7 +676,7 @@ local function build()
         UF.RefreshOptions()
         navToken = Nav.Push(navMap)
         Nav.ClearFocus()
-        Nav.Move("DOWN", navRows, 5)   -- highlight the first row
+        Nav.Move("DOWN", navRows, startRow())   -- highlight the first row (the bind list)
     end)
     win:SetScript("OnHide", function()
         picker:Hide()
