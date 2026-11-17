@@ -42,6 +42,7 @@ function BP.refresh()
     rows.gap:SetText("Gap: " .. c.gap)
     rows.raise:SetText("Height: " .. c.raise)
     rows.caps:SetText("End caps: " .. (c.keepCaps and "Shown" or "Hidden"))
+    rows.extras:SetText("Other binds: " .. (c.extras and "Shown" or "Hidden"))
     rows.color:SetText("Face buttons: " .. (c.faceColor and "Colored" or "Black and white"))
     for _, b in ipairs(pickBtns) do
         local fs = b:GetFontString()
@@ -90,6 +91,9 @@ function BP.build(parent, inset)
     rows.raise = button(page, 140); rows.raise:SetPoint("LEFT", rows.gap, "RIGHT", 6, 0)
     rows.caps = button(page, 190); rows.caps:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -90)
     rows.color = button(page, 250); rows.color:SetPoint("LEFT", rows.caps, "RIGHT", 6, 0)
+    rows.extras = button(page, 190); rows.extras:SetPoint("LEFT", rows.color, "RIGHT", 6, 0)
+    rows.extras:SetScript("OnClick", function() B.toggleExtras(); BP.refresh() end)
+    tip(rows.extras, "Other binds", "Shown puts every other bind of the combination you hold (jump, targeting, interact, map...) in the row too, as a slot with its name and the controller button above it. The bars themselves keep their 12 buttons.")
     rows.caps:SetScript("OnClick", function() B.toggleCaps(); BP.refresh() end)
     rows.color:SetScript("OnClick", function() B.toggleColor(); BP.refresh() end)
     tip(rows.caps, "End caps", "Shown keeps the dragons left and right of the bar and hugs them to the ends of the buttons shown on the layer you hold. They are Edit Mode parts: one you moved there stays where you put it. Hidden (to start with) hides them with the rest of the game's art.")
@@ -163,7 +167,7 @@ function BP.navRows()
     if not page then return out end
     out[1] = { rows.on, rows.empty, rows.edit }
     out[2] = { rows.size, rows.gap, rows.raise }
-    out[3] = { rows.caps, rows.color }
+    out[3] = { rows.caps, rows.color, rows.extras }
     local picks = {}
     for _, b in ipairs(pickBtns) do picks[#picks + 1] = b end
     out[4] = picks

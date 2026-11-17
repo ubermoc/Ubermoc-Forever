@@ -43,6 +43,7 @@ local function cfg()
     if c.on == nil then c.on = false end
     if c.hideEmpty == nil then c.hideEmpty = true end
     if c.keepCaps == nil then c.keepCaps = false end
+    if c.extras == nil then c.extras = true end          -- other binds of the held combination (jump, target...) get a slot too
     if c.faceColor == nil then c.faceColor = false end   -- the face button pictures are black and white to start with
     c.size = c.size or 44
     c.gap = c.gap or 6
@@ -93,6 +94,29 @@ function B.padKey(i, n)
     return any
 end
 
+-- The binds of layer i that are not one of the layer's action buttons (jump, interact, targeting, map...): { pad = "PADDUP", name = "Jump" } in
+-- the options' order. getAction(key) -> the command bound to the key (GetBindingAction without overrides), getName(cmd) -> its display name.
+-- Commands of the action bars (any ACTIONBUTTON / MULTIACTIONBAR) are left out: their buttons are in the row already.
+function B.extras(i, getAction, getName)
+    local out = {}
+    local prefix = PREFIXES[i] or ""
+    for _, pad in ipairs(UF.PAD_ORDER or {}) do
+        local cmd = getAction(prefix .. pad)
+        if type(cmd) == "string" and cmd ~= "" and not cmd:find("^ACTIONBUTTON") and not cmd:find("^MULTIACTIONBAR") and not cmd:find("^CLICK ") then
+            local nm = getName and getName(cmd)
+            if type(nm) ~= "string" or nm == "" then nm = cmd end
+            out[#out + 1] = { pad = pad, name = nm }
+        end
+    end
+    return out
+end
+local function realExtras(i)
+    if not GetBindingAction then return {} end
+    return B.extras(i, function(k) return GetBindingAction(k, false) end, function(cmd)
+        return GetBindingName and GetBindingName(cmd) or nil
+    end)
+end
+
 local function stepOf(list, v)
     for i, x in ipairs(list) do if x == v then return i end end
     return 1
@@ -102,6 +126,7 @@ function B.nextGap() local c = cfg(); c.gap = B.GAPS[(stepOf(B.GAPS, c.gap) % #B
 function B.nextRaise() local c = cfg(); c.raise = B.RAISES[(stepOf(B.RAISES, c.raise) % #B.RAISES) + 1]; B.layoutSoon() end
 function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end end
 function B.toggleCaps() local c = cfg(); c.keepCaps = not c.keepCaps; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end
+function B.toggleExtras() local c = cfg(); c.extras = not c.extras; B.layoutSoon() end
 function B.toggleColor() local c = cfg(); c.faceColor = not c.faceColor; B.layoutSoon() end
 function B.toggleEmpty() local c = cfg(); c.hideEmpty = not c.hideEmpty; B.layoutSoon() end
 
@@ -242,6 +267,10 @@ function B.refresh()
     if layers[held] then B.updateCaps(layers[held], fade) end
     for i, L in ipairs(layers) do
         local active = (i == held)
+        for _, e in ipairs(L.extras or {}) do
+            e.frame:SetAlpha(active and 1 or 0)
+            e.label:SetAlpha(active and 1 or 0)
+        end
         for _, btn in ipairs(L.buttons) do
             local shown = (active and L.shown[btn]) and 1 or 0
             local a = shown * fade
@@ -301,6 +330,21 @@ local function labelFor(k)
     end
     return l
 end
+local extraPool = {}
+local function extraFor(k)
+    local f = extraPool[k]
+    if not f then
+        f = CreateFrame("Frame", nil, root)
+        f.bg = f:CreateTexture(nil, "BACKGROUND")
+        f.bg:SetAllPoints(f)
+        f.fs = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f.fs:SetPoint("CENTER", f, "CENTER", 0, 0)
+        f.fs:SetJustifyH("CENTER")
+        extraPool[k] = f
+    end
+    return f
+end
+
 local function paintLabel(l, pad, x, s, colored)
     local markup = UF.glyph(pad)
     local atlas = B.glyphAtlas(markup)
@@ -341,10 +385,18 @@ function B.layout()
     end
     layers = {}
     local labelN = 0
-    local W = B.rowWidth(PER_BAR, s, g)
+    local extraN = 0
+    local extrasOf = {}
+    local widest = PER_BAR
+    for i = 1, #BAR_BUTTONS do
+        extrasOf[i] = c.extras and realExtras(i) or {}
+        local n = #layerButtons(i) + #extrasOf[i]
+        if n > widest then widest = n end
+    end
+    local W = B.rowWidth(widest, s, g)
     for i = 1, #BAR_BUTTONS do
         local all = layerButtons(i)
-        local L = { buttons = all, shown = {}, labels = {} }
+        local L = { buttons = all, shown = {}, labels = {}, extras = {} }
         local shownList, hiddenList = {}, {}
         local slotOf = {}
         for n = 1, PER_BAR do
@@ -355,8 +407,9 @@ function B.layout()
             if c.hideEmpty and not carrying and isEmpty(btn) then hiddenList[#hiddenList + 1] = btn
             else shownList[#shownList + 1] = btn end
         end
-        local xs = B.rowX(#shownList, s, g, W)
-        if #shownList > 0 then L.x0, L.x1 = xs[1], xs[#shownList] + s end   -- where the shown buttons start and end (for the end caps)
+        local ex = extrasOf[i]
+        local xs = B.rowX(#shownList + #ex, s, g, W)
+        if #shownList + #ex > 0 then L.x0, L.x1 = xs[1], xs[#shownList + #ex] + s end   -- where the shown buttons start and end (for the end caps)
         for k, btn in ipairs(shownList) do
             L.shown[btn] = true
             btnPos[btn] = { x = xs[k], s = s }
@@ -369,11 +422,25 @@ function B.layout()
                 L.labels[btn] = l
             end
         end
+        for k, e in ipairs(ex) do
+            local x = xs[#shownList + k]
+            extraN = extraN + 1
+            local f = extraFor(extraN)
+            f:ClearAllPoints(); f:SetPoint("BOTTOMLEFT", root, "BOTTOMLEFT", x, 0); f:SetSize(s, s)
+            f.bg:SetAtlas("ui-hud-actionbar-iconframe-slot")
+            f.fs:SetWidth(s - 4); f.fs:SetText(e.name)
+            f:Show()
+            labelN = labelN + 1
+            local l = labelFor(labelN)
+            paintLabel(l, e.pad, x, s, c.faceColor)
+            L.extras[#L.extras + 1] = { frame = f, label = l }
+        end
         for _, btn in ipairs(hiddenList) do btnPos[btn] = { x = -5000, s = s } end   -- out of sight and out of the mouse's way
         for _, btn in ipairs(all) do take(btn); layerOf[btn] = i; dress(btn, true) end
         layers[i] = L
     end
     for k = labelN + 1, #labelPool do labelPool[k]:Hide() end
+    for k = extraN + 1, #extraPool do extraPool[k]:Hide() end
     root:SetSize(math.max(W, 10), s)
     root:ClearAllPoints()
     root:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, c.raise)

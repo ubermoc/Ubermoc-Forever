@@ -995,7 +995,7 @@ r = L("""function()
     function root:GetFrameLevel() return 5 end
     local realCF = CreateFrame
     CreateFrame = function(kind, name, ...) if name == "UbermocForeverGamepadBar" then return root end return realCF(kind, name, ...) end
-    UbermocForeverDB.gbar = { on = true, keepCaps = true }
+    UbermocForeverDB.gbar = { on = true, keepCaps = true, extras = false }
     local function cap()
         local f = { calls = {}, ignore = false, alpha = 1 }
         function f:IsInDefaultPosition() return true end
@@ -1040,7 +1040,7 @@ print("Gamepad layout: layers, even centring, empty buttons removed, put back wh
 r = L("""function()
     local UF = UbermocForever
     local F, B = UF.Fade, UF.GamepadBar
-    UbermocForeverDB.fade = nil; UbermocForeverDB.gbar = { on = true }
+    UbermocForeverDB.fade = nil; UbermocForeverDB.gbar = { on = true, extras = false }
     local idle = { idle = true }
     local out = {}
     F.setMouse(0.8)                                              -- the universal mouse-over opacity is on
@@ -1070,7 +1070,7 @@ r = L("""function()
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,8,3,2,4,Normal50%", r
+assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,8,3,3,4,Normal50%", r
 print("Gamepad layout 2: forced art no mouse-over, Edit Mode suspends, bound buttons, Bars page: OK")
 # Gamepad layout, part three: cooldown look, range state, where the micro menu / bags / XP bar start
 r = L("""function()
@@ -1408,5 +1408,23 @@ r = L("""function()
 end""")()
 assert str(r) == "nil,nil,true", r
 print("Y menu: Create auction button found only with an item in the sell slot: OK")
+
+# Gamepad layout: other binds of the held combination get a slot
+r = L("""function()
+    local B = UbermocForever.GamepadBar
+    local binds = { PADDUP = "TARGETNEARESTENEMY", ["SHIFT-PADLSTICK"] = "JUMP", PAD3 = "ACTIONBUTTON1", PAD1 = "MULTIACTIONBAR1BUTTON2",
+                    PADRSTICK = "CLICK Foo:LeftButton", PADBACK = "TOGGLEWORLDMAP" }
+    local function act(k) return binds[k] or "" end
+    local function nm(c) return c == "JUMP" and "Jump" or nil end
+    local a = B.extras(1, act, nm)
+    local b = B.extras(2, act, nm)
+    local out = {}
+    for _, e in ipairs(a) do out[#out + 1] = e.pad .. "=" .. e.name end
+    out[#out + 1] = "|"
+    for _, e in ipairs(b) do out[#out + 1] = e.pad .. "=" .. e.name end
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "PADDUP=TARGETNEARESTENEMY,PADBACK=TOGGLEWORLDMAP,|,PADLSTICK=Jump", r
+print("Gamepad layout: other binds of the held combination: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
