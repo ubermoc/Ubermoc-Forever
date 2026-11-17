@@ -1445,5 +1445,19 @@ r = L("""function()
 end""")()
 assert str(r) == "0,4,0", r
 print("Gamepad layout: switched-off bar with actions found: OK")
+
+# Gamepad layout: buttons of the action bars 5 to 8 bound on the held combination
+r = L("""function()
+    local B = UbermocForever.GamepadBar
+    local binds = { PADDUP = "MULTIACTIONBAR5BUTTON3", ["SHIFT-PADDDOWN"] = "MULTIACTIONBAR4BUTTON1", PAD3 = "MULTIACTIONBAR1BUTTON2", PAD1 = "MULTIACTIONBAR9BUTTON1" }
+    local function act(k) return binds[k] or "" end
+    local out = {}
+    for _, e in ipairs(B.moreButtons(1, act)) do out[#out + 1] = e.pad .. "=" .. e.name end
+    out[#out + 1] = "|"
+    for _, e in ipairs(B.moreButtons(2, act)) do out[#out + 1] = e.pad .. "=" .. e.name end
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "PADDUP=MultiBar5Button3,|,PADDDOWN=MultiBarLeftButton1", r
+print("Gamepad layout: buttons of bars 5 to 8: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

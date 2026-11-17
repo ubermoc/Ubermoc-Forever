@@ -117,6 +117,23 @@ local function realExtras(i)
     end)
 end
 
+-- Action bars 5 to 8 (the game's MULTIACTIONBAR4..7 bindings): a controller key of the held combination bound to one of their buttons shows that real
+-- button in the row too. Returns { { name = "MultiBar5Button3", pad = "PADDUP" }, ... } in the options' order.
+local MORE_BARS = { [4] = "MultiBarLeftButton", [5] = "MultiBar5Button", [6] = "MultiBar6Button", [7] = "MultiBar7Button" }
+function B.moreButtons(i, getAction)
+    local out = {}
+    local prefix = PREFIXES[i] or ""
+    for _, pad in ipairs(UF.PAD_ORDER or {}) do
+        local cmd = getAction(prefix .. pad)
+        if type(cmd) == "string" then
+            local bar, n = cmd:match("^MULTIACTIONBAR(%d+)BUTTON(%d+)$")
+            local frame = bar and MORE_BARS[tonumber(bar)]
+            if frame then out[#out + 1] = { name = frame .. n, pad = pad } end
+        end
+    end
+    return out
+end
+
 local function stepOf(list, v)
     for i, x in ipairs(list) do if x == v then return i end end
     return 1
@@ -408,12 +425,19 @@ function B.layout()
     local widest = PER_BAR
     for i = 1, #BAR_BUTTONS do
         extrasOf[i] = c.extras and realExtras(i) or {}
-        local n = #layerButtons(i) + #extrasOf[i]
+        local n = #layerButtons(i) + #extrasOf[i] + ((c.extras and GetBindingAction) and #B.moreButtons(i, function(k) return GetBindingAction(k, false) end) or 0)
         if n > widest then widest = n end
     end
     local W = B.rowWidth(widest, s, g)
     for i = 1, #BAR_BUTTONS do
         local all = layerButtons(i)
+        local padOver = {}
+        if c.extras and GetBindingAction then
+            for _, m in ipairs(B.moreButtons(i, function(k) return GetBindingAction(k, false) end)) do
+                local mb = _G[m.name]
+                if mb then all[#all + 1] = mb; padOver[mb] = m.pad end
+            end
+        end
         local L = { buttons = all, shown = {}, labels = {}, extras = {} }
         local shownList, hiddenList = {}, {}
         local slotOf = {}
@@ -432,7 +456,7 @@ function B.layout()
             L.shown[btn] = true
             btnPos[btn] = { x = xs[k], s = s }
             -- which controller button this one is bound to: the game's own button picture, in the corner of the button
-            local pad = B.padKey(i, slotOf[btn])
+            local pad = padOver[btn] or B.padKey(i, slotOf[btn])
             if pad then
                 labelN = labelN + 1
                 local l = labelFor(labelN)

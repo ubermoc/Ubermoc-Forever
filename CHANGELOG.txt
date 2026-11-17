@@ -1,3 +1,6 @@
+UbermocForever 1.3.90
+- Added: gamepad layout: a controller key of the held combination bound to a button of action bars 5 to 8 shows that real button (with its icon) in the row too, as part of "Other binds". Untested in the game.
+
 UbermocForever 1.3.89
 - Added: when the gamepad layout is on and an action bar (2 to 4) that has actions on it is switched off in the game's Gameplay > Action Bars settings, the game's own question window says so (once per login) and offers "Open settings" (opens that page with the game's own Settings.OpenToCategory, the call the game's Edit Mode makes itself), "Not now" or "Don't ask again". Nothing is switched on by the addon. Untested in the game.
 
