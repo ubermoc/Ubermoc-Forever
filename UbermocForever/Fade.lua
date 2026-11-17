@@ -197,6 +197,12 @@ local function plain(v)
 end
 
 F._plain = plain   -- for the offline test
+-- The gamepad bar (GamepadBar.lua) has its own opacity, set on the Bars page, not on the Fading page: it is not in F.CATEGORIES.
+-- Its frame is our own root frame: the buttons follow its opacity because GamepadBar multiplies by it.
+F.GBAR = {
+    E("gbar", "Gamepad bar", { "UbermocForeverGamepadBar" }),
+}
+
 local FADE_TIME = 0.4
 local STEP = 0.1   -- the page's - and + buttons move the value by this much
 
@@ -317,6 +323,7 @@ end
 local byKey = {}
 for _, c in ipairs(F.CATEGORIES) do for _, e in ipairs(c.elements) do byKey[e.key] = e end end
 for _, e in ipairs(F.CHAT) do byKey[e.key] = e end
+for _, e in ipairs(F.GBAR) do byKey[e.key] = e end
 F.byKey = byKey
 
 -- A frame by name or by a dotted path ("MainActionBar.EndCaps.LeftEndCap"); nil when this game does not have it.
@@ -432,6 +439,35 @@ end
 local function revealed(key) return held[key] or (revealUntil[key] and GetTime() < revealUntil[key]) end
 F._revealed = function(key) return revealed(key) and true or false end   -- for the offline test
 
+-- Is the game's Edit Mode open? Then no fading is applied (what is hidden must be seen to be moved).
+function F.editing()
+    local m = _G.EditModeManagerFrame
+    if m and m.IsShown then
+        local ok, v = pcall(m.IsShown, m)
+        return ok and not (issecretvalue and issecretvalue(v)) and v == true
+    end
+    return false
+end
+
+-- Elements that are hidden for good by something else (the gamepad layout hides the game's bottom art): key -> function returning true.
+-- The universal mouse-over opacity and the reveals do not lift them.
+F.forced = {}
+
+-- The opacity wanted for an element right now, everything taken into account (isOver may be a function, asked only when needed).
+function F.target(key, active, isOver)
+    if F.editing() then return nil end
+    local fc = F.forced[key]
+    if fc and fc() then return 0 end
+    local goal = F.goal(key, active)
+    if goal ~= nil and F.mouse() ~= nil and goal < F.mouse() then
+        local over = isOver
+        if type(isOver) == "function" then over = isOver() end
+        goal = F.wanted(key, active, over)
+    end
+    if goal ~= nil and not F.hidden(key) and revealed(key) then goal = 1 end
+    return goal
+end
+
 local reapply = 0
 local function tick(self, dt)
     local active = F.active()
@@ -441,9 +477,7 @@ local function tick(self, dt)
     if force then reapply = 0 end
     local any = false
     for key in pairs(byKey) do
-        local goal = F.goal(key, active)
-        if goal ~= nil and F.mouse() ~= nil and goal < F.mouse() then goal = F.wanted(key, active, hovering(key)) end
-        if goal ~= nil and not F.hidden(key) and revealed(key) then goal = 1 end
+        local goal = F.target(key, active, function() return hovering(key) end)
         local c = cur[key] or 1
         if goal ~= nil or touchedKeys[key] then
             any = true
@@ -526,6 +560,7 @@ function F.resetAll()   -- the Fading page's elements; the chat parts have their
     for key in pairs(s) do
         local chat = false
         for _, e in ipairs(F.CHAT) do if e.key == key then chat = true end end
+        for _, e in ipairs(F.GBAR) do if e.key == key then chat = true end end
         if not chat then s[key] = nil end
     end
     F.evaluate()

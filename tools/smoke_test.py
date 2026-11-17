@@ -1015,6 +1015,42 @@ r = L("""function()
 end""")()
 assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,CENTERfalse1", r
 print("Gamepad layout: layers, even centring, empty buttons removed, put back when off: OK  (" + str(r) + ")")
+# Gamepad layout, part two: forced hiding no mouse-over can lift, Edit Mode suspends fading, bound-button lookup, the Bars page
+r = L("""function()
+    local UF = UbermocForever
+    local F, B = UF.Fade, UF.GamepadBar
+    UbermocForeverDB.fade = nil; UbermocForeverDB.gbar = { on = true }
+    local idle = { idle = true }
+    local out = {}
+    F.setMouse(0.8)                                              -- the universal mouse-over opacity is on
+    F.forced.mb_border = function() return true end              -- hidden for good (the layout registers these at login)
+    out[#out + 1] = string.format("%.1f", F.target("mb_border", idle, true))     -- over it with the mouse: still 0
+    F.implicit.micro = function() return 0 end                   -- an adjustable part: hidden to start with
+    out[#out + 1] = string.format("%.1f", F.target("micro", idle, true))         -- the mouse-over opacity lifts this one
+    out[#out + 1] = string.format("%.1f", F.target("micro", idle, false))
+    F.setMouse(nil)
+    EditModeManagerFrame = { IsShown = function() return true end }
+    out[#out + 1] = tostring((F.target("mb_border", idle, false)))               -- Edit Mode open: nothing is faded
+    EditModeManagerFrame = nil
+    F.forced.mb_border = nil; F.implicit.micro = nil
+    -- which controller button a game button is bound to
+    GetBindingKey = function(cmd)
+        if cmd == "ACTIONBUTTON1" then return "PAD3", "SHIFT-PAD3" end
+        if cmd == "MULTIACTIONBAR1BUTTON1" then return "SHIFT-PADLSTICK", "F1" end
+        return nil
+    end
+    out[#out + 1] = tostring(B.padKey(1, 1)) .. "," .. tostring(B.padKey(2, 1)) .. "," .. tostring((B.padKey(3, 1)))
+    GetBindingKey = nil
+    -- the Bars page
+    local page = UF.BarsPage.build(UIParent, UIParent)
+    local rows = UF.BarsPage.navRows()
+    out[#out + 1] = #rows .. "," .. #rows[1] .. "," .. #rows[3]
+    out[#out + 1] = UF.BarsPage.valueText({ layoutHidden = true }, nil) .. UF.BarsPage.valueText({}, nil) .. UF.BarsPage.valueText({}, 0.5)
+    UbermocForeverDB.gbar = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "0.0,0.8,0.0,nil,PAD3,PADLSTICK,nil,7,3,4,HiddenNormal50%", r
+print("Gamepad layout 2: forced art no mouse-over, Edit Mode suspends, bound buttons, Bars page: OK")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()
     local UF = UbermocForever

@@ -1,3 +1,9 @@
+UbermocForever 1.3.74
+- Added (gamepad layout): each button shows the controller button it is bound to, with the game's own button pictures (the base button, without the modifiers); the game's key text on the buttons stays hidden.
+- Changed: the game's art hidden by the layout (main bar art and end caps, bar border, page arrows, bars 2 to 4) is hidden for good: no mouse-over opacity or reveal lifts it, and the "Hide the game's art" switch is gone. The experience bar, micro menu and bags start hidden but have their own fading on the Bars page (the same settings as on the Fading page); the gamepad bar has its own fading there too (in combat, on a flight path, out of combat, Hide for good).
+- Added: "Move bars (Edit Mode)" on the Bars page opens the game's own Edit Mode (it closes the options window). While Edit Mode is open no fading is applied and the buttons are back where the game keeps them, so everything can be seen and moved; the layout returns when it closes.
+- Also: the Fading engine can hide an element for good with a list that no mouse-over lifts (F.forced) and suspends all fading while Edit Mode is open. Untested in the game.
+
 UbermocForever 1.3.73
 - Added: the gamepad layout (new Bars page, the fourth page of the options window; off to start with). One row of the game's own action buttons at the bottom: nothing held shows action bar 1, the first modifier bar 2, the second bar 3, both bar 4. The game's bottom art goes (main bar art and end caps, bars 2 to 4, micro menu, bags, experience bar, the keys' labels); a part you set on the Fading page keeps your setting. Buttons with nothing on them are removed and the rest are centred and evenly spaced. Settings: Gamepad layout On/Off, Hide empty buttons, Hide the game's art, button size, gap and height. /ubf bars reports what it found. Untested in the game.
 

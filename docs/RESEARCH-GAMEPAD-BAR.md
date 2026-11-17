@@ -28,3 +28,15 @@ Everything (offline test only: layers, even centring, empty buttons, put back wh
 or `CalculateAction` gives the real slot for the main bar after a page change or a form; that the game does not move the buttons back (edit mode) faster than the hooks fix it; how it looks and sits with the user's edit mode layout;
 that bars 2 to 4 are switched on in the game's action bar settings (a bar that is off is hidden by the game and so are its buttons); mouse clicks on stacked layers (only the held layer is raised). `/ubf bars` reports the settings and,
 for each layer, how many buttons were found, how many the game shows and how many are empty.
+
+## 1.3.74: what the user asked for next (2026-11-17)
+- The gamepad bar needs its own fading; each button must show the controller button it is bound to; the game's art the layout hides must be hidden for good (no mouse-over brings it back) except the experience bar, micro menu and bags, which stay
+  adjustable; everything the layout changes belongs in one place (the Bars page) including a button that opens the game's Edit Mode to move those parts.
+- Bound button: `GetBindingKey("ACTIONBUTTON<n>")`, `"MULTIACTIONBAR1BUTTON<n>"`, `"MULTIACTIONBAR2BUTTON<n>"`, `"MULTIACTIONBAR3BUTTON<n>"` (Binds.lua `MAIN_BARS`) give the keys, such as `SHIFT-PAD3`; the base `PAD3` goes to `UF.glyph(pad)`
+  (Layouts.lua, the game's own `KEY_PAD3_*` pictures). The pictures are font strings of a frame of ours (child of the root frame), never anything written on the game's buttons.
+- Fading engine (`Fade.lua`): `F.forced[key]` (hidden for good, ignores the universal mouse-over opacity and the chat reveals), `F.target(key, active, isOver)` (the one place that decides an element's opacity), `F.editing()` (no fading while
+  `EditModeManagerFrame` is shown, so a hidden part can be seen and moved), `F.GBAR` (element `gbar`, frame = our root frame `UbermocForeverGamepadBar`; the buttons ignore their parent's opacity, so `GamepadBar.refresh` multiplies the root's opacity in).
+- Edit Mode: the game's `/editmode` does `if EditModeManagerFrame:CanEnterEditMode() then ShowUIPanel(EditModeManagerFrame)` (`Blizzard_ChatFrameBase/Mainline/SlashCommandsOverrides.lua`); the button does the same through `securecallfunction`.
+  While it is open the layout gives the buttons back (`release`) and takes them again when it closes (polled ten times a second).
+- Not touched: the stance, pet and possess bars and the extra action button (the user did not name them; they stay where the game puts them).
+- Not verified in the game: all of it. Also open: whether the photo from the game (micro menu and bags still visible next to the layout row, no bound-button pictures yet) was the mouse-over opacity lifting them or an explicit Fading page setting that wins over the layout's default.
