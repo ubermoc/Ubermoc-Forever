@@ -321,3 +321,10 @@ The log named UbermocForever once, with no "while reading global" line: `SecureT
 Clean way, from `Blizzard_RestrictedAddOnEnvironment`: `SecureHandlerSetFrameRef(button, "entry", frame)` (a protected button with `SecureHandlerBaseTemplate`, out of combat), and a wrapped OnClick pre-snippet
 (`SecureHandlerWrapScript(button, "OnClick", button, snippet)`) doing `self:SetAttribute("clickbutton", self:GetFrameRef("entry"))`. Handles of unprotected frames are valid in the snippet out of combat
 (`RestrictedFrames.lua`, `GetPossiblyForbiddenHandleFrame`), and `HANDLE:SetAttribute` accepts a frame handle. Used only for the game's menu entries; every other A press keeps the old attribute path.
+
+### 1.3.66: the frame-reference hand-over of 1.3.65 failed
+BugGrabber: `SecureTemplates.lua:561: attempt to call a nil value` on every A press on a menu entry (9 times). Line 561 calls `delegate:HasAccessConstraints()`; the restricted snippet had stored a frame HANDLE
+(userdata from `GetFrameRef`) in `clickbutton`, and a handle has none of a frame's methods, so `SECURE_ACTIONS.click` cannot use it. A restricted snippet can therefore not hand a plain frame to the click handler.
+1.3.66 goes back to a plain frame in `clickbutton` but writes it inside `securecallfunction(c.SetAttribute, c, "clickbutton", frame)`, on the idea that the stored value's taint is the writer's execution taint. This is a
+hypothesis from the taint log, not yet confirmed: if the marker is still refused, read `Logs/taint.log` again (see LUA-WOW-GUIDE section 3). Other untried ideas: the game's own gamepad menu handling (`MenuProxyMixin:FocusGamepad`,
+needs the game's gamepad UI setting, which the user does not have on: the TARGET menu's gamepad-only "Interact" entry was not shown), or a dedicated secure button per marker (`/tm n` macro) outside the menu.

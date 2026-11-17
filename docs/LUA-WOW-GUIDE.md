@@ -48,8 +48,9 @@ Web sources (warcraft.wiki.gg API pages) describe retail and can differ from For
   - A mouse right click sent to a `StaticPopup` button asserts (`GameDialog.lua`): X must have no target in popups.
   - **A frame stored by our code in a secure button's attribute taints the click** (1.3.65). `clickbutton` = a Blizzard frame, set with `SetAttribute`,
     is fine for plain actions, but if the clicked button's script calls a **protected function** (`SetRaidTarget` from the game's menu, found with the taint
-    log) the game blocks it and blames us. Hand such a frame over through `SecureHandlerSetFrameRef(button, "label", frame)` and a wrapped OnClick snippet
-    (`SecureHandlerWrapScript`) that does `self:SetAttribute("clickbutton", self:GetFrameRef("label"))`. The button needs `SecureHandlerBaseTemplate`; out of combat only.
+    log) the game blocks it and blames us. Do NOT hand it over through a frame reference and a restricted snippet: that stores a frame
+    *handle*, and `SECURE_ACTIONS.click` then fails with "attempt to call a nil value" (1.3.65, broke every press). 1.3.66 writes the attribute inside
+    `securecallfunction(button.SetAttribute, button, "clickbutton", frame)` instead (hypothesis, check the result with the taint log).
   - Do not run the game's `OnEnter` on **menu entries** (`Menu.lua`, frames with `GetElementDescription`): it is the menu's hover logic.
   - `securecallfunction(fn, ...)` runs a Blizzard function with its own taint, not ours. It does not clean values we stored.
   - `hooksecurefunc` hooks are safe (run after, do not taint the original). Keep them small.

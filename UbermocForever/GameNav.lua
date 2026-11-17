@@ -352,23 +352,11 @@ end
 -- The secure buttons: A and X click the highlighted button, B clicks the close button. Their targets are set when the
 -- highlight moves (never in combat, where the buttons are not ours anyway).
 ----------------------------------------------------------------------
-local function secureButton(name, handler)
-    local b = CreateFrame("Button", name, UIParent, handler and "SecureActionButtonTemplate, SecureHandlerBaseTemplate" or "SecureActionButtonTemplate")
+local function secureButton(name)
+    local b = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate")
     b:RegisterForClicks("AnyUp")
     b:SetAttribute("useOnKeyDown", false)
     b:SetAttribute("type", "click")
-    if handler and SecureHandlerWrapScript then
-        -- For the game's menu entries (Menu.lua): the frame to click is handed over as a frame reference and put into "clickbutton" by a
-        -- restricted snippet that runs just before the click, so the value the secure click handler reads was written by secure code. Written
-        -- from our own code it carries our taint, and choosing an entry that calls a protected function (SetRaidTarget for a marker) was
-        -- refused (taint log: "An action was blocked because of taint from UbermocForever - SetRaidTarget()", SecureTemplates.lua:561).
-        local ok = pcall(SecureHandlerWrapScript, b, "OnClick", b, [[
-            if self:GetAttribute("useref") then
-                self:SetAttribute("clickbutton", self:GetFrameRef("entry"))
-            end
-        ]])
-        b.wrapped = ok
-    end
     return b
 end
 
@@ -414,7 +402,7 @@ end
 
 local function buttons()
     if not clicker then
-        clicker = secureButton("UbermocForeverGameClick", true)
+        clicker = secureButton("UbermocForeverGameClick")
         clicker:HookScript("PostClick", function()
             if G.placing then pcall(G.placeHere); return end
             -- Some of the game's buttons act on the mouse going down or up and have no OnClick at all (the newer drop-down
@@ -543,11 +531,12 @@ local function setTargets()
     if InCombatLockdown() then return end
     local c, b, rc = buttons()
     local target = (not G.placing) and (flyoutOpener(focus) or focus or G.direct) or nil
-    if target and target.GetElementDescription and c.wrapped and SecureHandlerSetFrameRef and pcall(SecureHandlerSetFrameRef, c, "entry", target) then
-        c:SetAttribute("useref", true)          -- an entry of the game's menus: handed over through the restricted snippet (see secureButton)
-        c:SetAttribute("clickbutton", nil)
+    if target and target.GetElementDescription and securecallfunction then
+        -- An entry of the game's menus: the attribute is written inside securecallfunction, so the frame is stored without our taint
+        -- (read by the secure click handler it taints the click, and a marker chosen in the unit menu was refused: taint log, SetRaidTarget).
+        -- 1.3.65 tried a frame reference and a restricted snippet instead: the handler then got a handle, not a frame, and every press failed.
+        if not pcall(securecallfunction, c.SetAttribute, c, "clickbutton", target) then c:SetAttribute("clickbutton", target) end
     else
-        c:SetAttribute("useref", nil)
         c:SetAttribute("clickbutton", target)
     end
     local menuUp = wins[1] and wins[1] == _G.UbermocForeverItemMenu
