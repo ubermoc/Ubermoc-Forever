@@ -862,24 +862,30 @@ end""")()
 assert str(r) == "0,0.5,nil,00", r
 print("Chat: the edit box fades by itself, its own setting wins, off leaves it alone: OK")
 print("Chat: new lines reveal the chat, the edit box in use holds it, then wait and fade: OK")
-# Interact on a target you cannot interact with opens its menu: which targets, and the key is pointed at the menu button
+# Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()
     local UF = UbermocForever
     local T = UF.TargetMenu
-    local t = { exists = true, attack = false, dead = false, loot = false, interact = false }
-    UnitExists = function() return t.exists end
+    local t = { exists = true, attack = false, dead = false, loot = false, interact = false, player = false, soft = false, softRange = true }
+    UnitExists = function(u) if u == "softinteract" then return t.soft end return t.exists end
+    UnitIsGameObject = function() return false end
+    UnitIsInInteractRange = function() return t.softRange end
     UnitCanAttack = function() return t.attack end
     UnitIsDead = function() return t.dead end
+    UnitIsPlayer = function() return t.player end
     UnitHasLootInteraction = function() return t.loot end
     UnitIsInteractable = function() return t.interact end
     local out = {}
-    local function w() out[#out + 1] = tostring(T.wantsPlain()) end
+    local function w() out[#out + 1] = tostring(T.wants()) end
     w()                                  -- a friendly you cannot interact with: menu
     t.interact = true; w()               -- something you can talk to: the key does its normal job
     t.interact = false; t.loot = true; w()   -- lootable: left to the key
     t.loot = false; t.dead = true; w()   -- dead: left to the key
-    t.dead = false; t.attack = true; w() -- an enemy: the state driver handles it, not this path
-    t.attack = false; t.exists = false; w()  -- no target
+    t.dead = false; t.attack = true; w() -- an enemy: menu
+    t.soft = true; w()                   -- but a corpse to skin next to you: the key skins it
+    t.softRange = false; w()             -- out of reach: the menu again
+    t.soft = false; t.attack = false; t.player = true; t.interact = true; w()   -- a player: menu
+    t.player = false; t.interact = false; t.exists = false; w()  -- no target
     t.exists = true
     GetBindingKey = function() return "PADLSTICK", "SHIFT-PADLSTICK" end
     InCombatLockdown = function() return false end
@@ -893,8 +899,8 @@ r = L("""function()
     T.set(true)
     return table.concat(out, ",")
 end""")()
-assert str(r) == "true,false,false,false,false,false,truetrue,nil", r
-print("Target menu: which targets get the menu, the interact key is switched and put back: OK")
+assert str(r) == "true,false,false,false,true,false,true,true,false,truetrue,nil", r
+print("Target menu: follows the game's interact order, a skinnable soft target keeps the key: OK")
 # Cinematic: nameplates are put back, but not during combat (the game does not allow it)
 r = L("""function()
     local UF = UbermocForever

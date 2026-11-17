@@ -280,3 +280,11 @@ A secure button with `type = "togglemenu"`, `unit = "target"` makes the game ope
 Set Focus are not blocked; Ubermoc UI does this for players and enemies (`Extras.lua`, `buildTargetMenuKey`). Bindings cannot change in combat, so enemies use a
 `SecureHandlerStateTemplate` driver `[@target,harm,nodead]` whose snippet calls `SetBindingClick` (`RestrictedFrames.lua`, `HANDLE:SetBindingClick`); other targets are switched from Lua out of combat.
 The highlight on the top entry comes from GameNav treating a newly opened menu as a fresh window. Not yet tested in the game.
+
+### 1.3.58 did not work, 1.3.59 (from the user's report and the game's saved files)
+- The game's own order for the interact button (`Blizzard_GamepadActionBars/MainActionBarFrame.lua`, `interactActions`): soft interact target in range with loot, then soft interact
+  target in range, then a lootable target, then an interactable target, then an attackable target (attack), then an unattackable target (error). So a corpse to skin next to you
+  comes before the target. 1.3.58 took the key for any living enemy and broke that; the menu now takes the places of the last two.
+- Ubermoc UI 1.0.122 was installed and enabled next to this addon and has the same feature on by default (`UbermocUIDB.targetMenuKey`), so 1.3.58 stood down and did nothing, while
+  Ubermoc UI's version (players and enemies only, no soft interact check) held the key. 1.3.59 switches that setting off once and does the job itself.
+- `UnitIsInInteractRange("softinteract")`, `UnitIsGameObject("softinteract")` are the game's own tests for the soft target (same file, `ResolveNonBindableInteract`).

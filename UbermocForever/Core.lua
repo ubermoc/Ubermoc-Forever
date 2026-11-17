@@ -133,6 +133,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     elseif msg == "targetmenu on" or msg == "targetmenu off" then
         if UF.TargetMenu then UF.TargetMenu.set(msg == "targetmenu on") end
         UF.say("Interact on a target you cannot interact with opens its menu: " .. (msg == "targetmenu on" and "on." or "off."))
+    elseif msg == "targetmenu" then
+        if UF.TargetMenu then UF.TargetMenu.report() end
     elseif msg == "fade" then
         if UF.Fade then UF.Fade.report() end
     elseif msg == "dialog" then
