@@ -1,3 +1,6 @@
+UbermocForever 1.3.111
+- Changed: the aim dot buttons (Aim dot, Aim distance, Dot size) moved from the first options page to the Quality of life page, above fast loot and the vendor buttons. The first page is now the cinematic row above the binds. Untested in the game.
+
 UbermocForever 1.3.110
 - Changed: a fifth options page, Quality of life (QolPage.lua), holds Fast loot, Sell junk, Repair and Guild bank first; they are no longer on the first page, which is back to the cinematic and aim dot rows above the binds. The triggers and the Page button go through five pages. Untested in the game.
 

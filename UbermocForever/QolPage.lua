@@ -1,13 +1,13 @@
 ----------------------------------------------------------------------
--- Ubermoc Forever: the Quality of life page of the options window (fifth page): fast loot (Loot.lua) and selling junk
--- and repairing at a vendor (Vendor.lua). Built like the Chat and Bars pages: the game's own buttons, a heading per group,
+-- Ubermoc Forever: the Quality of life page of the options window (fifth page): the aim dot for ground spells (Aim.lua),
+-- fast loot (Loot.lua) and selling junk and repairing at a vendor (Vendor.lua). Built like the Chat and Bars pages: the game's own buttons, a heading per group,
 -- a grey note under each.
 ----------------------------------------------------------------------
 local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, lootBtn, sellBtn, repairBtn, guildBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -19,6 +19,9 @@ end
 function QP.refresh()
     if not page then return end
     local v = UF.Vendor.cfg()
+    aimBtn:SetText("Aim dot: " .. (UF.Aim.cfg().on and "On" or "Off"))
+    distBtn:SetText("Aim distance: " .. UF.Aim.distanceName())
+    sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
     lootBtn:SetText("Fast loot: " .. (UF.Loot.enabled() and "On" or "Off"))
     sellBtn:SetText("Sell junk: " .. (v.sell and "On" or "Off"))
     repairBtn:SetText("Repair: " .. (v.repair and "On" or "Off"))
@@ -56,14 +59,26 @@ function QP.build(parent, inset)
     end
     local function toggle(b, fn) UF.cycleButton(b, function() fn() end, QP.refresh) end
 
-    heading("Looting", 0)
-    lootBtn = button(page, 150); lootBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -22)
+    heading("Aim dot", 0)
+    aimBtn = button(page, 120); aimBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -22)
+    distBtn = button(page, 180); distBtn:SetPoint("LEFT", aimBtn, "RIGHT", 6, 0)
+    sizeBtn = button(page, 110); sizeBtn:SetPoint("LEFT", distBtn, "RIGHT", 6, 0)
+    toggle(aimBtn, UF.Aim.toggle)
+    UF.cycleButton(distBtn, UF.Aim.nextDistance, QP.refresh)   -- A forward, X back
+    UF.cycleButton(sizeBtn, UF.Aim.nextSize, QP.refresh)
+    tip(aimBtn, "Aim dot", "A white dot shows where a ground spell (Heroic Leap, Blizzard, Rain of Fire) will land, only while you are aiming it.")
+    tip(distBtn, "Aim distance", "How far from your character the aim point rests (higher on the screen is further). Exact yards cannot be set. A steps forward, X steps back.")
+    tip(sizeBtn, "Dot size", "Small, medium or large. A steps forward, X steps back.")
+    note("A white dot shows where a ground spell will land while you aim it.", -50)
+
+    heading("Looting", -82)
+    lootBtn = button(page, 150); lootBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -104)
     toggle(lootBtn, UF.Loot.toggle)
     tip(lootBtn, "Fast loot", "With the game's Auto Loot on, everything is taken the moment the loot opens, and the loot window only shows if something is left (full bags, an item that asks first). Not while you are the master looter. The game's Auto Loot is switched on once for each character.")
-    note("Everything is taken at once when you loot, instead of one item at a time.", -50)
+    note("Everything is taken at once when you loot, instead of one item at a time.", -132)
 
-    heading("At a vendor", -82)
-    sellBtn = button(page, 150); sellBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -104)
+    heading("At a vendor", -164)
+    sellBtn = button(page, 150); sellBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -186)
     repairBtn = button(page, 130); repairBtn:SetPoint("LEFT", sellBtn, "RIGHT", 6, 0)
     guildBtn = button(page, 190); guildBtn:SetPoint("LEFT", repairBtn, "RIGHT", 6, 0)
     toggle(sellBtn, UF.Vendor.toggleSell)
@@ -72,7 +87,7 @@ function QP.build(parent, inset)
     tip(sellBtn, "Sell junk", "When a vendor opens, every grey item in your bags is sold (the game's own Sell all junk). A chat line says what it made.")
     tip(repairBtn, "Repair", "When a vendor that repairs opens, all your gear is repaired. A chat line says what it cost.")
     tip(guildBtn, "Guild bank first", "Repairs are paid from the guild bank when your guild lets you and the bank and your daily allowance cover the whole cost; otherwise from your own money.")
-    note("Grey items are sold and your gear is repaired as soon as you talk to a vendor. The guild bank pays for repairs when it can.", -132)
+    note("Grey items are sold and your gear is repaired as soon as you talk to a vendor. The guild bank pays for repairs when it can.", -214)
 
     QP.refresh()
     return page
@@ -82,5 +97,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { lootBtn }, { sellBtn, repairBtn, guildBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn } }
 end
