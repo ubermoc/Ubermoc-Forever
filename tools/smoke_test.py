@@ -1240,10 +1240,10 @@ r = L("""function()
     UbermocForeverDB.fade = nil
     local page = UF.FadePage.build(UIParent, UIParent)
     local rows0 = #UF.FadePage.navRows()
-    -- row layout: 13 headers (chat has its own page now) + the first list's 5 elements + hide + 3 states + copy/paste + apply + reset + reset all
+    -- row layout: 12 headers (chat and the Bars page elements have their own pages) + the first list's 5 elements + hide + 3 states + copy/paste + apply + reset + reset all
     return tostring(page ~= nil) .. "," .. rows0
 end""")()
-assert str(r) == "true,27", r
+assert str(r) == "true,26", r
 print("Fading page builds with one list open: OK")
 r = L("""function()
     local UF = UbermocForever
