@@ -13,9 +13,121 @@ function UF.say(msg)
     end
 end
 
+-- The settings a new install starts with: the author's own (2026-11-17), copied once into a brand-new saved-variables table (an install that
+-- already has settings is not touched).
+UF.SEED = {
+    menuSide = "left",
+    fadeMouse = 1,
+    gbar = { extras = false, faceColor = false, gap = 0, hideEmpty = true, on = true, raise = 0, size = 40 },
+    aim = { dist = 3, on = true, size = 1, v2 = true },
+    cinemaEdges = 3,
+    cinemaBars = 3,
+    chat = { auto = { chat = true, chatbtns = true, chatedit = true, chattabs = true, quickjoin = true }, fade = 3, on = true, reveal = true, visible = 5 },
+    fade = {
+    arena = { flight = 0, idle = 0.4 },
+    bags = { combat = 0, flight = 0, idle = 0 },
+    bar2 = { flight = 0, idle = 0.4 },
+    bar3 = { flight = 0, idle = 0.4 },
+    bar4 = { flight = 0, idle = 0.4 },
+    bar5 = { flight = 0, idle = 0.4 },
+    bar6 = { flight = 0 },
+    bar7 = { flight = 0 },
+    bar8 = { flight = 0 },
+    boss = { flight = 0, idle = 0.4 },
+    buffs = { flight = 0, idle = 0.4 },
+    castbar = { flight = 0, idle = 0.4 },
+    cd_bars = { flight = 0 },
+    cd_buffs = { flight = 0 },
+    classres = { combat = 0.7, flight = 0, idle = 0.3 },
+    deadly = { flight = 0, idle = 0.4 },
+    debuffs = { flight = 0, idle = 0.4 },
+    defensives = { flight = 0, idle = 0.4 },
+    extrabtn = { flight = 0, idle = 0.4 },
+    focus = { flight = 0, idle = 0.4 },
+    focus_art = { flight = 0, idle = 0.4 },
+    focus_health = { flight = 0, idle = 0.4 },
+    focus_icons = { flight = 0, idle = 0.4 },
+    focus_name = { flight = 0, idle = 0.4 },
+    focus_portrait = { flight = 0, idle = 0.4 },
+    focus_power = { flight = 0, idle = 0.4 },
+    fot = { flight = 0, idle = 0.4 },
+    gbar = { flight = 0, idle = 0 },
+    mainbar = { flight = 0, idle = 0.4 },
+    mb_border = { flight = 0, idle = 0.4 },
+    mb_leftcap = { flight = 0, idle = 0.4 },
+    mb_page = { flight = 0, idle = 0.4 },
+    mb_rightcap = { flight = 0, idle = 0.4 },
+    micro = { combat = 0, flight = 0, idle = 0 },
+    minimap = { combat = 0.7, flight = 0, idle = 0.3 },
+    mm_addons = { combat = 0.7, flight = 0, idle = 0.3 },
+    mm_back = { flight = 0, idle = 0.4 },
+    mm_cal = { flight = 0, idle = 0.4 },
+    mm_clock = { combat = 0.7, flight = 0, idle = 0.3 },
+    mm_coords = { combat = 0.7, flight = 0, idle = 0.3 },
+    mm_diff = { combat = 0.7, flight = 0, idle = 0.3 },
+    mm_exp = { combat = 0.7, flight = 0, idle = 0.3 },
+    mm_mail = { flight = 0, idle = 0.4 },
+    mm_map = { flight = 0, idle = 0.4 },
+    mm_track = { flight = 0, idle = 0.4 },
+    mm_zone = { flight = 0, idle = 0.4 },
+    mm_zoom = { combat = 0.7, flight = 0, idle = 0.3 },
+    party = { flight = 0, idle = 0.4 },
+    pet = { flight = 0, idle = 0.4 },
+    pet_portrait = { flight = 0, idle = 0.4 },
+    petbar = { flight = 0, idle = 0.4 },
+    petcast = { flight = 0, idle = 0.4 },
+    player = { flight = 0, idle = 0.4 },
+    player_art = { flight = 0, idle = 0.4 },
+    player_health = { flight = 0, idle = 0.4 },
+    player_icons = { flight = 0, idle = 0.4 },
+    player_name = { flight = 0, idle = 0.4 },
+    player_portrait = { flight = 0, idle = 0.4 },
+    possess = { flight = 0, idle = 0.4 },
+    queue = { combat = 0.7, flight = 0, idle = 0.3 },
+    raid = { flight = 0, idle = 0.4 },
+    raidmgr = { flight = 0, idle = 0.4 },
+    stance = { flight = 0, idle = 0.4 },
+    target = { flight = 0, idle = 0.4 },
+    target_art = { flight = 0, idle = 0.4 },
+    target_health = { flight = 0, idle = 0.4 },
+    target_icons = { flight = 0, idle = 0.4 },
+    target_name = { flight = 0, idle = 0.4 },
+    target_portrait = { flight = 0, idle = 0.4 },
+    target_power = { flight = 0, idle = 0.4 },
+    tot = { flight = 0, idle = 0.4 },
+    totembar = { flight = 0, idle = 0.4 },
+    tr_ach = { hide = true, idle = 0.4 },
+    tr_bonus = { hide = true, idle = 0.4 },
+    tr_campaign = { hide = true, idle = 0.4 },
+    tr_month = { hide = true, idle = 0.4 },
+    tr_prof = { hide = true, idle = 0.4 },
+    tr_quest = { hide = true, idle = 0.4 },
+    tr_scen = { hide = true, idle = 0.4 },
+    tr_tasks = { hide = true, idle = 0.4 },
+    tr_widget = { hide = true, idle = 0.4 },
+    tr_world = { hide = true, idle = 0.4 },
+    tracker = { hide = true, idle = 0.4 },
+    vehicleexit = { flight = 0, idle = 0.4 },
+    xpall = { combat = 0, flight = 0, hide = true, idle = 0 },
+    zoneabil = { flight = 0, idle = 0.4 },
+    },
+}
+local function copyDeep(v)
+    if type(v) ~= "table" then return v end
+    local o = {}
+    for k, x in pairs(v) do o[k] = copyDeep(x) end
+    return o
+end
+
 function UF.DB()
     UbermocForeverDB = UbermocForeverDB or {}
     local d = UbermocForeverDB
+    if d.seedChecked == nil then
+        d.seedChecked = true
+        if next(d) == nil or (next(d) == "seedChecked" and next(d, "seedChecked") == nil) then
+            for k, v in pairs(UF.SEED) do d[k] = copyDeep(v) end
+        end
+    end
     if d.layout == nil then d.layout = "auto" end   -- "auto" or a controller id from Layouts.lua
     d.applied = d.applied or {}                      -- character GUID -> "steam" / "standard"
     d.partsAsked = d.partsAsked or {}                -- character GUID -> true (the move-the-bars question was shown)

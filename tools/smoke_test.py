@@ -1494,5 +1494,21 @@ r = L("""function()
 end""")()
 assert str(r) == "PADLSTICK=99,|,|", r
 print("Gamepad layout: binds to another layer's button get an icon slot, own and bar 5 to 8 buttons do not: OK")
+
+# A brand-new saved-variables table starts with the author's settings; one that already has settings is left alone
+r = L("""function()
+    local UF = UbermocForever
+    local saved = UbermocForeverDB
+    UbermocForeverDB = nil
+    local d = UF.DB()
+    local a = tostring(d.gbar.on) .. tostring(d.gbar.size) .. tostring(d.fade.xpall.hide) .. tostring(d.menuSide)
+    UbermocForeverDB = { menuSide = "right" }
+    local e = UF.DB()
+    local b = tostring(e.gbar) .. tostring(e.fade) .. tostring(e.menuSide)
+    UbermocForeverDB = saved
+    return a .. "|" .. b
+end""")()
+assert str(r) == "true40trueleft|nilnilright", r
+print("Fresh install: the author's settings are the defaults, existing settings untouched: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
