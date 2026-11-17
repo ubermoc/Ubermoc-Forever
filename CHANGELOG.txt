@@ -1,3 +1,7 @@
+UbermocForever 1.3.38
+- Fixed (probable): a quest or gossip window no longer starts the highlight on its big X in the corner. The first choice is taken from the window's scrolling list, never a Close button, and while the list is not built yet nothing is highlighted and it is looked for again for 2.5 seconds.
+- Added: /ubf dialog lists what the highlight logic sees in an open quest or gossip window.
+
 UbermocForever 1.3.37
 - Fixed (probable): a quest giver's window sometimes opened with the highlight on a fallback button because the quest list was not built yet, so the D-pad had to be moved to reach the first quest. For one second after a quest or gossip window opens, until you move, the first quest or option is looked for again and takes the highlight.
 

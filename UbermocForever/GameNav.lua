@@ -990,14 +990,45 @@ function G.dialogFirstOption()
             skip[_G.QuestFrameDeclineButton or 0] = true
             skip[_G.GossipFrameGreetingGoodbyeButton or 0] = true
             skip[(w.GreetingPanel and w.GreetingPanel.GoodbyeButton) or 0] = true
-            local best
-            for _, n in ipairs(nodes) do
-                if G.inside(n.frame, w) and not skip[n.frame]
-                    and (not best or n.cy > best.cy + 4 or (math.abs(n.cy - best.cy) <= 4 and n.cx < best.cx)) then
-                    best = n
+            -- The choices (quests, gossip lines, rewards) sit in the window's scrolling list; the window's own buttons (its X, tabs,
+            -- Goodbye) do not. So a node inside a scroller is preferred, which keeps the highlight off the big X in the corner.
+            local function top(onlyScroll)
+                local best
+                for _, n in ipairs(nodes) do
+                    local name = n.frame.GetName and n.frame:GetName() or ""
+                    if G.inside(n.frame, w) and not skip[n.frame] and not name:find("Close")
+                        and (not onlyScroll or scrollerOf(n.frame))
+                        and (not best or n.cy > best.cy + 4 or (math.abs(n.cy - best.cy) <= 4 and n.cx < best.cx)) then
+                        best = n
+                    end
+                end
+                return best
+            end
+            local best = top(true) or top(false)
+            if best then return best.frame end
+        end
+    end
+end
+
+-- /ubf dialog: what the highlight logic sees in an open quest or gossip window (to find out why it starts where it does).
+function G.dialogReport()
+    rescan()
+    for _, w in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
+        if shown(w) then
+            local cb = closeButtonOf(w)
+            UF.say("Window " .. tostring(w.GetName and w:GetName()) .. ", close button: " .. tostring(cb and cb.GetName and cb:GetName()))
+            local n = 0
+            for _, node in ipairs(nodes) do
+                if G.inside(node.frame, w) then
+                    n = n + 1
+                    if n <= 14 then
+                        UF.say(string.format("  %s (%s) at %d,%d%s", tostring(node.frame.GetName and node.frame:GetName() or "?"),
+                            tostring(node.frame.GetObjectType and node.frame:GetObjectType()), node.cx, node.cy, scrollerOf(node.frame) and " [in a list]" or ""))
+                    end
                 end
             end
-            if best then return best.frame end
+            UF.say("  " .. n .. " buttons found. Accept: " .. tostring((G.dialogAccept() or {}).GetName and G.dialogAccept():GetName())
+                .. ", first choice: " .. tostring(G.dialogFirstOption() and (G.dialogFirstOption().GetName and G.dialogFirstOption():GetName() or "unnamed")))
         end
     end
 end
@@ -1025,7 +1056,14 @@ local function startNode()
     -- the top left button of the topmost window
     local best
     for _, n in ipairs(nodes) do
-        if not best or n.cy > best.cy + 4 or (math.abs(n.cy - best.cy) <= 4 and n.cx < best.cx) then best = n end
+        local name = n.frame.GetName and n.frame:GetName() or ""
+        -- a window's own Close button is the last thing to start on: any other button comes first
+        if not name:find("Close") and (not best or n.cy > best.cy + 4 or (math.abs(n.cy - best.cy) <= 4 and n.cx < best.cx)) then best = n end
+    end
+    if not best then
+        for _, n in ipairs(nodes) do
+            if not best or n.cy > best.cy + 4 or (math.abs(n.cy - best.cy) <= 4 and n.cx < best.cx) then best = n end
+        end
     end
     return best and best.frame
 end
@@ -1057,6 +1095,14 @@ local function startFocus()
         return
     end
     G.direct = nil
+    local dialogUp = shown(_G.QuestFrame) or shown(_G.GossipFrame)
+    if dialogUp and not popup and not G.placing and #openMenus() == 0 and not (G.dialogFirstOption and G.dialogFirstOption()) then
+        -- a quest window whose list is not built yet: nothing is picked (never its X); it is looked for again a moment later
+        focus = nil
+        drawAt(nil)
+        setTargets()
+        return
+    end
     setFocus(startNode())
 end
 
@@ -1406,7 +1452,7 @@ function G.update()
         for _, w in ipairs(wins) do G.known[w] = true end
         rescan()
         startFocus()
-        G.settle, G.userMoved = (GetTime and GetTime() or 0) + 1.0, false
+        G.settle, G.userMoved = (GetTime and GetTime() or 0) + 2.5, false
         pcall(updateBar)
     elseif not want and entry then
         release()
@@ -1437,7 +1483,7 @@ function G.update()
             local d = G.dialogStart()
             if d and G.inside(d, fresh) then startFocus()
             elseif best then G.direct = nil; setFocus(best.frame) end
-            G.settle, G.userMoved = (GetTime and GetTime() or 0) + 1.0, false
+            G.settle, G.userMoved = (GetTime and GetTime() or 0) + 2.5, false
         end
         if G.placing then
             -- placing a spell: no highlight, the next button press picks the slot

@@ -139,6 +139,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.GroundCast then UF.GroundCast.setDebug(not UF.GroundCast.debug) end
     elseif msg == "hold" then
         if UF.Aim then UF.Aim.holdReport() end
+    elseif msg == "dialog" then
+        if UF.GameNav and UF.GameNav.dialogReport then UF.GameNav.dialogReport() end
     elseif msg == "item" then
         if UF.ItemMenu and UF.GameNav then UF.ItemMenu.report(UF.GameNav.focusFrame()) end
     elseif msg == "tabs" then
