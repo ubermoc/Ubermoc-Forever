@@ -7,7 +7,7 @@
 -- trigger for Shift and the right trigger for Ctrl.
 -- Interact and jump are on L4 / L5 (or the stick clicks on a controller without back buttons).
 -- Start is the stepped Exit button (Start.lua): closes what is open, clears the target, then opens the game menu.
--- Select is the map, and auto-run is the left stick click (Shift + left stick click on controllers whose
+-- Select is the map (with Shift all bags, with Ctrl the character panel, with both the spellbook), and auto-run is the left stick click (Shift + left stick click on controllers whose
 -- left stick click interacts).
 ----------------------------------------------------------------------
 local _, UF = ...
@@ -79,6 +79,10 @@ local function bindSystem(steam)
     -- Start does the stepped press (Start.lua): close windows, clear the target, then the game menu.
     UF.bindStart()
     SetBinding("PADBACK", "TOGGLEWORLDMAP")
+    -- Select with the modifiers: the panels that are the same for every character (the game's own commands, Bindings_Camelot.xml)
+    SetBinding("SHIFT-PADBACK", "OPENALLBAGS")
+    SetBinding("CTRL-PADBACK", "TOGGLECHARACTER0")
+    SetBinding("CTRL-SHIFT-PADBACK", "TOGGLESPELLBOOK")
     SetBinding(steam and "PADLSTICK" or "SHIFT-PADLSTICK", "TOGGLEAUTORUN")
 end
 

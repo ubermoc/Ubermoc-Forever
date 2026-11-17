@@ -1,3 +1,6 @@
+UbermocForever 1.3.93
+- Added: default controller binds for panels that are the same for every character, on Select with the modifiers: Shift opens all bags, Ctrl the character panel, Shift + Ctrl the spellbook (the game's own commands OPENALLBAGS, TOGGLECHARACTER0, TOGGLESPELLBOOK). Select alone is still the map. They are set when the default binds are applied (the first-run question, or the options); existing binds are not touched until you apply the defaults again. Untested in the game.
+
 UbermocForever 1.3.92
 - Changed: while the gamepad layout is on, the elements it hides for good (the main bar and its art, action bars 2 to 4, and the end caps unless you keep them) are no longer listed on the Fading page, since nothing set there could take effect. A category with nothing left to offer disappears too. Untested in the game.
 
