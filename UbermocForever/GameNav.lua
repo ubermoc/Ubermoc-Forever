@@ -168,7 +168,7 @@ function G.opensSubmenu(f)
     if not (f and f.GetElementDescription) then return false end
     local okD, d = pcall(f.GetElementDescription, f)
     if not (okD and d and d.CanOpenSubmenu) then return false end
-    local okC, can = pcall(d.CanOpenSubmenu, d)
+    local okC, can = pcall(securecallfunction or function(fn, ...) return fn(...) end, d.CanOpenSubmenu, d)
     return okC and can and true or false
 end
 function G.findSubmenu(owner)
@@ -1014,6 +1014,9 @@ end
 local function tooltipShow(f)
     tooltipHide()
     if not f or InCombatLockdown() or G.placing or onActionBar(f) then return end
+    -- an entry of the game's newer menus (Menu.lua): its OnEnter is the menu's own hover handling, and running it from here taints the menu
+    -- (a marker chosen in a unit menu was refused as "AddOn tried to call the protected function SetRaidTarget")
+    if f.GetElementDescription then return end
     local enter = f.GetScript and f:GetScript("OnEnter")
     if not enter then return end
     tipFor = f

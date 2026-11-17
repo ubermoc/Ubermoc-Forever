@@ -1,3 +1,6 @@
+UbermocForever 1.3.64
+- Fixed: choosing a marker in the target's menu was still refused (SetRaidTarget, "AddOn UbermocForever tried to call the protected function"). The cause was the tooltip step: for every highlighted button the game's own OnEnter script was run, and for the game's menu entries that is the menu's own hover handling, which left the menu tainted. Menu entries no longer get that step (they have no tooltip from us). Untested in the game.
+
 UbermocForever 1.3.63
 - Fixed: choosing a marker in the Target Marker Icon submenu was refused ("AddOn UbermocForever tried to call the protected function SetRaidTarget"). The submenu was built from our code and carried its taint; it is now opened through securecallfunction so the game builds it untainted. Untested in the game.
 

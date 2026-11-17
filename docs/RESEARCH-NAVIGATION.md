@@ -307,3 +307,9 @@ entry (`GenerateSubmenuInternal` anchors it `TOPLEFT` of the entry's `TOPRIGHT` 
 `ADDON_ACTION_FORBIDDEN ... UbermocForever tried to call the protected function SetRaidTarget()`, called from `TargetFrame.lua SetRaidTargetIcon` <- `UnitPopupRaidTargetBaseMixin:OnClick` <- `Menu.lua Pick` <- a secure click. The click itself was
 secure; the taint came from the submenu being built inside our PostClick hook (1.3.62 ran the entry's OnMouseDown directly). `securecallfunction(fn, ...)` runs the Blizzard function with its own (secure) taint instead of the caller's, as `Menu.lua` does everywhere.
 The older drop-down path in the same hook (map filter) still calls the mouse scripts directly; it was confirmed working and is left alone.
+
+### 1.3.64: the marker was still refused after 1.3.63
+Same stack in the second report (`Pick` -> `securecallfunction` -> `UnitPopupRaidTargetBaseMixin:OnClick` -> `SetRaidTarget`), so the submenu opening was not the source. `GameNav.tooltipShow` runs the highlighted button's own `OnEnter`
+(the same kind of step that already had to be skipped on the action bars, see the comment at `onActionBar`). A menu entry's `OnEnter` is `menu.onElementEnter` (`Menu.lua`, `frame:SetScript("OnEnter", menu.onElementEnter)`)
+= `EnterFrame`, the menu's hover logic, which also opens submenus after a delay; run from our code it leaves that state tainted, and `securecallfunction` runs a tainted responder tainted. Menu entries are now skipped
+(`f.GetElementDescription`). A moved highlight no longer "hovers" them, so a submenu only opens on A (1.3.62).
