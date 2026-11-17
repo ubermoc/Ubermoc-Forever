@@ -335,3 +335,9 @@ needs the game's gamepad UI setting, which the user does not have on: the TARGET
 text (`RAID_TARGET_1..8`, `RAID_TARGET_NONE`, the same strings `UnitPopupRaidTargetBaseMixin:GetText` uses), `setTargets` points A at `UbermocForeverMarkBtn`, and the clicker's PostClick closes the menus.
 Still unexplained: why a frame handed to `SECURE_ACTIONS.click` taints (HasAccessConstraints on this client returns a secret for objects the addon has touched, `ObjectSecurity` aspect in the API docs, may be the reason).
 Other menu entries that end in a protected call (Set Focus: `FocusUnit`) may be refused the same way; if one is reported, give it the same treatment with its own secure action.
+
+### Known warning after 1.3.67 (not fixed): re-opening the marker submenu when the unit already has a marker
+Two `LUA_WARNING`s (5x each), both from `GameNav.lua` PostClick -> `OnMouseDown` -> `CheckForSubmenu` -> `GenerateSubmenu`: `UnitPopupSharedButtonMixins.lua:2585 attempt to compare a secret number value (execution tainted by 'UbermocForever')`
+(`IsChecked`: `GetRaidTargetIndex(unit)` is a secret number for tainted code, only when a marker exists) and `:27 attempt to index field 'fontString' (a nil value)` (an entry's initializer aborted after the first).
+Cause: the submenu is built from our hook, so the build runs tainted; `securecallfunction` around `OnMouseDown` does not change that. Effect: marker entries may lack their check mark / part of their look; setting a marker still works (user-confirmed).
+A real fix needs the submenu opened by a secure path (the game's own hover timer or a real mouse event), or our own context menu for the markers. Not done.

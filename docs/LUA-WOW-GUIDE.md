@@ -53,7 +53,8 @@ Web sources (warcraft.wiki.gg API pages) describe retail and can differ from For
     `securecallfunction(button.SetAttribute, button, "clickbutton", frame)` instead (that did not help either, 1.3.67). The way that works for a game menu entry that ends in a protected call: do the action with the game's own secure action type on a button of ours
     (`type="raidtarget"` for markers, `SECURE_ACTIONS` in `SecureTemplates.lua` lists the others) and point A at that button instead of at the menu entry.
   - Do not run the game's `OnEnter` on **menu entries** (`Menu.lua`, frames with `GetElementDescription`): it is the menu's hover logic.
-  - `securecallfunction(fn, ...)` runs a Blizzard function with its own taint, not ours. It does not clean values we stored.
+  - `securecallfunction(fn, ...)` does NOT make a call secure when we are the caller: opening a submenu through it from our hook still ran the menu code "tainted by UbermocForever" (1.3.67 report:
+    "attempt to compare a secret number value" in `UnitPopupRaidTargetBaseMixin:IsChecked`, only when the unit already has a marker). Only a real input event or a secure handler starts secure.
   - `hooksecurefunc` hooks are safe (run after, do not taint the original). Keep them small.
 - **Finding the taint source: use the game's taint log, do not guess.** In game: `/console taintLog 2`, `/reload`, repeat the failing action, then `/logout` (the file
   is only written then). Read `Logs/taint.log` (in the game folder next to `WTF`, on this machine under the Steam compatdata folder). Look for "An action was blocked
