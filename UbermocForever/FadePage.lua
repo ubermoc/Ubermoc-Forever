@@ -1,15 +1,17 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: the Fading page of the options window.
--- Left: the elements in four drop-down lists (only one open at a time). Right: the chosen element's opacity for each situation
--- (Normal, or 0 to 100 %, stepped with - and +), and Hide. Everything is a plain button so the D-pad and A work on it.
+-- Left: the elements in drop-down lists (only one open at a time), in a scrolling column. Right: the chosen element's opacity for each
+-- situation (Normal, or 0 to 100 % stepped with - and +), Hide, Copy / Paste, and Apply to the whole list. Everything is a plain button so the
+-- D-pad and A work on it.
 ----------------------------------------------------------------------
 local ADDON, UF = ...
 local P = {}
 UF.FadePage = P
 
 local ROW = 24
-local page, headers, items, openCat, sel
-local stateRows, titleFS, hideBtn, resetBtn, resetAllBtn, hintFS
+local COLW = 262
+local page, scroll, listChild, headers, items, openCat, sel
+local stateRows, titleFS, hideBtn, copyBtn, pasteBtn, applyBtn, resetBtn, resetAllBtn, hintFS, foundFS, clipFS
 
 local function button(parent, w, h, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -23,14 +25,16 @@ local function layout()
     for ci, c in ipairs(UF.Fade.CATEGORIES) do
         local h = headers[ci]
         h:ClearAllPoints()
-        h:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
+        h:SetPoint("TOPLEFT", listChild, "TOPLEFT", 0, -y)
+        h.fadeY = y
         h:SetText((openCat == ci and "[-] " or "[+] ") .. c.name)
         y = y + ROW + 2
         for ei, e in ipairs(c.elements) do
             local b = items[ci][ei]
             if openCat == ci then
                 b:ClearAllPoints()
-                b:SetPoint("TOPLEFT", page, "TOPLEFT", 18, -y)
+                b:SetPoint("TOPLEFT", listChild, "TOPLEFT", 18, -y)
+                b.fadeY = y
                 b:Show()
                 y = y + ROW
             else
@@ -39,6 +43,18 @@ local function layout()
         end
         if openCat == ci then y = y + 4 end
     end
+    listChild:SetHeight(math.max(y, 10))
+end
+
+-- Scrolls the left column so a button of the list is in view.
+function P.reveal(b)
+    if not (scroll and b and b.fadeY) then return end
+    local viewH = scroll:GetHeight() or 0
+    local range = math.max(0, (listChild:GetHeight() or 0) - viewH)
+    local cur = scroll:GetVerticalScroll() or 0
+    local top, bottom = b.fadeY, b.fadeY + ROW
+    if top < cur then cur = top elseif bottom > cur + viewH then cur = bottom - viewH end
+    scroll:SetVerticalScroll(math.max(0, math.min(range, cur)))
 end
 
 function P.refresh()
@@ -50,9 +66,13 @@ function P.refresh()
             local b = items[ci][ei]
             local fs = b:GetFontString()
             local set = F.get(e.key) ~= nil
-            local chosen = sel and sel.key == e.key
-            if fs then fs:SetTextColor(set and 1 or 1, set and 0.82 or 1, set and 0 or 1) end
-            b:SetText((chosen and "> " or "") .. e.label)
+            local found = F.found(e)
+            if fs then
+                if found == 0 then fs:SetTextColor(0.5, 0.5, 0.5)
+                elseif set then fs:SetTextColor(1, 0.82, 0)
+                else fs:SetTextColor(1, 1, 1) end
+            end
+            b:SetText((sel and sel.key == e.key and "> " or "") .. e.label)
         end
     end
     local e = sel
@@ -62,14 +82,20 @@ function P.refresh()
     for _, r in ipairs(stateRows) do
         r.frame:SetShown(e ~= nil)
         if e then
-            local v = F.value(e.key, r.state)
-            r.value:SetText(F.percentText(v))
+            r.value:SetText(F.percentText(F.value(e.key, r.state)))
             r.frame:SetAlpha(hid and 0.5 or 1)
         end
     end
-    hideBtn:SetShown(e ~= nil)
-    resetBtn:SetShown(e ~= nil)
-    if e then hideBtn:SetText("Hide for good: " .. (hid and "On" or "Off")) end
+    for _, b in ipairs({ hideBtn, copyBtn, pasteBtn, applyBtn, resetBtn }) do b:SetShown(e ~= nil) end
+    foundFS:SetShown(e ~= nil)
+    clipFS:SetShown(e ~= nil)
+    if e then
+        hideBtn:SetText("Hide for good: " .. (hid and "On" or "Off"))
+        local found, total = F.found(e)
+        foundFS:SetText(found == 0 and "|cff999999Not available in this game|r" or (found == total and "" or ("Found " .. found .. " of " .. total .. " parts")))
+        clipFS:SetText(F.hasClipboard() and ("Copied: " .. tostring(F.clipboardFrom())) or "Nothing copied yet")
+        pasteBtn:SetEnabled(F.hasClipboard())
+    end
 end
 
 function P.build(parent, inset)
@@ -79,15 +105,29 @@ function P.build(parent, inset)
     page:SetPoint("TOPLEFT", inset, "TOPLEFT", 10, -10)
     page:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -10, 10)
     page:Hide()
+
+    -- Left: the scrolling list
+    scroll = CreateFrame("ScrollFrame", nil, page)
+    scroll:SetPoint("TOPLEFT", page, "TOPLEFT", 0, 0)
+    scroll:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 0, 0)
+    scroll:SetWidth(COLW)
+    listChild = CreateFrame("Frame", nil, scroll)
+    listChild:SetSize(COLW - 4, 10)
+    scroll:SetScrollChild(listChild)
+    scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        local range = math.max(0, (listChild:GetHeight() or 0) - (self:GetHeight() or 0))
+        self:SetVerticalScroll(math.max(0, math.min(range, (self:GetVerticalScroll() or 0) - delta * 3 * ROW)))
+    end)
     headers, items = {}, {}
     openCat = 1
     for ci, c in ipairs(F.CATEGORIES) do
-        local h = button(page, 250, ROW, c.name)
-        h:SetScript("OnClick", function() openCat = (openCat ~= ci) and ci or nil; P.refresh() end)
+        local h = button(listChild, 250, ROW, c.name)
+        h:SetScript("OnClick", function() openCat = (openCat ~= ci) and ci or nil; P.refresh(); P.reveal(h) end)
         headers[ci] = h
         items[ci] = {}
         for ei, e in ipairs(c.elements) do
-            local b = button(page, 232, ROW - 2, e.label)
+            local b = button(listChild, 232, ROW - 2, e.label)
             b:Hide()
             b:SetScript("OnClick", function() sel = e; P.refresh() end)
             items[ci][ei] = b
@@ -96,17 +136,19 @@ function P.build(parent, inset)
     sel = F.CATEGORIES[1].elements[1]
 
     -- Right pane
-    local RX = 275
+    local RX = COLW + 24
     titleFS = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     titleFS:SetPoint("TOPLEFT", page, "TOPLEFT", RX, 0)
     hideBtn = button(page, 200, 24, "")
     hideBtn:SetPoint("TOPLEFT", page, "TOPLEFT", RX, -30)
     hideBtn:SetScript("OnClick", function() if sel then F.toggleHide(sel.key); P.refresh() end end)
+    foundFS = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    foundFS:SetPoint("LEFT", hideBtn, "RIGHT", 10, 0)
 
     stateRows = {}
     for i, st in ipairs(F.STATES) do
         local fr = CreateFrame("Frame", nil, page)
-        fr:SetSize(380, 26)
+        fr:SetSize(400, 26)
         fr:SetPoint("TOPLEFT", page, "TOPLEFT", RX, -68 - (i - 1) * 34)
         local lab = fr:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         lab:SetPoint("LEFT", 0, 0)
@@ -132,11 +174,28 @@ function P.build(parent, inset)
     end
     hintFS = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     hintFS:SetPoint("TOPLEFT", page, "TOPLEFT", RX, -68 - #F.STATES * 34)
-    hintFS:SetWidth(380)
+    hintFS:SetWidth(400)
     hintFS:SetJustifyH("LEFT")
-    hintFS:SetText("Normal leaves the game's own opacity. The first situation that is on and has a value wins, in the order above. Hidden frames can still take clicks.")
+    hintFS:SetText("Normal leaves the game's own opacity. The first situation that is on and has a value wins, in the order above. A part with a setting stops following the frame it sits in. Hidden frames can still take clicks.")
+    copyBtn = button(page, 96, 24, "Copy")
+    copyBtn:SetPoint("TOPLEFT", hintFS, "BOTTOMLEFT", 0, -12)
+    copyBtn:SetScript("OnClick", function() if sel then F.copy(sel.key); P.refresh() end end)
+    pasteBtn = button(page, 96, 24, "Paste")
+    pasteBtn:SetPoint("LEFT", copyBtn, "RIGHT", 8, 0)
+    pasteBtn:SetScript("OnClick", function() if sel and F.paste(sel.key) then P.refresh() end end)
+    clipFS = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    clipFS:SetPoint("LEFT", pasteBtn, "RIGHT", 10, 0)
+    applyBtn = button(page, 200, 24, "Apply to the whole list")
+    applyBtn:SetPoint("TOPLEFT", copyBtn, "BOTTOMLEFT", 0, -6)
+    applyBtn:SetScript("OnClick", function()
+        if sel then
+            local n = F.applyToList(sel.key)
+            UF.say("Fading: " .. sel.label .. "'s settings were put on the other " .. n .. " elements of this list.")
+            P.refresh()
+        end
+    end)
     resetBtn = button(page, 200, 24, "Reset this element")
-    resetBtn:SetPoint("TOPLEFT", hintFS, "BOTTOMLEFT", 0, -14)
+    resetBtn:SetPoint("TOPLEFT", applyBtn, "BOTTOMLEFT", 0, -6)
     resetBtn:SetScript("OnClick", function() if sel then F.reset(sel.key); P.refresh() end end)
     resetAllBtn = button(page, 200, 24, "Reset all fading")
     resetAllBtn:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", 0, -6)
@@ -160,6 +219,8 @@ function P.navRows()
     if sel then
         out[#out + 1] = { hideBtn }
         for _, r in ipairs(stateRows) do out[#out + 1] = { r.normal, r.zero, r.minus, r.plus } end
+        out[#out + 1] = { copyBtn, pasteBtn }
+        out[#out + 1] = { applyBtn }
         out[#out + 1] = { resetBtn }
     end
     out[#out + 1] = { resetAllBtn }
@@ -201,7 +262,9 @@ function P.move(dir, extra)
     local known = false
     for _, b in ipairs(all) do if b == focus then known = true end end
     if not (focus and known and focus:IsVisible()) then
-        Nav.SetFocus(all[1] == focus and all[2] or P.firstElement() or all[1])
+        local first = all[1] == focus and all[2] or P.firstElement() or all[1]
+        Nav.SetFocus(first)
+        P.reveal(first)
         return true
     end
     local fx, fy = focus:GetCenter()
@@ -214,7 +277,7 @@ function P.move(dir, extra)
         end
     end
     local nxt = P.pick(cands, fx, fy, dir)
-    if nxt then Nav.SetFocus(nxt) end
+    if nxt then Nav.SetFocus(nxt); P.reveal(nxt) end
     return true
 end
 

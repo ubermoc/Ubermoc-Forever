@@ -869,10 +869,10 @@ r = L("""function()
     UbermocForeverDB.fade = nil
     local page = UF.FadePage.build(UIParent, UIParent)
     local rows0 = #UF.FadePage.navRows()
-    -- row layout: 4 headers + the first list's 8 elements + hide + 3 states + reset + reset all
+    -- row layout: 14 headers + the first list's 5 elements + hide + 3 states + copy/paste + apply + reset + reset all
     return tostring(page ~= nil) .. "," .. rows0
 end""")()
-assert str(r) == "true,18", r
+assert str(r) == "true,27", r
 print("Fading page builds with one list open: OK")
 # Options window: the triggers go through the pages (settings, fading)
 r = L("""function()
@@ -954,5 +954,41 @@ r = L("""function()
 end""")()
 assert str(r) == "falsetruefalse1", r
 print("Cinematic: the experimental camera popup is accepted by itself: OK")
+# Fading: parts are found by dotted path, become independent of their parent while they have a setting, and copy / paste / apply work
+r = L("""function()
+    local F = UbermocForever.Fade
+    UbermocForeverDB.fade = nil
+    local out = {}
+    local function frame()
+        local f = { alpha = 1, ignore = false }
+        function f:SetAlpha(a) self.alpha = a end
+        function f:IsIgnoringParentAlpha() return self.ignore end
+        function f:SetIgnoreParentAlpha(v) self.ignore = v end
+        return f
+    end
+    local cap = frame()
+    MainActionBar = { EndCaps = { LeftEndCap = cap } }
+    out[#out + 1] = tostring(F._frameOf("MainActionBar.EndCaps.LeftEndCap") == cap)
+    out[#out + 1] = tostring(F._frameOf("MainActionBar.EndCaps.Nope") == nil)
+    F._apply("mb_leftcap", 0.4, true)                           -- a part with a setting: independent, own opacity
+    out[#out + 1] = tostring(cap.ignore) .. cap.alpha
+    F._apply("mb_leftcap", 1, false)                            -- setting cleared: back to following its parent
+    out[#out + 1] = tostring(cap.ignore) .. cap.alpha
+    local n, total = F.found(F.byKey.mb_leftcap)
+    out[#out + 1] = n .. "/" .. total
+    out[#out + 1] = F.found(F.byKey.mb_rightcap) .. ""           -- not defined in the test: 0
+    -- copy, paste, apply to the whole list (the Main bar parts list has 5 elements)
+    F.set("mb_leftcap", "idle", 0.2); F.set("mb_leftcap", "combat", 1)
+    F.copy("mb_leftcap")
+    F.paste("mb_rightcap")
+    out[#out + 1] = F.percentText(F.value("mb_rightcap", "idle")) .. F.percentText(F.value("mb_rightcap", "combat"))
+    local others = F.applyToList("mb_leftcap")
+    out[#out + 1] = others .. F.percentText(F.value("mainbar", "idle"))
+    F.resetAll()
+    out[#out + 1] = tostring(F.get("mainbar"))
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true,true,true0.4,false1,1/1,0,20%100%,420%,nil", r
+print("Fading: parts by path, independent of their parent, copy / paste / apply to the list: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
