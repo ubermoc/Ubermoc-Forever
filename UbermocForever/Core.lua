@@ -138,6 +138,10 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.TargetMenu then UF.TargetMenu.report() end
     elseif msg == "bars" then
         if UF.GamepadBar then UF.GamepadBar.report() end
+    elseif msg == "bars hold" then
+        -- the report in 6 seconds: time to hold both modifier buttons on the controller
+        UF.say("Hold the modifiers now: the bars report comes in 6 seconds.")
+        C_Timer.After(6, function() if UF.GamepadBar then UF.GamepadBar.report() end end)
     elseif msg == "fade" then
         if UF.Fade then UF.Fade.report() end
     elseif msg == "dialog" then

@@ -1,3 +1,6 @@
+UbermocForever 1.3.88
+- Added: /ubf bars now also says which modifiers the game reports as held and which layer that is, and for each layer whether the game's bar frame is shown and how many buttons the layout kept; /ubf bars hold waits 6 seconds first, so both modifier buttons can be held while it reads. For finding why nothing shows on the combination of both modifiers.
+
 UbermocForever 1.3.87
 - Added: gamepad layout: the other binds of the combination you hold (jump, targeting, interact, map...) get a slot in the row too, with the game's name for the command (the game's own empty-slot picture) and the controller button above it; the row grows past 12 when needed. "Other binds" on the Bars page turns it on or off; it is on by default. Untested in the game.
 

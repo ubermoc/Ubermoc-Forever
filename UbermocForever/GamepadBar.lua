@@ -667,6 +667,10 @@ function B.report()
     local function yn(v) return v and "yes" or "no" end
     UF.say("Gamepad layout: " .. (c.on and "on" or "off") .. ", size " .. c.size .. ", gap " .. c.gap .. ", raise " .. c.raise
         .. ", hide empty " .. yn(c.hideEmpty) .. ", Edit Mode open " .. yn(UF.Fade and UF.Fade.editing and UF.Fade.editing()))
+    local sh = IsShiftKeyDown and IsShiftKeyDown() and true or false
+    local ct = IsControlKeyDown and IsControlKeyDown() and true or false
+    local al = IsAltKeyDown and IsAltKeyDown() and true or false
+    UF.say("Gamepad layout: held now: shift " .. yn(sh) .. ", ctrl " .. yn(ct) .. ", alt " .. yn(al) .. " -> layer " .. B.layerFor(sh, ct, al))
     for i = 1, #BAR_BUTTONS do
         local all = layerButtons(i)
         local shown, empty = 0, 0
@@ -674,7 +678,11 @@ function B.report()
             if b.IsShown and b:IsShown() then shown = shown + 1 end
             if isEmpty(b) then empty = empty + 1 end
         end
-        UF.say("Gamepad layout: layer " .. i .. " (" .. BAR_BUTTONS[i] .. "n): " .. #all .. " buttons found, " .. shown .. " shown by the game, " .. empty .. " empty"
+        local par = all[1] and all[1].GetParent and all[1]:GetParent()
+        local parShown = par and par.IsShown and par:IsShown()
+        local mine = layers[i] and 0 or nil
+        if mine then for _, b in ipairs(all) do if layers[i].shown[b] then mine = mine + 1 end end end
+        UF.say("Gamepad layout: layer " .. i .. " (" .. BAR_BUTTONS[i] .. "n): " .. #all .. " buttons found, " .. shown .. " shown by the game, " .. empty .. " empty, bar frame shown " .. yn(parShown) .. ", kept by the layout " .. tostring(mine)
             .. (#all == 0 and " (not in this game)" or ""))
     end
 end
