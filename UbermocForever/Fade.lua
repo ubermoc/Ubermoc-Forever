@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: fading the game's interface elements by situation.
--- Each element (player frame, action bars, minimap ...) can have an opacity from 0 to 100 for four situations: talking to an NPC,
--- in combat, on a flight path, and out of combat, or be hidden for good. An element with no setting is never touched.
+-- Each element (player frame, action bars, minimap ...) can have an opacity from 0 to 100 for three situations: in combat, on a flight
+-- path, and out of combat, or be hidden for good. (Talking to an NPC is not one of them: cinematic mode handles that by itself.) An element with no setting is never touched.
 -- Opacity is set with the frames' own SetAlpha (not protected, so it works in combat too). Separate from cinematic mode.
 -- Notes: docs/RESEARCH-FADE.md. Not tested in the game until the user reports.
 ----------------------------------------------------------------------
@@ -11,7 +11,6 @@ UF.Fade = F
 
 -- Situations in priority order: an element uses the first ACTIVE one it has a value for.
 F.STATES = {
-    { key = "talking", label = "Talking to an NPC" },
     { key = "combat", label = "In combat" },
     { key = "flight", label = "On a flight path" },
     { key = "idle", label = "Out of combat" },
@@ -54,11 +53,18 @@ local FADE_TIME = 0.4
 local STEP = 0.1   -- the page's - and + buttons move the value by this much
 
 ----------------------------------------------------------------------
--- Settings: UF.DB().fade[elementKey] = { talking = 0..1, combat = ..., flight = ..., idle = ..., hide = true }
+-- Settings: UF.DB().fade[elementKey] = { combat = 0..1, flight = ..., idle = ..., hide = true }
 ----------------------------------------------------------------------
 local function store()
     local d = UF.DB()
     d.fade = d.fade or {}
+    if not d.fadeNoTalk then   -- 1.3.50: the "talking to an NPC" situation was removed: its values are dropped once
+        d.fadeNoTalk = true
+        for k, o in pairs(d.fade) do
+            o.talking = nil
+            if next(o) == nil then d.fade[k] = nil end
+        end
+    end
     return d.fade
 end
 function F.get(key) return store()[key] end
@@ -98,10 +104,8 @@ function F.percentText(v) return v == nil and "Normal" or (math.floor(v * 100 + 
 ----------------------------------------------------------------------
 -- Which situations are on right now
 ----------------------------------------------------------------------
-local function shown(n) local f = _G[n]; return f and f.IsShown and f:IsShown() end
 function F.active()
     local a = {}
-    a.talking = (shown("GossipFrame") or shown("QuestFrame")) and true or false
     a.combat = (InCombatLockdown() or (UnitAffectingCombat and UnitAffectingCombat("player"))) and true or false
     a.flight = (UnitOnTaxi and UnitOnTaxi("player")) and true or false
     a.idle = not a.combat
@@ -184,13 +188,12 @@ function F.evaluate() driver:Show() end
 function F.resetAll() UF.DB().fade = {}; F.evaluate() end
 
 local ev = CreateFrame("Frame")
-for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "GOSSIP_SHOW", "GOSSIP_CLOSED",
-    "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED",
+for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED",
     "UNIT_FLAGS" }) do
     pcall(ev.RegisterEvent, ev, e)
 end
 ev:SetScript("OnEvent", function() F.evaluate() end)
--- The talk windows close without every event: keep looking while there are settings.
+-- Flying starts and ends without a dedicated event here: keep looking while there are settings.
 local poll = 0
 ev:SetScript("OnUpdate", function(_, dt)
     poll = poll + dt

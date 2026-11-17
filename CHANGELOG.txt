@@ -1,3 +1,6 @@
+UbermocForever 1.3.50
+- Changed: the Fading page no longer has a "Talking to an NPC" situation; cinematic mode handles that by itself. The three left are in combat, on a flight path and out of combat. Old talking values are dropped.
+
 UbermocForever 1.3.49
 - Fixed: the game's "experimental feature" warning (Accept / Disable) no longer pops up when a talk starts. Cinematic mode changes a test camera setting, which makes the game ask; the warning is now closed the moment it appears, which leaves the setting on, the same as pressing Accept. Other times that warning is left alone.
 
