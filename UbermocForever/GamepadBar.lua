@@ -94,29 +94,29 @@ function B.padKey(i, n)
     return any
 end
 
--- The binds of layer i that are not one of the layer's action buttons (jump, interact, targeting, map...): { pad = "PADDUP", name = "Jump" } in
--- the options' order. getAction(key) -> the command bound to the key (GetBindingAction without overrides), getName(cmd) -> its display name.
--- Commands of the action bars (any ACTIONBUTTON / MULTIACTIONBAR) are left out: their buttons are in the row already.
-function B.extras(i, getAction, getName)
+-- The binds of layer i that are not buttons shown in the row already: { pad = "PADDUP", name = "Jump", icon = <texture or nil> } in the options' order.
+-- That is every command that is not an action button (jump, interact, targeting, map...), and every action button of ANOTHER layer's bar (for
+-- example Ctrl + left stick click bound to a button of bar 2): those cannot be moved into this layer, so they get a slot with the ability's icon.
+-- Buttons of action bars 5 to 8 are the real buttons (B.moreButtons) and are left out here. getAction(key) -> the command bound to the key
+-- (GetBindingAction without overrides), getName(cmd) -> its display name, getIcon(cmd) -> the icon of an action button command.
+function B.extras(i, getAction, getName, getIcon)
     local out = {}
     local prefix = PREFIXES[i] or ""
     for _, pad in ipairs(UF.PAD_ORDER or {}) do
         local cmd = getAction(prefix .. pad)
-        if type(cmd) == "string" and cmd ~= "" and not cmd:find("^ACTIONBUTTON") and not cmd:find("^MULTIACTIONBAR") and not cmd:find("^CLICK ") then
-            local nm = getName and getName(cmd)
-            if type(nm) ~= "string" or nm == "" then nm = cmd end
-            out[#out + 1] = { pad = pad, name = nm }
+        if type(cmd) == "string" and cmd ~= "" and not cmd:find("^CLICK ") then
+            local own = CMDS[i] and cmd:find("^" .. CMDS[i] .. "%d+$")
+            local barN = cmd:match("^MULTIACTIONBAR(%d+)BUTTON%d+$")
+            local real = barN and tonumber(barN) >= 4
+            if not own and not real then
+                local nm = getName and getName(cmd)
+                if type(nm) ~= "string" or nm == "" then nm = cmd end
+                out[#out + 1] = { pad = pad, name = nm, icon = getIcon and getIcon(cmd) or nil }
+            end
         end
     end
     return out
 end
-local function realExtras(i)
-    if not GetBindingAction then return {} end
-    return B.extras(i, function(k) return GetBindingAction(k, false) end, function(cmd)
-        return GetBindingName and GetBindingName(cmd) or nil
-    end)
-end
-
 -- Action bars 5 to 8 (the game's MULTIACTIONBAR4..7 bindings): a controller key of the held combination bound to one of their buttons shows that real
 -- button in the row too. Returns { { name = "MultiBar5Button3", pad = "PADDUP" }, ... } in the options' order.
 local MORE_BARS = { [4] = "MultiBarLeftButton", [5] = "MultiBar5Button", [6] = "MultiBar6Button", [7] = "MultiBar7Button" }
@@ -209,6 +209,29 @@ function B.hiddenBars()
         end
     end
     return out
+end
+
+-- The game's button of an action button command (ACTIONBUTTON3, MULTIACTIONBAR2BUTTON9...).
+local ALL_BARS = { [0] = "ActionButton", [1] = "MultiBarBottomLeftButton", [2] = "MultiBarBottomRightButton", [3] = "MultiBarRightButton",
+                   [4] = "MultiBarLeftButton", [5] = "MultiBar5Button", [6] = "MultiBar6Button", [7] = "MultiBar7Button" }
+local function iconOf(cmd)
+    local n = cmd:match("^ACTIONBUTTON(%d+)$")
+    local bar = 0
+    if not n then bar, n = cmd:match("^MULTIACTIONBAR(%d+)BUTTON(%d+)$"); bar = bar and tonumber(bar) end
+    local frame = n and ALL_BARS[bar]
+    local btn = frame and _G[frame .. n]
+    if not btn then return nil end
+    local act = actionOf and actionOf(btn)
+    if type(act) ~= "number" or not GetActionTexture then return nil end
+    local ok, tex = pcall(GetActionTexture, act)
+    if ok and tex and not (issecretvalue and issecretvalue(tex)) then return tex end
+    return nil
+end
+local function realExtras(i)
+    if not GetBindingAction then return {} end
+    return B.extras(i, function(k) return GetBindingAction(k, false) end, function(cmd)
+        return GetBindingName and GetBindingName(cmd) or nil
+    end, function(cmd) return iconOf(cmd) end)
 end
 
 local styleCooldown   -- defined below (cooldown look)
@@ -372,6 +395,8 @@ local function extraFor(k)
         f = CreateFrame("Frame", nil, root)
         f.bg = f:CreateTexture(nil, "BACKGROUND")
         f.bg:SetAllPoints(f)
+        f.icon = f:CreateTexture(nil, "ARTWORK")
+        f.icon:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -3); f.icon:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, 3)
         f.fs = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         f.fs:SetPoint("CENTER", f, "CENTER", 0, 0)
         f.fs:SetJustifyH("CENTER")
@@ -471,6 +496,7 @@ function B.layout()
             f:ClearAllPoints(); f:SetPoint("BOTTOMLEFT", root, "BOTTOMLEFT", x, 0); f:SetSize(s, s)
             f.bg:SetAtlas("ui-hud-actionbar-iconframe-slot")
             f.fs:SetWidth(s - 4); f.fs:SetText(e.name)
+            if e.icon then f.icon:SetTexture(e.icon); f.icon:Show(); f.fs:Hide() else f.icon:Hide(); f.fs:Show() end
             f:Show()
             labelN = labelN + 1
             local l = labelFor(labelN)

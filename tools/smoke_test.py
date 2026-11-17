@@ -1424,7 +1424,7 @@ r = L("""function()
     for _, e in ipairs(b) do out[#out + 1] = e.pad .. "=" .. e.name end
     return table.concat(out, ",")
 end""")()
-assert str(r) == "PADDUP=TARGETNEARESTENEMY,PADBACK=TOGGLEWORLDMAP,|,PADLSTICK=Jump", r
+assert str(r) == "PAD1=MULTIACTIONBAR1BUTTON2,PADDUP=TARGETNEARESTENEMY,PADBACK=TOGGLEWORLDMAP,|,PADLSTICK=Jump", r
 print("Gamepad layout: other binds of the held combination: OK")
 
 # Gamepad layout: a used bar the game does not show is found
@@ -1477,5 +1477,22 @@ end""")()
 b, a = str(r).split(",")
 assert int(a) <= int(b), r
 print("Fading page: hidden-for-good elements not listed: OK")
+
+# Gamepad layout: a bind to another layer's action button (Ctrl + left stick click on a button of bar 2) gets a slot with its icon
+r = L("""function()
+    local B = UbermocForever.GamepadBar
+    local binds = { ["CTRL-PADLSTICK"] = "MULTIACTIONBAR1BUTTON11", ["SHIFT-PADLSTICK"] = "MULTIACTIONBAR1BUTTON9", PADRSTICK = "MULTIACTIONBAR4BUTTON1" }
+    local function act(k) return binds[k] or "" end
+    local function icon(c) return 99 end
+    local out = {}
+    for _, e in ipairs(B.extras(3, act, nil, icon)) do out[#out + 1] = e.pad .. "=" .. tostring(e.icon) end
+    out[#out + 1] = "|"
+    for _, e in ipairs(B.extras(2, act, nil, icon)) do out[#out + 1] = e.pad end
+    out[#out + 1] = "|"
+    for _, e in ipairs(B.extras(1, act, nil, icon)) do out[#out + 1] = e.pad end
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "PADLSTICK=99,|,|", r
+print("Gamepad layout: binds to another layer's button get an icon slot, own and bar 5 to 8 buttons do not: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
