@@ -1,3 +1,6 @@
+UbermocForever 1.3.81
+- Fixed: warning "Cannot anchor to a region dependent on it" (BagsBar:SetPoint): the game anchors the bags to the micro menu, and 1.3.79 anchored the micro menu to the bags. Both are now anchored to the screen; the micro menu sits above the bags by their height. Untested in the game.
+
 UbermocForever 1.3.80
 - Added: gamepad layout: the stance bar sits centred above the player frame's portrait at 3/4 of its size (only while the game still has it at its default position; turning the layout off puts it back). Untested in the game.
 

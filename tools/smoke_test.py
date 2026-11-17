@@ -1104,7 +1104,7 @@ r = L("""function()
     MicroMenuContainer, BagsBar, StatusTrackingBarManager = nil, nil, nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "true,false,false,Gamepad_Ltr_X_64,nil,nil,clear/BOTTOMRIGHT>TOPRIGHT:0,2,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0,0,clear/BOTTOMRIGHT>TOPRIGHT:0,2/clear/CENTER>CENTER:0,0", r
+assert str(r) == "true,false,false,Gamepad_Ltr_X_64,nil,nil,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,42,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,0,0,clear/BOTTOMRIGHT>BOTTOMRIGHT:0,42/clear/CENTER>CENTER:0,0", r
 print("Gamepad layout 3: range state, default places only while at the game's default: OK")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()

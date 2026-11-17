@@ -411,7 +411,8 @@ function B.isOutOfRange(slot) return outOfRange[slot] == true end
 -- puts the place back whenever the game moves the part again.
 local PART_FRAMES = {
     { name = "BagsBar", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 0 },
-    { name = "MicroMenuContainer", point = "BOTTOMRIGHT", rel = "BagsBar", relPoint = "TOPRIGHT", x = 0, y = 2 },
+    -- anchored to the screen, not to the bags: the game anchors the bags to the micro menu itself, and two frames anchored to each other is refused
+    { name = "MicroMenuContainer", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 2, above = "BagsBar" },
     { name = "StatusTrackingBarManager", point = "TOP", rel = "UIParent", relPoint = "TOP", x = 0, y = 0 },
     -- the stance bar: centred above the player frame's portrait, at 3/4 of its size
     { name = "StanceBar", point = "BOTTOM", relPath = "PlayerFrame.PlayerFrameContainer.PlayerPortrait", relPoint = "TOP", x = 0, y = 4, scale = 0.75 },
@@ -454,7 +455,14 @@ local function placePart(def)
         local clear = f.ClearAllPointsBase or f.ClearAllPoints
         local set = f.SetPointBase or f.SetPoint
         clear(f)
-        set(f, def.point, rel, def.relPoint, def.x, def.y)
+        local y = def.y
+        if def.above then
+            local a = _G[def.above]
+            local h = a and a.GetHeight and a:GetHeight()
+            if type(h) ~= "number" or (issecretvalue and issecretvalue(h)) or h <= 0 then h = 40 end
+            y = y + h
+        end
+        set(f, def.point, rel, def.relPoint, def.x, y)
         if def.scale and f.SetScale then
             if not partScale[f] then partScale[f] = f:GetScale() or 1 end
             f:SetScale(def.scale)
