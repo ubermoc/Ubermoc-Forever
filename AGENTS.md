@@ -57,6 +57,7 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
 - **Hardcoded names are unverified until seen in the game.** `QuestFrameAcceptButton`, `ClassTrainerFrame.TrainButton`
   etc. come from Blizzard's source (`Gethe/wow-ui-source`, branch `forever`, see `tools/setup-research.sh`); use
   `/ubf tabs` and `/ubf item` style reports to confirm before building on them.
+- **Taint lessons are in `docs/LUA-WOW-GUIDE.md` sections 3 and 8** (frame stored in a secure attribute, menu entries, the taint log procedure, never assume which addons run). Read them before touching secure buttons or menus.
 - Ask the user which control they mean when they say "pull tab" or similar; two guesses were wrong before.
 
 ## Workflow

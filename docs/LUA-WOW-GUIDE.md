@@ -46,6 +46,17 @@ Web sources (warcraft.wiki.gg API pages) describe retail and can differ from For
     handlers inside our tainted call. Keep such calls few and out of combat.
   - Closing or showing Blizzard panels from our code: use `securecallfunction(HideUIPanel, frame)`.
   - A mouse right click sent to a `StaticPopup` button asserts (`GameDialog.lua`): X must have no target in popups.
+  - **A frame stored by our code in a secure button's attribute taints the click** (1.3.65). `clickbutton` = a Blizzard frame, set with `SetAttribute`,
+    is fine for plain actions, but if the clicked button's script calls a **protected function** (`SetRaidTarget` from the game's menu, found with the taint
+    log) the game blocks it and blames us. Hand such a frame over through `SecureHandlerSetFrameRef(button, "label", frame)` and a wrapped OnClick snippet
+    (`SecureHandlerWrapScript`) that does `self:SetAttribute("clickbutton", self:GetFrameRef("label"))`. The button needs `SecureHandlerBaseTemplate`; out of combat only.
+  - Do not run the game's `OnEnter` on **menu entries** (`Menu.lua`, frames with `GetElementDescription`): it is the menu's hover logic.
+  - `securecallfunction(fn, ...)` runs a Blizzard function with its own taint, not ours. It does not clean values we stored.
+  - `hooksecurefunc` hooks are safe (run after, do not taint the original). Keep them small.
+- **Finding the taint source: use the game's taint log, do not guess.** In game: `/console taintLog 2`, `/reload`, repeat the failing action, then `/logout` (the file
+  is only written then). Read `Logs/taint.log` (in the game folder next to `WTF`, on this machine under the Steam compatdata folder). Look for "An action was blocked
+  because of taint from <Addon>" and the lines just above it: the first stack line is where the thread became tainted. Turn it off with `/console taintLog 0`. Two
+  wrong guesses (1.3.62, 1.3.64) cost the user two game tests before the log was read.
 - `InCombatLockdown()` before touching any secure attribute, binding or protected frame.
 
 ## 4. Frame facts worth knowing
@@ -93,9 +104,16 @@ addon code. It must end with `ALL TESTS PASSED`. Then `bash tools/install.sh` an
 ## 7. Reports the addon already has
 `/ubf check` (self-check results), `/ubf tabs` (tab groups found in the open window), `/ubf item` (class, subclass and
 verdict for the highlighted item), `/ubf scan [status|stop|reset|from N|budget N]` (author data scan), `/ubf stick flip`
-(reverse right-stick scrolling), `/ubf nav on|off`. While a spell is being bound, chat shows every key the game sends.
+(reverse right-stick scrolling), `/ubf nav on|off`, `/ubf targetmenu` (interact-key menu: keys, target facts, soft target, what ran), `/ubf fade` (fading elements this game lacks), `/ubf dialog` (quest window). While a spell is being bound, chat shows every key the game sends.
 
 ## 8. Mistakes to avoid (all happened)
+- **Never assume which addons are enabled.** A folder in `Interface/AddOns` does not mean it runs. 1.3.58 stood down for Ubermoc UI and 1.3.59 switched its settings off, both on a
+  wrong guess; the user does not run Ubermoc UI and Ubermoc Forever together. Check the character's `AddOns.txt` or ask.
+- A game menu's **submenu opens on mouse down or hover, not on click** (`Menu.lua`): a forwarded click does nothing, so GameNav presses it through the entry's own `OnMouseDown`
+  (`securecallfunction`), and finds the submenu by the frame anchored to that entry (the menu manager only lists the first menu).
+- The interact key's priority is the game's own (`Blizzard_GamepadActionBars/MainActionBarFrame.lua`, `interactActions`): soft interact target in range first (a corpse to skin, an herb),
+  then a lootable or interactable target, then attack. Taking the key for any enemy broke skinning (1.3.58). A context menu needs a visible owner frame with a size and a position.
+- Fixing the same bug three times from the source alone: when a cause is not visible in the code, get evidence from the game (a `/ubf` report, BugGrabber, the taint log) before the next change.
 - Using a local before it is declared; looping with `ipairs` over a list with holes; counting `pcall` return positions wrong.
 - Calling a function that may not exist in Forever (`GetItemInfo` for a name) without a guard: one failure stopped a whole scan
   and was counted again every frame. Guard calls, count errors, and never let one item stop the rest.
