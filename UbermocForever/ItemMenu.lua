@@ -357,6 +357,18 @@ local function openBag(btn)
         -- At the auction house the right-click on the bag item button puts the item in the sell slot (ContainerFrame.lua: AuctionHouseFrame:SetPostItem)
         local auction = AuctionHouseFrame and AuctionHouseFrame:IsShown()
         local bname = btn.GetName and btn:GetName()
+        -- an item is already in the sell slot: the game's own Create Auction button (PostButton of the shown sell frame) can be pressed from here
+        if auction then
+            for _, key in ipairs({ "ItemSellFrame", "CommoditiesSellFrame" }) do
+                local sf = AuctionHouseFrame[key]
+                local post = sf and sf.IsShown and sf:IsShown() and sf.PostButton
+                local okI, has = pcall(function() return sf.GetItem and sf:GetItem() end)
+                if post and okI and has and post:IsEnabled() then
+                    add("Create auction", { type = "click", clickbutton = post })
+                    break
+                end
+            end
+        end
         if auction and bname and bname ~= "" then
             add("Sell at auction", { type = "macro", macrotext = "/click " .. bname .. " RightButton" })
         end
