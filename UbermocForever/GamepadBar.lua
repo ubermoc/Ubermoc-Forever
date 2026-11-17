@@ -403,17 +403,13 @@ end
 function B.isOutOfRange(slot) return outOfRange[slot] == true end
 
 ----------------------------------------------------------------------
--- Where the micro menu, the bags and the experience bar sit to start with
+-- Where the stance bar sits (the micro menu, bags and XP bar are NOT moved: the user places them in Edit Mode, Bars page button)
 ----------------------------------------------------------------------
 -- Only while the game still has them at their default position (a part the user moved in Edit Mode stays where Edit Mode put it). The
 -- game's own parts are Edit Mode systems: their SetPoint is the system's override (it tells Edit Mode a position changed), so the base
 -- functions the system keeps (SetPointBase / ClearAllPointsBase, Blizzard_EditMode/Shared/EditModeSystemTemplates.lua) are used, and a hook
 -- puts the place back whenever the game moves the part again.
 local PART_FRAMES = {
-    { name = "BagsBar", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 0 },
-    -- anchored to the screen, not to the bags: the game anchors the bags to the micro menu itself, and two frames anchored to each other is refused
-    { name = "MicroMenuContainer", point = "BOTTOMRIGHT", rel = "UIParent", relPoint = "BOTTOMRIGHT", x = 0, y = 2, above = "BagsBar" },
-    { name = "StatusTrackingBarManager", point = "TOP", rel = "UIParent", relPoint = "TOP", x = 0, y = 0 },
     -- the stance bar: centred above the player frame's portrait, at 3/4 of its size
     { name = "StanceBar", point = "BOTTOM", relPath = "PlayerFrame.PlayerFrameContainer.PlayerPortrait", relPoint = "TOP", x = 0, y = 4, scale = 0.75 },
 }
