@@ -151,6 +151,8 @@ local btnBusy = setmetatable({}, { __mode = "k" })
 local btnHooked = setmetatable({}, { __mode = "k" })
 local wantAlpha = setmetatable({}, { __mode = "k" }) -- button -> 1 when it is on the held layer and shown
 local lastLevel = setmetatable({}, { __mode = "k" })
+local lastMouse = setmetatable({}, { __mode = "k" })   -- button -> whether we left it taking the mouse
+local barTop = 1
 local layerOf = setmetatable({}, { __mode = "k" })
 local root, top
 local pending = false
@@ -290,6 +292,8 @@ local function release(btn)
     if not st then return end
     taken[btn], btnPos[btn], wantAlpha[btn] = nil, nil, nil
     styleCooldown(btn, false)
+    lastLevel[btn], lastMouse[btn] = nil, nil
+    pcall(btn.EnableMouse, btn, true)
     pcall(function()
         btn:SetAlpha(1)
         btn:SetIgnoreParentAlpha(false)
@@ -315,6 +319,13 @@ function B.refresh()
     local held = B.layerFor(IsShiftKeyDown and IsShiftKeyDown(), IsControlKeyDown and IsControlKeyDown(), IsAltKeyDown and IsAltKeyDown())
     -- the bar's own fading (Bars page, element "gbar") is the opacity of our root frame; the game's buttons ignore their parent's opacity, so
     -- it is multiplied in here (the labels are children of the root frame and follow it by themselves)
+    -- the highest frame level among our root and the game's bar frames: the buttons go above all of them
+    barTop = root:GetFrameLevel() or 1
+    for _, name in ipairs({ "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7" }) do
+        local f = _G[name]
+        local ok, l = pcall(function() return f and f:GetFrameLevel() end)
+        if ok and type(l) == "number" and l > barTop then barTop = l end
+    end
     local okF, fade = pcall(root.GetAlpha, root)
     if not okF or type(fade) ~= "number" then fade = 1 end
     for i, L in ipairs(layers) do
@@ -336,10 +347,14 @@ function B.refresh()
             end
             local ok, cur = pcall(btn.GetAlpha, btn)
             if not ok or cur ~= a then pcall(btn.SetAlpha, btn, a) end
-            -- layers sit on top of each other: the held one takes the mouse (frame levels only change out of combat)
+            -- layers sit on top of each other: only the held one takes the mouse (tooltips, dragging on and off), and it sits above the
+            -- game's own bar frames, which take the mouse too (MainActionBar has enableMouse and frame level 50, MainActionBar.xml) and
+            -- are only made invisible here. Frame levels and the mouse only change out of combat.
             if not InCombatLockdown() then
-                local lvl = (root:GetFrameLevel() or 1) + (active and 40 or 20)
+                local lvl = barTop + (active and 40 or 20)
                 if lastLevel[btn] ~= lvl then lastLevel[btn] = lvl; pcall(btn.SetFrameLevel, btn, lvl) end
+                local m = (active and L.shown[btn]) and true or false
+                if lastMouse[btn] ~= m then lastMouse[btn] = m; pcall(btn.EnableMouse, btn, m) end
             end
         end
     end

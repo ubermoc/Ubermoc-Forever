@@ -1,3 +1,6 @@
+UbermocForever 1.3.107
+- Fixed: gamepad layout: abilities could not be dragged off the row or onto it, and some buttons showed no tooltip. The game's main bar frame takes the mouse and sits at frame level 50; it is only made invisible here, and our buttons sat below it, so it caught the mouse over part of the row. The four layers also sit on top of each other and the ones not held still took the mouse. Now the buttons sit above the game's bar frames, and only the held layer's shown buttons take the mouse (set out of combat; in combat the layer that was held when the fight started keeps the mouse). Untested in the game.
+
 UbermocForever 1.3.106
 - Fixed: in the options window the right trigger did not change the page (the left one did). The game's own controller cursor uses the right trigger as its left click (and the right bumper as its right click) by default and took the press. While any of our windows has the controller buttons those two cursor clicks are switched off, and they are put back when the windows close (only if they were at the game's defaults; also put back at the next login after a /reload or crash). Checks now prints the two cursor click buttons. Untested in the game.
 

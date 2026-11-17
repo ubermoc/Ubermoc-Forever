@@ -983,7 +983,8 @@ r = L("""function()
         function b:SetIgnoreParentAlpha(v) self.ignore = v end
         function b:SetAlpha(v) self.alpha = v end
         function b:GetAlpha() return self.alpha end
-        function b:SetFrameLevel() end
+        function b:SetFrameLevel(v) self.level = v end
+        function b:EnableMouse(v) self.mouse = v end
         b.cooldown = { SetDrawSwipe = function(c, v) c.swipe = v end, SetDrawEdge = function(c, v) c.edge = v end, SetHideCountdownNumbers = function() end }
         return b
     end
@@ -1011,7 +1012,7 @@ r = L("""function()
         function f:SetAlpha(v) self.alpha = v end
         return f
     end
-    MainActionBar = { EndCaps = { LeftEndCap = cap(), RightEndCap = cap() } }
+    MainActionBar = { EndCaps = { LeftEndCap = cap(), RightEndCap = cap() }, GetFrameLevel = function() return 50 end }
     local realTalk = UF.Cinematic.talking
     UF.Cinematic.talking = function() return false end   -- the test stub's windows look open: not talking
     IsShiftKeyDown = function() return true end; IsControlKeyDown = function() return false end; IsAltKeyDown = function() return false end
@@ -1020,6 +1021,8 @@ r = L("""function()
     out[#out + 1] = tostring(first.pts[1][4]) .. "," .. tostring(btns[3].pts[1][4]) .. "," .. tostring(btns[4].pts[1][4])   -- centred 3, the fourth out of sight
     out[#out + 1] = tostring(btns[1].alpha) .. tostring(btns[13].alpha) .. tostring(btns[14].alpha) .. tostring(btns[16].alpha)   -- layer 2 is held: bar 1 hidden, bar 2's first three shown, its fourth (empty) hidden
     out[#out + 1] = tostring(btns[1].ignore)
+    -- only the held layer's shown buttons take the mouse, and they sit above the game's main bar frame (level 50)
+    out[#out + 1] = tostring(btns[1].mouse) .. tostring(btns[13].mouse) .. tostring(btns[16].mouse) .. "/" .. tostring(btns[13].level > 50) .. tostring(btns[13].level > btns[1].level)
     out[#out + 1] = tostring(btns[1].cooldown.swipe) .. tostring(btns[1].cooldown.edge)     -- no dark swipe, the bright edge on
     local L, R = MainActionBar.EndCaps.LeftEndCap, MainActionBar.EndCaps.RightEndCap
     out[#out + 1] = #L.calls .. "|" .. #R.calls .. "|" .. tostring(L.ignore) .. L.alpha           -- the end caps are never moved (they are hidden for good while the layout is on)
@@ -1036,7 +1039,7 @@ r = L("""function()
     UbermocForeverDB.gbar = nil
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,falsetrue,0|0|false1,false1,CENTERfalse1,truefalse", r
+assert str(r) == "1,2,3,4,1,225.0/275.0/325.0,0,225.0,325.0,-5000,0110,true,falsetruefalse/truetrue,falsetrue,0|0|false1,false1,CENTERfalse1,truefalse", r
 print("Gamepad layout: layers, even centring, empty buttons removed, put back when off: OK  (" + str(r) + ")")
 # Gamepad layout, part two: forced hiding no mouse-over can lift, Edit Mode suspends fading, bound-button lookup, the Bars page
 r = L("""function()
