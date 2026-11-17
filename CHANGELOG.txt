@@ -1,3 +1,6 @@
+UbermocForever 1.3.65
+- Fixed (from the game's taint log): a marker chosen in the target's menu was refused because the frame A clicks was handed to the secure click handler by our own code, which carries our taint. For the game's menu entries it is now handed over through a frame reference and a restricted snippet that runs just before the click, so the value is written by secure code. Untested in the game.
+
 UbermocForever 1.3.64
 - Fixed: choosing a marker in the target's menu was still refused (SetRaidTarget, "AddOn UbermocForever tried to call the protected function"). The cause was the tooltip step: for every highlighted button the game's own OnEnter script was run, and for the game's menu entries that is the menu's own hover handling, which left the menu tainted. Menu entries no longer get that step (they have no tooltip from us). Untested in the game.
 

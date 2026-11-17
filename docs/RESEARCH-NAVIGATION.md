@@ -313,3 +313,11 @@ Same stack in the second report (`Pick` -> `securecallfunction` -> `UnitPopupRai
 (the same kind of step that already had to be skipped on the action bars, see the comment at `onActionBar`). A menu entry's `OnEnter` is `menu.onElementEnter` (`Menu.lua`, `frame:SetScript("OnEnter", menu.onElementEnter)`)
 = `EnterFrame`, the menu's hover logic, which also opens submenus after a delay; run from our code it leaves that state tainted, and `securecallfunction` runs a tainted responder tainted. Menu entries are now skipped
 (`f.GetElementDescription`). A moved highlight no longer "hovers" them, so a submenu only opens on A (1.3.62).
+
+### 1.3.65: what the taint log said (`/console taintLog 2`, then log out; the file is `Logs/taint.log`)
+The log named UbermocForever once, with no "while reading global" line: `SecureTemplates.lua:561 handler()` then `An action was blocked because of taint from UbermocForever - SetRaidTarget()`. Line 561 is
+`SECURE_ACTIONS.click` evaluating `delegate` = the `clickbutton` attribute, a frame that our code stored with `SetAttribute`; reading it taints the thread, and `Button:Click()` -> `Pick` -> `SetRaidTarget` then runs tainted.
+(The earlier guesses were wrong: the OnEnter tooltip step and opening the submenu through securecallfunction were harmless to this; 1.3.64 still stands because OnEnter on menu entries was a real risk.)
+Clean way, from `Blizzard_RestrictedAddOnEnvironment`: `SecureHandlerSetFrameRef(button, "entry", frame)` (a protected button with `SecureHandlerBaseTemplate`, out of combat), and a wrapped OnClick pre-snippet
+(`SecureHandlerWrapScript(button, "OnClick", button, snippet)`) doing `self:SetAttribute("clickbutton", self:GetFrameRef("entry"))`. Handles of unprotected frames are valid in the snippet out of combat
+(`RestrictedFrames.lua`, `GetPossiblyForbiddenHandleFrame`), and `HANDLE:SetAttribute` accepts a frame handle. Used only for the game's menu entries; every other A press keeps the old attribute path.
