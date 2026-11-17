@@ -24,7 +24,7 @@ local STEAM_SPILL = { "PADRSTICK" }
 local PAD_SLOTS = { "PAD3", "PAD1", "PAD2", "PAD4", "PADDLEFT", "PADDDOWN", "PADDRIGHT", "PADDUP",
                     "PADRSHOULDER", "PADLSHOULDER" }
 local PAD_SPILL = {}
-local STEAM_INTERACT, STEAM_JUMP = { "F6" }, { "SPACE", "PADPADDLE4" }
+local STEAM_INTERACT, STEAM_JUMP = { "F6", "PADPADDLE2" }, { "SPACE", "PADPADDLE4" }
 local PAD_INTERACT, PAD_JUMP = { "PADLSTICK" }, { "PADRSTICK" }
 local TARGET = { PADRSHOULDER = "TARGETNEARESTENEMY", PADLSHOULDER = "TARGETNEARESTFRIEND" }
 
@@ -109,6 +109,11 @@ function UF.applyDefaults(setId)
         setModifiers("PADPADDLE1", "PADPADDLE3")
         for _, k in ipairs({ GetBindingKey("INTERACTTARGET") }) do SetBinding(k) end
         bindLayers(STEAM_SLOTS, STEAM_SPILL)
+        -- the left stick click carries three more abilities with the modifiers (the author's own layout): buttons 9 and 11 of the Shift layer's bar
+        -- and button 9 of the Ctrl layer's bar; without a modifier it is auto-run
+        SetBinding("SHIFT-PADLSTICK", "MULTIACTIONBAR1BUTTON9")
+        SetBinding("CTRL-PADLSTICK", "MULTIACTIONBAR1BUTTON11")
+        SetBinding("CTRL-SHIFT-PADLSTICK", "MULTIACTIONBAR2BUTTON9")
         bindRoles(STEAM_INTERACT, STEAM_JUMP)
     else
         setModifiers("PADLTRIGGER", "PADRTRIGGER")

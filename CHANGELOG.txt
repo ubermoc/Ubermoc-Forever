@@ -1,3 +1,6 @@
+UbermocForever 1.3.102
+- Changed: the default binds for the Steam Deck / Steam Controller now include the author's own extras, read from his saved binds: the second back paddle (PADPADDLE2) interacts, and the left stick click carries three more abilities with the modifiers (Shift: button 9 and Ctrl: button 11 of the Shift layer's bar, Shift + Ctrl: button 9 of the Ctrl layer's bar); without a modifier it is still auto-run. They are set when the default binds are applied. Untested in the game.
+
 UbermocForever 1.3.101
 - Fixed: the mouse over the gamepad bar also brought up the experience bar, and the mouse over the experience bar did nothing. The experience bars' mouse-over was read from their manager frame, whose area is larger than the bars and overlaps the bottom of the screen; it now looks at the two bars themselves. Untested in the game.
 
