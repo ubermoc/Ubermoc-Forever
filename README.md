@@ -6,6 +6,32 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 
 ![The key binds window on a Steam Deck, with the four holds, the button pictures and the legend](docs/images/key-binds.jpg)
 
+## Screenshots
+
+![The game on a first login: its own bars, the objective tracker and every frame in the default layout.](docs/images/first-login.jpg)
+
+*The game as it looks on a first login, before anything is set up.*
+
+![The gamepad layout turned on: one row of action buttons at the bottom with the controller button pictures X, A, B and Y.](docs/images/gamepad-first-login.jpg)
+
+*The gamepad layout on a first login: one row of the game's own action buttons at the bottom, each with the controller button it is bound to.*
+
+![The Bars page of the options window: gamepad layout, button size, gap, height, face button colours, other binds and the fading of each part.](docs/images/gamepad-layout-options.jpg)
+
+*The Bars page of the options window: everything the gamepad layout changes is in one place.*
+
+![Fading in use: the interface is faded out of the way and the bags show in the corner.](docs/images/mouse-over-bags.jpg)
+
+*Fading in use: almost the whole interface is out of the way, and the parts you choose come back when you point at them.*
+
+![In an instance out of combat: only the player frame and the minimap are left on screen.](docs/images/instance-no-combat.jpg)
+
+*In an instance out of combat: only the player frame and the minimap are left on screen.*
+
+![Travelling on a flight path with the interface faded completely.](docs/images/traveling-immersion.jpg)
+
+*Travelling: on a flight path the interface fades out completely.*
+
 ## What it does now
 
 - Detects your controller and offers to set the default key binds the first time you play.
