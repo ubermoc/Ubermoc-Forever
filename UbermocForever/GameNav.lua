@@ -441,6 +441,8 @@ local function buttons()
             if not f or InCombatLockdown() or not f.GetScript then return end
             local isDrop = f.SetMenuOpen and f.IsMenuOpen
             if G.opensSubmenu(f) then
+                G.subTries = (G.subTries or 0) + 1
+                G.lastSub = entryText(f) or "(no text)"       -- for /ubf targetmenu: which entry the submenu was opened from
                 local down = f:GetScript("OnMouseDown")
                 if down then
                     -- through securecallfunction: built from our hook the submenu would carry our taint, and choosing an entry in it would be

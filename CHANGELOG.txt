@@ -1,3 +1,6 @@
+UbermocForever 1.3.68
+- Added: /ubf targetmenu also says how many submenus A opened since login and from which menu entry, to find which entry raises the "fontString is nil" warning when the target is an enemy player. No other change.
+
 UbermocForever 1.3.67
 - Changed: choosing a target marker in the target's menu now goes through the game's own secure marker action (a button of ours of type raidtarget) instead of clicking the menu entry, because the click through our code was still refused (SetRaidTarget blocked, even after 1.3.66). The entry is recognised by its text (the game's own marker names), and the menus close after. Untested in the game.
 

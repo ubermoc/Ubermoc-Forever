@@ -160,5 +160,7 @@ function T.report()
         .. ", dead " .. yn(q(UnitIsDead, "target")) .. ", interactable " .. yn(UnitIsInteractable and q(UnitIsInteractable, "target"))
         .. ", lootable " .. yn(UnitHasLootInteraction and q(UnitHasLootInteraction, "target")) .. ", soft interact in range " .. yn(softInteract())
         .. ", so the menu is " .. yn(T.wants()))
+    local G = UF.GameNav
+    UF.say("Target menu: submenus opened by A since login: " .. ((G and G.subTries) or 0) .. ", last from the entry: " .. tostring(G and G.lastSub))
     UF.say("Target menu: the key is pointed at " .. T.target() .. "; its menu function ran " .. (T.opened or 0) .. " times, the game's unit menu was built " .. (T.popup or 0) .. " times (last: " .. tostring(T.popupWhich) .. "); fallback button clicks " .. (T.clicks or 0) .. "; a menu is open now: " .. yn(UF.GameNav and UF.GameNav.openMenus and #UF.GameNav.openMenus() > 0))
 end

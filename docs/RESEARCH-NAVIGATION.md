@@ -341,3 +341,10 @@ Two `LUA_WARNING`s (5x each), both from `GameNav.lua` PostClick -> `OnMouseDown`
 (`IsChecked`: `GetRaidTargetIndex(unit)` is a secret number for tainted code, only when a marker exists) and `:27 attempt to index field 'fontString' (a nil value)` (an entry's initializer aborted after the first).
 Cause: the submenu is built from our hook, so the build runs tainted; `securecallfunction` around `OnMouseDown` does not change that. Effect: marker entries may lack their check mark / part of their look; setting a marker still works (user-confirmed).
 A real fix needs the submenu opened by a secure path (the game's own hover timer or a real mouse event), or our own context menu for the markers. Not done.
+
+
+### The fontString warning is not about the marker (user report on 1.3.67)
+The user gets `UnitPopupSharedButtonMixins.lua:27 attempt to index field 'fontString' (a nil value)` (stack: our PostClick, `GameNav.lua` `securecallfunction(down, ...)` -> `CheckForSubmenu` -> `GenerateSubmenu`) when the target is an
+enemy PLAYER, with no marker involved. The game's own Forever menu for an enemy player (`Blizzard_UnitPopup/Camelot/UnitPopupMenus.lua`, `UnitPopupMenuEnemyPlayer:GetEntries`) is: Set Focus, Interact title, Duel, Other title, Edit Mode,
+Report In World, Copy Character Name, with no Target Marker entry, so some entry there has child elements (`CanOpenSubmenu` = `HasElements` and not deactivated, `Menu.lua`) and our A opens its submenu from tainted code.
+1.3.68 records which entry (`/ubf targetmenu`). Whether `ConfigureButton` fails because the build is tainted or because those entries have no `fontString` in a submenu is not known.
