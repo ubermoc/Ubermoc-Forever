@@ -69,7 +69,11 @@ end
 local function titleText()
     if not UnitName then return _G.RAID_TARGET_ICON end
     local ok, name = pcall(UnitName, "target")
-    if ok and type(name) == "string" and not (issecretvalue and pcall(issecretvalue, name)) then return name end
+    if ok and type(name) == "string" then
+        local okS, secret = true, false
+        if issecretvalue then okS, secret = pcall(issecretvalue, name) end   -- pcall's first result is always true: the second is the answer
+        if okS and not secret then return name end
+    end
     return _G.RAID_TARGET_ICON
 end
 

@@ -1,3 +1,6 @@
+UbermocForever 1.3.72
+- Fixed: the title of the marker menu always showed "Target Marker Icon" instead of the target's name (a check on secret values was written wrong: pcall's first result is always true). Found in review of the 1.3.71 code. Untested in the game.
+
 UbermocForever 1.3.71
 - Added: our own marker menu, built with the game's own menu code (new file MarkerMenu.lua). A on the "Target Marker Icon" entry of the target's menu opens it to the right of the target frame, with the game's marker names, the game's marker icons, in the game's order (8 down to 1, then None). The game's submenu is then never built from our code, which is what raised the warnings (1.3.63 to 1.3.69). No check mark for the marker already set: the game's read of it can be a secret value for our code. The marker is still set by the existing secure marker button, and the menus close after; B closes the menu. Untested in the game.
 
