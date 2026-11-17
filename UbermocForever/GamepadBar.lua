@@ -140,7 +140,7 @@ end
 function B.nextSize() local c = cfg(); c.size = B.SIZES[(stepOf(B.SIZES, c.size) % #B.SIZES) + 1]; B.layoutSoon() end
 function B.nextGap() local c = cfg(); c.gap = B.GAPS[(stepOf(B.GAPS, c.gap) % #B.GAPS) + 1]; B.layoutSoon() end
 function B.nextRaise() local c = cfg(); c.raise = B.RAISES[(stepOf(B.RAISES, c.raise) % #B.RAISES) + 1]; B.layoutSoon() end
-function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end; if c.on and UF.tryBarsPrompt then C_Timer.After(1.5, UF.tryBarsPrompt) end end
+function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if c.on and C_Timer then C_Timer.After(2, function() B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end) end; if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end; if c.on and UF.tryBarsPrompt then C_Timer.After(1.5, UF.tryBarsPrompt) end end
 function B.toggleExtras() local c = cfg(); c.extras = not c.extras; B.layoutSoon() end
 function B.toggleColor() local c = cfg(); c.faceColor = not c.faceColor; B.layoutSoon() end
 function B.toggleEmpty() local c = cfg(); c.hideEmpty = not c.hideEmpty; B.layoutSoon() end
@@ -776,11 +776,35 @@ UF.OnLogin(function()
         if cfg().on or e == "PLAYER_ENTERING_WORLD" then B.layoutSoon() end
     end)
     -- the modifier events do not always arrive for the controller's emulated keys: look a few times a second
-    local acc, wasEditing = 0, false
+    local acc, wasEditing, sig = 0, false, nil
     ev:SetScript("OnUpdate", function(_, dt)
         acc = acc + dt
         if acc < 0.1 then return end
         acc = 0
+        -- a bar switched on (or off) in the game's settings, or the end caps shown again by the game, happens without an event we hear: the
+        -- shown state of the game's bar frames is looked at, and a change redoes the layout and the hiding (no hooks on the game's frames)
+        if cfg().on then
+            local t = {}
+            for _, n in ipairs({ "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7" }) do
+                local f = _G[n]
+                local okS, v = pcall(function() return f and f.IsShown and f:IsShown() end)
+                t[#t + 1] = (okS and not (issecretvalue and issecretvalue(v)) and v) and "1" or "0"
+            end
+            local caps = _G.MainActionBar and _G.MainActionBar.EndCaps
+            for _, k in ipairs({ "LeftEndCap", "RightEndCap" }) do
+                local f = caps and caps[k]
+                local okS, v = pcall(function() return f and f.IsShown and f:IsShown() end)
+                t[#t + 1] = (okS and not (issecretvalue and issecretvalue(v)) and v) and "1" or "0"
+            end
+            local now = table.concat(t)
+            if sig and now ~= sig then
+                B.layoutSoon()
+                if UF.Fade then UF.Fade.evaluate() end
+            end
+            sig = now
+        else
+            sig = nil
+        end
         -- the game's Edit Mode opening or closing: the buttons go back to the game while it is open, then the layout comes back
         local editing = UF.Fade and UF.Fade.editing and UF.Fade.editing() or false
         if editing ~= wasEditing then wasEditing = editing; if cfg().on then B.layoutSoon() end end
