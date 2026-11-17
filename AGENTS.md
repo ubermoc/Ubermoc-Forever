@@ -10,7 +10,7 @@ templates, one feature at a time, research with sources first, short answers, be
 Repo `ubermoc/Ubermoc-Forever`, working branch `claude/affectionate-cray-lhlr0j`, releases are cut from `main`.
 
 ## Current state (version in `UbermocForever/UbermocForever.toc`, history in `CHANGELOG.txt`)
-Built (1.3.18 adds the cinematic NPC camera (`Cinematic.lua`, untested in the game, `/ubf cinema on|off`); 1.3.17 adds binding a spell by pressing the button combination (G.placeKey, G.bindToFree, key capture frame, Replace/Keep question), the highlight on action bars is placed by screen position and no tooltip is raised on bars (taint), 1.3.6 on top of the list below: right stick scrolls, X takes mail, glow highlight, armor kits and scopes in the Y menu; `/ubf scan` is an author tool, data notes in `docs/ITEM-USE-SCAN.md`): controller detection, four-layer default binds, options window and action picker, Start button (steps like Esc),
+Built (through 1.3.52: cinematic NPC camera `Cinematic.lua` with black bars, dark edges, nameplates and the rest of the screen hidden; A/B pictures on quest buttons and a single quest opening by itself `DialogButtons.lua`; the aim dot for ground spells `Aim.lua` (release to cast was built and removed in 1.3.40, inconsistent); the Fading page `Fade.lua` + `FadePage.lua` (about 110 elements, three situations, mouse-over opacity, Copy/Paste/Apply to the list); the equipment flyout from a gear slot; legends that fit their room; user-confirmed in the game: cinematic, fading, the aim dot, quest flow; the rest untested. Older: 1.3.17 adds binding a spell by pressing the button combination (G.placeKey, G.bindToFree, key capture frame, Replace/Keep question), the highlight on action bars is placed by screen position and no tooltip is raised on bars (taint), 1.3.6 on top of the list below: right stick scrolls, X takes mail, glow highlight, armor kits and scopes in the Y menu; `/ubf scan` is an author tool, data notes in `docs/ITEM-USE-SCAN.md`): controller detection, four-layer default binds, options window and action picker, Start button (steps like Esc),
 game-menu entry, and window navigation (`GameNav.lua`), the Y item menu (`ItemMenu.lua`), the legend (`Legend.lua`).
 
 Window navigation: a drawn gold highlight moves with the D-pad; A = left click, X = right click, B = close button of the
@@ -23,7 +23,7 @@ menu side, Y menu on bags, poisons being class 0 subclass 8.
 **Confirmed in the game by the user (2026-11-16, through 1.3.6):** everything above plus the vendor Sell entry, quest/gossip start and B decline, trainer X, spell binding, items on weapons and armor, right-stick scrolling, highlight-driven scrolling, X taking mail, the glow highlight. Anything not listed was not reported on: ask.
 
 ## How the code is organised
-TOC load order: `Core, Layouts, Detect, Binds, Legend, Nav, GameNav, ItemMenu, Prompt, Options, Menu` (plus `Start`).
+TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, ItemMenu, Scan, Cinematic, DialogButtons, Aim, Fade, FadePage, Prompt, Options, Menu` (the `.toc` is the truth).
 - `Nav.lua`: `Nav.Push(map, secure)` takes the controller buttons with `SetOverrideBindingClick` on a
   `SecureHandlerStateTemplate` owner; a `[combat]` state driver clears the bindings. `secure` maps key to
   `{buttonName, mouseButton}`. Code cannot rebind in combat.
