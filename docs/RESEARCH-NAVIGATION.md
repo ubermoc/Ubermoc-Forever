@@ -285,6 +285,7 @@ The highlight on the top entry comes from GameNav treating a newly opened menu a
 - The game's own order for the interact button (`Blizzard_GamepadActionBars/MainActionBarFrame.lua`, `interactActions`): soft interact target in range with loot, then soft interact
   target in range, then a lootable target, then an interactable target, then an attackable target (attack), then an unattackable target (error). So a corpse to skin next to you
   comes before the target. 1.3.58 took the key for any living enemy and broke that; the menu now takes the places of the last two.
-- Ubermoc UI 1.0.122 was installed and enabled next to this addon and has the same feature on by default (`UbermocUIDB.targetMenuKey`), so 1.3.58 stood down and did nothing, while
-  Ubermoc UI's version (players and enemies only, no soft interact check) held the key. 1.3.59 switches that setting off once and does the job itself.
+- Both addons were found in the game's AddOns folder, which led to a wrong guess that they ran together. The user does not run both; nothing in this addon depends on Ubermoc UI. Why the menu
+  did not open for an enemy in 1.3.58 is not known: `/ubf targetmenu` (clicks counted, menu open or not) is there to find out. Mechanics checked in the source: `togglemenu` ends in
+  `UnitPopup_OpenMenu("TARGET", {ownerFrame = the button, unit = "target"})`; the TARGET menu starts with a gamepad-only 'Interact' entry that is disabled out of interact range.
 - `UnitIsInInteractRange("softinteract")`, `UnitIsGameObject("softinteract")` are the game's own tests for the soft target (same file, `ResolveNonBindableInteract`).

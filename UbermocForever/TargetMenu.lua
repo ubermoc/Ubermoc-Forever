@@ -28,17 +28,6 @@ end
 
 function T.enabled() return UF.DB().targetMenu ~= false end
 
--- Ubermoc UI has the same idea (players and enemies only, and it took the key from a soft interact target): when both are installed this one
--- takes over, and Ubermoc UI's own switch for it is turned off once (the user is told). Turning it back on there is the user's choice.
-local function takeOver()
-    local api, db = _G.UbermocUIAPI, _G.UbermocUIDB
-    if api and api.targetMenuApply and db and db.targetMenuKey ~= false and T.enabled() then
-        db.targetMenuKey = false
-        pcall(api.targetMenuApply)
-        UF.say("Ubermoc UI's own 'interact opens a target's menu' is switched off: Ubermoc Forever does it now (and leaves a skinnable or lootable thing next to you alone).")
-    end
-end
-
 -- The game's first choice for the interact button: a soft interact target in range (a corpse to skin, an herb, an NPC).
 local function softInteract()
     local there = (UnitExists and q(UnitExists, "softinteract")) or (UnitIsGameObject and q(UnitIsGameObject, "softinteract"))
@@ -104,6 +93,7 @@ local function build()
     btn:SetAttribute("type", "togglemenu")
     btn:SetAttribute("unit", "target")
     btn:RegisterForClicks("AnyUp")
+    btn:HookScript("PreClick", function() T.clicks = (T.clicks or 0) + 1 end)   -- counted for /ubf targetmenu: did the key reach the button?
     owner = CreateFrame("Frame", "UbermocForeverMenuOwner", UIParent, "SecureHandlerStateTemplate")
     owner:SetAttribute("_onstate-harm", SNIPPET)
     pcall(RegisterStateDriver, owner, "harm", "[combat,@softinteract,exists] off; [combat,@target,harm,nodead] on; off")
@@ -138,7 +128,6 @@ end
 UF.OnLogin(function()
     build()
     T.apply()
-    if C_Timer and C_Timer.After then C_Timer.After(3, function() takeOver(); T.apply() end) end   -- after Ubermoc UI has set itself up
 end)
 
 -- /ubf targetmenu: what it sees right now (for a report when it does not work)
@@ -150,5 +139,5 @@ function T.report()
         .. ", dead " .. yn(q(UnitIsDead, "target")) .. ", interactable " .. yn(UnitIsInteractable and q(UnitIsInteractable, "target"))
         .. ", lootable " .. yn(UnitHasLootInteraction and q(UnitHasLootInteraction, "target")) .. ", soft interact in range " .. yn(softInteract())
         .. ", so the menu is " .. yn(T.wants()))
-    UF.say("Target menu: Ubermoc UI's own version is " .. ((_G.UbermocUIDB and _G.UbermocUIDB.targetMenuKey ~= false and _G.UbermocUIAPI) and "ON (turn it off in its Interact page)" or "off or not loaded"))
+    UF.say("Target menu: the interact key reached the menu button " .. (T.clicks or 0) .. " times since login; a menu is open now: " .. yn(UF.GameNav and UF.GameNav.openMenus and #UF.GameNav.openMenus() > 0))
 end
