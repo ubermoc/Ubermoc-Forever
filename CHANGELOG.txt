@@ -1,3 +1,6 @@
+UbermocForever 1.3.41
+- Added: a Fading page in the options window ("Page: Settings / Page: Fading" button in the header). Four drop-down lists of the game's interface elements (unit frames, action bars, minimap and trackers, chat and menus), only one open at a time. For each element an opacity for four situations: talking to an NPC, in combat, on a flight path, out of combat. Normal, 0, or - and + in steps of 10 %, and Hide for good. The first situation that is on and has a value wins, in that order. An element with no setting is never touched. Separate from cinematic mode.
+
 UbermocForever 1.3.40
 - Removed: release to cast for ground spells (hold to aim, let go to cast), its Release button, its /ubf ground commands and its code. It worked sometimes and not others. The aim dot stays. The game's press-and-hold settings that it changed are put back once on the next login.
 

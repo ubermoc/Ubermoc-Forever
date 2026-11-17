@@ -835,5 +835,44 @@ r = L("""function()
 end""")()
 assert str(r) == "Medium,Medium,Thick,Off,Wide,Off", r
 print("Cinematic: bars and edges settings step and wrap: OK")
+# Fading: the first active situation that has a value wins; Normal leaves an element alone; hide wins over everything; steps of 10 %
+r = L("""function()
+    local F = UbermocForever.Fade
+    UbermocForeverDB.fade = nil
+    local out = {}
+    local function goal(key, a) local g = F.goal(key, a); return g == nil and "n" or string.format("%.1f", g) end
+    local idleOnly = { talking = false, combat = false, flight = false, idle = true }
+    local inCombat = { talking = false, combat = true, flight = false, idle = false }
+    local flying = { talking = false, combat = false, flight = true, idle = true }
+    local talking = { talking = true, combat = false, flight = false, idle = true }
+    out[#out + 1] = goal("player", idleOnly)                 -- nothing set: left alone
+    F.set("player", "idle", 0.3); F.set("player", "combat", 1); F.set("player", "flight", 0.1); F.set("player", "talking", 0)
+    out[#out + 1] = goal("player", idleOnly) .. goal("player", inCombat) .. goal("player", flying) .. goal("player", talking)
+    F.set("player", "talking", nil)                            -- Normal for talking: falls to idle
+    out[#out + 1] = goal("player", talking)
+    F.toggleHide("player")
+    out[#out + 1] = goal("player", inCombat)                 -- hidden for good
+    F.toggleHide("player"); F.reset("player")
+    F.step("target", "idle", -1)                              -- from Normal, a step down starts at 90 %
+    out[#out + 1] = F.percentText(F.value("target", "idle"))
+    F.step("target", "idle", 1); out[#out + 1] = F.percentText(F.value("target", "idle"))   -- back to 100 %
+    F.set("target", "idle", nil)
+    out[#out + 1] = tostring(F.get("target"))                -- nothing left: the element is forgotten
+    out[#out + 1] = F.percentText(nil)
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "n,0.31.00.10.0,0.3,0.0,90%,100%,nil,Normal", r
+print("Fading: situation priority, Normal, hide, steps: OK")
+# Fading page: builds, the first list is open, buttons change the element's values
+r = L("""function()
+    local UF = UbermocForever
+    UbermocForeverDB.fade = nil
+    local page = UF.FadePage.build(UIParent, UIParent)
+    local rows0 = #UF.FadePage.navRows()
+    -- row layout: 4 headers + the first list's 8 elements + hide + 4 states + reset + reset all
+    return tostring(page ~= nil) .. "," .. rows0
+end""")()
+assert str(r) == "true,19", r
+print("Fading page builds with one list open: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
