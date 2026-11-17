@@ -272,3 +272,11 @@ Replaces the guesses from the GitHub pages above. Files: `Code/Dialogue/Dialogue
 - Flyout item buttons run `EquipmentFlyoutButton_OnClick` (their `onClickFunc` equips) and the flyout hides itself when locked. B closes it with
   `EquipmentFlyout_Hide()`; its `OnHide` unlocks the popout button. Not yet tested in the game: that our highlight scan finds the flyout's buttons and that
   A on one equips the item.
+
+## Interact on a target you cannot interact with (1.3.58)
+`INTERACTTARGET` runs `C_PlayerInteractionManager.InteractUnit("anyinteract")` (`Bindings_Camelot.xml`), which does nothing on an enemy. The game's own gamepad
+action bar decides "can interact" with `UnitIsInteractable("target")` and "can loot" with `UnitHasLootInteraction("target")` (`Blizzard_GamepadActionBars/MainActionBarFrame.lua`).
+A secure button with `type = "togglemenu"`, `unit = "target"` makes the game open the unit menu itself (`SECURE_ACTIONS.togglemenu`, `SecureTemplates.lua`), so entries like
+Set Focus are not blocked; Ubermoc UI does this for players and enemies (`Extras.lua`, `buildTargetMenuKey`). Bindings cannot change in combat, so enemies use a
+`SecureHandlerStateTemplate` driver `[@target,harm,nodead]` whose snippet calls `SetBindingClick` (`RestrictedFrames.lua`, `HANDLE:SetBindingClick`); other targets are switched from Lua out of combat.
+The highlight on the top entry comes from GameNav treating a newly opened menu as a fresh window. Not yet tested in the game.

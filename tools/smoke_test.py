@@ -862,6 +862,39 @@ end""")()
 assert str(r) == "0,0.5,nil,00", r
 print("Chat: the edit box fades by itself, its own setting wins, off leaves it alone: OK")
 print("Chat: new lines reveal the chat, the edit box in use holds it, then wait and fade: OK")
+# Interact on a target you cannot interact with opens its menu: which targets, and the key is pointed at the menu button
+r = L("""function()
+    local UF = UbermocForever
+    local T = UF.TargetMenu
+    local t = { exists = true, attack = false, dead = false, loot = false, interact = false }
+    UnitExists = function() return t.exists end
+    UnitCanAttack = function() return t.attack end
+    UnitIsDead = function() return t.dead end
+    UnitHasLootInteraction = function() return t.loot end
+    UnitIsInteractable = function() return t.interact end
+    local out = {}
+    local function w() out[#out + 1] = tostring(T.wantsPlain()) end
+    w()                                  -- a friendly you cannot interact with: menu
+    t.interact = true; w()               -- something you can talk to: the key does its normal job
+    t.interact = false; t.loot = true; w()   -- lootable: left to the key
+    t.loot = false; t.dead = true; w()   -- dead: left to the key
+    t.dead = false; t.attack = true; w() -- an enemy: the state driver handles it, not this path
+    t.attack = false; t.exists = false; w()  -- no target
+    t.exists = true
+    GetBindingKey = function() return "PADLSTICK", "SHIFT-PADLSTICK" end
+    InCombatLockdown = function() return false end
+    SetOverrideBindingClick = function(o, p, key) _G.__calls.overrides[key] = true end
+    ClearOverrideBindings = function() _G.__calls.overrides = {} end
+    _G.__calls.overrides = {}
+    T.apply()
+    out[#out + 1] = tostring(_G.__calls.overrides.PADLSTICK) .. tostring(_G.__calls.overrides["SHIFT-PADLSTICK"])
+    T.set(false)
+    out[#out + 1] = tostring(_G.__calls.overrides.PADLSTICK)
+    T.set(true)
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true,false,false,false,false,false,truetrue,nil", r
+print("Target menu: which targets get the menu, the interact key is switched and put back: OK")
 # Cinematic: nameplates are put back, but not during combat (the game does not allow it)
 r = L("""function()
     local UF = UbermocForever
