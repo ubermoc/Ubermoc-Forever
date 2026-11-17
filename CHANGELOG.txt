@@ -1,3 +1,8 @@
+UbermocForever 1.3.61
+- Fixed: the interact key reached the menu button (your report: 37 and 46 presses) but no menu showed. The key is now pointed at the target frame itself with a right click, so the game does exactly what a right click on the frame does and puts the menu next to the frame. The hidden button stays only as a fallback and is now a real, tiny frame (a menu closes when its owner is not visible).
+- Fixed: only four of the five interact bindings were switched (SHIFT-F6 was left out); up to eight now.
+- /ubf targetmenu also shows whether the game's own target-frame menu ran and what kind of unit menu it built. Untested in the game.
+
 UbermocForever 1.3.60
 - Changed: the target menu no longer looks at Ubermoc UI at all (1.3.58 stood down for it and 1.3.59 switched its setting off; both were based on a wrong guess and are gone). /ubf targetmenu now also counts how often the interact key reached the menu button and whether a menu is open. Untested in the game.
 

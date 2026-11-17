@@ -18,7 +18,7 @@ local T = {}
 UF.TargetMenu = T
 
 local BTN = "UbermocForeverMenuBtn"
-local MAXKEYS = 4
+local MAXKEYS = 8   -- the interact key has up to 8 bindings (four layers on the keyboard side and the paddles)
 local owner, plain, btn, bound = nil, nil, nil, false
 
 local function q(fn, ...)
@@ -59,15 +59,25 @@ end
 
 local SNIPPET = [[
     if self:GetAttribute("off") then self:ClearBindings(); return end
+    local name = self:GetAttribute("btnname")
     if newstate == "on" then
-        for i = 1, 4 do
+        for i = 1, 8 do
             local k = self:GetAttribute("key" .. i)
-            if k then self:SetBindingClick(true, k, "UbermocForeverMenuBtn", "LeftButton") end
+            if k then self:SetBindingClick(true, k, name, "RightButton") end
         end
     else
         self:ClearBindings()
     end
 ]]
+
+-- The key is pointed at the target frame itself with a right click: the game then does exactly what a right click on the frame does
+-- (TargetFrame_OpenMenu, Blizzard_UnitFrame/Mainline/TargetFrame.lua), with the menu placed next to the frame. If there is no target frame,
+-- the hidden "togglemenu" button below is the fallback (its menu has no anchor of its own).
+function T.target()
+    local f = _G.TargetFrame
+    if f and f.IsObjectType and f:IsObjectType("Button") then return "TargetFrame" end
+    return BTN
+end
 
 local pending = false
 function T.apply()
@@ -77,6 +87,7 @@ function T.apply()
     -- the enemy path (the state driver reads these attributes)
     local ks = keys()
     owner:SetAttribute("off", off and true or nil)
+    owner:SetAttribute("btnname", T.target())
     for i = 1, MAXKEYS do owner:SetAttribute("key" .. i, ks[i]) end
     if SecureHandlerExecute then
         pcall(SecureHandlerExecute, owner, "local newstate = self:GetAttribute('state-harm'); " .. SNIPPET)
@@ -84,7 +95,7 @@ function T.apply()
     -- the other path
     if bound then ClearOverrideBindings(plain); bound = false end
     if not off and T.wants() then
-        for _, k in ipairs(ks) do SetOverrideBindingClick(plain, false, k, BTN, "LeftButton"); bound = true end
+        for _, k in ipairs(ks) do SetOverrideBindingClick(plain, false, k, T.target(), "RightButton"); bound = true end
     end
 end
 
@@ -93,6 +104,8 @@ local function build()
     btn:SetAttribute("type", "togglemenu")
     btn:SetAttribute("unit", "target")
     btn:RegisterForClicks("AnyUp")
+    btn:SetSize(1, 1)
+    btn:SetPoint("CENTER", UIParent, "CENTER")   -- a menu closes when its owner is not visible, so the fallback button is a real (tiny) frame
     btn:HookScript("PreClick", function() T.clicks = (T.clicks or 0) + 1 end)   -- counted for /ubf targetmenu: did the key reach the button?
     owner = CreateFrame("Frame", "UbermocForeverMenuOwner", UIParent, "SecureHandlerStateTemplate")
     owner:SetAttribute("_onstate-harm", SNIPPET)
@@ -130,6 +143,14 @@ UF.OnLogin(function()
     T.apply()
 end)
 
+-- what the game did with the key, for /ubf targetmenu
+if hooksecurefunc and _G.TargetFrame_OpenMenu then
+    hooksecurefunc("TargetFrame_OpenMenu", function() T.opened = (T.opened or 0) + 1 end)
+end
+if hooksecurefunc and _G.UnitPopup_OpenMenu then
+    hooksecurefunc("UnitPopup_OpenMenu", function(which) T.popup = (T.popup or 0) + 1; T.popupWhich = which end)
+end
+
 -- /ubf targetmenu: what it sees right now (for a report when it does not work)
 function T.report()
     local function yn(v) return v and "yes" or "no" end
@@ -139,5 +160,5 @@ function T.report()
         .. ", dead " .. yn(q(UnitIsDead, "target")) .. ", interactable " .. yn(UnitIsInteractable and q(UnitIsInteractable, "target"))
         .. ", lootable " .. yn(UnitHasLootInteraction and q(UnitHasLootInteraction, "target")) .. ", soft interact in range " .. yn(softInteract())
         .. ", so the menu is " .. yn(T.wants()))
-    UF.say("Target menu: the interact key reached the menu button " .. (T.clicks or 0) .. " times since login; a menu is open now: " .. yn(UF.GameNav and UF.GameNav.openMenus and #UF.GameNav.openMenus() > 0))
+    UF.say("Target menu: the key is pointed at " .. T.target() .. "; its menu function ran " .. (T.opened or 0) .. " times, the game's unit menu was built " .. (T.popup or 0) .. " times (last: " .. tostring(T.popupWhich) .. "); fallback button clicks " .. (T.clicks or 0) .. "; a menu is open now: " .. yn(UF.GameNav and UF.GameNav.openMenus and #UF.GameNav.openMenus() > 0))
 end

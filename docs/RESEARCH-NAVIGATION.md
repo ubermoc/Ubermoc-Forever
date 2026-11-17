@@ -289,3 +289,9 @@ The highlight on the top entry comes from GameNav treating a newly opened menu a
   did not open for an enemy in 1.3.58 is not known: `/ubf targetmenu` (clicks counted, menu open or not) is there to find out. Mechanics checked in the source: `togglemenu` ends in
   `UnitPopup_OpenMenu("TARGET", {ownerFrame = the button, unit = "target"})`; the TARGET menu starts with a gamepad-only 'Interact' entry that is disabled out of interact range.
 - `UnitIsInInteractRange("softinteract")`, `UnitIsGameObject("softinteract")` are the game's own tests for the soft target (same file, `ResolveNonBindableInteract`).
+
+### 1.3.61: the report from the game
+`/ubf targetmenu` on an enemy: keys found, switched to the menu yes, soft interact no, interact key reached the hidden button 37 and 46 times, but no menu. So the key and the switch worked and the
+secure `togglemenu` action did not give a visible menu. Likely reasons found in the source: the hidden button had no size or anchor, and `MenuManagerMixin:OpenMenuInternal` closes a menu whose owner
+is not visible (`Menu.lua`, the `proxy` OnUpdate); the game's own target frame opens its menu with `TargetFrame_OpenMenu` and then anchors it `LEFT` of itself (`TargetFrame.lua`). 1.3.61 clicks the target frame itself
+(`SetBindingClick(key, "TargetFrame", "RightButton")`). `GetBindingKey("INTERACTTARGET")` returns five keys (CTRL-F6, F6, SHIFT-F6, CTRL-SHIFT-F6, PADPADDLE2); 1.3.60 kept four.
