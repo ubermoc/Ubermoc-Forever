@@ -275,10 +275,17 @@ function F.reset(key) store()[key] = nil; F.evaluate() end
 
 -- One universal setting: the opacity any element that has a setting goes to while the mouse is over it (never lower than its own value).
 -- nil = off. Elements set to Hide for good stay hidden.
-function F.mouse() local v = UF.DB().fadeMouse; return v end
+-- The mouse-over opacity of all faded elements: 100% to start with (a faded element comes back fully while the mouse is over it); "Off" is remembered.
+function F.mouse()
+    local d = UF.DB()
+    if d.fadeMouse ~= nil then return d.fadeMouse end
+    if d.fadeMouseOff then return nil end
+    return 1
+end
 function F.setMouse(v)
     local d = UF.DB()
-    if v == nil then d.fadeMouse = nil else d.fadeMouse = math.max(0, math.min(1, v)) end
+    if v == nil then d.fadeMouse = nil; d.fadeMouseOff = true
+    else d.fadeMouse = math.max(0, math.min(1, v)); d.fadeMouseOff = nil end
     F.evaluate()
 end
 function F.stepMouse(dir)
