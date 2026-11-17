@@ -906,6 +906,47 @@ r = L("""function()
 end""")()
 assert str(r) == "8,0,nil,nil", r
 print("Markers: entries of the marker submenu are recognised by name: OK")
+# MarkerMenu: the game's order (8 down to 1, then None), and every entry text maps back to its number
+r = L("""function()
+    local M = UbermocForever.MarkerMenu
+    for i = 1, 8 do _G["RAID_TARGET_" .. i] = "M" .. i end
+    _G.RAID_TARGET_NONE = "None"
+    local out = { table.concat(M.order(), ",") }
+    for _, text in ipairs(M.order()) do out[#out + 1] = tostring((M.markerNumber(text))) end
+    out[#out + 1] = tostring((M.markerNumber("Set Focus")))
+    for i = 1, 8 do _G["RAID_TARGET_" .. i] = nil end
+    _G.RAID_TARGET_NONE = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "M8,M7,M6,M5,M4,M3,M2,M1,None,8,7,6,5,4,3,2,1,0,nil", r
+print("MarkerMenu: order 8..1 then None, each text maps back to its number, an unknown text is nil: OK")
+# G.markerOf takes entries inside OUR menu too, not only the game's old submenu
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local M = UbermocForever.MarkerMenu
+    RAID_TARGET_3 = "M3"; RAID_TARGET_8 = "Skull"; RAID_TARGET_NONE = "None"
+    local sub, our = {}, {}
+    G.submenu = sub
+    M.menu = our
+    local real = G.inside
+    G.inside = function(f, w) return (w == sub and f.inSub) or (w == our and f.inOur) end
+    local function entry(text, inSub, inOur)
+        return { fontString = { GetText = function() return text end }, GetRegions = function() end, inSub = inSub, inOur = inOur }
+    end
+    local out = {
+        tostring((G.markerOf(entry("M3", false, true)))),          -- an entry of our menu
+        tostring((G.markerOf(entry("Set Focus", false, false)))),  -- inside neither
+        tostring((G.markerOf(entry("Skull", true, false)))),       -- the game's submenu, as before
+        tostring((G.markerOf(entry("None", true, false))))
+    }
+    M.menu = nil
+    G.submenu = nil
+    RAID_TARGET_3 = nil; RAID_TARGET_8 = nil; RAID_TARGET_NONE = nil
+    G.inside = real
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "3,nil,8,0", r
+print("MarkerMenu: markerOf recognises entries of our menu, the game's submenu path still works: OK")
 # Secret values from the game count as "no" instead of raising an error when tested
 r = L("""function()
     local F = UbermocForever.Fade

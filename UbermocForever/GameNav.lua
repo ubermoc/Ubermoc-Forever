@@ -378,15 +378,11 @@ local function entryText(f)
         end
     end
 end
+-- An entry of a marker menu: the game's submenu or ours (MarkerMenu.lua). Text -> number through UF.MarkerMenu.markerNumber.
 function G.markerOf(f)
-    if not (f and G.submenu and G.inside(f, G.submenu)) then return nil end
-    local t = entryText(f)
-    if not t then return nil end
-    for i = 1, 8 do
-        local name = _G["RAID_TARGET_" .. i]
-        if name and t == name then return i end
-    end
-    if _G.RAID_TARGET_NONE and t == _G.RAID_TARGET_NONE then return 0 end
+    if not (f and UF.MarkerMenu) then return nil end
+    if not (G.inside(f, G.submenu) or G.inside(f, UF.MarkerMenu.menu)) then return nil end
+    return UF.MarkerMenu.markerNumber(entryText(f))
 end
 
 -- Mail: the inbox row (or the open letter) the highlight is on, as an inbox index, or nil.
@@ -458,7 +454,14 @@ local function buttons()
                     return
                 end
                 G.subTries = (G.subTries or 0) + 1
-                G.lastSub = entryText(f) or "(no text)"       -- for /ubf targetmenu: which entry the submenu was opened from
+                local t = entryText(f)
+                G.lastSub = t or "(no text)"       -- for /ubf targetmenu: which entry the submenu was opened from
+                if UF.MarkerMenu and _G.RAID_TARGET_ICON and t == _G.RAID_TARGET_ICON and UF.MarkerMenu.open(f) then
+                    -- the marker entry: ours now (MarkerMenu.lua, built with the game's own menu code), because building the
+                    -- game's submenu from this hook is what raised the warnings; the game's menu is closed by the open, and
+                    -- the highlight lands on the first entry of ours (the title is not a node)
+                    return
+                end
                 local down = f:GetScript("OnMouseDown")
                 if down then
                     -- through securecallfunction: built from our hook the submenu would carry our taint, and choosing an entry in it would be
