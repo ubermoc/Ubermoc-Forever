@@ -1,3 +1,6 @@
+UbermocForever 1.3.53
+- Added: chat lines fade out by themselves, in every chat window (new row in the options window: Chat fade On/Off, Visible, Fade-out). Starting values are Ubermoc UI's: a line stays 5 seconds, then fades over 3. Your own chat settings are saved first and put back when it is turned off. Untested in the game.
+
 UbermocForever 1.3.52
 - Added: a universal "Mouse over (all)" setting at the bottom of the Fading page. Any element that has a fading setting goes to that opacity while the mouse is over it (never lower than its own value; elements set to Hide for good stay hidden). Off by default; - and + step it by 10 %.
 

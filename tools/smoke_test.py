@@ -268,7 +268,7 @@ nav = L("""function()
     -- back up to the third row, then A on it, then B
     for i = 1, 60 do press("PADDUP") end
     local top = where()
-    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, cinematic row, aim row, layers, first row ... settle on a list row
+    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, cinematic row, aim row, chat row, layers, first row ... settle on a list row
     local row = where()
     press("PAD1")                                                  -- A on a row opens the picker
     local inPicker = (UF.Nav.focus ~= nil) and (UF.Nav.focus.navRow == nil) and (UF.Nav.focus.navScroll ~= nil)
@@ -774,6 +774,31 @@ r = L("""function()
 end""")()
 assert str(r) == "0,0.60,Middle,Far0.72,10.50", r
 print("Aim dot: settings step, game settings saved and put back: OK")
+# Chat lines fade by themselves: Ubermoc UI's starting values, the player's own put back when off
+r = L("""function()
+    local UF = UbermocForever
+    local Ch = UF.Chat
+    local f = { fading = false, vis = 120, dur = 3 }
+    function f:GetName() return "ChatFrame1" end
+    function f:SetTimeVisible(v) self.vis = v end
+    function f:GetTimeVisible() return self.vis end
+    function f:SetFadeDuration(v) self.dur = v end
+    function f:GetFadeDuration() return self.dur end
+    function f:SetFading(v) self.fading = v end
+    function f:GetFading() return self.fading end
+    ChatFrame1 = f
+    UbermocForeverDB.chat = nil; UbermocForeverDB.chatBackup = nil
+    Ch.apply()
+    local out = { tostring(f.fading), f.vis, f.dur }
+    Ch.nextVisible(); Ch.nextFade()
+    out[#out + 1] = f.vis .. "/" .. f.dur
+    Ch.toggle()
+    out[#out + 1] = tostring(f.fading) .. f.vis .. "/" .. f.dur .. tostring(UbermocForeverDB.chatBackup)
+    ChatFrame1 = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true,5,3,10/5,false120/3nil", r
+print("Chat fade: starting values, steps, own settings put back: OK")
 # Cinematic: nameplates are put back, but not during combat (the game does not allow it)
 r = L("""function()
     local UF = UbermocForever
