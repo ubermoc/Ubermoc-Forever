@@ -256,6 +256,20 @@ function F.toggleHide(key)
 end
 function F.reset(key) store()[key] = nil; F.evaluate() end
 
+-- One universal setting: the opacity any element that has a setting goes to while the mouse is over it (never lower than its own value).
+-- nil = off. Elements set to Hide for good stay hidden.
+function F.mouse() local v = UF.DB().fadeMouse; return v end
+function F.setMouse(v)
+    local d = UF.DB()
+    if v == nil then d.fadeMouse = nil else d.fadeMouse = math.max(0, math.min(1, v)) end
+    F.evaluate()
+end
+function F.stepMouse(dir)
+    local v = F.mouse()
+    if v == nil then v = 1 end
+    F.setMouse(math.floor(v / STEP + 0.5) * STEP + dir * STEP)
+end
+
 function F.percentText(v) return v == nil and "Normal" or (math.floor(v * 100 + 0.5) .. "%") end
 
 ----------------------------------------------------------------------
@@ -361,6 +375,30 @@ end
 
 F._apply = apply   -- for the offline test
 
+-- Is the mouse over any of the element's frames? A texture has no mouse area, so its parent frame is used.
+local function hovering(key)
+    local e = byKey[key]
+    if not e or e.plates then return false end
+    for _, name in ipairs(e.frames) do
+        local f = frameOf(name)
+        if f then
+            local target = f.IsMouseOver and f or (f.GetParent and f:GetParent())
+            if target and target.IsMouseOver then
+                local ok, over = pcall(target.IsMouseOver, target)
+                if ok and over then return true end
+            end
+        end
+    end
+    return false
+end
+-- The opacity wanted for an element now, with the mouse-over setting taken into account.
+function F.wanted(key, active, isOver)
+    local goal = F.goal(key, active)
+    local m = F.mouse()
+    if goal ~= nil and m ~= nil and goal < m and not F.hidden(key) and isOver then return m end
+    return goal
+end
+
 local reapply = 0
 local function tick(self, dt)
     local active = F.active()
@@ -371,6 +409,7 @@ local function tick(self, dt)
     local any = false
     for key in pairs(byKey) do
         local goal = F.goal(key, active)
+        if goal ~= nil and F.mouse() ~= nil and goal < F.mouse() then goal = F.wanted(key, active, hovering(key)) end
         local c = cur[key] or 1
         if goal ~= nil or touchedKeys[key] then
             any = true

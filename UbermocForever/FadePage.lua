@@ -11,7 +11,7 @@ UF.FadePage = P
 local ROW = 24
 local COLW = 262
 local page, scroll, listChild, headers, items, openCat, sel
-local stateRows, titleFS, hideBtn, copyBtn, pasteBtn, applyBtn, resetBtn, resetAllBtn, hintFS, foundFS, clipFS
+local mouseRow, stateRows, titleFS, hideBtn, copyBtn, pasteBtn, applyBtn, resetBtn, resetAllBtn, hintFS, foundFS, clipFS
 
 local function button(parent, w, h, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -75,6 +75,7 @@ function P.refresh()
             b:SetText((sel and sel.key == e.key and "> " or "") .. e.label)
         end
     end
+    mouseRow.value:SetText(F.mouse() == nil and "Off" or F.percentText(F.mouse()))
     local e = sel
     titleFS:SetText(e and e.label or "Pick an element on the left")
     hintFS:SetShown(e ~= nil)
@@ -200,6 +201,34 @@ function P.build(parent, inset)
     resetAllBtn = button(page, 200, 24, "Reset all fading")
     resetAllBtn:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", 0, -6)
     resetAllBtn:SetScript("OnClick", function() F.resetAll(); P.refresh() end)
+
+    -- The one universal setting: the opacity any faded element goes to while the mouse is over it.
+    local mf = CreateFrame("Frame", nil, page)
+    mf:SetSize(400, 26)
+    mf:SetPoint("TOPLEFT", resetAllBtn, "BOTTOMLEFT", 0, -18)
+    local mlab = mf:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    mlab:SetPoint("LEFT", 0, 0)
+    mlab:SetWidth(120)
+    mlab:SetJustifyH("LEFT")
+    mlab:SetText("Mouse over (all)")
+    local moff = button(mf, 62, 24, "Off")
+    moff:SetPoint("LEFT", 124, 0)
+    local mminus = button(mf, 30, 24, "-")
+    mminus:SetPoint("LEFT", moff, "RIGHT", 40, 0)
+    local mvalue = mf:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    mvalue:SetPoint("LEFT", mminus, "RIGHT", 2, 0)
+    mvalue:SetWidth(56)
+    local mplus = button(mf, 30, 24, "+")
+    mplus:SetPoint("LEFT", mvalue, "RIGHT", 2, 0)
+    moff:SetScript("OnClick", function() F.setMouse(nil); P.refresh() end)
+    mminus:SetScript("OnClick", function() F.stepMouse(-1); P.refresh() end)
+    mplus:SetScript("OnClick", function() F.stepMouse(1); P.refresh() end)
+    mouseRow = { frame = mf, value = mvalue, off = moff, minus = mminus, plus = mplus }
+    mouseRow.tip = mf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    mouseRow.tip:SetPoint("TOPLEFT", mf, "BOTTOMLEFT", 0, -4)
+    mouseRow.tip:SetWidth(400)
+    mouseRow.tip:SetJustifyH("LEFT")
+    mouseRow.tip:SetText("Any element that has a setting goes to this opacity while the mouse is over it, never lower than its own. Hidden for good stays hidden.")
     P.refresh()
     return page
 end
@@ -224,6 +253,7 @@ function P.navRows()
         out[#out + 1] = { resetBtn }
     end
     out[#out + 1] = { resetAllBtn }
+    out[#out + 1] = { mouseRow.off, mouseRow.minus, mouseRow.plus }
     return out
 end
 

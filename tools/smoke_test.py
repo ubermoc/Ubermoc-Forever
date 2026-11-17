@@ -872,7 +872,7 @@ r = L("""function()
     -- row layout: 14 headers + the first list's 5 elements + hide + 3 states + copy/paste + apply + reset + reset all
     return tostring(page ~= nil) .. "," .. rows0
 end""")()
-assert str(r) == "true,27", r
+assert str(r) == "true,28", r
 print("Fading page builds with one list open: OK")
 # Options window: the triggers go through the pages (settings, fading)
 r = L("""function()
@@ -990,5 +990,27 @@ r = L("""function()
 end""")()
 assert str(r) == "true,true,true0.4,false1,1/1,0,20%100%,420%,nil", r
 print("Fading: parts by path, independent of their parent, copy / paste / apply to the list: OK")
+# Fading: the universal mouse-over opacity only ever raises an element, and never one that is hidden for good
+r = L("""function()
+    local F = UbermocForever.Fade
+    UbermocForeverDB.fade = nil; UbermocForeverDB.fadeMouse = nil
+    local out = {}
+    local idle = { combat = false, flight = false, idle = true }
+    F.set("minimap", "idle", 0.2)
+    out[#out + 1] = string.format("%.1f", F.wanted("minimap", idle, true))   -- no mouse setting: its own value
+    F.setMouse(0.8)
+    out[#out + 1] = string.format("%.1f", F.wanted("minimap", idle, true))   -- mouse over: raised to 80 %
+    out[#out + 1] = string.format("%.1f", F.wanted("minimap", idle, false))  -- not over: its own value
+    F.set("minimap", "idle", 0.9)
+    out[#out + 1] = string.format("%.1f", F.wanted("minimap", idle, true))   -- already higher: kept
+    F.set("minimap", "idle", 0.2); F.toggleHide("minimap")
+    out[#out + 1] = string.format("%.1f", F.wanted("minimap", idle, true))   -- hidden for good: stays 0
+    F.stepMouse(-1); out[#out + 1] = F.percentText(F.mouse())               -- 70 %
+    F.setMouse(nil); out[#out + 1] = tostring(F.mouse())
+    F.resetAll()
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "0.2,0.8,0.2,0.9,0.0,70%,nil", r
+print("Fading: mouse-over opacity raises only, hidden stays hidden: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
