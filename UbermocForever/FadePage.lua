@@ -165,3 +165,67 @@ function P.navRows()
     out[#out + 1] = { resetAllBtn }
     return out
 end
+
+-- Moving by position: the nearest button in the direction pressed, across the left list and the right pane.
+-- cands: { { b = button, cx = x, cy = y } ... } (y grows upward, as on screen). Pure, so it can be tested.
+function P.pick(cands, fx, fy, dir)
+    local best, bestScore
+    for _, c in ipairs(cands) do
+        local dx, dy = c.cx - fx, c.cy - fy
+        local along, across
+        if dir == "RIGHT" then along, across = dx, dy
+        elseif dir == "LEFT" then along, across = -dx, dy
+        elseif dir == "UP" then along, across = dy, dx
+        else along, across = -dy, dx end
+        if along > 4 then
+            local score = along + 3 * math.abs(across)
+            if not bestScore or score < bestScore then best, bestScore = c.b, score end
+        end
+    end
+    return best
+end
+
+-- All the buttons the D-pad can reach on this page (plus any the caller adds, such as the window's header buttons).
+function P.buttons(extra)
+    local out = {}
+    for _, row in ipairs(P.navRows()) do for _, b in ipairs(row) do out[#out + 1] = b end end
+    for _, b in ipairs(extra or {}) do if b and b.IsVisible and b:IsVisible() then out[#out + 1] = b end end
+    return out
+end
+
+function P.move(dir, extra)
+    local Nav = UF.Nav
+    local all = P.buttons(extra)
+    if #all == 0 then return false end
+    local focus = Nav.focus
+    local known = false
+    for _, b in ipairs(all) do if b == focus then known = true end end
+    if not (focus and known and focus:IsVisible()) then
+        Nav.SetFocus(all[1] == focus and all[2] or P.firstElement() or all[1])
+        return true
+    end
+    local fx, fy = focus:GetCenter()
+    if not fx then return false end
+    local cands = {}
+    for _, b in ipairs(all) do
+        if b ~= focus then
+            local cx, cy = b:GetCenter()
+            if cx then cands[#cands + 1] = { b = b, cx = cx, cy = cy } end
+        end
+    end
+    local nxt = P.pick(cands, fx, fy, dir)
+    if nxt then Nav.SetFocus(nxt) end
+    return true
+end
+
+-- Where the highlight starts: the chosen element's button, else the first list header.
+function P.firstElement()
+    if sel then
+        for ci, c in ipairs(UF.Fade.CATEGORIES) do
+            for ei, e in ipairs(c.elements) do
+                if e == sel and items[ci][ei]:IsShown() then return items[ci][ei] end
+            end
+        end
+    end
+    return headers and headers[1]
+end

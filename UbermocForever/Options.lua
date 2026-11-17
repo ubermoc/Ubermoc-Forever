@@ -580,12 +580,15 @@ local function build()
     end
     local function startRow() return (pickerOpen() or pageNo == 2) and 2 or 5 end
     local navMap = {
-        PADDUP = function() Nav.Move("UP", navRows, startRow()) end,
-        PADDDOWN = function() Nav.Move("DOWN", navRows, startRow()) end,
-        PADDLEFT = function() Nav.Move("LEFT", navRows, startRow()) end,
-        PADDRIGHT = function() Nav.Move("RIGHT", navRows, startRow()) end,
+        PADDUP = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("UP", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("UP", navRows, startRow()) end end,
+        PADDDOWN = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("DOWN", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("DOWN", navRows, startRow()) end end,
+        PADDLEFT = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("LEFT", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("LEFT", navRows, startRow()) end end,
+        PADDRIGHT = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("RIGHT", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("RIGHT", navRows, startRow()) end end,
         PAD1 = function()
-            if not Nav.Click() then Nav.Move("DOWN", navRows, startRow()) end
+            if not Nav.Click() then
+                if pageNo == 2 and not pickerOpen() then UF.FadePage.move("DOWN", { win.controllerBtn, pageBtn, win.CloseButton })
+                else Nav.Move("DOWN", navRows, startRow()) end
+            end
         end,
         -- the triggers go through the pages: settings, fading
         PADLTRIGGER = function() if not pickerOpen() then showPage(pageNo == 1 and 2 or 1) end end,

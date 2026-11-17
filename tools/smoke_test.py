@@ -893,5 +893,23 @@ r = L("""function()
 end""")()
 assert str(r) == "1,2,1,2,1", r
 print("Options: the triggers go through the pages: OK")
+# Fading page: the D-pad moves by position, across the left list and the right pane
+r = L("""function()
+    local P = UbermocForever.FadePage
+    -- left list buttons at x 100, right pane buttons at x 400; y grows upward
+    local L1, L2, L3 = { n = "L1" }, { n = "L2" }, { n = "L3" }
+    local R1, R2 = { n = "R1" }, { n = "R2" }
+    local cands = { { b = L1, cx = 100, cy = 300 }, { b = L2, cx = 100, cy = 270 }, { b = L3, cx = 100, cy = 240 },
+                    { b = R1, cx = 400, cy = 290 }, { b = R2, cx = 400, cy = 200 } }
+    local function from(b, dir)
+        local c; for _, x in ipairs(cands) do if x.b == b then c = x end end
+        local others = {}; for _, x in ipairs(cands) do if x.b ~= b then others[#others + 1] = x end end
+        local n = P.pick(others, c.cx, c.cy, dir)
+        return n and n.n or "none"
+    end
+    return from(L2, "RIGHT") .. "," .. from(R1, "LEFT") .. "," .. from(L1, "DOWN") .. "," .. from(L3, "UP") .. "," .. from(R2, "UP") .. "," .. from(L1, "UP")
+end""")()
+assert str(r) == "R1,L1,L2,L2,R1,none", r
+print("Fading page: moving by position across both columns: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
