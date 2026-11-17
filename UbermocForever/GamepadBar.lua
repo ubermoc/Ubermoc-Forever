@@ -100,7 +100,7 @@ end
 function B.nextSize() local c = cfg(); c.size = B.SIZES[(stepOf(B.SIZES, c.size) % #B.SIZES) + 1]; B.layoutSoon() end
 function B.nextGap() local c = cfg(); c.gap = B.GAPS[(stepOf(B.GAPS, c.gap) % #B.GAPS) + 1]; B.layoutSoon() end
 function B.nextRaise() local c = cfg(); c.raise = B.RAISES[(stepOf(B.RAISES, c.raise) % #B.RAISES) + 1]; B.layoutSoon() end
-function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end
+function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end end
 function B.toggleCaps() local c = cfg(); c.keepCaps = not c.keepCaps; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end
 function B.toggleColor() local c = cfg(); c.faceColor = not c.faceColor; B.layoutSoon() end
 function B.toggleEmpty() local c = cfg(); c.hideEmpty = not c.hideEmpty; B.layoutSoon() end

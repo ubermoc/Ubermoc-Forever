@@ -18,6 +18,7 @@ function UF.DB()
     local d = UbermocForeverDB
     if d.layout == nil then d.layout = "auto" end   -- "auto" or a controller id from Layouts.lua
     d.applied = d.applied or {}                      -- character GUID -> "steam" / "standard"
+    d.partsAsked = d.partsAsked or {}                -- character GUID -> true (the move-the-bars question was shown)
     d.declined = d.declined or {}                    -- character GUID -> true
     return d
 end

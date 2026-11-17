@@ -50,3 +50,34 @@ end)
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
 ev:SetScript("OnEvent", function() tryPrompt() end)
+
+----------------------------------------------------------------------
+-- Gamepad layout: once for each character, when the layout is on, ask whether to move the micro menu, bags and XP bar now (they are
+-- not moved by the layout itself; the game's Edit Mode does it).
+----------------------------------------------------------------------
+StaticPopupDialogs["UBERMOCFOREVER_MOVEPARTS"] = {
+    text = "Gamepad layout is on. The micro menu, bags and experience bar stay where the game puts them.\n\nOpen the game's Edit Mode now to move them? You can do it any time with Move bars on the Bars page.",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function() if UF.GamepadBar and UF.GamepadBar.openEditMode then UF.GamepadBar.openEditMode() end end,
+    OnShow = function(self) UF.Nav.TakePopup(self) end,
+    OnHide = function(self) UF.Nav.ReleasePopup(self) end,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    preferredIndex = 3,
+}
+local function tryPartsPrompt()
+    local g = UF.guid()
+    if not g or InCombatLockdown() then return end
+    local B = UF.GamepadBar
+    if not (B and B.cfg and B.cfg().on) then return end
+    local d = UF.DB()
+    d.partsAsked = d.partsAsked or {}
+    if d.partsAsked[g] then return end
+    if StaticPopup_Visible and StaticPopup_Visible("UBERMOCFOREVER_DEFAULTS") then return end
+    d.partsAsked[g] = true
+    StaticPopup_Show("UBERMOCFOREVER_MOVEPARTS")
+end
+UF.tryPartsPrompt = tryPartsPrompt
+UF.OnLogin(function() C_Timer.After(15, tryPartsPrompt) end)
