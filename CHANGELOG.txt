@@ -1,3 +1,6 @@
+UbermocForever 1.3.62
+- Fixed: A on a menu entry that has a submenu (Target Marker Icon in the target's menu, marked with an arrow) did nothing, because the game opens those on mouse-down or hover, never on a click. A now runs the entry's mouse-down, and the highlight moves into the submenu (it counts as part of the open menus, then B closes them). Untested in the game; whether the marker itself is then set is the next thing to check.
+
 UbermocForever 1.3.61
 - Fixed: the interact key reached the menu button (your report: 37 and 46 presses) but no menu showed. The key is now pointed at the target frame itself with a right click, so the game does exactly what a right click on the frame does and puts the menu next to the frame. The hidden button stays only as a fallback and is now a real, tiny frame (a menu closes when its owner is not visible).
 - Fixed: only four of the five interact bindings were switched (SHIFT-F6 was left out); up to eight now.

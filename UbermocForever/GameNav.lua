@@ -153,9 +153,35 @@ local function openMenus()
         local d = _G["DropDownList" .. i]
         if shown(d) then list[#list + 1] = d end
     end
+    -- the submenu the highlight opened (the manager only hands out the first menu): it counts as part of the open menus
+    if G.submenu then
+        if #list > 0 and shown(G.submenu) then list[#list + 1] = G.submenu else G.submenu = nil end
+    end
     return list
 end
 G.openMenus = openMenus
+
+-- A menu entry that opens a submenu (Target Marker Icon in a unit menu) does it on mouse DOWN or on hover, never on a click, so the
+-- press runs the entry's own mouse-down (Menu.lua: frame:SetScript("OnMouseDown", menu.onElementMouseDown) -> CheckForSubmenu). The
+-- submenu is a frame anchored to that entry: found by that anchor, since the menu manager only lists the first menu.
+function G.opensSubmenu(f)
+    if not (f and f.GetElementDescription) then return false end
+    local okD, d = pcall(f.GetElementDescription, f)
+    if not (okD and d and d.CanOpenSubmenu) then return false end
+    local okC, can = pcall(d.CanOpenSubmenu, d)
+    return okC and can and true or false
+end
+function G.findSubmenu(owner)
+    if not (EnumerateFrames and owner) then return nil end
+    local f = EnumerateFrames()
+    while f do
+        if f ~= owner and shown(f) and f.GetNumPoints and f:GetNumPoints() > 0 then
+            local ok, _, rel = pcall(f.GetPoint, f, 1)
+            if ok and rel == owner then return f end
+        end
+        f = EnumerateFrames(f)
+    end
+end
 
 local function closeMenus()
     local did = false
@@ -387,6 +413,15 @@ local function buttons()
             local f = focus
             if not f or InCombatLockdown() or not f.GetScript then return end
             local isDrop = f.SetMenuOpen and f.IsMenuOpen
+            if G.opensSubmenu(f) then
+                local down = f:GetScript("OnMouseDown")
+                if down then
+                    pcall(down, f, "LeftButton")
+                    G.submenu = G.findSubmenu(f)
+                    if not G.submenu then C_Timer.After(0.1, function() G.submenu = G.findSubmenu(f) end) end
+                end
+                return
+            end
             if f:GetScript("OnClick") and not isDrop then return end
             local down, up = f:GetScript("OnMouseDown"), f:GetScript("OnMouseUp")
             local wasOpen = isDrop and select(2, pcall(f.IsMenuOpen, f)) or false

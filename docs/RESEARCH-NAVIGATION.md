@@ -295,3 +295,10 @@ The highlight on the top entry comes from GameNav treating a newly opened menu a
 secure `togglemenu` action did not give a visible menu. Likely reasons found in the source: the hidden button had no size or anchor, and `MenuManagerMixin:OpenMenuInternal` closes a menu whose owner
 is not visible (`Menu.lua`, the `proxy` OnUpdate); the game's own target frame opens its menu with `TargetFrame_OpenMenu` and then anchors it `LEFT` of itself (`TargetFrame.lua`). 1.3.61 clicks the target frame itself
 (`SetBindingClick(key, "TargetFrame", "RightButton")`). `GetBindingKey("INTERACTTARGET")` returns five keys (CTRL-F6, F6, SHIFT-F6, CTRL-SHIFT-F6, PADPADDLE2); 1.3.60 kept four.
+
+### 1.3.62: submenus of the game's menus
+Photo from the game: the target's menu opens next to the target frame, with "Target Marker Icon" (an arrow on it) highlighted, and A on it did nothing. Menu entries are buttons whose `OnClick` runs `description:Pick`
+(`MenuTemplates.lua`), but a submenu opens in `CheckForSubmenu` from `OnMouseDown` (`Menu.lua`, `frame:SetScript("OnMouseDown", menu.onElementMouseDown)`) or after hovering, so a forwarded click never opens it
+(GameNav also returned early for any button that has an `OnClick`). The menu manager proxy only exposes `GetOpenMenu` (the first menu) and `IsAnyMenuOpen`, so the submenu frame is found by being anchored to the
+entry (`GenerateSubmenuInternal` anchors it `TOPLEFT` of the entry's `TOPRIGHT` or the mirrored corner). Choosing a marker runs `UnitPopupRaidTargetBaseMixin:OnClick` -> `SetRaidTargetIcon(unit, index)`;
+`SetRaidTarget` is `HasRestrictions` in `RaidMarkersDocumentation.lua`, so if the marker is not set after the submenu works, that call is the next suspect.

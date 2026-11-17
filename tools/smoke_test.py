@@ -862,6 +862,30 @@ end""")()
 assert str(r) == "0,0.5,nil,00", r
 print("Chat: the edit box fades by itself, its own setting wins, off leaves it alone: OK")
 print("Chat: new lines reveal the chat, the edit box in use holds it, then wait and fade: OK")
+# Menu entries that open a submenu: found by their description, and the submenu frame by the entry it is anchored to
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local function entry(can)
+        local e = {}
+        function e:GetElementDescription() return { CanOpenSubmenu = function() return can end } end
+        return e
+    end
+    local out = { tostring(G.opensSubmenu(entry(true))), tostring(G.opensSubmenu(entry(false))), tostring(G.opensSubmenu({})) }
+    local owner = { IsShown = function() return true end, GetNumPoints = function() return 0 end }
+    local sub = { IsShown = function() return true end, GetNumPoints = function() return 1 end, GetPoint = function() return "TOPLEFT", owner, "TOPRIGHT" end }
+    local other = { IsShown = function() return true end, GetNumPoints = function() return 1 end, GetPoint = function() return "CENTER", {}, "CENTER" end }
+    local all = { other, owner, sub }
+    local real = EnumerateFrames
+    EnumerateFrames = function(prev)
+        if prev == nil then return all[1] end
+        for i = 1, #all do if all[i] == prev then return all[i + 1] end end
+    end
+    out[#out + 1] = tostring(G.findSubmenu(owner) == sub)
+    EnumerateFrames = real
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true,false,false,true", r
+print("Menus: an entry with a submenu opens it on mouse-down and the submenu is found: OK")
 # Interact on a target you cannot interact with opens its menu, but a soft interact target next to you (skinning) keeps the key
 r = L("""function()
     local UF = UbermocForever
