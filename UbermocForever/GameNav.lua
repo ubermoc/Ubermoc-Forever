@@ -416,7 +416,9 @@ local function buttons()
             if G.opensSubmenu(f) then
                 local down = f:GetScript("OnMouseDown")
                 if down then
-                    pcall(down, f, "LeftButton")
+                    -- through securecallfunction: built from our hook the submenu would carry our taint, and choosing an entry in it would be
+                    -- refused as an addon calling a protected function (SetRaidTarget for a marker: the report from the game)
+                    if securecallfunction then pcall(securecallfunction, down, f, "LeftButton") else pcall(down, f, "LeftButton") end
                     G.submenu = G.findSubmenu(f)
                     if not G.submenu then C_Timer.After(0.1, function() G.submenu = G.findSubmenu(f) end) end
                 end
