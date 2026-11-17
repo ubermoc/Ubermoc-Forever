@@ -874,5 +874,24 @@ r = L("""function()
 end""")()
 assert str(r) == "true,19", r
 print("Fading page builds with one list open: OK")
+# Options window: the triggers go through the pages (settings, fading)
+r = L("""function()
+    local UF = UbermocForever
+    local w = UbermocForeverOptions
+    w:Hide(); w:Show()
+    local function press(key)
+        local b = _G["UbermocForeverNav_" .. key]
+        b.__scripts.OnClick(b, "LeftButton", true)
+        b.__scripts.OnClick(b, "LeftButton", false)
+    end
+    local out = { UF.optionsPage() }
+    press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()
+    press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()
+    press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
+    press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "1,2,1,2,1", r
+print("Options: the triggers go through the pages: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

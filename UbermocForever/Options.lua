@@ -17,7 +17,8 @@ local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
 local pageBtn, pageNo = nil, 1   -- the page switch (1 = settings and binds, 2 = fading)
 local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn   -- declared here, above every function that uses it
-function UF.optionsLayer() return layer end   -- for the offline test
+function UF.optionsLayer() return layer end
+function UF.optionsPage() return pageNo end   -- for the offline test   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
     text = "Reset every controller bind to the default for %s?",
@@ -314,7 +315,7 @@ local function buildPicker()
             if r.pad == picker.pad and r:IsShown() then UF.Nav.SetFocus(r.btn); break end
         end
         if win and win:IsShown() then
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         end
     end)
 end
@@ -550,9 +551,9 @@ local function build()
         for _, f in ipairs(one) do if f then f:SetShown(n == 1) end end
         fadeFrame:SetShown(n == 2)
         if n == 2 then
-            legend:Set({ PAD1 = "Press", PAD2 = "Back" })
+            legend:Set({ PAD1 = "Press", PAD2 = "Back", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         else
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
         end
         UF.RefreshOptions()
     end
@@ -586,6 +587,9 @@ local function build()
         PAD1 = function()
             if not Nav.Click() then Nav.Move("DOWN", navRows, startRow()) end
         end,
+        -- the triggers go through the pages: settings, fading
+        PADLTRIGGER = function() if not pickerOpen() then showPage(pageNo == 1 and 2 or 1) end end,
+        PADRTRIGGER = function() if not pickerOpen() then showPage(pageNo == 1 and 2 or 1) end end,
         PADLSHOULDER = function() if not pickerOpen() and pageNo == 1 then layer = layer == 1 and 4 or layer - 1; UF.RefreshOptions() end end,
         PADRSHOULDER = function() if not pickerOpen() and pageNo == 1 then layer = layer == 4 and 1 or layer + 1; UF.RefreshOptions() end end,
         PAD2 = function() if pickerOpen() then picker:Hide() else win:Hide() end end,
