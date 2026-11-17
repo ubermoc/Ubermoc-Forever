@@ -268,7 +268,7 @@ nav = L("""function()
     -- back up to the third row, then A on it, then B
     for i = 1, 60 do press("PADDUP") end
     local top = where()
-    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, cinematic row, aim row, vendor row, layers, first row ... settle on a list row
+    press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN"); press("PADDDOWN")      -- header, cinematic row, aim row, layers, first row ... settle on a list row
     local row = where()
     press("PAD1")                                                  -- A on a row opens the picker
     local inPicker = (UF.Nav.focus ~= nil) and (UF.Nav.focus.navRow == nil) and (UF.Nav.focus.navScroll ~= nil)
@@ -1273,9 +1273,17 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
+    press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()            -- left of the first page is the last (Quality of life)
+    local q = UF.QolPage.navRows()
+    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2]                 -- fast loot; sell, repair, guild bank first
+    local before = UF.Vendor.cfg().guild
+    UF.Nav.SetFocus(q[2][3]); press("PAD1")                            -- A on Guild bank first flips it
+    out[#out + 1] = tostring(UF.Vendor.cfg().guild ~= before)
+    UF.Vendor.toggleGuild()
+    press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1", r
+assert str(r) == "1,2,3,2,1,5,2/1/3,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()

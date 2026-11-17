@@ -1,3 +1,6 @@
+UbermocForever 1.3.110
+- Changed: a fifth options page, Quality of life (QolPage.lua), holds Fast loot, Sell junk, Repair and Guild bank first; they are no longer on the first page, which is back to the cinematic and aim dot rows above the binds. The triggers and the Page button go through five pages. Untested in the game.
+
 UbermocForever 1.3.109
 - Added: selling junk and repairing at a vendor (Vendor.lua, ported from Ubermoc UI). When a vendor opens, grey items are sold with the game's own Sell all junk, and a vendor that repairs repairs all your gear. Repairs are paid from the guild bank when your guild lets you and both the bank and your daily allowance cover the whole cost, otherwise from your own money. A chat line says what was sold and what the repair cost. A third row of buttons on the options window: Sell junk, Repair, Guild bank first (all on by default). Untested in the game.
 
