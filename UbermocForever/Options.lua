@@ -580,7 +580,16 @@ local function build()
     end
     local function startRow() return (pickerOpen() or pageNo == 2) and 2 or 5 end
     local navMap = {
-        PADDUP = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("UP", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("UP", navRows, startRow()) end end,
+        PADDUP = function()
+            -- the header's Page and controller buttons sit below the X: up goes to it
+            local f = Nav.focus
+            local x = win.CloseButton
+            if not pickerOpen() and x and x:IsVisible() and (f == pageBtn or f == win.controllerBtn) then
+                Nav.SetFocus(x)
+                return
+            end
+            if pageNo == 2 and not pickerOpen() then UF.FadePage.move("UP", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("UP", navRows, startRow()) end
+        end,
         PADDDOWN = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("DOWN", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("DOWN", navRows, startRow()) end end,
         PADDLEFT = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("LEFT", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("LEFT", navRows, startRow()) end end,
         PADDRIGHT = function() if pageNo == 2 and not pickerOpen() then UF.FadePage.move("RIGHT", { win.controllerBtn, pageBtn, win.CloseButton }) else Nav.Move("RIGHT", navRows, startRow()) end end,
