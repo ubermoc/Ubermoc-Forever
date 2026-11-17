@@ -124,7 +124,7 @@ end
 function B.nextSize() local c = cfg(); c.size = B.SIZES[(stepOf(B.SIZES, c.size) % #B.SIZES) + 1]; B.layoutSoon() end
 function B.nextGap() local c = cfg(); c.gap = B.GAPS[(stepOf(B.GAPS, c.gap) % #B.GAPS) + 1]; B.layoutSoon() end
 function B.nextRaise() local c = cfg(); c.raise = B.RAISES[(stepOf(B.RAISES, c.raise) % #B.RAISES) + 1]; B.layoutSoon() end
-function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end end
+function B.toggle() local c = cfg(); c.on = not c.on; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end; if c.on and UF.tryPartsPrompt then C_Timer.After(0.5, UF.tryPartsPrompt) end; if c.on and UF.tryBarsPrompt then C_Timer.After(1.5, UF.tryBarsPrompt) end end
 function B.toggleCaps() local c = cfg(); c.keepCaps = not c.keepCaps; B.layoutSoon(); if UF.Fade then UF.Fade.evaluate() end end
 function B.toggleExtras() local c = cfg(); c.extras = not c.extras; B.layoutSoon() end
 function B.toggleColor() local c = cfg(); c.faceColor = not c.faceColor; B.layoutSoon() end
@@ -174,6 +174,24 @@ local function isEmpty(btn)
     if not ok then return false end
     if issecretvalue and issecretvalue(has) then return false end
     return not has
+end
+
+-- The layers whose bar the game does not show (action bars 2 to 4 are switched on in Gameplay > Action Bars) although buttons on it have an action.
+-- Returns the bar numbers, for example { 4 }.
+local BAR_FRAMES = { nil, "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight" }
+function B.hiddenBars()
+    local out = {}
+    for i = 2, 4 do
+        local f = BAR_FRAMES[i] and _G[BAR_FRAMES[i]]
+        if f and f.IsShown and not f:IsShown() then
+            local used = false
+            for _, b in ipairs(layerButtons(i)) do
+                if not isEmpty(b) and actionOf(b) then used = true; break end
+            end
+            if used then out[#out + 1] = i end
+        end
+    end
+    return out
 end
 
 local styleCooldown   -- defined below (cooldown look)

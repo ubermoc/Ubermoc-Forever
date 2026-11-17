@@ -1426,5 +1426,24 @@ r = L("""function()
 end""")()
 assert str(r) == "PADDUP=TARGETNEARESTENEMY,PADBACK=TOGGLEWORLDMAP,|,PADLSTICK=Jump", r
 print("Gamepad layout: other binds of the held combination: OK")
+
+# Gamepad layout: a used bar the game does not show is found
+r = L("""function()
+    local B = UbermocForever.GamepadBar
+    local out = {}
+    out[#out + 1] = #B.hiddenBars()
+    MultiBarRight = { IsShown = function() return false end }
+    MultiBarRightButton1 = { action = 3, GetNumPoints = function() return 0 end }
+    local oldHas = HasAction
+    HasAction = function(a) return a == 3 end
+    out[#out + 1] = table.concat(B.hiddenBars(), "/")
+    HasAction = function(a) return false end
+    out[#out + 1] = #B.hiddenBars()
+    HasAction = oldHas
+    MultiBarRight, MultiBarRightButton1 = nil, nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "0,4,0", r
+print("Gamepad layout: switched-off bar with actions found: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

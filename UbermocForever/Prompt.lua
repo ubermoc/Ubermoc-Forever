@@ -81,3 +81,50 @@ local function tryPartsPrompt()
 end
 UF.tryPartsPrompt = tryPartsPrompt
 UF.OnLogin(function() C_Timer.After(15, tryPartsPrompt) end)
+
+----------------------------------------------------------------------
+-- Gamepad layout: a layer's action bar is switched off in the game's Gameplay > Action Bars settings, so nothing shows when its modifiers are held.
+-- The game's own question window offers to open that settings page (Settings.OpenToCategory(Settings.ACTION_BAR_CATEGORY_ID), the call the game's
+-- Edit Mode makes itself, EditModeSystemTemplates.lua:1211), asks again next time on "Not now", never again on "Don't ask again". Nothing is changed by us.
+----------------------------------------------------------------------
+StaticPopupDialogs["UBERMOCFOREVER_BARSOFF"] = {
+    text = "Gamepad layout: %s switched off in the game's settings, so nothing shows while you hold its modifiers.\n\nOpen Gameplay > Action Bars now to switch it on?",
+    button1 = "Open settings",
+    button2 = "Not now",
+    button3 = "Don't ask again",
+    OnAccept = function()
+        local id = _G.Settings and _G.Settings.ACTION_BAR_CATEGORY_ID
+        if id and _G.Settings.OpenToCategory then
+            if securecallfunction then securecallfunction(_G.Settings.OpenToCategory, id) else _G.Settings.OpenToCategory(id) end
+        else
+            UF.say("Open the game menu, Options, Gameplay, Action Bars.")
+        end
+    end,
+    OnAlt = function()
+        local g = UF.guid()
+        if g then UF.DB().barsNever = UF.DB().barsNever or {}; UF.DB().barsNever[g] = true end
+    end,
+    OnShow = function(self) UF.Nav.TakePopup(self) end,
+    OnHide = function(self) UF.Nav.ReleasePopup(self) end,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    preferredIndex = 3,
+}
+local barsAsked = false
+local function tryBarsPrompt()
+    if barsAsked or InCombatLockdown() then return end
+    local g = UF.guid()
+    local B = UF.GamepadBar
+    if not g or not (B and B.cfg and B.cfg().on and B.hiddenBars) then return end
+    local d = UF.DB()
+    if d.barsNever and d.barsNever[g] then return end
+    local hidden = B.hiddenBars()
+    if #hidden == 0 then return end
+    local names = {}
+    for _, i in ipairs(hidden) do names[#names + 1] = "action bar " .. i end
+    barsAsked = true
+    StaticPopup_Show("UBERMOCFOREVER_BARSOFF", table.concat(names, " and ") .. (#names > 1 and " are" or " is"))
+end
+UF.tryBarsPrompt = tryBarsPrompt
+UF.OnLogin(function() C_Timer.After(20, tryBarsPrompt) end)

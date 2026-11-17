@@ -1,3 +1,6 @@
+UbermocForever 1.3.89
+- Added: when the gamepad layout is on and an action bar (2 to 4) that has actions on it is switched off in the game's Gameplay > Action Bars settings, the game's own question window says so (once per login) and offers "Open settings" (opens that page with the game's own Settings.OpenToCategory, the call the game's Edit Mode makes itself), "Not now" or "Don't ask again". Nothing is switched on by the addon. Untested in the game.
+
 UbermocForever 1.3.88
 - Added: /ubf bars now also says which modifiers the game reports as held and which layer that is, and for each layer whether the game's bar frame is shown and how many buttons the layout kept; /ubf bars hold waits 6 seconds first, so both modifier buttons can be held while it reads. For finding why nothing shows on the combination of both modifiers.
 
