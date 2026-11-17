@@ -15,7 +15,7 @@ local ROW_H = 30
 local LIST_W = 620            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
 local layer = 1
-local cineBtn, aimBtn, distBtn, sizeBtn, castBtn   -- declared here, above every function that uses it
+local cineBtn, barsBtn, edgesBtn, aimBtn, distBtn, sizeBtn, castBtn   -- declared here, above every function that uses it
 function UF.optionsLayer() return layer end   -- for the offline test
 
 StaticPopupDialogs["UBERMOCFOREVER_RESET"] = {
@@ -61,6 +61,10 @@ function UF.RefreshOptions()
         distBtn:SetText("Aim distance: " .. UF.Aim.distanceName())
         sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
         if castBtn and UF.GroundCast then castBtn:SetText("Release: " .. (UF.GroundCast.enabled() and "On" or "Off")) end
+    end
+    if barsBtn and UF.Cinematic then
+        barsBtn:SetText("Bars: " .. UF.Cinematic.barsName())
+        edgesBtn:SetText("Edges: " .. UF.Cinematic.edgesName())
     end
     if cineBtn then cineBtn:SetText("Cinematic mode: " .. (d.cinema == false and "Off" or "On")) end
     info:SetText((set and set.name or "?") .. (d.layout == "auto" and "  (detected)" or "  (chosen)") .. "  |cff808080v" .. UF.getVersion() .. "|r")
@@ -378,7 +382,7 @@ local function build()
     info:SetPoint("LEFT", win, "TOPLEFT", 16, -43)
     -- Cinematic camera while talking to an NPC (Cinematic.lua): one button, On or Off.
     cineBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-    cineBtn:SetSize(170, 22)
+    cineBtn:SetSize(160, 22)
     cineBtn:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
     cineBtn:SetScript("OnClick", function()
         local d = UF.DB()
@@ -394,6 +398,22 @@ local function build()
         GameTooltip:Show()
     end)
     cineBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    local function cineButton(width, prev, click, tip)
+        local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+        b:SetSize(width, 22)
+        b:SetPoint("LEFT", prev, "RIGHT", 6, 0)
+        b:SetScript("OnClick", function() click(); UF.RefreshOptions() end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText(tip[1])
+            GameTooltip:AddLine(tip[2], 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        return b
+    end
+    barsBtn = cineButton(140, cineBtn, function() UF.Cinematic.nextBars() end, { "Black bars", "How thick the black bars at the top and bottom are during a talk. Press to step through the choices; a short preview shows it." })
+    edgesBtn = cineButton(150, barsBtn, function() UF.Cinematic.nextEdges() end, { "Dark edges", "How far the dark, cloudy edges come in during a talk. Press to step through the choices; a short preview shows it." })
 
     -- Second row: the aim dot for ground spells (Aim.lua).
     local function aimButton(width, prev, click, tip)
@@ -523,7 +543,7 @@ local function build()
         local header = { win.controllerBtn }
         if win.CloseButton and win.CloseButton:IsVisible() then header[2] = win.CloseButton end
         out[1] = header
-        out[2] = { cineBtn }
+        out[2] = { cineBtn, barsBtn, edgesBtn }
         out[3] = { aimBtn, distBtn, sizeBtn, castBtn }
         out[4] = layerButtons
         for _, r in ipairs(rows) do

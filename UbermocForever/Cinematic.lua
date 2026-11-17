@@ -10,7 +10,13 @@ local C = {}
 UF.Cinematic = C
 
 local ZOOM = 5         -- how close the camera comes (yards), only ever closer than the player had it
-local BARS = 0.11      -- black bars, as a share of the screen height (each)
+-- Black bar thickness (a share of the screen height, each) and how far the dark edges come in (their depth and strength).
+C.BAR_STEPS = { { name = "Off", h = 0 }, { name = "Thin", h = 0.06 }, { name = "Medium", h = 0.11 }, { name = "Thick", h = 0.16 } }
+C.EDGE_STEPS = { { name = "Off", size = 0, alpha = 0 }, { name = "Narrow", size = 0.6, alpha = 0.8 }, { name = "Medium", size = 1, alpha = 1 },
+    { name = "Wide", size = 1.5, alpha = 1.15 } }
+local DEFAULT_BARS, DEFAULT_EDGES = 3, 3   -- Medium, Medium: what it was before it could be changed
+local function barStep() local i = UF.DB().cinemaBars or DEFAULT_BARS; return C.BAR_STEPS[i] or C.BAR_STEPS[DEFAULT_BARS] end
+local function edgeStep() local i = UF.DB().cinemaEdges or DEFAULT_EDGES; return C.EDGE_STEPS[i] or C.EDGE_STEPS[DEFAULT_EDGES] end
 local VIGNETTE = { { size = 0.32, alpha = 0.6 }, { size = 0.17, alpha = 0.5 } }   -- two soft layers = cloudy dark edges
 local FADE_IN = 0.8    -- seconds to ease in
 local FADE_OUT = 0.6   -- seconds to ease out
@@ -110,14 +116,17 @@ local function paint(k)
     local D = makeDress()
     local h = D:GetHeight() or 0
     if h <= 1 then h = UIParent:GetHeight() or 768 end
-    local bar = math.max(0.01, math.floor(h * BARS * k + 0.5))
+    local es = edgeStep()
+    local bar = math.max(0.01, math.floor(h * barStep().h * k + 0.5))
     D.top:SetHeight(bar); D.bot:SetHeight(bar)
+    D.top:SetShown(barStep().h > 0 and k > 0.001); D.bot:SetShown(barStep().h > 0 and k > 0.001)
     local w = D:GetWidth() or 0
     if w <= 1 then w = UIParent:GetWidth() or 1024 end
     for _, t in ipairs(D.edges) do
         local v = VIGNETTE[t.layer]
-        local a = v.alpha * k
-        if t.sideways then t:SetWidth(math.max(0.01, w * v.size)) else t:SetHeight(math.max(0.01, h * v.size)) end
+        local a = math.min(1, v.alpha * es.alpha) * k
+        local size = v.size * es.size
+        if t.sideways then t:SetWidth(math.max(0.01, w * size)) else t:SetHeight(math.max(0.01, h * size)) end
         local dark, clear = { 0, 0, 0, a }, { 0, 0, 0, 0 }
         local c1, c2 = clear, dark          -- first colour is the left/bottom end
         if t.darkFirst then c1, c2 = dark, clear end
@@ -237,11 +246,14 @@ local function tick(self, dt)
         if not C.talking() then stop(false)
         elseif InCombatLockdown() then stop(true) end
     end
-    if S.k < S.goal then S.k = math.min(S.goal, S.k + dt / FADE_IN)
-    elseif S.k > S.goal then S.k = math.max(S.goal, S.k - dt / FADE_OUT) end
+    local previewing = (not S.active) and S.previewUntil and GetTime() < S.previewUntil
+    local goal = S.goal
+    if not S.active then goal = previewing and 1 or 0 end
+    if S.k < goal then S.k = math.min(goal, S.k + dt / FADE_IN)
+    elseif S.k > goal then S.k = math.max(goal, S.k - dt / FADE_OUT) end
     paint(S.k)
-    UIParent:SetAlpha(1 - S.k)
-    if not S.active and S.k <= 0 then
+    if S.active or not (previewing or S.k > 0) then UIParent:SetAlpha(1 - S.k) end   -- a preview shows the bars and edges only
+    if not S.active and S.k <= 0 and not previewing then
         UIParent:SetAlpha(1)
         keepVisible(false)
         undim()
@@ -250,6 +262,17 @@ local function tick(self, dt)
 end
 
 function C.stopNow() stop(true) end
+
+-- A short look at the bars and edges (when a setting is changed), without a talk.
+function C.preview()
+    if S.active then return end
+    S.previewUntil = GetTime() + 2.5
+    if drv then drv:Show() end
+end
+function C.nextBars() local d = UF.DB(); d.cinemaBars = ((d.cinemaBars or DEFAULT_BARS) % #C.BAR_STEPS) + 1; C.preview() end
+function C.nextEdges() local d = UF.DB(); d.cinemaEdges = ((d.cinemaEdges or DEFAULT_EDGES) % #C.EDGE_STEPS) + 1; C.preview() end
+function C.barsName() return barStep().name end
+function C.edgesName() return edgeStep().name end
 C._sweep, C._undim = sweep, undim   -- for the offline test
 
 drv = CreateFrame("Frame")

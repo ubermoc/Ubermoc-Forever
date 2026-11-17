@@ -99,6 +99,7 @@ C_GamePad = {
 }
 UnitGUID = function() return "Player-1-ABC" end
 InCombatLockdown = function() return false end
+GetTime = function() return 0 end
 GetCVar = function(n) return calls.cvars[n] or "0" end
 SetCVar = function(n, v) calls.cvars[n] = v end
 SetBinding = function(k, a) calls.binds[k] = a end
@@ -857,5 +858,18 @@ r = L("""function()
 end""")()
 assert str(r) == "0110,11", r
 print("Cinematic: frames that ignore the fade are hidden and put back: OK")
+# Cinematic: bar and edge settings step and wrap, and default to what it was before
+r = L("""function()
+    local C = UbermocForever.Cinematic
+    UbermocForeverDB.cinemaBars, UbermocForeverDB.cinemaEdges = nil, nil
+    local out = { C.barsName(), C.edgesName() }
+    C.nextBars(); out[#out + 1] = C.barsName()
+    C.nextBars(); out[#out + 1] = C.barsName()      -- wraps to Off
+    C.nextEdges(); out[#out + 1] = C.edgesName()
+    C.nextEdges(); out[#out + 1] = C.edgesName()    -- wraps to Off
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "Medium,Medium,Thick,Off,Wide,Off", r
+print("Cinematic: bars and edges settings step and wrap: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
