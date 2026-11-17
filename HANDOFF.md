@@ -24,6 +24,7 @@ Their rules, in their words as closely as can be kept:
 - **Original Blizzard assets only.** "Nothing drawn, nothing added." The mod must use the exact same design and layout as
   World of Warcraft and "look like it's been a part of it by design".
 - **No guesswork.** "We're going to look everything up 100%." Work methodically, **one feature at a time**.
+- Local checkout of Ubermoc UI: `~/Downloads/Ubermoc/Ubermoc-UI` (moved there from `~/Downloads/Ubermoc-UI` on 2026-11-16).
 - A lot of the working code already exists in **Ubermoc UI** (`ubermoc/Ubermoc-UI`, Marcos's own addon, 30,000 lines).
   Port the same binds and ordering from it. They are the same author. Do not change Ubermoc UI from here (its own
   `CLAUDE.md` says so).

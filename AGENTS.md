@@ -7,6 +7,7 @@ The code is the truth; where a note here disagrees with it, trust the code and f
 A controller-first addon for **WoW: Forever** (game type "camelot", Interface 16001) for Steam Deck / Steam Controller
 (also PS5, Xbox, Switch). Author: Marcos (GitHub `ubermoc`). Rules from the user: only Blizzard's own art and
 templates, one feature at a time, research with sources first, short answers, be honest about what is untested.
+The author's other addon, UbermocUI (repo `ubermoc/Ubermoc-UI`), is checked out next to this repo at `~/Downloads/Ubermoc/Ubermoc-UI` (reference for how he builds things; its own `CLAUDE.md` has its rules).
 Repo `ubermoc/Ubermoc-Forever`, working branch `claude/affectionate-cray-lhlr0j`, releases are cut from `main`.
 
 ## Current state (version in `UbermocForever/UbermocForever.toc`, history in `CHANGELOG.txt`)
