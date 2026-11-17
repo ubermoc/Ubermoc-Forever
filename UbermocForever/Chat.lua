@@ -12,6 +12,8 @@ UF.Chat = Ch
 Ch.VISIBLE = { 5, 10, 20, 30, 60, 120 }   -- seconds a line stays before it starts to fade
 Ch.FADE = { 1, 2, 3, 5, 10 }              -- seconds the fade-out takes
 
+Ch.PARTS = { "chat", "chattabs", "chatedit", "chatbtns", "quickjoin" }   -- the parts of the chat (Fade.lua F.CHAT)
+
 local function cfg()
     local d = UF.DB()
     d.chat = d.chat or {}
@@ -20,7 +22,12 @@ local function cfg()
     c.visible = c.visible or 5
     c.fade = c.fade or 3
     if c.reveal == nil then c.reveal = true end
-    if c.editFade == nil then c.editFade = true end
+    if c.auto == nil then   -- 1.3.57: every chat part can hide itself until used (the edit box setting of 1.3.56 moves over)
+        c.auto = {}
+        for _, k in ipairs(Ch.PARTS) do c.auto[k] = true end
+        if c.editFade == false then c.auto.chatedit = false end
+        c.editFade = nil
+    end
     return c
 end
 Ch.cfg = cfg
@@ -63,7 +70,8 @@ end
 function Ch.toggle() local c = cfg(); c.on = not c.on; Ch.apply() end
 function Ch.nextVisible() local c = cfg(); c.visible = Ch.VISIBLE[(stepOf(Ch.VISIBLE, c.visible) % #Ch.VISIBLE) + 1]; Ch.apply() end
 function Ch.nextFade() local c = cfg(); c.fade = Ch.FADE[(stepOf(Ch.FADE, c.fade) % #Ch.FADE) + 1]; Ch.apply() end
-function Ch.toggleEdit() local c = cfg(); c.editFade = not c.editFade; if UF.Fade then UF.Fade.evaluate() end end
+function Ch.autoOn(key) return cfg().auto[key] and true or false end
+function Ch.toggleAuto(key) local c = cfg(); c.auto[key] = not c.auto[key]; if UF.Fade then UF.Fade.evaluate() end end
 function Ch.toggleReveal() local c = cfg(); c.reveal = not c.reveal end
 function Ch.visibleName() return cfg().visible .. " s" end
 function Ch.fadeName() return cfg().fade .. " s" end
@@ -95,10 +103,10 @@ function Ch.pollTyping()
     local F = UF.Fade
     if not F then return end
     local c = cfg()
-    local now = ((c.on or c.editFade) and _G.ACTIVE_CHAT_EDIT_BOX ~= nil) and true or false
+    local now = ((c.on or next(c.auto) ~= nil) and _G.ACTIVE_CHAT_EDIT_BOX ~= nil) and true or false
     if now == typing then return end
     typing = now
-    for _, k in ipairs({ "chat", "chatedit" }) do
+    for _, k in ipairs(Ch.PARTS) do
         F.hold(k, now)
         if not now then F.reveal(k, c.visible, c.fade) end   -- done typing: wait, then fade
     end
@@ -113,11 +121,16 @@ drv:SetScript("OnUpdate", function(_, dt)
 end)
 
 -- (the Chat page of the options window sets all of this: ChatPage.lua)
--- The edit box fades by itself when this is on and the Fading-style setting of "chatedit" is not set: hidden (0) until it is used.
-function Ch.registerEdit() UF.Fade.implicit.chatedit = function() return cfg().editFade and 0 or nil end end   -- Fade.lua loads after this file: called at login
+-- A part with "Fade by itself" On is hidden (0) until the chat is used and has no value of its own for the situation that is on:
+-- the chat window also shows on a new message (above), every part while you type (below), then waits and fades.
+function Ch.registerAuto()
+    for _, k in ipairs(Ch.PARTS) do
+        UF.Fade.implicit[k] = function() return Ch.autoOn(k) and 0 or nil end
+    end
+end   -- Fade.lua loads after this file: called at login
 -- The game builds and restyles its chat windows around login, so apply again a little later (as Ubermoc UI does).
 UF.OnLogin(function()
-    Ch.registerEdit()
+    Ch.registerAuto()
     Ch.apply()
     hookLines()
     if C_Timer and C_Timer.After then C_Timer.After(1, function() Ch.apply(); hookLines() end); C_Timer.After(4, Ch.apply) end

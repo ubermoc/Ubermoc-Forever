@@ -1,3 +1,6 @@
+UbermocForever 1.3.57
+- Changed: every chat part (window, tabs, edit box, buttons, quick join) now has the same "Fade by itself" button on the Chat page (On to start with; replaces the edit-box-only button). A part with it On is hidden until the chat is used: while you type every part shows, and the chat window also shows on a new message. Then it waits the Visible time and fades over the Fade-out time. A message alone does not open the tabs, buttons or edit box. A part's own opacity settings on that page take over. Untested in the game.
+
 UbermocForever 1.3.56
 - Added: "Edit box fade" on the Chat page. When it is On (the starting value) the chat edit box is hidden until you use it, stays while you type, then fades out the Visible time after you send or close it (over the Fade-out time). A setting of its own for the edit box on that page takes over. Untested in the game.
 

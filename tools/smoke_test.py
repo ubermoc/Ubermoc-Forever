@@ -816,7 +816,7 @@ r = L("""function()
     ACTIVE_CHAT_EDIT_BOX = {}                     -- the edit box is opened
     Ch.pollTyping()
     now = now + 100
-    out[#out + 1] = tostring(F._revealed("chatedit")) .. tostring(F._revealed("chat")) .. tostring(F._revealed("chattabs"))   -- held a long time later; the tabs never
+    out[#out + 1] = tostring(F._revealed("chatedit")) .. tostring(F._revealed("chat")) .. tostring(F._revealed("chattabs"))   -- every part held while typing, a long time later
     ACTIVE_CHAT_EDIT_BOX = nil                    -- message sent
     Ch.pollTyping()
     out[#out + 1] = tostring(F._revealed("chatedit"))
@@ -827,7 +827,7 @@ r = L("""function()
     GetTime = realTime
     return table.concat(out, ",")
 end""")()
-assert str(r) == "false,truefalse,true,false,truetruefalse,true,true,false", r
+assert str(r) == "false,truefalse,true,false,truetruetrue,true,true,false", r
 # Chat page: the chat parts are not on the Fading page, they are on the third page
 r = L("""function()
     local F = UbermocForever.Fade
@@ -847,18 +847,19 @@ r = L("""function()
     local UF = UbermocForever
     local F, Ch = UF.Fade, UF.Chat
     UbermocForeverDB.chat = nil; UbermocForeverDB.fade = nil
-    Ch.registerEdit()
+    Ch.registerAuto()
     local idle = { idle = true }
     local out = { tostring(F.goal("chatedit", idle)) }              -- on by default: hidden until used
     F.set("chatedit", "idle", 0.5)
     out[#out + 1] = tostring(F.goal("chatedit", idle))              -- its own setting wins
     F.reset("chatedit")
-    Ch.toggleEdit()
+    Ch.toggleAuto("chatedit")
     out[#out + 1] = tostring(F.goal("chatedit", idle))              -- off: left alone
-    Ch.toggleEdit()
+    out[#out + 1] = tostring(F.goal("chattabs", idle)) .. tostring(F.goal("quickjoin", idle))   -- every other part does the same
+    Ch.toggleAuto("chatedit")
     return table.concat(out, ",")
 end""")()
-assert str(r) == "0,0.5,nil", r
+assert str(r) == "0,0.5,nil,00", r
 print("Chat: the edit box fades by itself, its own setting wins, off leaves it alone: OK")
 print("Chat: new lines reveal the chat, the edit box in use holds it, then wait and fade: OK")
 # Cinematic: nameplates are put back, but not during combat (the game does not allow it)
@@ -967,7 +968,7 @@ r = L("""function()
     local rows = UF.ChatPage.navRows()
     return tostring(page ~= nil) .. "," .. #rows .. "," .. #rows[1] .. "," .. #rows[2]
 end""")()
-assert str(r) == "true,7,4,1", r
+assert str(r) == "true,6,4,5", r
 print("Chat page builds: message buttons, five parts, three situations, hide and reset: OK")
 # Options window: the triggers go through the pages (settings, fading, chat)
 r = L("""function()
