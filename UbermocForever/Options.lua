@@ -315,7 +315,7 @@ local function buildPicker()
             if r.pad == picker.pad and r:IsShown() then UF.Nav.SetFocus(r.btn); break end
         end
         if win and win:IsShown() then
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADRTRIGGER = "Page" })
         end
     end)
 end
@@ -551,9 +551,9 @@ local function build()
         for _, f in ipairs(one) do if f then f:SetShown(n == 1) end end
         fadeFrame:SetShown(n == 2)
         if n == 2 then
-            legend:Set({ PAD1 = "Press", PAD2 = "Back", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
+            legend:Set({ PAD1 = "Press", PAD2 = "Back", PADRTRIGGER = "Page" })
         else
-            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADLTRIGGER = "Page", PADRTRIGGER = "Page" })
+            legend:Set({ PAD1 = "Select", PAD2 = "Back", PAD3 = "Clear", PAD4 = "Reset", PADLSHOULDER = "Prev", PADRSHOULDER = "Next", PADRTRIGGER = "Page" })
         end
         UF.RefreshOptions()
     end
@@ -562,7 +562,7 @@ local function build()
     local function navRows()
         local out = {}
         if pickerOpen() then return picker.navRows() end
-        local header = { win.controllerBtn, pageBtn }
+        local header = { pageBtn, win.controllerBtn }   -- left to right as drawn: Page, the controller button, then the X
         if win.CloseButton and win.CloseButton:IsVisible() then header[3] = win.CloseButton end
         out[1] = header
         if pageNo == 2 then

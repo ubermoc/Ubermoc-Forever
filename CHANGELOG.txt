@@ -1,3 +1,6 @@
+UbermocForever 1.3.44
+- Fixed: in the options window header the D-pad now goes in the order the buttons are drawn: Page, the controller button, then the X. The legend shows one Page entry instead of two, so it no longer runs into the Checks and Reset buttons.
+
 UbermocForever 1.3.43
 - Changed: on the Fading page the D-pad moves by position, so up, down, left and right reach the nearest button on the left list or the right pane (no more scrolling down the whole list to reach the right side).
 
