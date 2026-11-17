@@ -322,6 +322,7 @@ function B.refresh()
     if not okF or type(fade) ~= "number" then fade = 1 end
     for i, L in ipairs(layers) do
         local active = (i == held)
+        for _, t in ipairs(L.slotbg or {}) do t:SetAlpha(active and 1 or 0) end
         for _, e in ipairs(L.extras or {}) do
             e.frame:SetAlpha(active and 1 or 0)
             e.label:SetAlpha(active and 1 or 0)
@@ -385,6 +386,24 @@ local function labelFor(k)
     end
     return l
 end
+-- The game draws an empty-slot picture behind an empty button on the main bar only (the other bars show their empty buttons only while an
+-- ability is dragged): while the layout is on every empty button shown in the row gets the same picture, the game's own atlas, drawn on our
+-- root frame behind the game's button.
+local slotPool = {}
+local function slotFor(k)
+    local t = slotPool[k]
+    if not t then
+        t = root:CreateTexture(nil, "BACKGROUND")
+        slotPool[k] = t
+    end
+    return t
+end
+local function ownBackShown(btn)
+    local sb = btn.SlotBackground
+    if not (sb and sb.IsShown) then return false end
+    local ok, v = pcall(sb.IsShown, sb)
+    return ok and not (issecretvalue and issecretvalue(v)) and v == true
+end
 local extraPool = {}
 local function extraFor(k)
     local f = extraPool[k]
@@ -442,7 +461,7 @@ function B.layout()
     end
     layers = {}
     local labelN = 0
-    local extraN = 0
+    local extraN, slotN = 0, 0
     local extrasOf = {}
     local widest = PER_BAR
     for i = 1, #BAR_BUTTONS do
@@ -460,7 +479,7 @@ function B.layout()
                 if mb then all[#all + 1] = mb; padOver[mb] = m.pad end
             end
         end
-        local L = { buttons = all, shown = {}, labels = {}, extras = {} }
+        local L = { buttons = all, shown = {}, labels = {}, extras = {}, slotbg = {} }
         local shownList, hiddenList = {}, {}
         local slotOf = {}
         for n = 1, PER_BAR do
@@ -476,6 +495,14 @@ function B.layout()
         if #shownList + #ex > 0 then L.x0, L.x1 = xs[1], xs[#shownList + #ex] + s end   -- where the shown buttons start and end (for the end caps)
         for k, btn in ipairs(shownList) do
             L.shown[btn] = true
+            if isEmpty(btn) and not ownBackShown(btn) then
+                slotN = slotN + 1
+                local t = slotFor(slotN)
+                t:ClearAllPoints(); t:SetPoint("BOTTOMLEFT", root, "BOTTOMLEFT", xs[k], 0); t:SetSize(s, s)
+                t:SetAtlas("ui-hud-actionbar-iconframe-slot")
+                t:Show()
+                L.slotbg[#L.slotbg + 1] = t
+            end
             btnPos[btn] = { x = xs[k], s = s }
             -- which controller button this one is bound to: the game's own button picture, in the corner of the button
             local pad = padOver[btn] or B.padKey(i, slotOf[btn])
@@ -506,6 +533,7 @@ function B.layout()
     end
     for k = labelN + 1, #labelPool do labelPool[k]:Hide() end
     for k = extraN + 1, #extraPool do extraPool[k]:Hide() end
+    for k = slotN + 1, #slotPool do slotPool[k]:Hide() end
     root:SetSize(math.max(W, 10), s)
     root:ClearAllPoints()
     root:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, c.raise)

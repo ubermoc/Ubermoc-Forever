@@ -1,3 +1,6 @@
+UbermocForever 1.3.99
+- Added: gamepad layout: every empty button shown in the row (with "Hide empty buttons" off, or while dragging an ability) gets the game's own empty-slot picture behind it, as the main bar already had. Untested in the game.
+
 UbermocForever 1.3.98
 - Fixed: right after turning the gamepad layout on (or switching an action bar on in the game's settings), the game's gryphon end cap, page arrows and a second row of empty slots stayed on screen until Edit Mode was used. The layout now looks at whether the game's bar frames and end caps are shown a few times a second and redoes the layout and the hiding when that changes (no hooks on the game's frames), and does a second pass 2 seconds after the layout is turned on. Untested in the game.
 
