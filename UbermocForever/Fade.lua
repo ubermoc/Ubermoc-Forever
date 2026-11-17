@@ -135,12 +135,9 @@ F.CATEGORIES = {
         E("tr_widget", "Objective widgets", { "UIWidgetObjectiveTracker", "ObjectiveTrackerUIWidgetContainer" }, PART),
     } },
     { name = "Menus and bars", elements = {
-        E("micro", "Micro menu", { "MicroMenuContainer" }),
-        E("bags", "Bag bar", { "BagsBar" }),
         E("bagtoggle", "Bag bar expand button", { "BagBarExpandToggle" }, PART),
         E("xpmain", "Experience / reputation bar (main)", { "MainStatusTrackingBarContainer" }, PART),
         E("xpsecond", "Experience / reputation bar (second)", { "SecondaryStatusTrackingBarContainer" }, PART),
-        E("xpall", "Experience bars (all of them)", { "StatusTrackingBarManager" }),
     } },
     { name = "Alerts and text", elements = {
         E("alerts", "Alert popups", { "AlertFrame" }),
@@ -199,8 +196,12 @@ end
 F._plain = plain   -- for the offline test
 -- The gamepad bar (GamepadBar.lua) has its own opacity, set on the Bars page, not on the Fading page: it is not in F.CATEGORIES.
 -- Its frame is our own root frame: the buttons follow its opacity because GamepadBar multiplies by it.
+-- The micro menu, bags and XP bar live here too (not in F.CATEGORIES): their fading is set on the Bars page only, so no setting is in two places.
 F.GBAR = {
     E("gbar", "Gamepad bar", { "UbermocForeverGamepadBar" }),
+    E("micro", "Micro menu", { "MicroMenuContainer" }),
+    E("bags", "Bag bar", { "BagsBar" }),
+    E("xpall", "Experience bars (all of them)", { "StatusTrackingBarManager" }),
 }
 
 local FADE_TIME = 0.4

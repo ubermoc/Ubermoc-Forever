@@ -72,9 +72,7 @@ function P.refresh()
                 elseif set then fs:SetTextColor(1, 0.82, 0)
                 else fs:SetTextColor(1, 1, 1) end
             end
-            -- while the gamepad layout is on, these three are set on the Bars page (the same settings): said here so there is one place to look
-            local moved = UF.GamepadBar and UF.GamepadBar.cfg().on and (e.key == "micro" or e.key == "bags" or e.key == "xpall")
-            b:SetText((sel and sel.key == e.key and "> " or "") .. e.label .. (moved and " (Bars page)" or ""))
+            b:SetText((sel and sel.key == e.key and "> " or "") .. e.label)
         end
     end
     mouseRow.value:SetText(F.mouse() == nil and "Off" or F.percentText(F.mouse()))
