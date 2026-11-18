@@ -68,6 +68,7 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
 2. Change the code, add a case to `tools/smoke_test.py`, run it:
    `python3 tools/smoke_test.py` (needs `lupa`, e.g. in a venv; `tools/setup-research.sh` can make one). It must end with
    `ALL TESTS PASSED`. The test stubs the game: mocks must be plain tables where `GetParent` etc. matter.
+   Also run `python3 tools/check_lua.py UbermocForever/<file>.lua [--risky]`: the game runs Lua 5.1 and the test runs 5.5, so only this catches 5.4-only syntax, an accidental global, or a typo'd game function. It must end with `PASSED`.
 3. **Run `bash tools/install.sh` after every change** so the user's game has it (then `/reload` in game).
 4. Bump `## Version` in the `.toc`, add a `CHANGELOG.txt` entry on top (short "Added:/Fixed:" lines), update the version
    note at the top of `HANDOFF.md`, and keep `README.md` and `docs/DESCRIPTION.md` ("What it does now") in step.
