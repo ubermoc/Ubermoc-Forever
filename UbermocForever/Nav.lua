@@ -120,9 +120,10 @@ local function rebind()
 end
 
 -- map: { PADDUP = function() ... end, PAD1 = function() ... end, ... }. Returns a token for Pop.
-function Nav.Push(map, secure, noClicks)
+function Nav.Push(map, secure, noClicks, shared)
     -- noClicks: this entry only needs some buttons and must not switch off the game's cursor clicks (R1 and R2)
-    local entry = { map = map, secure = secure, noClicks = noClicks }
+    -- shared: it takes a key or two but is no window of its own, so GameNav keeps working beside it (see CountOthers)
+    local entry = { map = map, secure = secure, noClicks = noClicks, shared = shared }
     stack[#stack + 1] = entry
     rebind()
     return entry
@@ -136,6 +137,15 @@ function Nav.Update(entry, map, secure)
 end
 
 function Nav.Count() return #stack end
+-- How many entries there are besides `except` that are real windows taking over the buttons (a shared entry does not count).
+-- GameNav steps aside while this is not 0 (another window of ours has the controller), and works as usual otherwise.
+function Nav.CountOthers(except)
+    local n = 0
+    for _, e in ipairs(stack) do
+        if e ~= except and not e.shared then n = n + 1 end
+    end
+    return n
+end
 function Nav.IsTop(entry) return stack[#stack] == entry end
 Nav._stack = stack   -- for the offline test
 

@@ -1,3 +1,11 @@
+UbermocForever 1.3.135
+- Fixed: after using an armor kit the game's own "replace this enchant?" question could not be answered with A on the
+  controller (the mouse worked, and A went to the game's own bind instead, such as an attack). Cause: while the game waits for the
+  item to put the kit on, B is taken to cancel the wait (1.3.127), and GameNav steps aside whenever another key-taking entry exists,
+  so for those seconds GameNav was not answering A. The B entry is now marked shared (GameNav keeps working beside it,
+  `Nav.CountOthers`), and it lets go of B while one of the game's own question windows is up, so A accepts and B declines
+  that question as for every other one. Untested in the game.
+
 UbermocForever 1.3.134
 - Fixed: using an armor kit (or any item that is not a poison, oil or stone) no longer prints "Applying: Main hand already
   has a poison or oil" in chat: the line came with every wait for a target and could not tell what was being applied, so
