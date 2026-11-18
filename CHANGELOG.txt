@@ -1,3 +1,7 @@
+UbermocForever 1.3.123
+- Added: plate distance steps 80 and 100 yards after 30, 45 and 60 (60 is still where it starts). Whether the game
+  keeps a distance above 60 has not been checked: Retail's own default is 60. Untested in the game.
+
 UbermocForever 1.3.122
 - Added: Chat page: "Edit box on top: Off/On" (`ChatEdit.lua`). The box you type in sits above the chat window and
   its tabs instead of under it. Off puts the game's own anchors back. Only the edit box's own anchors are written, out
