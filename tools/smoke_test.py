@@ -688,7 +688,31 @@ r = L("""function()
     local texts = {}
     for i = 1, 8 do local e = _G["UbermocForeverItemMenuEntry" .. i]; if e and e:IsShown() then texts[#texts + 1] = e:GetText() end end
     UbermocForeverItemMenu:Hide()
-    out[#out + 1] = (texts[2] or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    -- the entry is plain (no long hint to overflow the menu); it asks first, and A (a secure key) is yes, B is no
+    out[#out + 1] = texts[2] or ""
+    local AC, Nav = UF.ApplyConfirm, UF.Nav
+    local e2 = _G["UbermocForeverItemMenuEntry2"]
+    local base = Nav.Count()
+    e2.__scripts.PreClick(e2)
+    local info = AC.last
+    out[#out + 1] = tostring(AC.isShown()) .. ":" .. tostring(info and info.macro:gsub("\\n", ";"))
+    out[#out + 1] = tostring(info and info.text:find("Big Sword (Main hand) already has a poison or oil (12 min left).", 1, true) ~= nil)
+    out[#out + 1] = tostring(info and info.text:find("Using Rough Stone on it", 1, true) ~= nil)
+    local top = Nav._stack[#Nav._stack]
+    out[#out + 1] = (Nav.Count() - base) .. ":" .. tostring(top.secure.PAD1[1]) .. ":" .. tostring(type(top.map.PAD2)) .. ":" .. tostring(type(top.map.PADDUP))
+    top.map.PAD2()                                               -- B: no, nothing is applied and the keys are given back
+    out[#out + 1] = tostring(AC.isShown()) .. ":" .. (Nav.Count() - base)
+    -- nothing carried: the entry applies at once (no question), and in combat the question is not asked
+    temp[16] = nil
+    M.open(btn)
+    local e2b = _G["UbermocForeverItemMenuEntry2"]
+    out[#out + 1] = tostring(e2b.__scripts.PreClick == nil) .. ":" .. tostring(AC.isShown())
+    UbermocForeverItemMenu:Hide()
+    local realCombat = InCombatLockdown
+    InCombatLockdown = function() return true end
+    out[#out + 1] = tostring(AC.ask({ macro = "/use 0 1" }))
+    InCombatLockdown = realCombat
+    out[#out + 1] = tostring(AC.ask({ title = "x" }))             -- no macro: no question
     C_PaperDollInfo, GetInventoryItemLink, C_TooltipInfo, Enum, issecretvalue = saved[1], saved[2], saved[3], saved[4], saved[5]
     return table.concat(out, "|")
 end""")()
@@ -696,7 +720,7 @@ assert str(r) == ("already has a poison or oil (12 min left)|already has a poiso
                   "already enchanted: Mighty Strength|nil|already enchanted|nil|2 h 5 min/59 sec/nil|"
                   "temporary,permanent,permanent,temporary|  already has a poison or oil (12 min left)|||nil|raise survived|"
                   "Applying: Main hand already has a poison or oil (12 min left); Off hand already has a poison or oil (45 sec left, 1 charge).|"
-                  "Use on Main hand: Big Sword  already has a poison or oil (12 min left)"), r
+                  "Use on Main hand: Big Sword|true:/use 0 2;/use 16|true|true|1:UbermocForeverApplyYes:function:function|false:0|true:false|false|false"), r
 print("Applied: temporary and permanent enchants are named, replaced-by kind decides which counts, secrets and errors are survived, shown in the menu and when the wait starts: OK")
 # A poison (class 0, subclass 8) is told apart from other "Other" consumables by its use text
 r = L("""function()
