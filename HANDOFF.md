@@ -1,4 +1,4 @@
-Confirmed in the game by the user 2026-11-18: everything through 1.3.125 (the user tested all of it and reported that it works; the user found that the game draws no nameplate farther than 45, so the plate range is one On/Off writing 45). Before that, 2026-11-17: everything through 1.3.103 (see AGENTS.md). Released: 1.3.125 (GitHub; CurseForge uploaded, waiting for approval). Nothing is untested now. Read this whole
+Confirmed in the game by the user 2026-11-18: everything through 1.3.125 (the user tested all of it and reported that it works; the user found that the game draws no nameplate farther than 45, so the plate range is one On/Off writing 45). Before that, 2026-11-17: everything through 1.3.103 (see AGENTS.md). Released: 1.3.125 (GitHub; CurseForge uploaded, waiting for approval). Untested in the game: 1.3.126 (description panel at the bottom of the options window and rewritten descriptions). Read this whole
 file before doing anything. It says what the project is, what the user wants, what is built, what is proven and what
 is not, and what to do next.
 
