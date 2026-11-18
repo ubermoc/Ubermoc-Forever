@@ -353,11 +353,20 @@ local function itemName(link, fallback)
     return link and link:match("%[(.-)%]") or fallback
 end
 
--- An entry that puts something on a worn piece. When the piece already carries what this would replace (Applied.lua), the
+-- An entry that puts something on a worn piece. When the piece already carries a temporary enchant this would replace (Applied.lua), the
 -- entry opens the "are you sure?" question in the middle of the screen (ApplyConfirm.lua) instead of applying at once; A there
 -- is yes, B is no. Otherwise (nothing there, or in combat where the question cannot be set up) it applies as before.
+-- A permanent enchant (armor kits, scopes, enchants) is NOT asked about here: the game asks it itself, naming what is replaced and
+-- with what ("Do you want to replace "Stamina +2 and Armor +16" with "Stamina +3 and Armor +24"?"), which says more than we can. The
+-- game has no question for a temporary one (a poison, oil or stone replaced by another), so that is the one we ask. Returns the
+-- sentence to show, or nil when no question is wanted.
+function M.asksFirst(slot, kind)
+    if kind ~= "temporary" or not UF.Applied then return nil end
+    return UF.Applied.text(slot, "temporary")
+end
+
 local function useOn(label, macro, target, kind, what, pieceName)
-    local warn = UF.Applied and UF.ApplyConfirm and UF.Applied.text(target.slot, kind)
+    local warn = UF.ApplyConfirm and M.asksFirst(target.slot, kind)
     if warn and not (InCombatLockdown and InCombatLockdown()) then
         return add(label, nil, function()
             UF.ApplyConfirm.ask({

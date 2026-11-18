@@ -664,12 +664,11 @@ r = L("""function()
     out[#out + 1] = tostring(A.text(16, "temporary"))
     C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function() error("restricted") end }
     out[#out + 1] = A.hint(16, "temporary") == "" and "raise survived" or "no"
-    -- the chat line when the game starts waiting for a target
+    -- the menu asks first only for a temporary enchant; a permanent one (a kit) is asked by the game itself, with the old and new stats
     C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function(slot) return temp[slot] end }
     temp[16] = { enchantID = 7, remainingTimeMs = 725000, chargesRemaining = 0, hasExpirationTime = true }
-    local said = {}
-    A.report(function(m) said[#said + 1] = m end)
-    out[#out + 1] = table.concat(said, "|")
+    links[5] = "|cff|Hitem:1234:2564:0:0|h[Chest]|h|r"
+    out[#out + 1] = tostring(M.asksFirst(16, "temporary")) .. "/" .. tostring(M.asksFirst(5, "permanent")) .. "/" .. tostring(M.asksFirst(18, "temporary"))
     -- the item menu entry for a sharpening stone on the main hand says what is already on it
     local classes = { [1] = { 0, 6 }, [100] = { 2, 7 } }
     C_Item = {
@@ -719,9 +718,11 @@ end""")()
 assert str(r) == ("already has a poison or oil (12 min left)|already has a poison or oil (45 sec left, 1 charge)|nil|"
                   "already enchanted: Mighty Strength|nil|already enchanted|nil|2 h 5 min/59 sec/nil|"
                   "temporary,permanent,permanent,temporary|  already has a poison or oil (12 min left)|||nil|raise survived|"
-                  "Applying: Main hand already has a poison or oil (12 min left); Off hand already has a poison or oil (45 sec left, 1 charge).|"
+                  "already has a poison or oil (12 min left)/nil/nil|"
                   "Use on Main hand: Big Sword|true:/use 0 2;/use 16|true|true|1:UbermocForeverApplyYes:function:function|false:0|true:false|false|false"), r
-print("Applied: temporary and permanent enchants are named, replaced-by kind decides which counts, secrets and errors are survived, shown in the menu and when the wait starts: OK")
+print("Applied: temporary and permanent enchants are named, replaced-by kind decides which counts, secrets and errors are survived, the menu asks first for a temporary one only: OK")
+tc = open(ADDON + "/TargetCancel.lua", encoding="utf-8").read().split("local _, UF", 1)[1]
+assert "Applied" not in tc and "UF.say" not in tc, "waiting for a target says nothing in chat: it cannot tell what is being applied"
 # ApplyConfirm layout: the controller's A and B pictures sit inside the Yes and No buttons (asked for each time, so they follow the controller),
 # there is no legend under the buttons, and "Continue?" is its own line apart from the body text
 r = L("""function()
