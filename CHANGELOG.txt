@@ -1,3 +1,7 @@
+UbermocForever 1.3.133
+- Changed: in the "Replace what is on it?" question the controller's A and B pictures are inside the red Yes and No buttons
+  ("[A] Yes", "[B] No") instead of beside them, with a larger label font so the pictures are easy to read. Untested in the game.
+
 UbermocForever 1.3.132
 - Changed: the button legend under a game window is tidier. When it fits on one row the items follow each other with even
   gaps; when the window is too narrow they go in a grid of equal-width columns filled evenly (3 + 3 instead of a long

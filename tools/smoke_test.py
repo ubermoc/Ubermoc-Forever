@@ -722,7 +722,7 @@ assert str(r) == ("already has a poison or oil (12 min left)|already has a poiso
                   "Applying: Main hand already has a poison or oil (12 min left); Off hand already has a poison or oil (45 sec left, 1 charge).|"
                   "Use on Main hand: Big Sword|true:/use 0 2;/use 16|true|true|1:UbermocForeverApplyYes:function:function|false:0|true:false|false|false"), r
 print("Applied: temporary and permanent enchants are named, replaced-by kind decides which counts, secrets and errors are survived, shown in the menu and when the wait starts: OK")
-# ApplyConfirm layout: the controller's A and B pictures sit beside Yes and No (asked for each time, so they follow the controller),
+# ApplyConfirm layout: the controller's A and B pictures sit inside the Yes and No buttons (asked for each time, so they follow the controller),
 # there is no legend under the buttons, and "Continue?" is its own line apart from the body text
 r = L("""function()
     local UF = UbermocForever
@@ -744,10 +744,12 @@ assert str(r) == "PAD1,PAD2|true|true", r
 src = open(ADDON + "/ApplyConfirm.lua", encoding="utf-8").read()
 code = src.split("local _, UF", 1)[1]
 assert "CreateLegend" not in code and "legend" not in code, "the legend under the buttons is gone"
-assert code.count("GameFontNormalLarge") == 3 and 'continueFS:SetText(info.question or "Continue?")' in code
+assert "yesGlyph" not in code and "noGlyph" not in code, "the pictures are inside the buttons now"
+assert 'yesBtn:SetText((UF.glyph and UF.glyph("PAD1") or "A")' in code and 'noBtn:SetText((UF.glyph and UF.glyph("PAD2") or "B")' in code
+assert "b:SetNormalFontObject(" in code and 'continueFS:SetText(info.question or "Continue?")' in code
 im = open(ADDON + "/ItemMenu.lua", encoding="utf-8").read()
 assert "Continue?" not in im, "the question line belongs to the dialog, not to the body text"
-print("ApplyConfirm: A and B pictures beside Yes and No, no legend, Continue? on its own line: OK")
+print("ApplyConfirm: A and B pictures inside the Yes and No buttons, no legend, Continue? on its own line: OK")
 # A poison (class 0, subclass 8) is told apart from other "Other" consumables by its use text
 r = L("""function()
     local M = UbermocForever.ItemMenu
