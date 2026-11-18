@@ -7,6 +7,7 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
 ## What it does now
 
 - Detects your controller and offers to set the default key binds the first time you play.
+- Friendly player nameplates get their level back when name-only is on (the game hides it then); the Friendly level button on the Quality of life page switches it.
 - Nameplates mark the units your active quests are about with the game's small quest icon and show how far the objective has got ("3/8"); two buttons on the Quality of life page switch the mark and the progress on or off.
 - Before you put a poison, oil, stone, armor kit or enchant on a piece you wear, a question in the middle of the screen tells you if it already carries a temporary poison or oil with time left and asks A for yes or B for no; for armor kits and enchants the game's own question (which names what is replaced) is used.
 - B cancels the "pick the item it goes on" state after you use a poison, oil, armor kit or enchant from a bag (out of combat), so a controller player never needs the mouse to back out.
