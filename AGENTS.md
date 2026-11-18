@@ -69,11 +69,20 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
    `python3 tools/smoke_test.py` (needs `lupa`, e.g. in a venv; `tools/setup-research.sh` can make one). It must end with
    `ALL TESTS PASSED`. The test stubs the game: mocks must be plain tables where `GetParent` etc. matter.
    Also run `python3 tools/check_lua.py UbermocForever/<file>.lua [--risky]`: the game runs Lua 5.1 and the test runs 5.5, so only this catches 5.4-only syntax, an accidental global, or a typo'd game function. It must end with `PASSED`.
-3. **Run `bash tools/install.sh` after every change** so the user's game has it (then `/reload` in game).
+3. **Run `bash tools/install.sh` after a change the user asked you to make** so their game has it (then `/reload` in game).
+   Do not install for a report-only request ("look into", "report back first").
 4. Bump `## Version` in the `.toc`, add a `CHANGELOG.txt` entry on top (short "Added:/Fixed:" lines), update the version
    note at the top of `HANDOFF.md`, and keep `README.md` and `docs/DESCRIPTION.md` ("What it does now") in step.
-5. Commit and push to the branch and to `main`. Commit identity in this repo: `Claude <noreply@anthropic.com>`
-   (set with `git -c user.name=... -c user.email=...`; there is no global identity).
+5. Commit on YOUR OWN branch only. Commit identity in this repo: `Claude <noreply@anthropic.com>`
+   (set with `git -c user.name=... -c user.email=...`; there is no global identity). **Push or merge to `main` only when the
+   user asks.** A report-only request gets a report: no commits, pushes or installs.
+
+## Two workers at once (Claude, the local model)
+- Each worker gets its own copy of the repo: `bash tools/work-start.sh <name> [claude|local]` makes a git worktree in
+  `../Ubermoc-Forever-work/` on its own branch cut from `main`. Never two workers in one folder.
+- The main folder stays on `main`. When a worker is done the user runs `bash tools/merge-branch.sh <branch>` there: it
+  merges, runs the offline test and the Lua checker, and keeps the merge only if they pass. Nothing is pushed.
+- Install into the game from the main folder after merging (`bash tools/install.sh`), not from a worker's copy.
 
 ## Releasing (only when the user says to; it publishes)
 - **GitHub:** zip whose top folder is `UbermocForever/`, named `UbermocForever-vX.Y.Z-forever.zip`

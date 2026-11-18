@@ -272,12 +272,25 @@ function F.toggleHide(key)
     prune(key)
     F.evaluate()
 end
-function F.reset(key) store()[key] = nil; F.evaluate() end
+function F.reset(key)
+    store()[key] = nil
+    local d = UF.DB()
+    if d.fadeMouseBy then d.fadeMouseBy[key] = nil end
+    F.evaluate()
+end
 
 -- One universal setting: the opacity any element that has a setting goes to while the mouse is over it (never lower than its own value).
 -- nil = off. Elements set to Hide for good stay hidden.
 -- The mouse-over opacity of all faded elements: 100% to start with (a faded element comes back fully while the mouse is over it); "Off" is remembered.
-function F.mouse()
+-- 1.3.120: a part can have a mouse-over opacity of its own (the Chat page): a number, false for Off, nil to follow the universal one.
+function F.mouseOwn(key)
+    local d = UF.DB()
+    return d.fadeMouseBy and key and d.fadeMouseBy[key]
+end
+function F.mouse(key)
+    local own = F.mouseOwn(key)
+    if own == false then return nil end
+    if own ~= nil then return own end
     local d = UF.DB()
     if d.fadeMouse ~= nil then return d.fadeMouse end
     if d.fadeMouseOff then return nil end
@@ -293,6 +306,19 @@ function F.stepMouse(dir)
     local v = F.mouse()
     if v == nil then v = 1 end
     F.setMouse(math.floor(v / STEP + 0.5) * STEP + dir * STEP)
+end
+-- v: nil = follow the universal setting, false = Off for this part, a number 0..1
+function F.setMouseOwn(key, v)
+    local d = UF.DB()
+    d.fadeMouseBy = d.fadeMouseBy or {}
+    if v == nil or v == false then d.fadeMouseBy[key] = v
+    else d.fadeMouseBy[key] = math.max(0, math.min(1, v)) end
+    F.evaluate()
+end
+function F.stepMouseOwn(key, dir)
+    local v = F.mouse(key)
+    if v == nil then v = 1 end
+    F.setMouseOwn(key, math.floor(v / STEP + 0.5) * STEP + dir * STEP)
 end
 
 function F.percentText(v) return v == nil and "Normal" or (math.floor(v * 100 + 0.5) .. "%") end
@@ -428,7 +454,7 @@ end
 -- The opacity wanted for an element now, with the mouse-over setting taken into account.
 function F.wanted(key, active, isOver)
     local goal = F.goal(key, active)
-    local m = F.mouse()
+    local m = F.mouse(key)
     if goal ~= nil and m ~= nil and goal < m and not F.hidden(key) and isOver then return m end
     return goal
 end
@@ -468,7 +494,7 @@ function F.target(key, active, isOver)
     local fc = F.forced[key]
     if fc and fc() then return 0 end
     local goal = F.goal(key, active)
-    if goal ~= nil and F.mouse() ~= nil and goal < F.mouse() then
+    if goal ~= nil and F.mouse(key) ~= nil and goal < F.mouse(key) then
         local over = isOver
         if type(isOver) == "function" then over = isOver() end
         goal = F.wanted(key, active, over)

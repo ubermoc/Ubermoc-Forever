@@ -1537,6 +1537,49 @@ r = L("""function()
 end""")()
 assert str(r) == "0.2,0.8,0.2,0.9,0.0,70%,nil", r
 print("Fading: mouse-over opacity raises only, hidden stays hidden: OK")
+# Fading: a part can have a mouse-over opacity of its own (the Chat page): own value, Off, or Same as the universal one
+r = L("""function()
+    local F = UbermocForever.Fade
+    UbermocForeverDB.fade = nil; UbermocForeverDB.fadeMouse = nil; UbermocForeverDB.fadeMouseBy = nil
+    local out = {}
+    local idle = { combat = false, flight = false, idle = true }
+    local function w(k) return string.format("%.1f", F.wanted(k, idle, true)) end
+    F.set("chat", "idle", 0.2); F.set("minimap", "idle", 0.2)
+    F.setMouse(0.8)
+    out[#out + 1] = w("chat") .. "/" .. w("minimap")                 -- both follow the universal one
+    F.setMouseOwn("chat", 0.5)
+    out[#out + 1] = w("chat") .. "/" .. w("minimap")                 -- chat 0.5, minimap still 0.8
+    F.stepMouseOwn("chat", 1); out[#out + 1] = F.percentText(F.mouse("chat"))   -- 60 %
+    F.setMouseOwn("chat", false)
+    out[#out + 1] = w("chat") .. "/" .. tostring(F.mouse("chat"))    -- Off for chat: its own 0.2, no mouse value
+    F.setMouseOwn("chat", nil)
+    out[#out + 1] = w("chat")                                        -- Same again: 0.8
+    F.setMouseOwn("chat", 0.5); F.reset("chat")
+    out[#out + 1] = tostring(F.mouseOwn("chat"))                     -- reset clears it
+    F.setMouseOwn("chat", 0.5); F.toggleHide("chat")
+    out[#out + 1] = w("chat")                                        -- hidden for good stays hidden
+    F.resetAll(); UbermocForeverDB.fadeMouseBy = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "0.8/0.8,0.5/0.8,60%,0.2/nil,0.8,nil,0.0", r
+print("Fading: a part's own mouse-over opacity, Off and Same, cleared by reset, hidden stays hidden: OK")
+# GameNav: opening our marker menu asks for a scan on the next frame instead of waiting for the 0.15 s tick
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local runs, real = 0, G.update
+    G.update = function() runs = runs + 1 end
+    local t = G._ticker
+    local out = {}
+    local f = t.__scripts.OnUpdate
+    f(t, 0.016); out[#out + 1] = runs          -- a normal frame: still waiting
+    G.kick()
+    f(t, 0.016); out[#out + 1] = runs          -- after the kick: the very next frame scans
+    f(t, 0.016); out[#out + 1] = runs          -- and the wait starts over
+    G.update = real
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "0,1,1", r
+print("GameNav: kick makes the next frame scan, then the normal wait resumes: OK")
 
 # Y menu: the auction house's Create Auction button is found only when an item waits in a shown sell frame
 r = L("""function()
@@ -1722,13 +1765,17 @@ r = L("""function()
         return t
     end
     local START = { HealthBarsContainer = 1, selectionHighlight = 0.25, aggroHighlight = 0.5, LevelFrame = 0.75,
-                    PlayerLevelDiffFrame = 0.9, name = 0.8, CastBarsContainer = 0.6, WidgetContainer = 0.4,
+                    name = 0.8, CastBarsContainer = 0.6, WidgetContainer = 0.4,
                     RaidTargetFrame = 0.3, ClassificationFrame = 0.2, AurasFrame = 0.1 }
-    local HIDDEN = { "HealthBarsContainer", "selectionHighlight", "aggroHighlight", "LevelFrame", "PlayerLevelDiffFrame" }
-    local LEFT = { "name", "CastBarsContainer", "WidgetContainer", "RaidTargetFrame", "ClassificationFrame", "AurasFrame" }
+    local HIDDEN = { "HealthBarsContainer", "selectionHighlight", "aggroHighlight", "ring" }
+    local LEFT = { "LevelFrame", "PlayerLevelDiffFrame", "name", "CastBarsContainer", "WidgetContainer", "RaidTargetFrame", "ClassificationFrame", "AurasFrame" }
     local function plateFor(unit, forbidden, token)
         local uf = { unit = unit }
         for k, v in pairs(START) do uf[k] = piece(k, v) end
+        -- the badge frame itself must never be touched; only its ring texture is hidden
+        uf.PlayerLevelDiffFrame = piece("PlayerLevelDiffFrame", 0.9)
+        uf.PlayerLevelDiffFrame.playerLevelDiffIcon = piece("ring", 0.9)
+        uf.ring = uf.PlayerLevelDiffFrame.playerLevelDiffIcon   -- test-only alias so alphas() can read it
         if forbidden then uf.IsForbidden = function() return true end end
         return { namePlateUnitToken = token or unit, UnitFrame = uf }
     end
@@ -1740,6 +1787,7 @@ r = L("""function()
     local out = {}
     -- a piece that is not there, or is there without a SetAlpha, is skipped
     local u = { HealthBarsContainer = piece("HealthBarsContainer", 1), LevelFrame = piece("LevelFrame", 0.75),
+                PlayerLevelDiffFrame = { playerLevelDiffIcon = piece("ring", 0.9) },
                 selectionHighlight = { name = "selectionHighlight" }, CastBarsContainer = { name = "CastBarsContainer" } }
     local names = {}
     for _, p in ipairs(N.parts(u)) do names[#names + 1] = p.name end
@@ -1828,10 +1876,10 @@ r = L("""function()
     UbermocForeverDB, UnitCanAttack, issecretvalue, C_NamePlate = savedDB, savedCan, savedSec, savedCN
     return table.concat(out, "|")
 end""")()
-assert str(r) == ("HealthBarsContainer-LevelFrame|0-0-0-0-0/0.8-0.6-0.4-0.3-0.2-0.1|1-0.25-0.5-0.75-0.9|"
-                  "1-0.25-0.5-0.75-0.9|0|0|1-0.25-0.5-0.75-0.9|1-0.25-0.5-0.75-0.9|0-0-0-0.75-0|"
-                  "1-0.25-1-0.75-0.9|true,true,true|0-0-0-0-0|0-0-0-0-0|1-0.25-0.5-0.75-0.9|ok"), r
-print("Nameplates: only the five pieces hidden, each piece gets its own original alpha back, forbidden and missing plates make no call: OK")
+assert str(r) == ("HealthBarsContainer-ring|0-0-0-0/0.75-0.9-0.8-0.6-0.4-0.3-0.2-0.1|1-0.25-0.5-0.9|"
+                  "1-0.25-0.5-0.9|0|0|1-0.25-0.5-0.9|1-0.25-0.5-0.9|0-0-0-0|"
+                  "1-0.25-1-0.9|true,true,true|0-0-0-0|0-0-0-0|1-0.25-0.5-0.9|ok"), r
+print("Nameplates: only the bar, highlights and level ring hidden (level and badge number kept), each piece gets its own original alpha back, forbidden and missing plates make no call: OK")
 
 # Nameplates CVar: on keeps the value the player had and gives it back on Off, nothing is written in combat, a nil
 # GetCVar answer is survived (nothing remembered, so nothing written)

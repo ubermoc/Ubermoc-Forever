@@ -1,3 +1,11 @@
+UbermocForever 1.3.121
+- Changed: name-only nameplates keep the level number; only the ring behind the player level badge is made
+  invisible (the level frame itself has no border or background). Untested in the game.
+- Added: Chat page: a "Mouse over" row for each chat part (Same as the Fading page's setting, Off, or a value of your
+  own in 10 % steps). Never lowers a part below its own opacity; "Reset this part" clears it. Untested in the game.
+- Fixed: opening our marker menu now asks for a scan on the next frame, so the highlight lands on its first entry at
+  once instead of up to 0.15 s later. Untested in the game.
+
 UbermocForever 1.3.120
 - Added: plate range (`PlateRange.lua`). The game shows nameplates up to a distance from the camera (its own
   values: 45 yards for units, 40 for players) and has no settings row for it, so the only way to change it is

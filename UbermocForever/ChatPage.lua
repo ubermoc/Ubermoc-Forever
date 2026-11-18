@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local CP = {}
 UF.ChatPage = CP
 
-local page, topRow, autoBtn, pickBtns, stateRows, titleFS, hideBtn, resetBtn, noteFS
+local page, topRow, autoBtn, pickBtns, stateRows, titleFS, hideBtn, resetBtn, noteFS, mouseOwnRow
 local sel
 local SHORT = { chat = "Window", chattabs = "Tabs", chatedit = "Edit box", chatbtns = "Buttons", quickjoin = "Quick join" }
 local WIDTHS = { chat = 110, chattabs = 90, chatedit = 110, chatbtns = 110, quickjoin = 120 }
@@ -43,6 +43,11 @@ function CP.refresh()
         r.value:SetText(F.percentText(F.value(sel.key, r.state)))
         r.frame:SetAlpha(hid and 0.5 or 1)
     end
+    local own = F.mouseOwn(sel.key)
+    mouseOwnRow.value:SetText(own == false and "Off" or own ~= nil and F.percentText(own) or (F.mouse() == nil and "Off" or F.percentText(F.mouse())))
+    mouseOwnRow.same:SetText(own == nil and "> Same" or "Same")
+    mouseOwnRow.off:SetText(own == false and "> Off" or "Off")
+    mouseOwnRow.frame:SetAlpha(hid and 0.5 or 1)
     hideBtn:SetText("Hide for good: " .. (hid and "On" or "Off"))
     autoBtn:SetText("Fade by itself: " .. (Ch.autoOn(sel.key) and "On" or "Off"))
 end
@@ -120,7 +125,25 @@ function CP.build(parent, inset)
         plus:SetScript("OnClick", function() F.step(sel.key, st.key, 1); CP.refresh() end)
         stateRows[i] = { frame = fr, state = st.key, value = value, normal = normal, zero = zero, minus = minus, plus = plus }
     end
-    local y = -156 - #F.STATES * 34
+    local my = -156 - #F.STATES * 34
+    local mf = CreateFrame("Frame", nil, page)
+    mf:SetSize(440, 26)
+    mf:SetPoint("TOPLEFT", page, "TOPLEFT", 0, my)
+    local mlab = mf:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    mlab:SetPoint("LEFT", 0, 0); mlab:SetWidth(120); mlab:SetJustifyH("LEFT"); mlab:SetText("Mouse over")
+    local same = button(mf, 62, 24, "Same"); same:SetPoint("LEFT", 124, 0)
+    local moff = button(mf, 46, 24, "Off"); moff:SetPoint("LEFT", same, "RIGHT", 2, 0)
+    local mminus = button(mf, 30, 24, "-"); mminus:SetPoint("LEFT", moff, "RIGHT", 8, 0)
+    local mvalue = mf:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    mvalue:SetPoint("LEFT", mminus, "RIGHT", 2, 0); mvalue:SetWidth(56)
+    local mplus = button(mf, 30, 24, "+"); mplus:SetPoint("LEFT", mvalue, "RIGHT", 2, 0)
+    same:SetScript("OnClick", function() F.setMouseOwn(sel.key, nil); CP.refresh() end)
+    moff:SetScript("OnClick", function() F.setMouseOwn(sel.key, false); CP.refresh() end)
+    mminus:SetScript("OnClick", function() F.stepMouseOwn(sel.key, -1); CP.refresh() end)
+    mplus:SetScript("OnClick", function() F.stepMouseOwn(sel.key, 1); CP.refresh() end)
+    mouseOwnRow = { frame = mf, value = mvalue, same = same, off = moff }
+    tip(same, "Mouse over", "How visible this part is while the mouse is over it. Same follows the Mouse over (all) setting on the Fading page; Off keeps it from lighting up; - and + set a value of its own. It never goes lower than the part's own opacity.")
+    local y = my - 34
     hideBtn = button(page, 200, 24); hideBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y - 6)
     hideBtn:SetScript("OnClick", function() F.toggleHide(sel.key); CP.refresh() end)
     resetBtn = button(page, 200, 24, "Reset this part"); resetBtn:SetPoint("LEFT", hideBtn, "RIGHT", 8, 0)

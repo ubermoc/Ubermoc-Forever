@@ -6,17 +6,19 @@
 --
 -- Friendly players already have the game's own name-only mode: CVar nameplateShowOnlyNameForFriendlyPlayerUnits
 -- (Blizzard_NamePlateConstants.lua:20) and NamePlateUnitFrameMixin:UpdateShowOnlyName
--- (Blizzard_NamePlateUnitFrame.lua:565), which hides the bar, cast bar, auras, classification and raid target and
--- clears the click area by itself. For them our part is only the CVar, no taint.
+-- (Blizzard_NamePlateUnitFrame.lua:565), which hides the bar, cast bar, auras and classification and clears the click area
+-- by itself (the raid icon stays: Blizzard_NamePlateRaidTarget.lua:17). For them our part is only the CVar, no taint.
 -- Enemies and friendly NPCs have no such mode, so we put the pieces to alpha 0 with SetAlpha: a plain C call, no game
 -- Lua runs and nothing is written on the game's frames. Nothing in Blizzard_NamePlates calls SetAlpha (the only
 -- SetAlpha in Blizzard_UnitFrame/Shared/CompactUnitFrame.lua - 1518, 1884, 2001 - hits the compact unit frame itself,
 -- which a nameplate never uses), so the game never puts an alpha back for us. The plates are reused frames, so every
 -- plate is set both ways on each add.
 -- Pieces we hide: HealthBarsContainer (Blizzard_NamePlates.xml:103, no child there ignores its parent alpha),
--- selectionHighlight (299, alpha .25 and ignoreParentAlpha, so it needs its own call), aggroHighlight (307),
--- LevelFrame (273), PlayerLevelDiffFrame (259). name (294), CastBarsContainer (173), WidgetContainer (180),
--- RaidTargetFrame (186), ClassificationFrame (196) and AurasFrame (217) are never touched.
+-- selectionHighlight (299, alpha .25 and ignoreParentAlpha, so it needs its own call), aggroHighlight (307) and the ring
+-- behind the player level badge (PlayerLevelDiffFrame.playerLevelDiffIcon, Blizzard_NamePlateLevelFrame.xml:11, a plain
+-- texture; its number is anchored to it, not a child, so the number stays). The level (LevelFrame, 273: text only, no
+-- border or background in the XML) and the badge number are kept. name (294), CastBarsContainer (173),
+-- WidgetContainer (180), RaidTargetFrame (186), ClassificationFrame (196) and AurasFrame (217) are never touched.
 -- No unit data is read: the health, name and class answers are secret for our code (UnitDocumentation.lua:1526, 2489,
 -- 911). The only unit call is UnitCanAttack (763), as Fade.lua's applyPlates.
 -- Our state lives in our own weak-keyed table; nothing is written on a game frame.
@@ -27,7 +29,8 @@ UF.Nameplates = N
 
 local CVAR = "nameplateShowOnlyNameForFriendlyPlayerUnits"
 -- the pieces we hide, by the name the game gives them on the plate's unit frame
-local PIECES = { "HealthBarsContainer", "selectionHighlight", "aggroHighlight", "LevelFrame", "PlayerLevelDiffFrame" }
+-- (a dotted name is a child of a piece: the ring of the player level badge, so its number stays)
+local PIECES = { "HealthBarsContainer", "selectionHighlight", "aggroHighlight", "PlayerLevelDiffFrame.playerLevelDiffIcon" }
 
 local orig = setmetatable({}, { __mode = "k" })   -- piece -> the alpha it had before we hid it (kept the first time only)
 N.pending = false                                  -- a CVar change waiting for the fight to end
@@ -70,7 +73,11 @@ function N.parts(uf)
     local out = {}
     if not uf then return out end
     for _, name in ipairs(PIECES) do
-        local p = uf[name]
+        local p = uf
+        for key in string.gmatch(name, "[^%.]+") do
+            if type(p) ~= "table" then p = nil; break end
+            p = p[key]
+        end
         if p and p.SetAlpha then out[#out + 1] = p end
     end
     return out

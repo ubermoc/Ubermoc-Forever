@@ -466,6 +466,7 @@ local function buttons()
                     -- the marker entry: ours now (MarkerMenu.lua, built with the game's own menu code), because building the
                     -- game's submenu from this hook is what raised the warnings; the game's menu is closed by the open, and
                     -- the highlight lands on the first entry of ours (the title is not a node)
+                    if G.kick then G.kick() end   -- scan on the next frame, not up to 0.15 s later
                     return
                 end
                 local down = f:GetScript("OnMouseDown")
@@ -1725,6 +1726,10 @@ ticker:SetScript("OnUpdate", function(_, dt)
     acc = 0
     pcall(G.update)
 end)
+G._ticker = ticker   -- for the offline test
+-- 1.3.120: scan on the very next frame instead of waiting out the rest of the 0.15 s. Used when our own marker menu opens,
+-- so the highlight lands on its first entry at once. Nothing runs here: the scan itself happens in the ticker's OnUpdate.
+function G.kick() acc = 0.15 end
 ticker:RegisterEvent("PLAYER_REGEN_DISABLED")
 ticker:SetScript("OnEvent", function() release() end)
 
