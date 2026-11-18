@@ -1389,8 +1389,69 @@ r = L("""function()
     local rows = UF.ChatPage.navRows()
     return tostring(page ~= nil) .. "," .. #rows .. "," .. #rows[1] .. "," .. #rows[2]
 end""")()
-assert str(r) == "true,6,4,5", r
-print("Chat page builds: message buttons, five parts, three situations, hide and reset: OK")
+assert str(r) == "true,8,4,5", r
+print("Chat page builds: message buttons, five parts, three situations, mouse over, hide and reset, edit box on top: OK")
+# Chat edit box on top (ChatEdit.lua): the game's anchors from the XML when Off, above the dock / the tab when On, never in combat
+r = L("""function()
+    local UF = UbermocForever
+    local CE = UF.ChatEdit
+    local out = {}
+    local function box()
+        local b = { pts = {}, calls = 0, fail = false }
+        b.ClearAllPoints = function() b.pts = {}; b.calls = b.calls + 1 end
+        b.SetPoint = function(_, p, rel, rp, x, y)
+            if b.fail then error("refused") end
+            b.pts[#b.pts + 1] = p .. ">" .. tostring(rel.__n) .. ":" .. tostring(rp) .. ":" .. tostring(x) .. ":" .. tostring(y)
+        end
+        return b
+    end
+    local function win(n, docked)
+        local f = { __n = n, isDocked = docked, editBox = box(), ScrollBar = { __n = n .. "Scroll" }, Background = { __n = n .. "Bg" },
+                    GetName = function() return n end }
+        _G[n] = f
+        _G[n .. "Tab"] = { __n = n .. "Tab", GetHeight = function() return 30 end }
+        return f
+    end
+    local w1, w2 = win("ChatFrame1", 1), win("ChatFrame2", nil)
+    for i = 3, 10 do _G["ChatFrame" .. i] = nil end
+    GENERAL_CHAT_DOCK = { __n = "Dock" }
+    UF.Chat.cfg().editTop = nil
+    out[#out + 1] = tostring(CE.on())
+    -- nothing happens for a player who never turned it on
+    CE._frame.__scripts.OnEvent(CE._frame, "PLAYER_REGEN_ENABLED"); CE._frame.__scripts.OnEvent(CE._frame, "UPDATE_CHAT_WINDOWS")
+    out[#out + 1] = w1.editBox.calls .. w2.editBox.calls
+    -- On: the docked window sits above the dock, the floating one above its tab (30 high) on its background
+    CE.toggle()
+    out[#out + 1] = table.concat(w1.editBox.pts, ",")
+    out[#out + 1] = table.concat(w2.editBox.pts, ",")
+    -- Off gives the game's own anchors back
+    CE.toggle()
+    out[#out + 1] = table.concat(w1.editBox.pts, ",")
+    -- in combat nothing is written; it is done when the fight ends
+    local inCombat, realCombat = true, InCombatLockdown
+    InCombatLockdown = function() return inCombat end
+    local before = w1.editBox.calls
+    CE.toggle()
+    out[#out + 1] = tostring(w1.editBox.calls == before) .. tostring(CE.pending)
+    inCombat = false
+    CE._frame.__scripts.OnEvent(CE._frame, "PLAYER_REGEN_ENABLED")
+    out[#out + 1] = tostring(CE.pending) .. (w1.editBox.pts[1] or "")
+    -- one window refusing does not stop the next one
+    w1.editBox.fail = true
+    CE.apply()
+    w1.editBox.fail = false
+    out[#out + 1] = tostring(#w2.editBox.pts)
+    CE.toggle()
+    InCombatLockdown = realCombat
+    for i = 1, 2 do _G["ChatFrame" .. i] = nil; _G["ChatFrame" .. i .. "Tab"] = nil end
+    GENERAL_CHAT_DOCK = nil
+    return table.concat(out, "|")
+end""")()
+assert str(r) == ("false|00|BOTTOMLEFT>Dock:TOPLEFT:-3:2,BOTTOMRIGHT>Dock:TOPRIGHT:1:2|"
+                  "BOTTOMLEFT>ChatFrame2Bg:TOPLEFT:-3:32,BOTTOMRIGHT>ChatFrame2Bg:TOPRIGHT:1:32|"
+                  "TOPLEFT>ChatFrame1:BOTTOMLEFT:-5:-2,RIGHT>ChatFrame1Scroll:RIGHT:8:0|truetrue|"
+                  "falseBOTTOMLEFT>Dock:TOPLEFT:-3:2|2"), r
+print("Chat edit box on top: the game's own anchors when Off, above the dock or the tab when On, not in combat, one failure contained: OK")
 # Options window: the triggers go through the pages (settings, fading, chat)
 r = L("""function()
     local UF = UbermocForever
