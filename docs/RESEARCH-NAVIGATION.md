@@ -380,3 +380,50 @@ Source: Blizzard's Forever UI as copied on disk at `~/Downloads/WoW Forever Tool
 **Events**: `NAME_PLATE_UNIT_ADDED` hands a unit token (`NamePlateManagerDocumentation.lua` L120; the game's own driver registers `NAME_PLATE_UNIT_ADDED`, `NAME_PLATE_UNIT_REMOVED` and `UNIT_FACTION` — `Blizzard_NamePlates.lua` L14, L55-57, and the unit frame registers `UNIT_FACTION` for itself at `Blizzard_NamePlateUnitFrame.lua` L143). The plates are pooled frames reused between units, so a plate that is already on screen must be styled both ways when its unit changes.
 
 Not known: whether an addon's `SetCVar` makes the game re-apply `UpdateShowOnlyName` to the friendly plates already on screen (the game applies it at `OnUnitSet` and on an isPlayer/isFriend change). Untested in the game.
+
+## Name as the health bar (1.3.118)
+
+Only our own objects: nothing is written on a game frame, and the game's name is never written to. Verified this
+session, with the file:line I read:
+
+- `CreateFrame("Frame"/"StatusBar", nil, uf)` and `frame:CreateFontString(nil, "OVERLAY")` —
+  `SimpleFrameAPIDocumentation.lua` L78. Our four frames and three FontStrings are children of the plate's unit
+  frame, so the plate's own fading and visibility carry over to them.
+- `SetClipsChildren(true)` (`SimpleFrameAPIDocumentation.lua` L1218) — a frame may clip its children. Our clip
+  frame is one level above the name (`SetFrameLevel` L1281, `GetFrameLevel` L421), so the white copy of the name
+  draws over the coloured letters: the part standing for the health left keeps its colour, the part for the missing
+  health is white.
+- StatusBar (`SimpleStatusBarAPIDocumentation.lua`): `SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")` L318
+  (Blizzard's own texture), `GetStatusBarTexture()` L136, `SetMinMaxValues(0, 100)` L229, `SetValue(v)` L355.
+  `SetValue` accepts a secret value, so `UnitHealthPercent` reaches it unchanged. `SetVertexColor(1, 1, 1, 0)`
+  (`SimpleRegionAPIDocumentation.lua` L191) keeps the fill invisible; only its right edge is used, and the bar is
+  anchored onto the name so the edge falls where the missing part begins.
+- FontStrings (`SimpleFontStringAPIDocumentation.lua`): `SetText` L664 and `SetFormattedText` L539 both accept a
+  secret value. `SetTextColor` (`SimpleFontAPIDocumentation.lua` L298) takes plain numbers only, so the percent is
+  never health-tinted. The font comes from the game's name through `GetFont` (`SimpleFontAPIDocumentation.lua` L33)
+  and its side through `GetJustifyH` (L104), both plain answers; the game's own code can set the name's justify to
+  CENTER (`Blizzard_NamePlates/Blizzard_NamePlateUnitFrame.lua` L742, inside `UpdateAnchors` L678-760), so it is read
+  rather than assumed. The game's name is the FontString `parentKey="name"` in `Blizzard_NamePlates.xml` L294.
+- Secrets: `issecretvalue` (`FrameScriptDocumentation.lua` L287); `UnitName` (`UnitDocumentation.lua` L2489) and
+  `UnitHealthPercent` (L1506) return secret values. `type()` on a genuine secret is not `"string"` or `"number"`, so
+  a `type` gate would clear every plate in a restricted instance: the pcall result is the only gate, and the value
+  goes straight to a call that accepts it. Only the colour route needs plain numbers, and there `issecretvalue` and
+  `type` are the two allowed questions.
+- `UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)` — that curve is linear 0 to 100
+  (`Blizzard_SharedXMLBase/CurveConstants.lua` L9-12), so the bar value and `%.0f%%` show the percent as the game
+  shows it. `UnitHealth` and `UnitHealthMax` are never called.
+- Unit reads, all inside pcall: `UnitReaction` L2983, `UnitIsPlayer` L2271, `UnitIsTapDenied` L2365, `UnitClass`
+  L911 (className, classFilename — the token can be secret, and `RAID_CLASS_COLORS` is only reached for a plain
+  string token). A tap-denied unit is grey (`0.55, 0.55, 0.55`), a player with an unreadable class token gets the
+  reaction colour, an unknown reaction is white.
+- Events on OUR frame: `RegisterUnitEvent(ev, unit)` L1064, `UnregisterAllEvents` L1588 — this plate's unit only,
+  and the old unit's events are dropped before the new ones are registered, because the game's plates are pooled
+  frames reused between units (`NamePlateManagerDocumentation.lua` L120 hands the unit token).
+- Show and Hide on our objects (L1539, L687); the game's name keeps its own alpha and is hidden last, through
+  phase 1's `UF.Nameplates.hide` (`SetAlpha` L1134, `GetAlpha` L276), so if anything of ours fails the plate still
+  shows the game's name. Our objects never take the mouse, and nothing is read back from them (`GetText`,
+  `GetStringWidth`, `GetWidth`, `GetHeight`, the edges): the layout is done with points, not measurements.
+
+Untested in the game: whether the white copy lands on the same letters as the coloured name (the font can be scaled
+per nameplate), whether `SetClipsChildren` behaves as expected on a plate's child frame, and whether a restricted
+instance lets the addon create frames on a plate at all.

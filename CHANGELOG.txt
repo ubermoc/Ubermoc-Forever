@@ -1,3 +1,15 @@
+UbermocForever 1.3.118
+- Added: on a name-only nameplate the name can be the health bar (`NameHealth.lua`): the name keeps its colour
+  (class colour for a player when the class is readable, the reaction colour otherwise, grey when the unit is
+  tapped by others), and the part that stands for the missing health is a white copy of the same letters, clipped
+  by a bar of ours whose edge sits where the health ends. The health percent is written to the right of the name in
+  the reaction colour. Two buttons on the Quality of life page, "Name is the health bar" and "Health percent", both
+  on by default, and they only matter while an Enemies or Friendly name-only button is on; both off gives the 1.3.117
+  look. Nothing is drawn: the game's own font and its own white texture. The secret name and the secret percent are
+  never read or compared, they go straight to SetText, SetFormattedText and SetValue, so a restricted instance is not
+  broken; the game's name is hidden only after our text is in place, and any failure leaves it visible. Untested in
+  the game.
+
 UbermocForever 1.3.117
 - Added: name-only nameplates (`Nameplates.lua`), two buttons on the Quality of life page: "Enemies: name only" and "Friendly: name only", both off by default. On, a nameplate shows the unit's name with no health bar: the game's bar, level and highlight pieces on that plate are made invisible (alpha 0), each piece getting back the alpha it had before we hid it when the option goes off. For friendly players it uses the game's own name-only setting (`nameplateShowOnlyNameForFriendlyPlayerUnits`), keeping the value you had so it can be given back; friendly NPCs get the same look through the invisible pieces, which the game cannot do by itself. Only `SetAlpha` is used on the game's pieces, no hook, no OnUpdate, nothing written on a game frame. Untested in the game.
 

@@ -1408,7 +1408,7 @@ r = L("""function()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()            -- left of the first page is the last (Quality of life)
     local q = UF.QolPage.navRows()
-    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4]   -- aim dot; fast loot; vendor; nameplates
+    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5]   -- aim dot; fast loot; vendor; nameplates; name health
     local before = UF.Vendor.cfg().guild
     UF.Nav.SetFocus(q[3][3]); press("PAD1")                            -- A on Guild bank first flips it
     out[#out + 1] = tostring(UF.Vendor.cfg().guild ~= before)
@@ -1416,7 +1416,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,4/3/1/3/2,true,1", r
+assert str(r) == "1,2,3,2,1,5,5/3/1/3/2/2,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -1885,6 +1885,214 @@ for bad in ["hooksecurefunc", "OnUpdate", "SetPoint", "UnitHealth", "UnitName", 
     assert bad not in src, "Nameplates.lua contains " + bad
 assert src.count("SetCVar") == 1, "SetCVar must be written in one place"
 print("Nameplates: no hook, no OnUpdate, no anchoring, no unit data, no Show/Hide, one SetCVar: OK")
+
+# NameHealth: nothing is read back from our strings or the bar, no health numbers, no hook, no game method
+src = open(ADDON + "/NameHealth.lua", encoding="utf-8").read()
+for bad in ["hooksecurefunc", "OnUpdate", "GetText", "GetStringWidth", "GetWidth", "GetHeight", "GetLeft",
+            "GetRight", "GetTop", "GetBottom", "GetCenter", "UnitHealth(", "UnitHealthMax", "UnitHealthMin",
+            "SetShowOnlyName", "RegisterEvent", "UpdateShownState", "UpdateAnchors", "UpdateName",
+            "SetAlpha", "GetAlpha", "SetCVar"]:
+    assert bad not in src, "NameHealth.lua contains " + bad
+assert src.count("UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)") == 2, src.count("UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)")
+assert src.count("pcall(UnitHealthPercent, unit, false, CurveConstants.ScaleTo100)") == 1
+assert src.count("RegisterUnitEvent") == 2, src.count("RegisterUnitEvent")
+print("NameHealth: no hook, no OnUpdate, nothing read of our strings or the bar, no health numbers, the secret "
+      "values go straight to SetText and SetValue, Show/Hide only through Nameplates: OK")
+
+# NameHealth (the name as the health bar): the secret name and the secret percent must reach the calls that accept
+# them unchanged - the test compares the identity of what a call received - the game's name is hidden only after our
+# text is in place, and any failure leaves the game's name visible. Our objects are plain tables that record calls.
+r = L("""function()
+    local NH = UbermocForever.NameHealth
+    local N = UbermocForever.Nameplates
+    local saved = { UbermocForeverDB, CreateFrame, issecretvalue, UnitName, UnitHealthPercent, CurveConstants,
+                    UnitIsPlayer, UnitClass, UnitReaction, UnitIsTapDenied, RAID_CLASS_COLORS, C_NamePlate, UnitCanAttack }
+    UbermocForeverDB = { plates = { enemy = true, friendly = false, health = true, percent = true } }
+    issecretvalue = function(v) return (type(v) == "table" and v.secret == true) or v == "secret" end
+    local NAME = { secret = true }
+    local PCT = { secret = true }
+    UnitName = function() return NAME end
+    UnitHealthPercent = function() return PCT end
+    CurveConstants = { ScaleTo100 = { curve = true } }
+    UnitCanAttack = function(a, u) return u == "target" end      -- two args: UnitCanAttack("player", unit)
+    local R = { target = 1, p2 = 4, p4 = 4, p5 = 6, p6 = 3 }
+    UnitReaction = function(a, u) return R[u] end                -- two args: UnitReaction("player", unit)
+    UnitIsPlayer = function(u) return u == "p1" or u == "p2" end  -- one arg
+    UnitClass = function(u)
+        if u == "p1" then return "Warrior", "WARRIOR" end
+        if u == "p2" then return "SecretName", { secret = true } end
+        return nil, nil
+    end
+    UnitIsTapDenied = function(u) return u == "p3" end            -- one arg
+    RAID_CLASS_COLORS = { WARRIOR = { r = 0.8, g = 0.6, b = 0.4 } }
+
+    local reg = {}
+    local function obj(kind, role, m)
+        local t = { kind = kind, role = role, mark = m, points = {}, events = {}, scripts = {},
+                    unreg = 0, sets = 0, values = 0, shows = 0, hides = 0, acalls = 0,
+                    raise = (m and reg[m] and reg[m].raise) or nil }
+        t.Show = function() t.shows = t.shows + 1 end
+        t.Hide = function() t.hides = t.hides + 1 end
+        t.SetPoint = function(_, p, ref, rp) t.points[#t.points + 1] = p .. "/" .. ref.role .. "/" .. rp end
+        t.ClearAllPoints = function() t.points = {} end
+        t.SetTextColor = function(_, cr, cg, cb) t.color = cr .. "," .. cg .. "," .. cb end
+        t.SetJustifyH = function(_, j) t.justify = j end
+        t.SetFont = function(_, fnt, size, flags) t.font = fnt .. "," .. size .. "," .. flags end
+        t.SetVertexColor = function(_, cr, cg, cb, a) t.vertex = cr .. "," .. cg .. "," .. cb .. "," .. a end
+        t.SetMinMaxValues = function(_, lo, hi) t.minmax = lo .. "-" .. hi end
+        t.SetValue = function(_, v) t.values = t.values + 1; t.value = v end
+        t.SetClipsChildren = function(_, v) t.clips = v and true or false end
+        t.SetFrameLevel = function(_, lvl) t.level = lvl end
+        t.GetFrameLevel = function() return 1 end
+        t.SetStatusBarTexture = function(_, path) t.texture = path; t.tex = obj("texture", "tex", t.mark) end
+        t.GetStatusBarTexture = function() return t.tex end
+        t.RegisterUnitEvent = function(_, ev, u) t.events[ev] = u end
+        t.RegisterEvent = function(_, ev) t.events[ev] = "global" end   -- a global event would show here
+        t.UnregisterAllEvents = function() t.unreg = t.unreg + 1; t.events = {} end
+        t.SetScript = function(_, ev, fn) t.scripts[ev] = fn end
+        t.CreateFontString = function(self)
+            local n = reg[self.mark].fscount + 1
+            reg[self.mark].fscount = n
+            reg[self.mark].fs[n] = obj("fontstring", "fs" .. n, self.mark)
+            return reg[self.mark].fs[n]
+        end
+        t.SetText = function(_, v)
+            t.text = v
+            if t.raise then error("the game refuses SetText") end
+            t.sets = t.sets + 1
+            reg[t.mark].order[#reg[t.mark].order + 1] = t.role
+        end
+        t.SetFormattedText = function(_, fmt, v) t.sets = t.sets + 1; t.fmt = fmt; t.text = v end
+        t.SetAlpha = function(_, v)
+            t.acalls = t.acalls + 1; t.alpha = v
+            reg[t.mark].order[#reg[t.mark].order + 1] = t.role
+        end
+        t.GetAlpha = function() return t.alpha end
+        -- nothing of ours takes the mouse: the game's name is hidden by alpha only
+        t.EnableMouse = function(_, v) t.mouse = v end
+        t.SetMouseEnabled = function(_, v) t.mouse = v end
+        t.GetAlpha = function() return t.alpha end
+        return t
+    end
+    CreateFrame = function(kind, name, parent)
+        local r = parent and reg[parent.mark]
+        if not r then return nil end
+        local t = obj(kind, "f" .. (#r.frames + 1), parent.mark)
+        t.parent = parent                                  -- ours is a child of the plate's unit frame
+        r.frames[#r.frames + 1] = t
+        return t
+    end
+    local function mark(m) reg[m] = { m = m, frames = {}, fs = {}, fscount = 0, order = {} }; return reg[m] end
+    local function plate(m, unit)
+        local rr = mark(m)
+        local uf = { unit = unit, mark = m }
+        uf.name = obj("gamename", "name", m)
+        uf.name.alpha = 0.8
+        uf.name.GetJustifyH = function() return "CENTER" end
+        uf.name.GetFont = function() return "Arial", 12, 0 end
+        rr.name = uf.name; rr.uf = uf
+        return { namePlateUnitToken = unit, UnitFrame = uf }
+    end
+    local function col(u) local a, b, c = NH.baseColor(u); return a .. "," .. b .. "," .. c end
+    local out = {}
+    out[#out + 1] = "colors=" .. col("p1") .. ";" .. col("p2") .. ";" .. col("p3") .. ";" .. col("p4") .. ";" ..
+                    col("p5") .. ";" .. col("p6") .. ";" .. col("p7")
+    -- a full plate: our text and the bar value get the secret values unchanged, the game's name is hidden last
+    local p = plate("m1", "target")
+    local okshow = NH.show(p.UnitFrame, "target", { health = true, percent = true })
+    local rr = reg.m1
+    out[#out + 1] = "m1=" .. tostring(okshow) .. "," .. tostring(rr.fs[1].text == NAME) .. "," ..
+                    tostring(rr.fs[2].text == NAME) .. "," .. tostring(rr.fs[3].text == PCT) .. "," ..
+                    tostring(rr.fs[3].fmt == "%.0f%%") .. "," .. tostring(rr.frames[3].value == PCT) .. "," ..
+                    table.concat(rr.order, "+") .. "," .. tostring(rr.name.alpha)
+    out[#out + 1] = "anchors=" .. rr.fs[1].points[1] .. "|" .. rr.fs[2].points[1] .. "|" .. rr.fs[3].points[1] ..
+                    "|" .. rr.frames[3].points[1] .. "," .. rr.frames[3].points[2] .. "|" ..
+                    rr.frames[2].points[1] .. "," .. rr.frames[2].points[2]
+    out[#out + 1] = "look=" .. rr.fs[1].font .. "," .. rr.fs[2].font .. "," .. rr.fs[3].font .. "," ..
+                    rr.fs[1].justify .. "," .. rr.fs[2].justify .. "," .. rr.fs[3].justify .. "," ..
+                    rr.fs[1].color .. "," .. rr.fs[2].color .. "," .. rr.fs[3].color .. "," ..
+                    tostring(rr.frames[2].clips) .. "," .. tostring(rr.frames[2].level) .. "," ..
+                    tostring(rr.frames[3].value == PCT) .. "," .. rr.frames[3].texture .. "," ..
+                    rr.frames[3].tex.vertex .. "," .. rr.frames[3].minmax
+    out[#out + 1] = "ours=" .. tostring(rr.frames[1].parent == rr.uf) .. "," .. tostring(rr.frames[1].mouse) ..
+                    "," .. tostring(rr.frames[2].mouse) .. "," .. tostring(rr.frames[3].mouse) .. "," ..
+                    tostring(rr.fs[1].mouse) .. "," .. tostring(rr.fs[2].mouse) .. "," .. tostring(rr.fs[3].mouse) ..
+                    "," .. tostring(rr.frames[2].parent == rr.uf) .. "," ..
+                    tostring(rr.frames[3].parent == rr.uf) .. "," ..
+                    tostring(rr.frames[4].parent == rr.uf)
+    out[#out + 1] = "events=" .. tostring(rr.frames[4].events["UNIT_HEALTH"]) .. "," ..
+                    tostring(rr.frames[4].events["UNIT_MAXHEALTH"]) .. "," .. tostring(rr.frames[4].unreg)
+    -- the handler: another unit does nothing, this unit updates the value and the percent text
+    local sc = rr.frames[4].scripts.OnEvent
+    sc(rr.frames[4], "UNIT_HEALTH", "other")
+    out[#out + 1] = "otherunit=" .. tostring(rr.frames[3].values) .. "," .. tostring(rr.fs[3].sets)
+    sc(rr.frames[4], "UNIT_HEALTH", "target")
+    out[#out + 1] = "ownunit=" .. tostring(rr.frames[3].values) .. "," .. tostring(rr.fs[3].sets)
+    -- clear gives the game's name its own alpha back, and the handler does nothing after it
+    NH.clear(p.UnitFrame)
+    out[#out + 1] = "clear=" .. tostring(rr.name.alpha) .. "," .. tostring(rr.frames[4].unreg)
+    sc(rr.frames[4], "UNIT_HEALTH", "target")
+    out[#out + 1] = "afterclear=" .. tostring(rr.frames[3].values)
+    -- a plate reused for another unit: the old unit's events go before the new ones
+    local p2 = plate("m2", "focus")
+    NH.show(p2.UnitFrame, "target", { health = true, percent = true })     -- the plate is first the target's
+    NH.show(p2.UnitFrame, "focus", { health = true, percent = true })      -- then the same plate for another unit
+    out[#out + 1] = "reuse=" .. tostring(reg.m2.frames[4].events["UNIT_HEALTH"]) .. "," ..
+                    tostring(reg.m2.frames[4].unreg)
+    -- UnitHealthPercent is not there: nothing of ours is put on the plate, the game's name is left alone
+    UnitHealthPercent = nil
+    local p3 = plate("m3", "target")
+    out[#out + 1] = "nopercent=" .. tostring(NH.show(p3.UnitFrame, "target", { health = true, percent = true })) ..
+                    "," .. tostring(reg.m3.name.alpha) .. "," .. tostring(#reg.m3.frames)
+    UnitHealthPercent = function() return PCT end
+    -- our text is refused: the game's name was never hidden
+    local p4 = plate("m4", "target")
+    reg.m4.raise = true
+    out[#out + 1] = "refused=" .. tostring(NH.show(p4.UnitFrame, "target", { health = true, percent = true })) ..
+                    "," .. tostring(reg.m4.name.alpha) .. "," .. table.concat(reg.m4.order, "+")
+    -- health off: the bar and the clip stay hidden, the percent is still written
+    local p5 = plate("m5", "target")
+    NH.show(p5.UnitFrame, "target", { health = false, percent = true })
+    out[#out + 1] = "healthoff=" .. tostring(reg.m5.frames[3].values) .. "," .. tostring(reg.m5.frames[3].hides) ..
+                    "," .. tostring(reg.m5.frames[2].hides) .. "," .. tostring(reg.m5.fs[3].sets) .. "," ..
+                    tostring(reg.m5.name.alpha)
+    -- percent off: the percent string is not written and stays hidden
+    local p6 = plate("m6", "target")
+    NH.show(p6.UnitFrame, "target", { health = true, percent = false })
+    out[#out + 1] = "percentoff=" .. tostring(reg.m6.fs[3].sets) .. "," .. tostring(reg.m6.fs[3].hides)
+    -- both off: the game's name is the only name, nothing of ours is put on the plate
+    local p7 = plate("m7", "target")
+    out[#out + 1] = "bothoff=" .. tostring(NH.show(p7.UnitFrame, "target", { health = false, percent = false })) ..
+                    "," .. tostring(reg.m7.name.alpha) .. "," .. tostring(reg.m7.name.acalls)
+    -- the settings route through Nameplates, and a toggle re-styles the plates already on screen
+    local p8 = plate("m8", "target")
+    C_NamePlate = { GetNamePlates = function() return { p8 } end,
+                    GetNamePlateForUnit = function(u) return (u == "target") and p8 or nil end }
+    N.style(p8)
+    out[#out + 1] = "style=" .. tostring(reg.m8.fs[1].sets) .. "," .. tostring(reg.m8.name.alpha)
+    NH.toggle("health")
+    out[#out + 1] = "toggle=" .. tostring(UbermocForeverDB.plates.health) .. "," ..
+                    tostring(reg.m8.frames[3].hides) .. "," .. tostring(reg.m8.name.alpha)
+    NH.toggle("percent")   -- both off again: the plate goes back to the game's own name
+    out[#out + 1] = "offs=" .. tostring(UbermocForeverDB.plates.health) .. "," ..
+                    tostring(UbermocForeverDB.plates.percent) .. "," .. tostring(reg.m8.name.alpha)
+    UbermocForeverDB, CreateFrame, issecretvalue, UnitName, UnitHealthPercent, CurveConstants, UnitIsPlayer,
+    UnitClass, UnitReaction, UnitIsTapDenied, RAID_CLASS_COLORS, C_NamePlate, UnitCanAttack = table.unpack(saved)
+    return table.concat(out, " | ")
+end""")()
+expected = ("colors=0.8,0.6,0.4;1,0.85,0.1;0.55,0.55,0.55;1,0.85,0.1;0.15,0.8,0.15;1,0.5,0.1;1,1,1 | "
+            "m1=true,true,true,true,true,true,fs1+fs2+name,0 | "
+            "anchors=CENTER/name/CENTER|CENTER/fs1/CENTER|LEFT/fs1/RIGHT|TOPLEFT/fs1/TOPLEFT,"
+            "BOTTOMRIGHT/fs1/BOTTOMRIGHT|TOPLEFT/tex/TOPRIGHT,BOTTOMRIGHT/f3/BOTTOMRIGHT | "
+            "look=Arial,12,0,Arial,12,0,Arial,12,0,CENTER,CENTER,LEFT,0.85,0.15,0.15,1,1,1,0.85,0.15,0.15,"
+            "true,2,true,Interface\\Buttons\\WHITE8x8,1,1,1,0,0-100 | "
+            "ours=true,nil,nil,nil,nil,nil,nil,true,true,true | events=target,target,1 | otherunit=1,1 | "
+            "ownunit=2,2 | clear=0.8,2 | afterclear=2 | reuse=focus,2 | nopercent=false,0.8,0 | "
+            "refused=false,0.8, | healthoff=0,1,1,1,0 | percentoff=0,1 | bothoff=false,0.8,0 | "
+            "style=1,0 | toggle=false,1,0 | offs=false,false,0.8")
+assert str(r) == expected, r
+print("NameHealth: the name is the bar (white ghost under a clip), the secret name and percent only pass "
+      "through, the game's name is hidden only after ours is in place, a refused call leaves it visible: OK")
 
 # Fading page: elements the gamepad layout hides for good are not listed
 r = L("""function()

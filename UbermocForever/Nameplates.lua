@@ -42,6 +42,8 @@ local function db()
     d.plates = d.plates or {}
     if d.plates.enemy == nil then d.plates.enemy = false end
     if d.plates.friendly == nil then d.plates.friendly = false end
+    if d.plates.health == nil then d.plates.health = true end
+    if d.plates.percent == nil then d.plates.percent = true end
     return d.plates
 end
 N.db = db
@@ -55,7 +57,7 @@ end
 
 -- enemy, friendly or nil (unknown). UnitCanAttack is the only unit call allowed here, and its answer can be secret.
 function N.kindOf(unit)
-    if not (unit and UnitCanAttack) then return nil end
+    if type(unit) ~= "string" or not UnitCanAttack then return nil end
     local ok, can = pcall(UnitCanAttack, "player", unit)
     if not ok then return nil end
     can = plain(can)
@@ -102,12 +104,19 @@ function N.style(plate)
         local ok, forbidden = pcall(uf.IsForbidden, uf)
         if ok and plain(forbidden) then return end
     end
-    local kind = N.kindOf(plate.namePlateUnitToken or uf.unit)
+    local unit = plate.namePlateUnitToken
+    if type(unit) ~= "string" then unit = uf.unit end
+    local kind = N.kindOf(unit)
     local list = N.parts(uf)
+    local NH = UF.NameHealth
     if N.wanted(kind) then
         for _, p in ipairs(list) do N.hide(p) end
+        if not NH then return end
+        local d = db()
+        if d.health or d.percent then NH.show(uf, unit, d) else NH.clear(uf) end
     else
         for _, p in ipairs(list) do N.restore(p) end
+        if NH then NH.clear(uf) end
     end
 end
 
@@ -120,7 +129,7 @@ end
 
 -- a plate the game will not show us (includeForbidden defaults to false, NamePlateDocumentation.lua:11): nil, do nothing
 local function styleFor(unit)
-    if not (unit and C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
+    if type(unit) ~= "string" or not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
     local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
     if not ok then return end
     N.style(plate)
@@ -177,5 +186,14 @@ f:SetScript("OnEvent", function(_, event, unit)
         return
     end
     -- NAME_PLATE_UNIT_ADDED and UNIT_FACTION both hand a unit token
+    if event == "NAME_PLATE_UNIT_REMOVED" then
+        -- best effort: the game may have taken the plate away already, and then the weak table lets
+        -- our objects go with it
+        local NH = UF.NameHealth
+        if not NH or type(unit) ~= "string" or not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
+        local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
+        if ok and type(plate) == "table" and type(plate.UnitFrame) == "table" then NH.clear(plate.UnitFrame) end
+        return
+    end
     styleFor(unit)
 end)

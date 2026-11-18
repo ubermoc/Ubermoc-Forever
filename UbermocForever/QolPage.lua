@@ -7,7 +7,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -28,6 +28,9 @@ function QP.refresh()
     guildBtn:SetText("Guild bank first: " .. (v.guild and "On" or "Off"))
     enemyBtn:SetText("Enemies: name only: " .. (UF.Nameplates.enabled("enemy") and "On" or "Off"))
     friendlyBtn:SetText("Friendly: name only: " .. (UF.Nameplates.enabled("friendly") and "On" or "Off"))
+    local pl = UF.NameHealth.db()
+    healthBtn:SetText("Name shows health: " .. (pl.health and "On" or "Off"))
+    percentBtn:SetText("Health percent: " .. (pl.percent and "On" or "Off"))
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -94,11 +97,17 @@ function QP.build(parent, inset)
     heading("Nameplates", -246)
     enemyBtn = button(page, 180); enemyBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -268)
     friendlyBtn = button(page, 180); friendlyBtn:SetPoint("LEFT", enemyBtn, "RIGHT", 6, 0)
+    healthBtn = button(page, 180); healthBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -294)
+    percentBtn = button(page, 180); percentBtn:SetPoint("LEFT", healthBtn, "RIGHT", 6, 0)
     toggle(enemyBtn, function() UF.Nameplates.toggle("enemy") end)
     toggle(friendlyBtn, function() UF.Nameplates.toggle("friendly") end)
-    tip(enemyBtn, "Enemies: name only", "An enemy nameplate shows its name and nothing else: the health bar, the level and the highlight are made invisible. The cast bar and the auras stay, and clicking where the bar was still targets. Off puts the bar back.")
+    toggle(healthBtn, function() UF.NameHealth.toggle("health") end)
+    toggle(percentBtn, function() UF.NameHealth.toggle("percent") end)
+    tip(enemyBtn, "Enemies: name only", "An enemy nameplate shows its name and nothing else: the health bar, the level and the highlight are made invisible. Off puts the bar back.")
     tip(friendlyBtn, "Friendly: name only", "Friendly players: the game's own setting for that (Nameplates options) is switched on, and its previous value is kept so it can be given back. Friendly NPCs also get the bar made invisible, which the game cannot do by itself.")
-    note("A nameplate can show only the name. Off brings the bar back on the plates already shown.", -296)
+    tip(healthBtn, "Name shows health", "On a name-only plate the name itself is the health bar: it keeps its colour (class colour for a player, reaction colour otherwise) for the health left, and the part standing for the health lost is white. Only while an Enemies or Friendly name-only option is on.")
+    tip(percentBtn, "Health percent", "The current health percent is written to the right of the name, in the reaction colour. Only while a name-only option is on.")
+    note("A nameplate can show only the name. Off brings the bar back on the plates already shown.", -322)
 
     QP.refresh()
     return page
@@ -108,5 +117,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn } }
 end
