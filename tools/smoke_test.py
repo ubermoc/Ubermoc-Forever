@@ -1408,7 +1408,7 @@ r = L("""function()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()            -- left of the first page is the last (Quality of life)
     local q = UF.QolPage.navRows()
-    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5]   -- aim dot; fast loot; vendor; nameplates; name health
+    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5] .. "/" .. #q[6]   -- aim dot; fast loot; vendor; nameplates; name health; plate range
     local before = UF.Vendor.cfg().guild
     UF.Nav.SetFocus(q[3][3]); press("PAD1")                            -- A on Guild bank first flips it
     out[#out + 1] = tostring(UF.Vendor.cfg().guild ~= before)
@@ -1416,7 +1416,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,5/3/1/3/2/2,true,1", r
+assert str(r) == "1,2,3,2,1,5,6/3/1/3/2/2/2,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -1885,6 +1885,79 @@ for bad in ["hooksecurefunc", "OnUpdate", "SetPoint", "UnitHealth", "UnitName", 
     assert bad not in src, "Nameplates.lua contains " + bad
 assert src.count("SetCVar") == 1, "SetCVar must be written in one place"
 print("Nameplates: no hook, no OnUpdate, no anchoring, no unit data, no Show/Hide, one SetCVar: OK")
+
+# Plate range: On writes the chosen distance to the game's two distance CVars, keeps what the player had and
+# gives it back on Off, nothing is written during combat and what waits is applied when the fight ends, a nil
+# or raising GetCVar writes nothing, and a setting that is On is applied again at login. FAKE(C1): the stub
+# SetCVar stands for C_CVar.SetCVar, which takes the cvar name and value as cstrings and only works on cvars
+# that are not read only and not secure. FAKE(C2): the stub values are the strings the game keeps, as Ketho's
+# Forever rows show ("45.000000" and "40.000000").
+r = L("""function()
+    local PR = UbermocForever.PlateRange
+    local savedDB, oldGet, oldSet, oldLock = UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown
+    local cv = { nameplateMaxDistance = "45.000000", nameplatePlayerMaxDistance = "40.000000" }
+    local wrote = {}
+    GetCVar = function(k) return cv[k] end
+    SetCVar = function(k, v) wrote[#wrote + 1] = k .. "=" .. tostring(v); cv[k] = v end
+    local lock = false
+    InCombatLockdown = function() return lock end
+    local out = {}
+    UbermocForeverDB = {}                      -- fresh settings: Off, 60 yards
+    PR.pending = false
+    PR.sync()                                  -- Off and never written: nothing is written
+    out[#out + 1] = table.concat(wrote, ",")
+    PR.toggle()                                -- On: the player's values are remembered, both written
+    out[#out + 1] = table.concat(wrote, ",")
+    wrote = {}
+    PR.nextYards(1)                            -- 60 -> 30: rewritten, the remembered values stay
+    out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
+    wrote = {}
+    PR.toggle()                                -- Off: the player's values are given back
+    out[#out + 1] = table.concat(wrote, ",")
+    wrote = {}
+    lock = true
+    PR.toggle()                                -- On during combat: nothing is written, it waits
+    out[#out + 1] = tostring(PR.pending) .. "=" .. table.concat(wrote, ",")
+    lock = false
+    rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_REGEN_ENABLED", nil)
+    out[#out + 1] = tostring(PR.pending) .. "=" .. table.concat(wrote, ",")
+    wrote = {}
+    UbermocForeverDB = {}                      -- a fresh Off at login applies nothing
+    rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
+    out[#out + 1] = table.concat(wrote, ",")
+    UbermocForeverDB = {}                      -- an On setting is applied again at login
+    PR.db().on = true
+    rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
+    out[#out + 1] = table.concat(wrote, ",")
+    wrote = {}
+    UbermocForeverDB = {}
+    cv.nameplateMaxDistance = nil
+    PR.toggle()                                -- nil GetCVar answer: nothing remembered, nothing written for it
+    out[#out + 1] = table.concat(wrote, ",") .. "=" .. tostring(PR.db().backup.nameplateMaxDistance)
+    wrote = {}
+    UbermocForeverDB = {}
+    GetCVar = function() error("restricted") end
+    PR.toggle()                                -- a raising GetCVar is survived, nothing written
+    out[#out + 1] = table.concat(wrote, ",")
+    UbermocForeverDB = {}
+    PR.nextYards(1)                            -- stepping while Off writes nothing
+    out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
+    PR.nextYards(1); PR.nextYards(1); PR.nextYards(1)   -- 30 -> 45 -> 60 -> 30 (the steps cycle back)
+    out[#out + 1] = PR.name()
+    UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown = savedDB, oldGet, oldSet, oldLock
+    return table.concat(out, "|")
+end""")()
+want = ("|nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
+        "|30=nameplateMaxDistance=30,nameplatePlayerMaxDistance=30"
+        "|nameplateMaxDistance=45.000000,nameplatePlayerMaxDistance=40.000000"
+        "|true="
+        "|false=nameplateMaxDistance=30,nameplatePlayerMaxDistance=30"
+        "||nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
+        "|nameplatePlayerMaxDistance=60=nil"
+        "||30=|30")
+assert str(r) == want, (r, want)
+print("Plate range: writes both distance CVars, keeps and gives back the player's values, defers in combat, "
+      "survives a nil or raising GetCVar, applies an On setting at login: OK")
 
 # NameHealth: nothing is read back from our strings or the bar, no health numbers, no hook, no game method
 src = open(ADDON + "/NameHealth.lua", encoding="utf-8").read()

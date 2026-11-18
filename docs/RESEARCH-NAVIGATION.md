@@ -427,3 +427,25 @@ session, with the file:line I read:
 Untested in the game: whether the white copy lands on the same letters as the coloured name (the font can be scaled
 per nameplate), whether `SetClipsChildren` behaves as expected on a plate's child frame, and whether a restricted
 instance lets the addon create frames on a plate at all.
+
+## Nameplate distance (1.3.120)
+
+Sourced this session (claims C1-C4 in the harness):
+
+- `C_CVar.SetCVar` only works on a cvar that is valid, public, not read only and not secure, takes `name` and
+  `value` as `cstring` and answers `bool` (`blizzard-ui-source-forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/CVarDocumentation.lua`:131-148).
+  So the value is kept as a string: we write `tostring`.
+- Forever's two distance cvars (Ketho dump, saved `.harness/sources/...a8fbe6c5.txt:1089-1102`):
+  `nameplateMaxDistance` default `45.000000` (units) and `nameplatePlayerMaxDistance` default `40.000000`
+  (players). Forever's settings window has no row for them, so a cvar write is the only way.
+- `GetCVarInfo` flags `nameplateMaxDistance` as a character cvar and not secure (ForeverPlusPlus
+  `docs/forever-api.md`:207), so our code may write it; both are per character, as the settings are.
+- The current target's plate already shows beyond the distance: `nameplateCheckDistanceForTarget` default `0`
+  shows the target plate even very far away (Atraeau console-commands list, line 806). The distance only
+  decides the other plates.
+- Plates do not pop in hard: alpha and scale ramp with distance — `nameplateMinAlpha` `0.600000` reached at
+  `nameplateMinAlphaDistance` `10.000000` before the max distance, `nameplateMinScale` `0.800000` at
+  `nameplateMinScaleDistance` `10.000000` (`a8fbe6c5.txt`:1092-1095). Raising the distance extends the ramp,
+  so far plates stay small and thin until about 10 yards inside the limit.
+- Values above 60 are not offered in 1.3.120: nothing checked here shows the game keeps them. Ask the user to
+  try `/console nameplateMaxDistance 60` then print the cvar to see what sticks before raising the top step.

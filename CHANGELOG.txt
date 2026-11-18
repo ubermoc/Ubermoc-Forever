@@ -1,3 +1,10 @@
+UbermocForever 1.3.120
+- Added: plate range (`PlateRange.lua`). The game shows nameplates up to a distance from the camera (its own
+  values: 45 yards for units, 40 for players) and has no settings row for it, so the only way to change it is
+  the game's distance CVars. Two rows on the Quality of life page under Nameplates: "Plate range: Off/On" and
+  "Plate distance" (30, 45 or 60 yards; A forward, X back). On writes the chosen number; Off gives back the
+  values you had before. Nothing is written during combat, and what waits is applied when the fight ends. Untested in the game.
+
 UbermocForever 1.3.119
 - Fixed (found when reviewing 1.3.118; the test fakes had hidden all of these): the game gives a font's flags back as TEXT ("OUTLINE", or "" for none) and the new name only accepted a number, so it never got a font, the text call raised "Font not set" and the plate quietly kept the game's own name (nothing new would have shown). When the name's font cannot be read, the game's standard font is used. A restricted unit can make the health percent call itself raise: it is now asked inside pcall like every other call here. One plate failing no longer stops the others from being styled. A health event's unit can be a secret value; it is no longer compared. NAME_PLATE_UNIT_REMOVED is registered now (its handler was never reached). Untested in the game.
 
