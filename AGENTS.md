@@ -3,6 +3,8 @@
 Read this first, then `docs/LUA-WOW-GUIDE.md` (Lua and game knowledge, taint rules, where to look things up, working method; essential for a small model), then `HANDOFF.md` (history, older and partly out of date) and `docs/RESEARCH*.md` (sourced facts).
 The code is the truth; where a note here disagrees with it, trust the code and fix the note.
 
+**Start here if you are the local model: read `docs/LOCAL-MODEL-NOTES.md` first (short), then this file.**
+
 ## What this is
 A controller-first addon for **WoW: Forever** (game type "camelot", Interface 16001) for Steam Deck / Steam Controller
 (also PS5, Xbox, Switch). Author: Marcos (GitHub `ubermoc`). Rules from the user: only Blizzard's own art and
