@@ -1,3 +1,11 @@
+UbermocForever 1.3.136
+- Fixed: friendly player nameplates had no level. The game itself hides the level of a friendly player while its name-only
+  nameplate setting is on (Forever's level badge says no for them), and the Friendly: name only button switches that
+  setting on. Now the level is drawn by us, to the left of the name, in grey (the game's colour for someone you cannot
+  attack); a unit too high to tell shows ??. Only for friendly players with name-only on; NPCs and enemies keep the game's
+  own level. A new button on the Quality of life page, Friendly level: On/Off (on by default). The quest mark moves to the
+  left of it when both are shown. (PlateLevel.lua) Untested in the game.
+
 UbermocForever 1.3.135
 - Fixed: after using an armor kit the game's own "replace this enchant?" question could not be answered with A on the
   controller (the mouse worked, and A went to the game's own bind instead, such as an attack). Cause: while the game waits for the
