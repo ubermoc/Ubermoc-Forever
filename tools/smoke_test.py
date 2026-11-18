@@ -1892,6 +1892,32 @@ assert str(r) == "37/nil|??|??|nil|nil|true:60|false|false:false:1|true|false|fa
 src = open(ADDON + "/PlateLevel.lua", encoding="utf-8").read()
 for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "UnitHealth", "UnitName", "GetText", "GetStringWidth"]:
     assert bad not in src, "PlateLevel.lua contains " + bad
+# PlateLevel.make: centred on the game's own level frame (the same spot as every other plate), in the game's level font; with no
+# level frame it goes to the left of the name
+r = L("""function()
+    local UF = UbermocForever
+    local PL = UF.PlateLevel
+    local calls = {}
+    local realCreate = CreateFrame
+    CreateFrame = function(kind, name, parent)
+        local holder = {}
+        holder.CreateFontString = function(_, n, layer, font)
+            local fs = { font = font }
+            fs.SetPoint = function(_, p, rel, rp, x, y) calls[#calls + 1] = p .. ">" .. tostring(rel.__n) .. ":" .. rp .. ":" .. x .. ":" .. y end
+            fs.SetTextColor = function() end; fs.Hide = function() end
+            calls[#calls + 1] = "font=" .. tostring(font)
+            return fs
+        end
+        return holder
+    end
+    PL.make({ LevelFrame = { __n = "LevelFrame" }, name = { __n = "name" } })
+    PL.make({ name = { __n = "name" } })
+    CreateFrame = realCreate
+    return table.concat(calls, "|")
+end""")()
+assert str(r) == ("font=SystemFont_NamePlateLevel|CENTER>LevelFrame:CENTER:0:0|"
+                  "font=SystemFont_NamePlateLevel|RIGHT>name:LEFT:-4:0"), r
+print("PlateLevel: on the game's own level frame, so the same spot as every other plate; left of the name when there is none: OK")
 print("PlateLevel: the level of a friendly player under name-only is drawn, secrets and errors are survived, NPCs and enemies are left to the game: OK")
 # PlateQuest (PlateQuest.lua): a quest mark and the progress on nameplates. FAKE(C1): the stub UnitIsRelatedToActiveQuest returns a
 # plain bool (QuestLogDocumentation.lua:1287-1299 gives no secret return). FAKE(C2): the stub tooltip lines have the type and leftText
