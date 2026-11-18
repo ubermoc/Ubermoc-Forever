@@ -2018,7 +2018,7 @@ r = L("""function()
     PR.toggle()                                -- On: the player's values are remembered, both written
     out[#out + 1] = table.concat(wrote, ",")
     wrote = {}
-    PR.nextYards(1)                            -- 60 -> 80: rewritten, the remembered values stay
+    PR.nextYards(1)                            -- 60 -> 65: rewritten, the remembered values stay
     out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
     wrote = {}
     PR.toggle()                                -- Off: the player's values are given back
@@ -2051,19 +2051,37 @@ r = L("""function()
     UbermocForeverDB = {}
     PR.nextYards(1)                            -- stepping while Off writes nothing
     out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
-    PR.nextYards(1); PR.nextYards(1); PR.nextYards(1)   -- 80 -> 100 -> 30 -> 45 (the steps cycle back)
+    PR.nextYards(1); PR.nextYards(1); PR.nextYards(1)   -- 65 -> 70 -> 75 -> 80
     out[#out + 1] = PR.name()
+    -- the steps: 30 to 100 by 5; a step wraps both ways; an odd saved value is stepped from 60; a fresh start is 60
+    UbermocForeverDB = {}
+    PR.db().yards = 100; PR.nextYards(1); local wrapUp = PR.name()
+    PR.nextYards(-1); local wrapDown = PR.name()
+    UbermocForeverDB = {}
+    PR.db().yards = 37; PR.nextYards(1); local odd = PR.name()
+    UbermocForeverDB = {}
+    local fresh = PR.name()
+    out[#out + 1] = wrapUp .. "/" .. wrapDown .. "/" .. odd .. "/" .. fresh .. "/" .. tostring(PR.STEPS[1] == 30 and PR.STEPS[#PR.STEPS] == 100) .. "," .. #PR.STEPS
+    -- a 1.3.123 setting saved an index into 30, 45, 60, 80, 100: it becomes that many yards
+    local mig = {}
+    for _, idx in ipairs({ 2, 3, 4, 5, 1 }) do
+        UbermocForeverDB = { platerange = { step = idx } }
+        mig[#mig + 1] = PR.name()
+    end
+    UbermocForeverDB = { platerange = { step = 9 } }
+    mig[#mig + 1] = PR.name()
+    out[#out + 1] = table.concat(mig, "/")
     UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown = savedDB, oldGet, oldSet, oldLock
     return table.concat(out, "|")
 end""")()
 want = ("|nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
-        "|80=nameplateMaxDistance=80,nameplatePlayerMaxDistance=80"
+        "|65=nameplateMaxDistance=65,nameplatePlayerMaxDistance=65"
         "|nameplateMaxDistance=45.000000,nameplatePlayerMaxDistance=40.000000"
         "|true="
-        "|false=nameplateMaxDistance=80,nameplatePlayerMaxDistance=80"
+        "|false=nameplateMaxDistance=65,nameplatePlayerMaxDistance=65"
         "||nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
         "|nameplatePlayerMaxDistance=60=nil"
-        "||80=|45")
+        "||65=|80|30/100/65/60/true,15|45/60/80/100/30/60")
 assert str(r) == want, (r, want)
 print("Plate range: writes both distance CVars, keeps and gives back the player's values, defers in combat, "
       "survives a nil or raising GetCVar, applies an On setting at login: OK")
