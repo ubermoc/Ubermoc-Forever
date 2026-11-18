@@ -272,6 +272,12 @@ local function build()
         b:SetSize(230, 24)
         b:SetPoint("TOP", menu, "TOP", 0, -34 - (i - 1) * 28)
         b:HookScript("PostClick", function(self)
+            if M.reopen then
+                local back = M.reopen
+                M.reopen = nil
+                C_Timer.After(0, function() M.open(back) end)
+                return
+            end
             if self.keepOpen then return end
             C_Timer.After(0.1, function() if menu:IsShown() then menu:Hide() end end)
         end)
@@ -369,6 +375,92 @@ local function openAuction()
     return true
 end
 
+----------------------------------------------------------------------
+-- Bags: put a bag from your bags into one of your bag slots, showing how many slots it gains or loses (ported from Ubermoc UI,
+-- Extras.lua openBagSlotMenu and Toolbar.lua bag picker). The comparison is written on each entry, because the controller
+-- highlight does not raise tooltips: "Bag slot 2: Small Brown Pouch +4".
+----------------------------------------------------------------------
+local CONTAINER, REAGENT_SUB = 1, 11
+
+-- Is this item a bag you can equip? Returns true and whether it is a reagent bag.
+function M.isBag(itemID)
+    local classID, subClassID, equipLoc = instant(itemID)
+    if classID ~= CONTAINER or equipLoc ~= "INVTYPE_BAG" then return false end
+    return true, subClassID == REAGENT_SUB
+end
+
+-- The slot count written on a bag's tooltip ("%d Slot %s", the game's CONTAINER_SLOTS).
+local function bagItemSlots(bag, slot)
+    if not (C_TooltipInfo and C_TooltipInfo.GetBagItem) then return nil end
+    local ok, data = pcall(C_TooltipInfo.GetBagItem, bag, slot)
+    if not ok or not data or not data.lines then return nil end
+    local fmt = CONTAINER_SLOTS or "%d Slot %s"
+    local pat = "^" .. fmt:gsub("%%d", "(%%d+)"):gsub("%%s", ".+") .. "$"
+    for _, l in ipairs(data.lines) do
+        local t = l.leftText
+        if type(t) == "string" then
+            local n = t:match(pat)
+            if n then return tonumber(n) end
+        end
+    end
+    return nil
+end
+
+-- The equipped bag slots a bag can go in: bag slots 1 to 4 for a normal bag, the reagent slot for a reagent bag.
+-- Each: { bagID, inv (inventory slot), label, link of the bag there (nil when empty), size, used }
+function M.bagSlotsFor(reagent)
+    local out = {}
+    local C = C_Container
+    local ids = {}
+    if reagent then
+        local r = Enum and Enum.BagIndex and Enum.BagIndex.ReagentBag
+        if r then ids[1] = { r, "Reagent bag slot" } end
+    else
+        for i = 1, (NUM_BAG_SLOTS or 4) do ids[#ids + 1] = { i, "Bag slot " .. i } end
+    end
+    for _, e in ipairs(ids) do
+        local okI, inv = pcall(C.ContainerIDToInventoryID, e[1])
+        if okI and inv then
+            local link = GetInventoryItemLink and GetInventoryItemLink("player", inv)
+            local size = (link and C.GetContainerNumSlots(e[1])) or 0
+            local free = (link and C.GetContainerNumFreeSlots and C.GetContainerNumFreeSlots(e[1])) or size
+            out[#out + 1] = { bagID = e[1], inv = inv, label = e[2], link = link, size = size, used = size - (free or 0) }
+        end
+    end
+    return out
+end
+
+-- How a bag of `mine` slots compares with what a slot holds now, as text and as a number ("+4", "-2", "same").
+function M.bagGain(mine, s)
+    if not mine then return "", nil end
+    local diff = mine - (s.link and s.size or 0)
+    if diff > 0 then return "|cff40ff40+" .. diff .. "|r", diff end
+    if diff < 0 then return "|cffff5050" .. diff .. "|r", diff end
+    return "|cffaaaaaasame|r", 0
+end
+
+local function openBagSlots(btn, bag, slot, info, reagent)
+    local name = itemName(info.hyperlink, "Bag")
+    local mine = bagItemSlots(bag, slot)
+    title:SetText("Put " .. name .. (mine and (" (" .. mine .. " slots)") or "") .. " in")
+    reset()
+    for _, s in ipairs(M.bagSlotsFor(reagent)) do
+        local now = s.link and (itemName(s.link, "bag") .. " (" .. s.size .. ")") or "empty"
+        local gain = M.bagGain(mine, s)
+        local label = s.label:gsub("Bag slot ", "") .. ": " .. now .. "  " .. gain
+        if s.link and s.used > 0 then label = label .. " |cffffaa33(holds items)|r" end
+        add(label, nil, function()
+            if InCombatLockdown() then say("Bags can't be changed in combat."); return end
+            pcall(ClearCursor)
+            pcall(C_Container.PickupContainerItem, bag, slot)
+            if CursorHasItem and CursorHasItem() then pcall(PutItemInBag, s.inv) end
+            if CursorHasItem and CursorHasItem() then ClearCursor(); say("The game would not put that bag there (a bag that holds items has to be emptied first).") end
+        end)
+    end
+    add("Back", nil, function() M.reopen = btn end)
+    menu:SetHeight(46 + count * 28)
+end
+
 local function openBag(btn)
     local bag, slot = bagSlot(btn)
     local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
@@ -401,6 +493,23 @@ local function openBag(btn)
             add("Sell at auction", { type = "macro", macrotext = "/click " .. bname .. " RightButton" })
         end
         add("Use / equip", { type = "item", item = bag .. " " .. slot })
+    end
+
+    -- a bag: put it in one of your bag slots, with the best gain on the entry itself
+    do
+        local isBag, reagent = M.isBag(itemID)
+        if isBag and not vendor then
+            local mine = bagItemSlots(bag, slot)
+            local best
+            for _, s in ipairs(M.bagSlotsFor(reagent)) do
+                local _, d = M.bagGain(mine, s)
+                if d and (not best or d > best) then best = d end
+            end
+            local hint = ""
+            if best and best > 0 then hint = "  |cff40ff40+" .. best .. " slots|r"
+            elseif best and best <= 0 then hint = "  |cffaaaaaano gain|r" end
+            add("Equip in a bag slot" .. hint, nil, function() openBagSlots(btn, bag, slot, info, reagent) end, true)
+        end
     end
 
     -- used on another item: one entry for each weapon you wear

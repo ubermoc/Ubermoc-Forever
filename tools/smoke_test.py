@@ -777,6 +777,36 @@ r = L("""function()
 end""")()
 assert str(r) == "1-7=24,3=7,5-7-8-10=6|not offered:", r
 print("Armor kits, head / leg and shoulder enchants (37 items from the game's data): offered on the right slots: OK")
+# Bags: a bag in your bags can go in a bag slot (a reagent bag only in the reagent slot); each slot shows the gain
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    local oldItem, oldC, oldEnum, oldLink = C_Item, C_Container, Enum, GetInventoryItemLink
+    C_Item = { GetItemInfoInstant = function(id)
+        if id == 1 then return id, "t", "s", "INVTYPE_BAG", 1, 1, 0 end      -- a bag
+        if id == 2 then return id, "t", "s", "INVTYPE_BAG", 1, 1, 11 end     -- a reagent bag
+        return id, "t", "s", "INVTYPE_CHEST", 1, 4, 2 end }                 -- armour
+    Enum = { BagIndex = { ReagentBag = 5 } }
+    local sizes = { [1] = 6, [2] = 10, [3] = 0, [4] = 14, [5] = 0 }
+    local free = { [1] = 6, [2] = 3, [4] = 14 }
+    C_Container = {
+        ContainerIDToInventoryID = function(b) return 30 + b end,
+        GetContainerNumSlots = function(b) return sizes[b] or 0 end,
+        GetContainerNumFreeSlots = function(b) return free[b] or 0 end,
+    }
+    GetInventoryItemLink = function(_, inv) if sizes[inv - 30] and sizes[inv - 30] > 0 then return "|cff[Bag " .. (inv - 30) .. "]|r" end end
+    local out = { tostring(M.isBag(1)) .. "/" .. tostring(select(2, M.isBag(1))) .. "/" .. tostring(select(2, M.isBag(2))) .. "/" .. tostring(M.isBag(3)) }
+    local slots = M.bagSlotsFor(false)
+    local gains = {}
+    for _, s in ipairs(slots) do local _, d = M.bagGain(10, s); gains[#gains + 1] = s.inv .. ":" .. d .. ":" .. s.used end
+    out[#out + 1] = table.concat(gains, ",")
+    local r = M.bagSlotsFor(true)
+    out[#out + 1] = #r .. ":" .. r[1].label
+    out[#out + 1] = (M.bagGain(nil, slots[1]) == "") and "unknown" or "?"
+    C_Item, C_Container, Enum, GetInventoryItemLink = oldItem, oldC, oldEnum, oldLink
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "true/false/true/false|31:4:0,32:0:7,33:10:0,34:-4:0|1:Reagent bag slot|unknown", r
+print("Bags: which slots a bag fits, the gain over each, items still in a bag: OK")
 # Binding a spell by pressing buttons: a combination with a slot, one with no bind, one used for something else
 r = L("""function()
     local G = UbermocForever.GameNav
