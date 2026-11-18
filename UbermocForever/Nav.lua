@@ -102,7 +102,9 @@ end
 -- Take every button any window on the stack wants. Out of combat only (the game blocks it in combat).
 local function rebind()
     if InCombatLockdown() then return end
-    Nav.manageClicks(#stack > 0)
+    local wantsClicks = false
+    for _, e in ipairs(stack) do if not e.noClicks then wantsClicks = true end end
+    Nav.manageClicks(wantsClicks)
     local o = getOwner()
     pcall(ClearOverrideBindings, o)
     -- key -> { button name, mouse button }; an entry's `secure` keys (a real secure button, for clicking the game's own
@@ -118,8 +120,9 @@ local function rebind()
 end
 
 -- map: { PADDUP = function() ... end, PAD1 = function() ... end, ... }. Returns a token for Pop.
-function Nav.Push(map, secure)
-    local entry = { map = map, secure = secure }
+function Nav.Push(map, secure, noClicks)
+    -- noClicks: this entry only needs some buttons and must not switch off the game's cursor clicks (R1 and R2)
+    local entry = { map = map, secure = secure, noClicks = noClicks }
     stack[#stack + 1] = entry
     rebind()
     return entry
@@ -133,6 +136,8 @@ function Nav.Update(entry, map, secure)
 end
 
 function Nav.Count() return #stack end
+function Nav.IsTop(entry) return stack[#stack] == entry end
+Nav._stack = stack   -- for the offline test
 
 function Nav.Pop(entry)
     for i = #stack, 1, -1 do

@@ -7,6 +7,7 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
 ## What it does now
 
 - Detects your controller and offers to set the default key binds the first time you play.
+- B cancels the "pick the item it goes on" state after you use a poison, oil, armor kit or enchant from a bag (out of combat), so a controller player never needs the mouse to back out.
 - The options window explains itself: a panel at the bottom describes the setting the highlight is on, and every setting has a description in plain words (the mouse tooltip says the same).
 - Default binds in four layers (nothing held, Shift button held, Ctrl button held, both). Steam Deck and Steam Controller hold R4 and R5; every other controller holds the triggers. Bumpers target the nearest enemy and friend; Select is the map (with Shift all bags, with Ctrl the character panel, with both the spellbook); interact and jump are on the back buttons.
 - Cinematic camera while you talk to a quest giver or gossip NPC: the camera moves in and turns to the NPC, black bars (thickness adjustable) and dark cloudy edges (how far they come in adjustable) come in, nameplates and everything else except the dialog and tooltips are hidden, while the game's own quest window stays exactly as it is. Everything is put back when the talk ends. /ubf cinema off turns it off.
