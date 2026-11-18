@@ -92,6 +92,10 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 
 *The Fading page: roughly a hundred interface elements in groups, each with its own opacity in combat, on a flight path and out of combat.*
 
+![Cinematic camera while talking to a gryphon master: black bars top and bottom, dark edges, the dialog window on the left with the controller legend, and everything else hidden.](docs/images/cinematic-gossip.jpg)
+
+*Cinematic camera: when you talk to an NPC the camera moves in, black bars and dark edges come in, the rest of the interface is hidden, and the dialog shows what each controller button does.*
+
 ## What it does now
 
 - Detects your controller and offers to set the default key binds the first time you play.
