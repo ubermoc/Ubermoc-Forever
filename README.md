@@ -60,6 +60,38 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 
 *Y on a spell in the spellbook binds it to your action bar: press the button combination you want it on.*
 
+![A custom nameplate: the unit's name with its health percent in red beside it, no health bar, and the level in the game's own spot.](docs/images/nameplate-name-as-health.jpg)
+
+*Custom nameplates: no bar, just the name and the health left. The name carries the health, and the percent sits beside it in the reaction colour.*
+
+![Name-only nameplates on a friendly player and two animals, each with its level and health percent; a damaged animal shows 37 percent in yellow.](docs/images/nameplates-health-and-levels.jpg)
+
+*Name-only plates: friendly players keep their level, and the percent changes colour as an enemy is hurt (green near full, yellow, then red).*
+
+![Ironforge crowd: every player has a name-only nameplate with a health percent, with the controller mailbox and the bags open.](docs/images/nameplates-crowd-mail-bags.jpg)
+
+*A crowded city stays readable: name-only plates instead of a wall of health bars, with the controller mailbox and the bags open.*
+
+![The Settings page of the options window: cinematic mode, bar and edge thickness, the four layers of binds and the list of actions to change.](docs/images/options-settings.jpg)
+
+*The Settings page: cinematic camera, the four bind layers (nothing held, P1, P3, both) and every button's action, with a description of what the highlighted setting does.*
+
+![The Quality of life page: aim dot, fast loot, vendor selling and repair, and the nameplate options.](docs/images/options-quality-of-life.jpg)
+
+*The Quality of life page: aim dot, fast loot, sell junk and repair at a vendor, name-only plates, quest marks and progress, friendly level, increased plate range.*
+
+![The Bars page: gamepad layout, button size, gap, face button colours and the fading of the gamepad bar, XP bar, micro menu and bags.](docs/images/options-bars.jpg)
+
+*The Bars page: the gamepad layout and how each leftover part (gamepad bar, XP bar, micro menu, bags) fades in combat, on a flight path and out of combat.*
+
+![The Chat page: chat fade, how long lines stay visible, reveal on message, per-part opacity and the edit box on top.](docs/images/options-chat.jpg)
+
+*The Chat page: lines that fade by themselves, reveal on a new message, opacity for each chat part and the edit box above the window.*
+
+![The Fading page: about a hundred interface elements in groups, each with in combat, on a flight path and out of combat opacity.](docs/images/options-fading.jpg)
+
+*The Fading page: roughly a hundred interface elements in groups, each with its own opacity in combat, on a flight path and out of combat.*
+
 ## What it does now
 
 - Detects your controller and offers to set the default key binds the first time you play.
@@ -73,7 +105,7 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 - A gamepad layout (Bars page): one row of the game's own action buttons at the bottom that shows action bar 1, 2, 3 or 4 as you hold the modifiers, each button with the controller button it is bound to (hanging over its top edge, and the other binds of the held combination such as jump or targeting get a slot with their name, the face buttons in black and white unless you choose colour). Cooldowns show the game's countdown numbers with a bright line sweeping round instead of the dark swipe, and an ability out of range gets a slight red hue on its button picture. The game's bottom art is hidden for good (no mouse-over brings it back) and empty buttons are removed; the end caps (dragons) are hidden with the rest. The micro menu, bags and XP bar stay where the game puts them (the first time, a question offers to open Edit Mode; later the Move bars button does); they, and the bar itself, have their own fading there, and a button opens the game's Edit Mode to move them.
 - A new install starts with the author's own settings (the gamepad layout on, the fading values, the chat and cinematic settings); an install that already has settings is not changed. Our question windows say which controller button answers them (A, B, or X for a third choice), and the layout offers to open the game's Edit Mode to move the micro menu, bags and XP bar, and to open Gameplay > Action Bars when a bar you use is switched off.
 - A white aim dot for ground spells (Heroic Leap, Blizzard, Rain of Fire), shown only while you aim one, with an aim distance and dot size setting on the Quality of life page of the options window.
-- Y on a bag in your bags puts it in one of your bag slots, showing on each slot how many more or fewer slots you would have. With your bags open, the highlight also reaches the bag bar: Y on a bag slot lists the bags you carry that fit it, with the same gain.
+- Y on a bag in your bags puts it in one of your bag slots, showing on each slot how many more or fewer slots you would have. With your bags open, the highlight also reaches the bag bar: Y on a bag slot (on the bag bar, or in the bag window with a controller) lists the bags you carry that fit it, each with the slots it gains in green or loses in red; A swaps it in.
 - Y on a locked box in your bags offers Pick Lock when your rogue knows it, with the Lockpicking skill it needs.
 - Fast loot: with the game's Auto Loot on, everything is taken the moment the loot opens; the loot window only shows if something is left. Not while you are the master looter. Fast loot: On/Off on the Quality of life page of the options window.
 - At a vendor: grey items are sold and your gear is repaired, paid from the guild bank first when your guild allows it, otherwise from your own money. Each can be switched off on the Quality of life page of the options window.
