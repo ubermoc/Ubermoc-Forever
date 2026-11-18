@@ -61,15 +61,7 @@ function CP.build(parent, inset)
     page:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -10, 10)
     page:Hide()
 
-    local function tip(b, title, text)
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-            GameTooltip:SetText(title)
-            GameTooltip:AddLine(text, 1, 1, 1, true)
-            GameTooltip:Show()
-        end)
-        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    end
+    local tip = UF.Describe.set   -- the title and text show in the tooltip and in the description panel (Describe.lua)
 
     -- Lines and the new-message reveal (Chat.lua)
     local head = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -84,10 +76,10 @@ function CP.build(parent, inset)
     UF.cycleButton(topRow.vis, Ch.nextVisible, CP.refresh)
     UF.cycleButton(topRow.out, Ch.nextFade, CP.refresh)
     topRow.reveal:SetScript("OnClick", function() Ch.toggleReveal(); CP.refresh() end)
-    tip(topRow.fade, "Chat fade", "Every chat line fades out by itself a few seconds after it appears, in every chat window. Off puts your old chat settings back.")
-    tip(topRow.vis, "Visible", "How long a line stays (and a faded chat window stays shown after a message) before it fades. Press to step through the choices.")
-    tip(topRow.out, "Fade-out", "How long the fade-out takes. Press to step through the choices.")
-    tip(topRow.reveal, "Reveal on message", "A chat window you have faded below appears fully when a message arrives, then fades back. Tabs are not opened by this. While you type, the chat window and edit box stay shown until the message is sent.")
+    tip(topRow.fade, "Chat fade", "Every chat line fades out by itself a few seconds after it arrives, in every chat window. A switches it on or off; Off puts the game's own chat timing back.")
+    tip(topRow.vis, "Visible", "How many seconds a chat line stays before it starts to fade (also how long a faded chat window stays shown after a message). A steps up, X steps back.")
+    tip(topRow.out, "Fade-out", "How many seconds the fade-out of a chat line takes. A steps up, X steps back.")
+    tip(topRow.reveal, "Reveal on message", "A chat window you have made see-through shows fully when a new message arrives, then fades again. The tabs are not opened by this. While you type, the window and the edit box stay shown until you send.")
 
     -- One part of the chat at a time, with the same situations as the Fading page
     local head2 = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -100,6 +92,7 @@ function CP.build(parent, inset)
         b.element = e
         if prev then b:SetPoint("LEFT", prev, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -84) end
         b:SetScript("OnClick", function() sel = e; CP.refresh() end)
+        UF.Describe.set(b, e.label, "Choose this part of the chat to set how visible it is, in the rows below. A part you have changed is shown in gold, a part not found on screen in grey.")
         pickBtns[#pickBtns + 1] = b
         prev = b
     end
@@ -125,6 +118,7 @@ function CP.build(parent, inset)
         minus:SetScript("OnClick", function() F.step(sel.key, st.key, -1); CP.refresh() end)
         plus:SetScript("OnClick", function() F.step(sel.key, st.key, 1); CP.refresh() end)
         stateRows[i] = { frame = fr, state = st.key, value = value, normal = normal, zero = zero, minus = minus, plus = plus }
+        UF.Describe.situation(stateRows[i], st.label, function() return sel and sel.label end)
     end
     local my = -156 - #F.STATES * 34
     local mf = CreateFrame("Frame", nil, page)
@@ -143,15 +137,18 @@ function CP.build(parent, inset)
     mminus:SetScript("OnClick", function() F.stepMouseOwn(sel.key, -1); CP.refresh() end)
     mplus:SetScript("OnClick", function() F.stepMouseOwn(sel.key, 1); CP.refresh() end)
     mouseOwnRow = { frame = mf, value = mvalue, same = same, off = moff, minus = mminus, plus = mplus }
-    tip(same, "Mouse over", "How visible this part is while the mouse is over it. Same follows the Mouse over (all) setting on the Fading page; Off keeps it from lighting up; - and + set a value of its own. It never goes lower than the part's own opacity.")
+    for _, mb in ipairs({ same, moff, mminus, mplus }) do
+        tip(mb, "Mouse over", "How visible the chosen part gets while the mouse is over it. Same follows the Mouse over (all) setting on the Fading page. Off: it does not change when the mouse is over it. - and +: a value of your own. It never goes lower than the part's own opacity.")
+    end
     local y = my - 34
     hideBtn = button(page, 200, 24); hideBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y - 6)
     hideBtn:SetScript("OnClick", function() F.toggleHide(sel.key); CP.refresh() end)
     resetBtn = button(page, 200, 24, "Reset this part"); resetBtn:SetPoint("LEFT", hideBtn, "RIGHT", 8, 0)
     resetBtn:SetScript("OnClick", function() F.reset(sel.key); CP.refresh() end)
+    UF.Describe.hideReset(hideBtn, resetBtn, function() return sel and sel.label end)
     autoBtn = button(page, 190, 24); autoBtn:SetPoint("LEFT", resetBtn, "RIGHT", 8, 0)
     autoBtn:SetScript("OnClick", function() Ch.toggleAuto(sel.key); CP.refresh() end)
-    tip(autoBtn, "Fade by itself", "On: this part is hidden until the chat is used, then fades out the Visible time after you stop (over the Fade-out time). The chat window shows on a new message and while you type; every part shows while you type (the tabs are never opened by a message). A setting of its own below takes over.")
+    tip(autoBtn, "Fade by itself", "On: the chosen part stays hidden until the chat is used. It shows while you type and, for the chat window, when a message arrives, then fades out after the Visible time. A value you set in the rows below takes over from this.")
     noteFS = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     noteFS:SetPoint("TOPLEFT", hideBtn, "BOTTOMLEFT", 0, -12)
     noteFS:SetWidth(640); noteFS:SetJustifyH("LEFT")
@@ -159,7 +156,7 @@ function CP.build(parent, inset)
     -- Where the chat edit box sits (ChatEdit.lua): above the window instead of under it
     editTopBtn = button(page, 220, 24); editTopBtn:SetPoint("TOPLEFT", noteFS, "BOTTOMLEFT", 0, -14)
     editTopBtn:SetScript("OnClick", function() UF.ChatEdit.toggle(); CP.refresh() end)
-    tip(editTopBtn, "Edit box on top", "The box you type in sits above the chat window (above its tabs) instead of under it. Off puts it back where the game has it. Not changed during combat: it moves when the fight ends.")
+    tip(editTopBtn, "Edit box on top", "Puts the box you type in above the chat window (above its tabs) instead of under it. Off puts it back where the game has it. It does not move during combat; it moves when the fight ends.")
     CP.refresh()
     return page
 end

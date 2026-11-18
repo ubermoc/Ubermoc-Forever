@@ -1,3 +1,12 @@
+UbermocForever 1.3.126
+- Added: a description panel at the bottom of the options window. It shows what the highlighted setting does, in words,
+  and follows the controller highlight (not the mouse; the mouse tooltip still says the same). The window is a little
+  taller to make room. (`Describe.lua`)
+- Changed: every setting on the Chat, Bars, Quality of life and Fading pages and the main page now has a plain
+  description of what it does and what A and X do on it (the Fading, Chat and Bars situation rows, Copy, Paste, Apply,
+  Reset, the list of parts, the layer buttons, Change on each bind, Checks and Reset to default had none). The unclear
+  ones were rewritten. A test fails if a button on those pages has no description. Untested in the game.
+
 UbermocForever 1.3.125
 - Changed: the plate range is one button, "Increased plate range: Off/On" (the Plate distance button is gone). On
   writes 45 yards to both of the game's distance settings. In the game only 45 gave more than the default: 60, 80,
