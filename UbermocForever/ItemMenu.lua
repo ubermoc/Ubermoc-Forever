@@ -106,7 +106,7 @@ local function hasUse(itemID)
 end
 
 -- Item classes (Enum.ItemClass in Blizzard_APIDocumentationGenerated ItemConstantsDocumentation.lua).
-local CLASS = { consumable = 0, weapon = 2, armor = 4, tradegoods = 7, itemEnhancement = 8 }
+local CLASS = { consumable = 0, weapon = 2, armor = 4, tradegoods = 7, itemEnhancement = 8, quest = 12, misc = 15 }
 -- Consumables that are plainly not used on another item: potions 1, elixirs 2, flasks 3, scrolls 4, food and drink 5,
 -- bandages 7 (Enum.ItemConsumableSubclass, same file).
 local NOT_ON_ITEMS = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [7] = true }
@@ -143,7 +143,9 @@ end
 -- Equipment slots in the game's numbering, with what the item's use text calls them. The wording comes from a scan of the
 -- game's own items (/ubf scan): poisons "Coats a weapon ...", oils "While applied to target weapon ...", sharpening stones
 -- "... on a melee weapon", armor kits "... of an item worn on the chest, legs, hands or feet", scopes "Attaches a permanent
--- scope to a bow or gun".
+-- scope to a bow or gun". Head, leg and shoulder enchants say "... to a leg or head slot item" (the Dire Maul arcanums, the
+-- Zul'Gurub enchants and resistance guards) or "... to a shoulder slot item" (the Zandalar signets, the Naxxramas Scourge
+-- enchants); the full list with each item's text is in docs/ITEM-USE-SCAN.md.
 local SLOT_NAMES = { [1] = "Head", [2] = "Neck", [3] = "Shoulders", [5] = "Chest", [6] = "Waist", [7] = "Legs", [8] = "Feet",
                      [9] = "Wrists", [10] = "Hands", [11] = "Ring", [12] = "Ring", [15] = "Back", [16] = "Main hand",
                      [17] = "Off hand", [18] = "Ranged" }
@@ -157,7 +159,7 @@ function M.targets(itemID)
     local t = useText(itemID)
     if not t then return nil end
     if t:find("bow or gun", 1, true) or t:find("to a bow", 1, true) or t:find("to a gun", 1, true) then return { 18 } end
-    local worn = t:find("worn on", 1, true) or t:find("piece of armor", 1, true)
+    local worn = t:find("worn on", 1, true) or t:find("piece of armor", 1, true) or t:find("slot item", 1, true)
     if worn then
         local out, seen = {}, {}
         for _, w in ipairs(ARMOR_WORDS) do
@@ -181,6 +183,12 @@ function M.usedOnItems(itemID)
         local v = useText(itemID)
         if v == nil then return true end
         return M.targets(itemID) ~= nil
+    end
+    -- head, leg and shoulder enchants are quest items (class 12: the arcanums, the Zandalar signets, the Scourge enchants) or
+    -- miscellaneous items (class 15: the Zul'Gurub enchants and guards) in the game's data; their use text names the slot
+    if classID == CLASS.quest or classID == CLASS.misc then
+        local v = useText(itemID)
+        return v ~= nil and v:find("slot item", 1, true) ~= nil and M.targets(itemID) ~= nil
     end
     return false
 end

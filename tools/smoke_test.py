@@ -713,6 +713,70 @@ r = L("""function()
 end""")()
 assert str(r) == "16-17|5-7-8-10|18|nil|16-17", r
 print("Where an item goes: weapons, armor slots, ranged only for scopes, potions nowhere: OK")
+# Every armor kit and head / leg / shoulder enchant in the game's data (QuestieDB foreverItemDB.lua: id, class, subclass;
+# use text from Wowhead Classic tooltips): each is offered in the Y menu, on the slots its text names
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    local cases = {
+    { 11622, 12, 0, "Use: Permanently adds 150 mana to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11642, 12, 0, "Use: Permanently adds 100 hit points to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11643, 12, 0, "Use: Permanently adds 125 armor to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11644, 12, 0, "Use: Permanently adds 20 fire resistance to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11645, 12, 0, "Use: Permanently adds 8 strength to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11646, 12, 0, "Use: Permanently adds 8 stamina to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11647, 12, 0, "Use: Permanently adds 8 agility to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11648, 12, 0, "Use: Permanently adds 8 intellect to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 11649, 12, 0, "Use: Permanently adds 8 spirit to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 15564, 0, 0, "Use: Permanently increase the armor value of an item worn on the chest, legs, hands or feet by 40.  Only usable on items level 35 and above." },
+    { 18251, 0, 0, "Use: Permanently increase the defense value of an item worn on the chest, legs, hands or feet by 3.  Only usable on items level 45 and above." },
+    { 18329, 12, 0, "Use: Permanently adds 1% haste to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 18330, 12, 0, "Use: Permanently adds +8 to your Healing and Damage from spells to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 18331, 12, 0, "Use: Permanently adds 1% dodge to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19782, 15, 0, "Use: Permanently adds 10 Stamina, 7 Defense, and 15 Shield Block value to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19787, 15, 0, "Use: Permanently adds 18 to all healing and damage spells and 1% chance to hit with spells to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19788, 15, 0, "Use: Permanently adds 10 Stamina and increases spell damage and healing by up to 18 to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19789, 15, 0, "Use: Permanently adds 10 Stamina, 4 mana per 5 sec., and increases healing by up to 24 to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 20076, 12, 0, "Use: Permanently adds to a shoulder slot item increased damage and healing done by magical spells and effects up to 18." },
+    { 20077, 12, 0, "Use: Permanently adds 30 attack power to a shoulder slot item." },
+    { 20078, 12, 0, "Use: Permanently adds to a shoulder slot item increased healing done by spells and effects up to 33." },
+    { 2304, 0, 0, "Use: Permanently increase the armor value of an item worn on the chest, legs, hands or feet by 8." },
+    { 2313, 0, 0, "Use: Permanently increase the armor value of an item worn on the chest, legs, hands or feet by 16." },
+    { 23545, 12, 0, "Use: Permanently adds to a shoulder slot item increased damage and healing done by magical spells and effects up to 15 and also increases your chance to land a critical strike with spells by 1%." },
+    { 23547, 12, 0, "Use: Permanently adds to a shoulder slot item increased healing done by magical spells and effects up to 31 and also increases your mana regen by 5 mana per 5 sec." },
+    { 23548, 12, 0, "Use: Permanently adds to a shoulder slot item increased Attack Power by 26 and also increases your chance to land a critical strike by 1%." },
+    { 23549, 12, 0, "Use: Permanently adds to a shoulder slot item increased Stamina by 16 and also grants 100 armor." },
+    { 4265, 0, 0, "Use: Permanently increase the armor value of an item worn on the chest, legs, hands or feet by 24.  Only usable on items level 15 and above." },
+    { 8173, 0, 0, "Use: Permanently increase the armor value of an item worn on the chest, legs, hands or feet by 32.  Only usable on items level 25 and above." },
+    { 19783, 15, 0, "Use: Permanently adds 10 Stamina, 7 Defense, and increases healing by up to 24 to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19784, 15, 0, "Use: Permanently adds 28 Attack Power and 1% Dodge to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19785, 15, 0, "Use: Permanently adds 24 Ranged Attack Power, 10 Stamina, and 1% Chance to Hit to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19786, 15, 0, "Use: Permanently adds 15 Intellect and increases all healing and spell damage by up to 13 to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 19790, 15, 0, "Use: Permanently adds 10 Stamina, 10 Intellect, and increases healing by up to 24 to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 22635, 15, 0, "Use: Permanently adds 10 nature resistance to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 22636, 15, 0, "Use: Permanently adds 10 frost resistance to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    { 22638, 15, 0, "Use: Permanently adds 10 shadow resistance to a leg or head slot item. Does not stack with other enchantments for the selected equipment slot." },
+    }
+    local byId = {}
+    for _, c in ipairs(cases) do byId[c[1]] = c end
+    C_Item = {
+        GetItemInfoInstant = function(id) local c = byId[id]; return id, "t", "s", "", 1, c[2], c[3] end,
+        GetItemSpell = function(id) return "Use it" end,
+    }
+    C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = byId[id][4] } } } end }
+    local count, bad = {}, {}
+    for _, c in ipairs(cases) do
+        local t = M.targets(c[1])
+        local key = t and table.concat(t, "-") or "nil"
+        count[key] = (count[key] or 0) + 1
+        if not M.usedOnItems(c[1]) then bad[#bad + 1] = c[1] end
+    end
+    local keys = {}
+    for k, n in pairs(count) do keys[#keys + 1] = k .. "=" .. n end
+    table.sort(keys)
+    return table.concat(keys, ",") .. "|not offered:" .. table.concat(bad, ",")
+end""")()
+assert str(r) == "1-7=24,3=7,5-7-8-10=6|not offered:", r
+print("Armor kits, head / leg and shoulder enchants (37 items from the game's data): offered on the right slots: OK")
 # Binding a spell by pressing buttons: a combination with a slot, one with no bind, one used for something else
 r = L("""function()
     local G = UbermocForever.GameNav

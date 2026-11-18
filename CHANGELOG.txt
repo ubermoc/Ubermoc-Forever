@@ -1,3 +1,6 @@
+UbermocForever 1.3.112
+- Added: the Y menu offers every head, leg and shoulder enchant in the game, not only the armor kits: the Dire Maul arcanums, the Zul'Gurub enchants (Presence of Might, Falcon's Call, Hoodoo Hex ...) and resistance guards go on your head or legs, the Zandalar signets and the Naxxramas Scourge enchants on your shoulders. On a bag item it lists the worn pieces each can go on; on a worn head, leg or shoulder piece it lists the ones in your bags. All six armor kits (Light, Medium, Heavy, Thick, Rugged, Core) already worked. The game files these enchants as quest or miscellaneous items, which the menu skipped. Untested in the game.
+
 UbermocForever 1.3.111
 - Changed: the aim dot buttons (Aim dot, Aim distance, Dot size) moved from the first options page to the Quality of life page, above fast loot and the vendor buttons. The first page is now the cinematic row above the binds. Untested in the game.
 
