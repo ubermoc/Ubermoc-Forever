@@ -900,11 +900,19 @@ r = L("""function()
     local pack = { GetName = function() return "MainMenuBarBackpackButton" end, GetBagID = function() return 0 end, GetID = function() return 0 end }
     local b1, i1, re1 = M.bagBarSlot(slot)
     local b2, i2, re2 = M.bagBarSlot(rslot)
+    -- the gamepad bag bar: no global name, a slotName key
+    local g1 = { slotName = "BAG1SLOT", GetBagID = function() return 2 end, GetID = function() return 32 end }
+    local g2 = { slotName = "REAGENTBAG0SLOT", GetBagID = function() return 5 end, GetID = function() return 35 end }
+    local g3 = { slotName = "BAG0SLOT", GetBagID = function() return 0 end, GetID = function() return 30 end }
+    local g4 = { slotName = "KEYRING", GetBagID = function() return -2 end, GetID = function() return 0 end }
+    local gb1, gi1, gr1 = M.bagBarSlot(g1)
+    local gb2, gi2, gr2 = M.bagBarSlot(g2)
+    out[#out + 1] = "g:" .. gb1 .. "/" .. gi1 .. "/" .. tostring(gr1) .. "," .. gb2 .. "/" .. gi2 .. "/" .. tostring(gr2) .. "," .. tostring(M.bagBarSlot(g3)) .. "," .. tostring(M.bagBarSlot(g4)) .. "," .. tostring(M.kind(g1))
     out[#out + 1] = b1 .. "/" .. i1 .. "/" .. tostring(re1) .. "," .. b2 .. "/" .. i2 .. "/" .. tostring(re2) .. "," .. tostring(M.bagBarSlot(pack)) .. "," .. tostring(M.kind(slot))
     BagsBar, ContainerFrameCombinedBags, F.hold = oldBar, oldCombined, oldHold
     return table.concat(out, "|")
 end""")()
-assert str(r) == "nobar|bar|nobar|bags=true;bags=false|3/33/false,5/35/true,nil,bagslot", r
+assert str(r) == "nobar|bar|nobar|bags=true;bags=false|g:2/32/false,5/35/true,nil,nil,bagslot|3/33/false,5/35/true,nil,bagslot", r
 print("Bag bar: reachable while bags are open, kept visible then, its bag slots get the bag menu: OK")
 # Pick Lock: a locked box is told by its tooltip ("Locked", "Requires Lockpicking (N)"); an opened one is not offered
 r = L("""function()
@@ -2350,6 +2358,36 @@ assert src.count("UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)") ==
 assert src.count("RegisterUnitEvent") == 2, src.count("RegisterUnitEvent")
 print("NameHealth: no hook, no OnUpdate, nothing read of our strings or the bar, no health numbers, the secret "
       "values go straight to SetText and SetValue, Show/Hide only through Nameplates: OK")
+
+# NameHealth.level: a friendly player's level is written beside the name when the game's own badge is hidden (it is, with the
+# name-only setting on); the secret level goes straight to SetFormattedText
+r = L("""function()
+    local NH = UbermocForever.NameHealth
+    local saved = { issecretvalue, UnitEffectiveLevel, UnitIsPlayer }
+    issecretvalue = function(v) return type(v) == "table" and v.secret == true end
+    UnitIsPlayer = function() return true end
+    local function fs() local t = { shown = false }
+        t.Hide = function() t.shown = false end; t.Show = function() t.shown = true end
+        t.SetTextColor = function() end
+        t.SetFormattedText = function(_, f, v) t.fmt = f; t.val = v end
+        return t end
+    local out = {}
+    local function run(level, badgeShown)
+        UnitEffectiveLevel = function() return level end
+        local o = { lvl = fs() }
+        NH.level({ PlayerLevelDiffFrame = { IsShown = function() return badgeShown end } }, "target", o, true)
+        return tostring(o.lvl.shown) .. ":" .. tostring(o.lvl.val == level)
+    end
+    out[#out + 1] = run(30, false)            -- the game's badge is hidden: ours shows
+    out[#out + 1] = run(30, true)             -- the badge is shown: not twice
+    out[#out + 1] = run(-1, false)            -- a skull level is left to the game
+    local secret = { secret = true }
+    out[#out + 1] = run(secret, false)        -- a secret level is passed on, not tested
+    issecretvalue, UnitEffectiveLevel, UnitIsPlayer = table.unpack(saved)
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "true:true,false:false,false:false,true:true", r
+print("NameHealth level: shown beside the name only when the game's badge is hidden, a secret level is passed on: OK")
 
 # NameHealth (the name as the health bar): the secret name and the secret percent must reach the calls that accept
 # them unchanged - the test compares the identity of what a call received - the game's name is hidden only after our

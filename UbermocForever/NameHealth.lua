@@ -31,6 +31,7 @@ local function db()
     d.plates = d.plates or {}
     if d.plates.health == nil then d.plates.health = true end
     if d.plates.percent == nil then d.plates.percent = true end
+    if d.plates.level == nil then d.plates.level = true end
     return d.plates
 end
 NH.db = db
@@ -112,6 +113,7 @@ function NH.ensure(uf)
     o.ours = nf:CreateFontString(nil, "OVERLAY")
     o.copy = clip:CreateFontString(nil, "OVERLAY")
     o.pct = nf:CreateFontString(nil, "OVERLAY")
+    o.lvl = nf:CreateFontString(nil, "OVERLAY")
     clip:SetClipsChildren(true)
     clip:SetFrameLevel(nf:GetFrameLevel() + 1)     -- the white copy draws over the coloured name
     pcall(sb.SetStatusBarTexture, sb, "Interface\\Buttons\\WHITE8x8")
@@ -165,7 +167,11 @@ function NH.show(uf, unit, opts)
         -- the white copy must be the same font, else its letters do not fall on the coloured ones
         pcall(o.copy.SetFont, o.copy, f, sz, fl)
         pcall(o.pct.SetFont, o.pct, f, sz, fl)
+        pcall(o.lvl.SetFont, o.lvl, f, sz, fl)
     end
+    pcall(o.lvl.ClearAllPoints, o.lvl)
+    pcall(o.lvl.SetJustifyH, o.lvl, "RIGHT")
+    pcall(o.lvl.SetPoint, o.lvl, "RIGHT", o.ours, "LEFT", -4, 0)
     pcall(o.copy.ClearAllPoints, o.copy)
     pcall(o.copy.SetJustifyH, o.copy, "CENTER")     -- the same text, so its centre falls on ours
     pcall(o.copy.SetPoint, o.copy, "CENTER", o.ours, "CENTER", 0, 0)
@@ -229,6 +235,7 @@ function NH.show(uf, unit, opts)
     else
         o.pct:Hide()
     end
+    NH.level(uf, unit, o, opts.level)
     -- this plate's own unit events, on OUR frame: the old unit's go before the new ones
     o.unit = unit
     pcall(o.ev.UnregisterAllEvents, o.ev)
@@ -244,6 +251,34 @@ function NH.show(uf, unit, opts)
     end
     pcall(N.hide, name)
     return true
+end
+
+-- The level of a player. The game hides its own level badge on a friendly player's plate while the name-only setting is on
+-- (NameplateLevelFrameMixin:ShouldDisplay), so the level is written here, left of the name, in the game's own colour for a
+-- friendly unit. It is only written when the game's badge is not shown (else the number would be there twice). The level is a
+-- secret for our code: it goes straight to SetFormattedText and is never tested.
+function NH.level(uf, unit, o, want)
+    if not (o and o.lvl) then return end
+    o.lvl:Hide()
+    if not want or type(unit) ~= "string" or not UnitEffectiveLevel then return end
+    local badge = uf.PlayerLevelDiffFrame
+    if type(badge) == "table" and badge.IsShown then
+        local okb, up = pcall(badge.IsShown, badge)
+        if not okb or plain(up) == true then return end
+    end
+    if UnitIsPlayer then
+        local ok, isPlayer = pcall(UnitIsPlayer, unit)
+        if not ok or plain(isPlayer) ~= true then return end
+    end
+    local okl, lvl = pcall(UnitEffectiveLevel, unit)
+    if not okl then return end
+    local v = plain(lvl)
+    if v ~= nil and (type(v) ~= "number" or v <= 0) then return end   -- a plain skull level (?? / boss) is left to the game
+    local c = UNIT_LEVEL_NON_ATTACKABLE
+    local r, g, b = 1, 0.82, 0
+    if type(c) == "table" and type(c.r) == "number" and type(c.g) == "number" and type(c.b) == "number" then r, g, b = c.r, c.g, c.b end
+    pcall(o.lvl.SetTextColor, o.lvl, r, g, b)
+    if pcall(o.lvl.SetFormattedText, o.lvl, "%d", lvl) then o.lvl:Show() end
 end
 
 -- health changed: the bar value and the percent text, nothing else
@@ -269,6 +304,7 @@ function NH.clear(uf)
     if not o then return end
     o.shown = false
     o.showHealth, o.showPct = false, false
+    if o.lvl then o.lvl:Hide() end
     if o.nf then o.nf:Hide() end
     if o.clip then o.clip:Hide() end
     if o.sb then o.sb:Hide() end
