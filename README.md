@@ -32,6 +32,34 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 
 *Travelling: on a flight path the interface fades out completely.*
 
+![Out of combat while questing: only the gamepad row and the player frame are on screen, and an ability's tooltip shows when you point at it.](docs/images/out-of-combat-tooltip.jpg)
+
+*Out of combat: the gamepad row and little else. Pointing at a button shows its tooltip.*
+
+![In combat: the target frame, the experience bar and the minimap come back, with the gamepad row at the bottom.](docs/images/in-combat.jpg)
+
+*In combat the target frame, experience bar and minimap come back by themselves.*
+
+![The mailbox opened with a controller: the gold highlight on a letter and a legend under the window (A Select, B Close, X Take all, bumpers change tab), with the bags open.](docs/images/controller-mailbox.jpg)
+
+*The game's own windows with a controller: a highlight moves with the D-pad and a legend under the window says what each button does. X takes everything from the mail.*
+
+![The Y menu on a poison in the bags: Use, Use on Main hand, Use on Off hand, Pick up, Delete and Sort bags.](docs/images/item-menu-poison.jpg)
+
+*Y on a bag item opens a menu: a poison can go straight onto your main hand or off hand weapon.*
+
+![The Y menu on an armor kit: Use on Chest, Legs, Feet or Hands, each naming the item it goes on.](docs/images/item-menu-armor-kit.jpg)
+
+*An armor kit offers every piece of gear it can go on, by name.*
+
+![The character window: A on a gear slot opened the equipment flyout, with the game's compare tooltip beside it.](docs/images/equipment-flyout.jpg)
+
+*On the character window, A on a gear slot opens the game's equipment flyout to swap pieces, with the compare tooltip.*
+
+![The spellbook: Y on a spell offers Bind to action bar.](docs/images/spellbook-bind.jpg)
+
+*Y on a spell in the spellbook binds it to your action bar: press the button combination you want it on.*
+
 ## What it does now
 
 - Detects your controller and offers to set the default key binds the first time you play.
