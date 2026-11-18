@@ -280,3 +280,20 @@ function UF.cycleButton(b, step, after)
     b.ufBack = function() step(-1); if after then after() end end
     b:SetScript("OnClick", function(_, button) step(button == "RightButton" and -1 or 1); if after then after() end end)
 end
+
+-- The highlight colour shared by the game-window highlight (GameNav.lua) and our own windows (Nav.lua): a yellow tint over
+-- the game's own button highlight art (ButtonHilight-Square, added to what is underneath) and a light yellow wash.
+UF.HIGHLIGHT = { glow = { 1, 0.82, 0.12, 1 }, wash = { 1, 0.8, 0.05, 0.3 } }
+function UF.tintHighlight(frame)
+    local h = UF.HIGHLIGHT
+    local glow = frame:CreateTexture(nil, "OVERLAY")
+    glow:SetAllPoints(frame)
+    glow:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+    glow:SetBlendMode("ADD")
+    glow:SetVertexColor(h.glow[1], h.glow[2], h.glow[3], h.glow[4])
+    local wash = frame:CreateTexture(nil, "ARTWORK")
+    wash:SetAllPoints(frame)
+    wash:SetColorTexture(h.wash[1], h.wash[2], h.wash[3], h.wash[4])
+    wash:SetBlendMode("ADD")
+    return glow, wash
+end

@@ -331,16 +331,8 @@ local function getCursor()
     cursor:SetFrameStrata("TOOLTIP")
     cursor:EnableMouse(false)
     -- A glow over the button, like the game's own button highlight (its ButtonHilight-Square art, added to what is
-    -- underneath) plus a faint warm wash so it shows on any button. No outline.
-    local glow = cursor:CreateTexture(nil, "OVERLAY")
-    glow:SetAllPoints(cursor)
-    glow:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
-    glow:SetBlendMode("ADD")
-    glow:SetVertexColor(1, 0.9, 0.55, 1)
-    local wash = cursor:CreateTexture(nil, "ARTWORK")
-    wash:SetAllPoints(cursor)
-    wash:SetColorTexture(1, 0.85, 0.4, 0.22)
-    wash:SetBlendMode("ADD")
+    -- underneath) with a yellow tint and a light yellow wash so it shows on any button (UF.HIGHLIGHT, Core.lua). No outline.
+    UF.tintHighlight(cursor)
     cursor:Hide()
     return cursor
 end

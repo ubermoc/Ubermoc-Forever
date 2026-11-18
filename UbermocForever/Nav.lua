@@ -211,12 +211,36 @@ end
 -- button in that row closest across), left and right move within a row. A button may carry .navRow (a row frame to
 -- highlight with it) and .navScroll (a scroll frame to keep it in view).
 ----------------------------------------------------------------------
+-- A yellow tint over the highlighted button, the same as on the game's windows (UF.HIGHLIGHT, Core.lua), on top of the
+-- button's own highlight. One overlay frame, moved to whichever button has the highlight; it never takes the mouse.
+local tint
+local function tintOn(b)
+    if not tint then
+        tint = CreateFrame("Frame", "UbermocForeverNavTint", UIParent)
+        tint:SetFrameStrata("TOOLTIP")
+        if tint.EnableMouse then tint:EnableMouse(false) end
+        UF.tintHighlight(tint)
+        -- it belongs to UIParent, so it hides itself when its button goes (a window closed without clearing the highlight)
+        tint:SetScript("OnUpdate", function(self)
+            local t = self.target
+            if not (t and t.IsVisible and t:IsVisible()) then self:Hide() end
+        end)
+    end
+    tint.target = b
+    tint:ClearAllPoints()
+    tint:SetPoint("TOPLEFT", b, "TOPLEFT", -1, 1)
+    tint:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 1, -1)
+    tint:Show()
+end
+
 local function lock(b, on)
     if not b then return end
     if on then
         if b.LockHighlight then b:LockHighlight() end
+        pcall(tintOn, b)
     else
         if b.UnlockHighlight then b:UnlockHighlight() end
+        if tint then tint:Hide() end
     end
     local row = b.navRow
     if row then

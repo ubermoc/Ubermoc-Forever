@@ -1,3 +1,6 @@
+UbermocForever 1.3.116
+- Changed: the highlight has a clear yellow tint: on the game's windows (bags, mail, character, menus) the glow is gold with a light yellow wash instead of pale cream, and our own windows (options, question windows, the item menu's parent windows) get the same yellow tint over the button's own highlight. The colour is set in one place (UF.HIGHLIGHT, Core.lua). Untested in the game.
+
 UbermocForever 1.3.115
 - Added: Y on a locked box in your bags (lockboxes, junkboxes) offers Pick Lock when your character knows it, with the Lockpicking skill it needs ("Pick Lock (needs 75)"). A casts Pick Lock on the box. The box is known to be locked by the "Locked" line on its tooltip, so an opened box is not offered. Untested in the game.
 
