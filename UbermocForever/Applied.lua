@@ -103,14 +103,3 @@ function A.kindFor(slots)
     end
     return "temporary"
 end
-
--- one chat line when the game starts waiting for a target: which of your weapons already carry something temporary
-function A.report(say)
-    local parts = {}
-    for _, e in ipairs({ { 16, "Main hand" }, { 17, "Off hand" }, { 18, "Ranged" } }) do
-        local t = A.text(e[1], "temporary")
-        if t then parts[#parts + 1] = e[2] .. " " .. t end
-    end
-    if #parts > 0 and say then say("Applying: " .. table.concat(parts, "; ") .. ".") end
-    return parts
-end
