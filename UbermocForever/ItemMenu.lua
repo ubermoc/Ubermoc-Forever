@@ -353,6 +353,23 @@ local function itemName(link, fallback)
     return link and link:match("%[(.-)%]") or fallback
 end
 
+-- An entry that puts something on a worn piece. When the piece already carries what this would replace (Applied.lua), the
+-- entry opens the "are you sure?" question in the middle of the screen (ApplyConfirm.lua) instead of applying at once; A there
+-- is yes, B is no. Otherwise (nothing there, or in combat where the question cannot be set up) it applies as before.
+local function useOn(label, macro, target, kind, what, pieceName)
+    local warn = UF.Applied and UF.ApplyConfirm and UF.Applied.text(target.slot, kind)
+    if warn and not (InCombatLockdown and InCombatLockdown()) then
+        return add(label, nil, function()
+            UF.ApplyConfirm.ask({
+                title = "Replace what is on it?",
+                text = string.format("%s (%s) %s.\n\nUsing %s on it will replace that.\n\nContinue?", pieceName or target.name, target.name, warn, what),
+                macro = macro,
+            })
+        end)
+    end
+    return add(label, { type = "macro", macrotext = macro })
+end
+
 -- Put the menu beside the highlighted button: on the right when it fits on the screen, otherwise on the left, and when
 -- neither side has room, on the side with more room; always kept on the screen.
 function M.place(btn)
@@ -603,8 +620,8 @@ local function openBag(btn)
         local kind = UF.Applied.kindFor(M.targets(itemID) or { 16, 17 })
         for _, w in ipairs(equippedTargets(itemID)) do
             local link = GetInventoryItemLink and GetInventoryItemLink("player", w.slot)
-            add("Use on " .. w.name .. ": " .. itemName(link, "item") .. UF.Applied.hint(w.slot, kind),
-                { type = "macro", macrotext = "/use " .. bag .. " " .. slot .. "\n/use " .. w.slot })
+            useOn("Use on " .. w.name .. ": " .. itemName(link, "item"), "/use " .. bag .. " " .. slot .. "\n/use " .. w.slot,
+                w, kind, itemName(info.hyperlink, "this item"), itemName(link, w.name))
         end
     end
 
@@ -681,9 +698,11 @@ local function openEquip(btn)
                 for _, sl in ipairs(M.targets(e.itemID) or { 16, 17 }) do
                     if sl == id or (sl == 11 and id == 12) then fits = true end
                 end
-                if fits then add("Use " .. itemName(e.link, "item") .. ((e.count and e.count > 1) and (" (" .. e.count .. ")") or "")
-                        .. UF.Applied.hint(id, UF.Applied.kindFor(M.targets(e.itemID) or { 16, 17 })),
-                    { type = "macro", macrotext = "/use " .. e.bag .. " " .. e.slot .. "\n/use " .. id }) end
+                if fits then
+                    useOn("Use " .. itemName(e.link, "item") .. ((e.count and e.count > 1) and (" (" .. e.count .. ")") or ""),
+                        "/use " .. e.bag .. " " .. e.slot .. "\n/use " .. id, { slot = id, name = SLOT_NAMES[id] or ("Slot " .. id) },
+                        UF.Applied.kindFor(M.targets(e.itemID) or { 16, 17 }), itemName(e.link, "item"), itemName(link, "this piece"))
+                end
             end
         end
     end

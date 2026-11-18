@@ -8,7 +8,7 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
 
 - Detects your controller and offers to set the default key binds the first time you play.
 - Nameplates mark the units your active quests are about with the game's small quest icon and show how far the objective has got ("3/8"); two buttons on the Quality of life page switch the mark and the progress on or off.
-- Before you put a poison, oil, stone, armor kit or enchant on a piece you wear, the Y menu tells you if it already carries something that would be replaced, even a temporary poison with time left.
+- Before you put a poison, oil, stone, armor kit or enchant on a piece you wear, a question in the middle of the screen tells you if it already carries something that would be replaced, even a temporary poison with time left, and asks A for yes or B for no.
 - B cancels the "pick the item it goes on" state after you use a poison, oil, armor kit or enchant from a bag (out of combat), so a controller player never needs the mouse to back out.
 - The options window explains itself: a panel at the bottom describes the setting the highlight is on, and every setting has a description in plain words (the mouse tooltip says the same).
 - Default binds in four layers (nothing held, Shift button held, Ctrl button held, both). Steam Deck and Steam Controller hold R4 and R5; every other controller holds the triggers. Bumpers target the nearest enemy and friend; Select is the map (with Shift all bags, with Ctrl the character panel, with both the spellbook); interact and jump are on the back buttons.
