@@ -115,7 +115,7 @@ function QP.build(parent, inset)
     tip(rangeBtn, "Increased plate range", "The game draws nameplates only up to a set distance: 45 yards for NPCs and 40 for players. On sets both to 45, so player plates reach as far as NPC plates. Off gives back the values you had. Nothing farther than 45 is drawn.")
     tip(questBtn, "Quest mobs", "A small quest mark appears beside the name of a unit that one of your active quests is about, so you can tell which mobs count. A unit whose objectives are all done is not marked. A switches it on or off.")
     tip(questTextBtn, "Quest progress", "Writes how far the quest objective has got next to the quest mark, for example 3/8 or 45%. It is the same line the unit's tooltip shows. A switches it on or off.")
-    tip(levelBtn, "Friendly level", "The game hides the level of a friendly player when its name-only nameplate setting is on, which the Friendly: name only button above switches on. On draws the level number to the left of the name, in grey. Only for friendly players with name-only on; everyone else keeps the game's own level. A switches it on or off.")
+    tip(levelBtn, "Friendly level", "The game hides the level of a friendly player when its name-only nameplate setting is on, which the Friendly: name only button above switches on. On draws the level number in the same place the game puts it on every other nameplate. Only for friendly players with name-only on; everyone else keeps the game's own level. A switches it on or off.")
     note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The plate range row writes the game's distance settings, and Off gives back the values you had before. The quest mark and progress work on every nameplate.", -376)
 
     QP.refresh()

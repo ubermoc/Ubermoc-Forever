@@ -4,8 +4,11 @@
 -- ShouldDisplay) answers "no" for a friendly player while the game's setting nameplateShowOnlyNameForFriendlyPlayerUnits is
 -- on (lines 9-11), and the "Friendly: name only" option (Nameplates.lua) switches exactly that setting on. NPCs and enemies
 -- keep their level (the same function answers yes for them).
--- So for those plates we draw the level ourselves: our own font string, to the left of the name, in the game's colour for a
--- unit you cannot attack (UNIT_LEVEL_NON_ATTACKABLE, used by CompactUnitFrame_UpdateLevel, CompactUnitFrame.lua:1726-1728).
+-- So for those plates we draw the level ourselves, in the SAME PLACE as everyone else's: our font string is centred on the
+-- game's own level frame (LevelFrame, which the game anchors under the right end of the name row,
+-- Blizzard_NamePlateUnitFrame.lua:882-888), with the game's level font (SystemFont_NamePlateLevel, Blizzard_NamePlates.xml:278)
+-- and its colour for a unit you cannot attack (UNIT_LEVEL_NON_ATTACKABLE, CompactUnitFrame.lua:1726-1728). Only when a plate has
+-- no LevelFrame is it put to the left of the name.
 -- The level comes from UnitLevel(unit), whose documentation gives no secret return (UnitDocumentation.lua:2474-2490); a secret
 -- or odd answer shows nothing. 0 or less is a unit too high to tell ("??"), as the game's own skull stands for.
 -- Nothing is written on a game frame; our font string is a child of the plate's unit frame, so the plate's fading carries over.
@@ -59,8 +62,10 @@ function PL.make(uf)
     local okF, holder = pcall(CreateFrame, "Frame", nil, uf)
     if not okF or not holder then return nil end
     local o = { holder = holder }
-    o.fs = holder:CreateFontString(nil, "OVERLAY", "SystemFont_NamePlate")
-    if uf.name then
+    o.fs = holder:CreateFontString(nil, "OVERLAY", "SystemFont_NamePlateLevel")
+    if type(uf.LevelFrame) == "table" then
+        pcall(o.fs.SetPoint, o.fs, "CENTER", uf.LevelFrame, "CENTER", 0, 0)
+    elseif uf.name then
         pcall(o.fs.SetPoint, o.fs, "RIGHT", uf.name, "LEFT", -4, 0)
     else
         pcall(o.fs.SetPoint, o.fs, "LEFT", uf, "LEFT", 0, 0)
