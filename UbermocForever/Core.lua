@@ -262,6 +262,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.ItemMenu and UF.GameNav then UF.ItemMenu.report(UF.GameNav.focusFrame()) end
     elseif msg == "tabs" then
         if UF.GameNav then UF.GameNav.report() end
+    elseif msg == "plates" then
+        if UF.PlateLevel then UF.PlateLevel.report() end
     elseif UF.ToggleOptions then
         UF.ToggleOptions()
     end
