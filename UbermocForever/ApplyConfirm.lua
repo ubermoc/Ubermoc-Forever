@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: "are you sure?" before something replaces what a worn piece already carries (UF.ApplyConfirm), 1.3.130.
--- In the middle of the screen: what the piece already has, what will replace it, A for yes and B for no, their pictures beside the buttons.
+-- In the middle of the screen: what the piece already has, what will replace it, A for yes and B for no, their pictures inside the buttons.
 --   * Yes is a SECURE button of ours (type "macro", the same two lines the menu entry would have run: "/use <bag> <slot>" then
 --     "/use <inventory slot>"), because using an item has to come from a real secure press. Its macro is set when the question is
 --     opened, which the game only allows out of combat; in combat the question is not asked (the caller applies at once).
@@ -13,7 +13,7 @@ local AC = {}
 UF.ApplyConfirm = AC
 
 local YES_NAME = "UbermocForeverApplyYes"
-local frame, titleFS, textFS, continueFS, yesBtn, noBtn, yesGlyph, noGlyph
+local frame, titleFS, textFS, continueFS, yesBtn, noBtn
 local entry
 
 local DEAD_KEYS = { "PADDUP", "PADDDOWN", "PADDLEFT", "PADDRIGHT", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER" }
@@ -50,24 +50,25 @@ local function build()
     continueFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     continueFS:SetPoint("BOTTOM", frame, "BOTTOM", 0, 62)
 
-    -- [A] Yes      [B] No: the controller's own pictures beside the buttons they answer
+    -- Yes and No, each with the controller's own picture inside the button ([A] Yes, [B] No). The picture is part of the label, so
+    -- it follows the controller in use (set every time the question opens) and a larger button font makes it large enough to read.
+    local function bigFont(b)
+        if b.SetNormalFontObject and _G.GameFontNormalLarge then b:SetNormalFontObject("GameFontNormalLarge") end
+        if b.SetHighlightFontObject and _G.GameFontHighlightLarge then b:SetHighlightFontObject("GameFontHighlightLarge") end
+    end
     yesBtn = CreateFrame("Button", YES_NAME, frame, "SecureActionButtonTemplate,UIPanelButtonTemplate")
     yesBtn:RegisterForClicks("AnyUp")
     yesBtn:SetAttribute("useOnKeyDown", false)
     yesBtn:SetAttribute("type", "macro")
-    yesBtn:SetSize(130, 28)
-    yesBtn:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 80, 24)
-    yesBtn:SetText(YES or "Yes")
+    yesBtn:SetSize(160, 34)
+    yesBtn:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 70, 22)
+    bigFont(yesBtn)
     yesBtn:HookScript("PostClick", function() close() end)   -- after the macro ran
     noBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    noBtn:SetSize(130, 28)
-    noBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -70, 24)
-    noBtn:SetText(NO or "No")
+    noBtn:SetSize(160, 34)
+    noBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -70, 22)
+    bigFont(noBtn)
     noBtn:SetScript("OnClick", close)
-    yesGlyph = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    yesGlyph:SetPoint("RIGHT", yesBtn, "LEFT", -8, 0)
-    noGlyph = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    noGlyph:SetPoint("RIGHT", noBtn, "LEFT", -8, 0)
     frame:SetScript("OnHide", function() if entry and UF.Nav then UF.Nav.Pop(entry); entry = nil end end)
     if UISpecialFrames then table.insert(UISpecialFrames, "UbermocForeverApplyConfirm") end   -- Escape says no
     frame:Hide()
@@ -83,8 +84,8 @@ function AC.ask(info)
     titleFS:SetText(info.title or "Are you sure?")
     textFS:SetText(info.text or "")
     continueFS:SetText(info.question or "Continue?")
-    yesGlyph:SetText(UF.glyph and UF.glyph("PAD1") or "A")   -- follows the controller in use
-    noGlyph:SetText(UF.glyph and UF.glyph("PAD2") or "B")
+    yesBtn:SetText((UF.glyph and UF.glyph("PAD1") or "A") .. " " .. (YES or "Yes"))   -- follows the controller in use
+    noBtn:SetText((UF.glyph and UF.glyph("PAD2") or "B") .. " " .. (NO or "No"))
     yesBtn:SetAttribute("macrotext", info.macro)
     frame:Show()
     if UF.Nav and not entry then
