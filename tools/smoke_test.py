@@ -835,6 +835,17 @@ r = L("""function()
 end""")()
 assert str(r) == "nobar|bar|nobar|bags=true;bags=false|3/33/false,5/35/true,nil,bagslot", r
 print("Bag bar: reachable while bags are open, kept visible then, its bag slots get the bag menu: OK")
+# Pick Lock: a locked box is told by its tooltip ("Locked", "Requires Lockpicking (N)"); an opened one is not offered
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    local function lines(...) local t = {}; for _, v in ipairs({ ... }) do t[#t + 1] = { leftText = v } end; return t end
+    local a1, a2 = M.lockInfo(lines("Battered Junkbox", "Item Level 20", "Locked", "Requires Lockpicking (1)"))
+    local b1, b2 = M.lockInfo(lines("Ornate Bronze Lockbox", "Item Level 20", "Requires Lockpicking (75)"))   -- opened: no "Locked" line
+    local c1, c2 = M.lockInfo(lines("Linen Cloth", "Max Stack: 20"))
+    return tostring(a1) .. tostring(a2) .. "|" .. tostring(b1) .. tostring(b2) .. "|" .. tostring(c1) .. tostring(c2)
+end""")()
+assert str(r) == "true1|false75|falsenil", r
+print("Pick Lock: locked boxes told apart from opened ones by their tooltip: OK")
 # Binding a spell by pressing buttons: a combination with a slot, one with no bind, one used for something else
 r = L("""function()
     local G = UbermocForever.GameNav

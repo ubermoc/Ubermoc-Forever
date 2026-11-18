@@ -1,3 +1,6 @@
+UbermocForever 1.3.115
+- Added: Y on a locked box in your bags (lockboxes, junkboxes) offers Pick Lock when your character knows it, with the Lockpicking skill it needs ("Pick Lock (needs 75)"). A casts Pick Lock on the box. The box is known to be locked by the "Locked" line on its tooltip, so an opened box is not offered. Untested in the game.
+
 UbermocForever 1.3.114
 - Added: while your bags are open, the highlight can move onto the bag bar beside the micro menu (it shows while you do, even when its fading hides it). Y on a bag slot there lists the bags you carry that fit it (a reagent bag for the reagent slot), biggest first, each with how many slots it gains or loses in green or red; A puts it there. "Open this bag" opens that bag. A chat line warns when the bag in the slot still holds items. Untested in the game.
 

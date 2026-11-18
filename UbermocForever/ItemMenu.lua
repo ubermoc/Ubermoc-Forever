@@ -244,6 +244,30 @@ local function spellName(id)
     end
 end
 
+-- A locked item in the bags (lockboxes, junkboxes): its tooltip has a "Locked" line (the game's LOCKED) and
+-- "Requires Lockpicking (N)" (seen on Wowhead's Classic tooltips: Battered Junkbox 16882, Ornate Bronze Lockbox 4632);
+-- the "Locked" line goes once it is opened. Returns locked, and the skill it needs when the tooltip says.
+local PICK_LOCK = 1804   -- the rogue's Pick Lock ("Allows opening of locked chests and doors.")
+function M.lockInfo(lines)
+    local locked, need = false, nil
+    local word = LOCKED or "Locked"
+    for _, l in ipairs(lines or {}) do
+        local t = l.leftText
+        if type(t) == "string" then
+            if t == word then locked = true end
+            local n = t:match("Lockpicking %((%d+)%)")
+            if n then need = tonumber(n) end
+        end
+    end
+    return locked, need
+end
+local function bagLock(bag, slot)
+    if not (C_TooltipInfo and C_TooltipInfo.GetBagItem) then return false end
+    local ok, data = pcall(C_TooltipInfo.GetBagItem, bag, slot)
+    if not ok or not data then return false end
+    return M.lockInfo(data.lines)
+end
+
 function M.professionFor(spellId, itemID, count)
     local classID, subClassID = instant(itemID)
     if spellId == 13262 then   -- Disenchant: green to epic weapons and armour
@@ -580,6 +604,15 @@ local function openBag(btn)
             local link = GetInventoryItemLink and GetInventoryItemLink("player", w.slot)
             add("Use on " .. w.name .. ": " .. itemName(link, "item"),
                 { type = "macro", macrotext = "/use " .. bag .. " " .. slot .. "\n/use " .. w.slot })
+        end
+    end
+
+    -- a locked box and a rogue who can pick it: cast Pick Lock on it
+    if knownSpell(PICK_LOCK) then
+        local locked, need = bagLock(bag, slot)
+        local n = locked and spellName(PICK_LOCK)
+        if n then
+            add(n .. (need and (" (needs " .. need .. ")") or ""), { type = "macro", macrotext = "/cast " .. n .. "\n/use " .. bag .. " " .. slot })
         end
     end
 
