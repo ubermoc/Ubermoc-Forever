@@ -12,7 +12,7 @@ templates, one feature at a time, research with sources first, short answers, be
 The author's other addon, UbermocUI (repo `ubermoc/Ubermoc-UI`), is checked out next to this repo at `~/Downloads/Ubermoc/Ubermoc-UI` (reference for how he builds things; its own `CLAUDE.md` has its rules).
 Repo `ubermoc/Ubermoc-Forever`, working branch `claude/affectionate-cray-lhlr0j`, releases are cut from `main`.
 
-## Confirmed in the game by the user (2026-11-17, 22 items)
+## Confirmed in the game by the user (2026-11-18: everything through 1.3.125; 2026-11-17: 22 items through 1.3.103)
 The gamepad layout through 1.3.93 (rows, art hidden, glyphs, cooldowns, range hue, Other binds, Bars page), the question windows (move bars, switched-off bar), the Fading page changes, the auction house Y entries (Sell at auction, Create auction), the Select + modifier default binds, the fresh start. Later the same day he confirmed 1.3.94 (icon slots for binds to another layer's button, L3/R3), 1.3.95 (XP bar parts removed) and 1.3.96 (end caps option removed): everything through 1.3.103 is tested. Released as 1.3.103 on 2026-11-17 (GitHub and CurseForge, description updated); 1.3.97 to 1.3.103 were released with offline tests only. 1.3.111 released on 2026-11-18 on GitHub and CurseForge (uploaded, waiting for approval; description updated with the Quality of life page, fast loot and the vendor features); 1.3.104 to 1.3.111 offline tests only.
 
 ## Current state (version in `UbermocForever/UbermocForever.toc`, history in `CHANGELOG.txt`)
