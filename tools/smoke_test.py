@@ -1893,8 +1893,8 @@ for bad in ["hooksecurefunc", "OnUpdate", "GetText", "GetStringWidth", "GetWidth
             "SetShowOnlyName", "RegisterEvent", "UpdateShownState", "UpdateAnchors", "UpdateName",
             "SetAlpha", "GetAlpha", "SetCVar"]:
     assert bad not in src, "NameHealth.lua contains " + bad
-assert src.count("UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)") == 2, src.count("UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)")
-assert src.count("pcall(UnitHealthPercent, unit, false, CurveConstants.ScaleTo100)") == 1
+assert src.count("pcall(UnitHealthPercent, unit, false, CurveConstants.ScaleTo100)") == 2, src.count("pcall(UnitHealthPercent, unit, false, CurveConstants.ScaleTo100)")
+assert src.count("UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)") == 0, "UnitHealthPercent must only be called inside pcall"
 assert src.count("RegisterUnitEvent") == 2, src.count("RegisterUnitEvent")
 print("NameHealth: no hook, no OnUpdate, nothing read of our strings or the bar, no health numbers, the secret "
       "values go straight to SetText and SetValue, Show/Hide only through Nameplates: OK")
@@ -1989,7 +1989,7 @@ r = L("""function()
         uf.name = obj("gamename", "name", m)
         uf.name.alpha = 0.8
         uf.name.GetJustifyH = function() return "CENTER" end
-        uf.name.GetFont = function() return "Arial", 12, 0 end
+        uf.name.GetFont = function() return "Arial", 12, "OUTLINE" end   -- the flags are text, as the game returns them
         rr.name = uf.name; rr.uf = uf
         return { namePlateUnitToken = unit, UnitFrame = uf }
     end
@@ -2084,7 +2084,7 @@ expected = ("colors=0.8,0.6,0.4;1,0.85,0.1;0.55,0.55,0.55;1,0.85,0.1;0.15,0.8,0.
             "m1=true,true,true,true,true,true,fs1+fs2+name,0 | "
             "anchors=CENTER/name/CENTER|CENTER/fs1/CENTER|LEFT/fs1/RIGHT|TOPLEFT/fs1/TOPLEFT,"
             "BOTTOMRIGHT/fs1/BOTTOMRIGHT|TOPLEFT/tex/TOPRIGHT,BOTTOMRIGHT/f3/BOTTOMRIGHT | "
-            "look=Arial,12,0,Arial,12,0,Arial,12,0,CENTER,CENTER,LEFT,0.85,0.15,0.15,1,1,1,0.85,0.15,0.15,"
+            "look=Arial,12,OUTLINE,Arial,12,OUTLINE,Arial,12,OUTLINE,CENTER,CENTER,LEFT,0.85,0.15,0.15,1,1,1,0.85,0.15,0.15,"
             "true,2,true,Interface\\Buttons\\WHITE8x8,1,1,1,0,0-100 | "
             "ours=true,nil,nil,nil,nil,nil,nil,true,true,true | events=target,target,1 | otherunit=1,1 | "
             "ownunit=2,2 | clear=0.8,2 | afterclear=2 | reuse=focus,2 | nopercent=false,0.8,0 | "
@@ -2093,6 +2093,96 @@ expected = ("colors=0.8,0.6,0.4;1,0.85,0.1;0.55,0.55,0.55;1,0.85,0.1;0.15,0.8,0.
 assert str(r) == expected, r
 print("NameHealth: the name is the bar (white ghost under a clip), the secret name and percent only pass "
       "through, the game's name is hidden only after ours is in place, a refused call leaves it visible: OK")
+
+# NameHealth, found in review (1.3.119): the game's font flags are TEXT (a number made ours never get a font, and a text without
+# a font raises "Font not set", so the new name never showed); UnitHealthPercent can raise for a restricted unit and must not
+# escape; one failing plate must not stop the others; the unit in a health event can be a secret and must not be compared.
+r = L("""function()
+    local NH, N = UbermocForever.NameHealth, UbermocForever.Nameplates
+    local saved = { UbermocForeverDB, CreateFrame, issecretvalue, UnitName, UnitHealthPercent, CurveConstants, UnitReaction,
+                    UnitCanAttack, C_NamePlate, STANDARD_TEXT_FONT, N.style }
+    UbermocForeverDB = { plates = { enemy = true, friendly = false, health = true, percent = true } }
+    issecretvalue = function(v) return (type(v) == "table" and v.secret == true) or v == "secret-unit" end
+    local PCT, PCT2 = { secret = true }, { secret = true }
+    local pctNow, pctRaises = PCT, false
+    UnitName = function() return { secret = true } end
+    UnitHealthPercent = function() if pctRaises then error("restricted unit") end return pctNow end
+    CurveConstants = { ScaleTo100 = {} }
+    UnitReaction = function() return 1 end
+    UnitCanAttack = function() return true end
+    STANDARD_TEXT_FONT = "Fonts/FRIZQT__.TTF"
+    local created = {}
+    local noop = function() end
+    local function new(kind)
+        local t = { kind = kind, scripts = {} }
+        return setmetatable(t, { __index = function(self, k)
+            if k == "CreateFontString" then return function() return new("fs") end end
+            if k == "GetStatusBarTexture" then return function() return new("tex") end end
+            if k == "GetFrameLevel" then return function() return 5 end end
+            if k == "SetScript" then return function(s, n, f) s.scripts[n] = f end end
+            if k == "SetFont" then return function(s, f) s.font = f end end
+            if k == "SetText" then return function(s, x) if not s.font then error("Font not set") end s.text = x end end
+            if k == "SetFormattedText" then return function(s, f, x) if not s.font then error("Font not set") end s.fmt = x end end
+            if k == "SetValue" then return function(s, v) s.value = v end end
+            if k == "SetAlpha" then return function(s, a) s.alpha = a end end
+            if k == "GetAlpha" then return function(s) return s.alpha or 1 end end
+            if type(k) == "string" and k:match("^%u") then return noop end   -- a method; lowercase names are plain data
+            return nil
+        end })
+    end
+    CreateFrame = function(kind) local t = new(kind); created[#created + 1] = t; return t end
+    local function plate(fontCall)
+        local uf = { unit = "target", name = new("name") }
+        uf.name.GetJustifyH = function() return "CENTER" end
+        uf.name.GetFont = fontCall
+        return { namePlateUnitToken = "target", UnitFrame = uf }
+    end
+    local out = {}
+    -- 1: the font exactly as the game returns it (flags are text): ours gets a font, shows, and the game's name goes
+    local p1 = plate(function() return "Fonts/ARIALN.TTF", 14, "OUTLINE" end)
+    local ok1, shown1 = pcall(NH.show, p1.UnitFrame, "target", { health = true, percent = true })
+    out[#out + 1] = "realfont=" .. tostring(ok1) .. "," .. tostring(shown1) .. "," .. tostring(p1.UnitFrame.name.alpha)
+    -- 2: flags "" (none) are text too
+    local p2 = plate(function() return "Fonts/ARIALN.TTF", 14, "" end)
+    out[#out + 1] = "noflags=" .. tostring(NH.show(p2.UnitFrame, "target", { health = true, percent = true }))
+    -- 3: the name's font cannot be read: the game's standard font; and with no standard font at all the game's name stays
+    local p3 = plate(function() return nil end)
+    out[#out + 1] = "unreadable=" .. tostring(NH.show(p3.UnitFrame, "target", { health = true, percent = true }))
+    STANDARD_TEXT_FONT = nil
+    local p4 = plate(function() return nil end)
+    out[#out + 1] = "nofont=" .. tostring(NH.show(p4.UnitFrame, "target", { health = true, percent = true })) .. "," .. tostring(p4.UnitFrame.name.alpha)
+    STANDARD_TEXT_FONT = "Fonts/FRIZQT__.TTF"
+    -- 4: UnitHealthPercent raises: nothing escapes, ours is not shown, the game's name is untouched
+    pctRaises = true
+    local p5 = plate(function() return "Fonts/ARIALN.TTF", 14, "OUTLINE" end)
+    local ok5, shown5 = pcall(NH.show, p5.UnitFrame, "target", { health = true, percent = true })
+    out[#out + 1] = "raises=" .. tostring(ok5) .. "," .. tostring(shown5) .. "," .. tostring(p5.UnitFrame.name.alpha)
+    pctRaises = false
+    -- 5: one plate failing does not stop the others
+    local calls = 0
+    N.style = function(pl) calls = calls + 1; if calls == 1 then error("boom") end end
+    C_NamePlate = { GetNamePlates = function() return { {}, {}, {} } end }
+    N.applyAll()
+    N.style = saved[11]
+    out[#out + 1] = "applyall=" .. calls
+    -- 6: the health event hands a secret unit: no error, and the value still updates
+    local p6 = plate(function() return "Fonts/ARIALN.TTF", 14, "OUTLINE" end)
+    NH.show(p6.UnitFrame, "target", { health = true, percent = true })
+    local n = #created
+    local sb, ev
+    for i = n, 1, -1 do local f = created[i]; if f.kind == "StatusBar" and not sb then sb = f end; if f.scripts.OnEvent and not ev then ev = f end end
+    pctNow = PCT2
+    local ok6 = pcall(ev.scripts.OnEvent, ev, "UNIT_HEALTH", "secret-unit")   -- a secret string: type() says "string"
+    out[#out + 1] = "secretunit=" .. tostring(ok6) .. "," .. tostring(sb.value == PCT2)
+    UbermocForeverDB, CreateFrame, issecretvalue, UnitName, UnitHealthPercent, CurveConstants, UnitReaction, UnitCanAttack,
+        C_NamePlate, STANDARD_TEXT_FONT = table.unpack(saved, 1, 10)
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "realfont=true,true,0|noflags=true|unreadable=true|nofont=false,nil|raises=true,false,nil|applyall=3|secretunit=true,true", r
+src = open(ADDON + "/Nameplates.lua", encoding="utf-8").read()
+assert 'RegisterEvent("NAME_PLATE_UNIT_REMOVED")' in src, "Nameplates.lua must register NAME_PLATE_UNIT_REMOVED, its handler is dead without it"
+print("NameHealth (review fixes): the font flags are text, an unreadable font falls back, a raising UnitHealthPercent is contained, "
+      "one failing plate does not stop the rest, a secret unit in a health event is not compared, REMOVED is registered: OK")
 
 # Fading page: elements the gamepad layout hides for good are not listed
 r = L("""function()

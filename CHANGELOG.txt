@@ -1,3 +1,6 @@
+UbermocForever 1.3.119
+- Fixed (found when reviewing 1.3.118; the test fakes had hidden all of these): the game gives a font's flags back as TEXT ("OUTLINE", or "" for none) and the new name only accepted a number, so it never got a font, the text call raised "Font not set" and the plate quietly kept the game's own name (nothing new would have shown). When the name's font cannot be read, the game's standard font is used. A restricted unit can make the health percent call itself raise: it is now asked inside pcall like every other call here. One plate failing no longer stops the others from being styled. A health event's unit can be a secret value; it is no longer compared. NAME_PLATE_UNIT_REMOVED is registered now (its handler was never reached). Untested in the game.
+
 UbermocForever 1.3.118
 - Added: on a name-only nameplate the name can be the health bar (`NameHealth.lua`): the name keeps its colour
   (class colour for a player when the class is readable, the reaction colour otherwise, grey when the unit is

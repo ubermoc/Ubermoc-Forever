@@ -124,7 +124,7 @@ function N.applyAll()
     if not (C_NamePlate and C_NamePlate.GetNamePlates) then return end
     local ok, plates = pcall(C_NamePlate.GetNamePlates)
     if not ok or type(plates) ~= "table" then return end
-    for _, plate in ipairs(plates) do N.style(plate) end
+    for _, plate in ipairs(plates) do pcall(N.style, plate) end   -- one plate failing must not stop the rest
 end
 
 -- a plate the game will not show us (includeForbidden defaults to false, NamePlateDocumentation.lua:11): nil, do nothing
@@ -132,7 +132,7 @@ local function styleFor(unit)
     if type(unit) ~= "string" or not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
     local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
     if not ok then return end
-    N.style(plate)
+    pcall(N.style, plate)
 end
 
 -- only the one CVar, only out of combat. The value the player had before we first wrote it is kept in the settings
@@ -172,6 +172,7 @@ local f = CreateFrame("Frame")
 N._frame = f   -- for the offline test
 f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 f:RegisterEvent("UNIT_FACTION")
+f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")   -- NameHealth: a plate that goes away lets go of its unit's health events
 f:RegisterEvent("PLAYER_LOGIN")
 f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")

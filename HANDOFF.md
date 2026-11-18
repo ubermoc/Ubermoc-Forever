@@ -152,3 +152,4 @@ Summarise the "Where it stands" paragraph and section 3 in a few lines, say whic
 them to run `git pull` and `bash tools/install.sh` (the last line should say version 0.2.1 or newer), restart the game,
 then send photos of: the Esc menu, the main window (the version is in the grey text in its header line), the picker
 after pressing Change, and the Checks output. Then ask whether `claude-remote.service` is running.
+, 1.3.119 (review fixes to the name as the health bar: font flags, contained errors, REMOVED registered).

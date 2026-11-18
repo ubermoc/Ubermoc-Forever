@@ -120,8 +120,9 @@ function NH.ensure(uf)
     pcall(o.tex.SetVertexColor, o.tex, 1, 1, 1, 0)   -- the fill is invisible: only its edge is used
     ev:SetScript("OnEvent", function(_, event, payload)
         if objs[uf] ~= o or not o.shown then return end
-        -- the payload can be a secret unit token: only a plain string may be compared
-        if type(payload) == "string" and type(o.unit) == "string" and payload ~= o.unit then return end
+        -- the payload can be a secret unit token (type() still says "string" for one): only a plain one may be compared
+        local who = plain(payload)
+        if type(who) == "string" and type(o.unit) == "string" and who ~= o.unit then return end
         NH.update(uf, o.unit)
     end)
     objs[uf] = o
@@ -153,8 +154,13 @@ function NH.show(uf, unit, opts)
     pcall(o.ours.SetJustifyH, o.ours, j)
     pcall(o.ours.ClearAllPoints, o.ours)
     pcall(o.ours.SetPoint, o.ours, j, name, j, 0, 0)
+    -- the game's own font, size and flags; the flags are TEXT ("OUTLINE", or "" for none), not a number. When they cannot be
+    -- read, the game's standard font: a text without any font raises "Font not set" and ours would never show
     local okf, f, sz, fl = pcall(name.GetFont, name)
-    if okf and type(f) == "string" and type(sz) == "number" and type(fl) == "number" then
+    if not (okf and type(f) == "string" and type(sz) == "number" and type(fl) == "string") then
+        f, sz, fl = STANDARD_TEXT_FONT, 12, "OUTLINE"
+    end
+    if type(f) == "string" then
         pcall(o.ours.SetFont, o.ours, f, sz, fl)
         -- the white copy must be the same font, else its letters do not fall on the coloured ones
         pcall(o.copy.SetFont, o.copy, f, sz, fl)
@@ -191,13 +197,20 @@ function NH.show(uf, unit, opts)
         NH.clear(uf)
         return false
     end
+    -- the health percent (a secret) is asked once, inside pcall (a restricted unit can make the call itself raise), and is only
+    -- passed on to SetValue and SetFormattedText
+    local okp, pct = pcall(UnitHealthPercent, unit, false, CurveConstants.ScaleTo100)
+    if not okp then
+        NH.clear(uf)
+        return false
+    end
     o.showHealth, o.showPct = opts.health, opts.percent
     if opts.health then
         if not pcall(o.sb.SetMinMaxValues, o.sb, 0, 100) then
             NH.clear(uf)
             return false
         end
-        if not pcall(o.sb.SetValue, o.sb, UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)) then
+        if not pcall(o.sb.SetValue, o.sb, pct) then
             NH.clear(uf)
             return false
         end
@@ -208,7 +221,7 @@ function NH.show(uf, unit, opts)
         o.clip:Hide()
     end
     if opts.percent then
-        if not pcall(o.pct.SetFormattedText, o.pct, "%.0f%%", UnitHealthPercent(unit, false, CurveConstants.ScaleTo100)) then
+        if not pcall(o.pct.SetFormattedText, o.pct, "%.0f%%", pct) then
             NH.clear(uf)
             return false
         end
