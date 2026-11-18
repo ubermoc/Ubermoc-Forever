@@ -1477,7 +1477,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,6/3/1/3/2/2/2,true,1", r
+assert str(r) == "1,2,3,2,1,5,6/3/1/3/2/2/1,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -1995,12 +1995,11 @@ for bad in ["hooksecurefunc", "OnUpdate", "SetPoint", "UnitHealth", "UnitName", 
 assert src.count("SetCVar") == 1, "SetCVar must be written in one place"
 print("Nameplates: no hook, no OnUpdate, no anchoring, no unit data, no Show/Hide, one SetCVar: OK")
 
-# Plate range: On writes the chosen distance to the game's two distance CVars, keeps what the player had and
-# gives it back on Off, nothing is written during combat and what waits is applied when the fight ends, a nil
-# or raising GetCVar writes nothing, and a setting that is On is applied again at login. FAKE(C1): the stub
-# SetCVar stands for C_CVar.SetCVar, which takes the cvar name and value as cstrings and only works on cvars
-# that are not read only and not secure. FAKE(C2): the stub values are the strings the game keeps, as Ketho's
-# Forever rows show ("45.000000" and "40.000000").
+# Plate range: On writes 45 to the game's two distance CVars, keeps what the player had and gives it back on Off, nothing
+# is written during combat and what waits is applied when the fight ends, a nil or raising GetCVar writes nothing, and a
+# setting that is On is applied again at login. FAKE(C1): the stub SetCVar stands for C_CVar.SetCVar, which takes the cvar
+# name and value as cstrings and only works on cvars that are not read only and not secure. FAKE(C2): the stub values are
+# the strings the game keeps, as Ketho's Forever rows show ("45.000000" and "40.000000").
 r = L("""function()
     local PR = UbermocForever.PlateRange
     local savedDB, oldGet, oldSet, oldLock = UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown
@@ -2011,15 +2010,12 @@ r = L("""function()
     local lock = false
     InCombatLockdown = function() return lock end
     local out = {}
-    UbermocForeverDB = {}                      -- fresh settings: Off, 60 yards
+    UbermocForeverDB = {}
     PR.pending = false
     PR.sync()                                  -- Off and never written: nothing is written
     out[#out + 1] = table.concat(wrote, ",")
-    PR.toggle()                                -- On: the player's values are remembered, both written
+    PR.toggle()                                -- On: the player's values are remembered, 45 written to both
     out[#out + 1] = table.concat(wrote, ",")
-    wrote = {}
-    PR.nextYards(1)                            -- 60 -> 65: rewritten, the remembered values stay
-    out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
     wrote = {}
     PR.toggle()                                -- Off: the player's values are given back
     out[#out + 1] = table.concat(wrote, ",")
@@ -2048,43 +2044,27 @@ r = L("""function()
     GetCVar = function() error("restricted") end
     PR.toggle()                                -- a raising GetCVar is survived, nothing written
     out[#out + 1] = table.concat(wrote, ",")
-    UbermocForeverDB = {}
-    PR.nextYards(1)                            -- stepping while Off writes nothing
-    out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
-    PR.nextYards(1); PR.nextYards(1); PR.nextYards(1)   -- 65 -> 70 -> 75 -> 80
-    out[#out + 1] = PR.name()
-    -- the steps: 30 to 100 by 5; a step wraps both ways; an odd saved value is stepped from 60; a fresh start is 60
-    UbermocForeverDB = {}
-    PR.db().yards = 100; PR.nextYards(1); local wrapUp = PR.name()
-    PR.nextYards(-1); local wrapDown = PR.name()
-    UbermocForeverDB = {}
-    PR.db().yards = 37; PR.nextYards(1); local odd = PR.name()
-    UbermocForeverDB = {}
-    local fresh = PR.name()
-    out[#out + 1] = wrapUp .. "/" .. wrapDown .. "/" .. odd .. "/" .. fresh .. "/" .. tostring(PR.STEPS[1] == 30 and PR.STEPS[#PR.STEPS] == 100) .. "," .. #PR.STEPS
-    -- a 1.3.123 setting saved an index into 30, 45, 60, 80, 100: it becomes that many yards
-    local mig = {}
-    for _, idx in ipairs({ 2, 3, 4, 5, 1 }) do
-        UbermocForeverDB = { platerange = { step = idx } }
-        mig[#mig + 1] = PR.name()
-    end
-    UbermocForeverDB = { platerange = { step = 9 } }
-    mig[#mig + 1] = PR.name()
-    out[#out + 1] = table.concat(mig, "/")
+    -- a distance saved by 1.3.123 / 1.3.124 is dropped and never written
+    cv.nameplateMaxDistance = "45.000000"
+    GetCVar = function(k) return cv[k] end
+    wrote = {}
+    UbermocForeverDB = { platerange = { on = true, yards = 100, step = 5 } }
+    PR.sync()
+    out[#out + 1] = table.concat(wrote, ",") .. "=" .. tostring(PR.db().yards) .. tostring(PR.db().step)
     UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown = savedDB, oldGet, oldSet, oldLock
     return table.concat(out, "|")
 end""")()
-want = ("|nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
-        "|65=nameplateMaxDistance=65,nameplatePlayerMaxDistance=65"
+want = ("|nameplateMaxDistance=45,nameplatePlayerMaxDistance=45"
         "|nameplateMaxDistance=45.000000,nameplatePlayerMaxDistance=40.000000"
         "|true="
-        "|false=nameplateMaxDistance=65,nameplatePlayerMaxDistance=65"
-        "||nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
-        "|nameplatePlayerMaxDistance=60=nil"
-        "||65=|80|30/100/65/60/true,15|45/60/80/100/30/60")
+        "|false=nameplateMaxDistance=45,nameplatePlayerMaxDistance=45"
+        "||nameplateMaxDistance=45,nameplatePlayerMaxDistance=45"
+        "|nameplatePlayerMaxDistance=45=nil"
+        "|"
+        "|nameplateMaxDistance=45,nameplatePlayerMaxDistance=45=nilnil")
 assert str(r) == want, (r, want)
-print("Plate range: writes both distance CVars, keeps and gives back the player's values, defers in combat, "
-      "survives a nil or raising GetCVar, applies an On setting at login: OK")
+print("Plate range: On writes 45 to both distance CVars, keeps and gives back the player's values, defers in combat, "
+      "survives a nil or raising GetCVar, applies an On setting at login, drops an old saved distance: OK")
 
 # NameHealth: nothing is read back from our strings or the bar, no health numbers, no hook, no game method
 src = open(ADDON + "/NameHealth.lua", encoding="utf-8").read()

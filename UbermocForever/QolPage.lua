@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, yardsBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -32,8 +32,7 @@ function QP.refresh()
     local pl = UF.NameHealth.db()
     healthBtn:SetText("Name shows health: " .. (pl.health and "On" or "Off"))
     percentBtn:SetText("Health percent: " .. (pl.percent and "On" or "Off"))
-    rangeBtn:SetText("Plate range: " .. (UF.PlateRange.enabled() and "On" or "Off"))
-    yardsBtn:SetText("Plate distance: " .. UF.PlateRange.name())
+    rangeBtn:SetText("Increased plate range: " .. (UF.PlateRange.enabled() and "On" or "Off"))
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -106,16 +105,13 @@ function QP.build(parent, inset)
     toggle(friendlyBtn, function() UF.Nameplates.toggle("friendly") end)
     toggle(healthBtn, function() UF.NameHealth.toggle("health") end)
     toggle(percentBtn, function() UF.NameHealth.toggle("percent") end)
-    rangeBtn = button(page, 150); rangeBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -320)
-    yardsBtn = button(page, 180); yardsBtn:SetPoint("LEFT", rangeBtn, "RIGHT", 6, 0)
+    rangeBtn = button(page, 220); rangeBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -320)
     toggle(rangeBtn, UF.PlateRange.toggle)
-    UF.cycleButton(yardsBtn, UF.PlateRange.nextYards, QP.refresh)
     tip(enemyBtn, "Enemies: name only", "An enemy nameplate shows its name and nothing else: the health bar and the highlight are made invisible (the level stays). Off puts the bar back.")
     tip(friendlyBtn, "Friendly: name only", "Friendly players: the game's own setting for that (Nameplates options) is switched on, and its previous value is kept so it can be given back. Friendly NPCs also get the bar made invisible, which the game cannot do by itself.")
     tip(healthBtn, "Name shows health", "On a name-only plate the name itself is the health bar: it keeps its colour (class colour for a player, reaction colour otherwise) for the health left, and the part standing for the health lost is white. Only while an Enemies or Friendly name-only option is on.")
     tip(percentBtn, "Health percent", "The current health percent is written to the right of the name, in the reaction colour. Only while a name-only option is on.")
-    tip(rangeBtn, "Plate range", "How far from the camera the game draws nameplates. On writes the number next to it into the game's distance settings (the game's own values are 45 yards for units and 40 for players, and there is no settings row for them); Off gives back the values you had before.")
-    tip(yardsBtn, "Plate distance", "30 to 100 yards in steps of 5 (60 to start). A steps forward, X steps back. Nothing is written during combat, and what waits is applied when the fight ends.")
+    tip(rangeBtn, "Increased plate range", "How far from the camera the game draws nameplates. On writes 45 yards into the game's distance settings (the game's own values are 45 yards for units and 40 for players, and there is no settings row for them); Off gives back the values you had before.")
     note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The distance row writes the game's distance settings, and Off gives back the values you had before.", -348)
 
     QP.refresh()
@@ -126,5 +122,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn, yardsBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn } }
 end

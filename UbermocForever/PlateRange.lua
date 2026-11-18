@@ -8,10 +8,11 @@
 -- not secure (CVarDocumentation.lua:131-148, claim C1), and GetCVarInfo flags nameplateMaxDistance as a
 -- character cvar, not secure (ForeverPlusPlus docs/forever-api.md:207, claim C3); the defaults are from
 -- Ketho's Forever cvar dump (claim C2). Values are strings, so we write tostring.
--- Quality of life page, under Nameplates: "Plate range: Off/On" and "Plate distance" (30 to 100 yards in steps of 5; 60 to start. Nothing
--- checked here shows the game keeps values above 60: Retail's own default is 60). On writes the number, Off gives back the value the
--- player had before we first wrote it. Nothing is written during combat and what waits is applied when the
--- fight ends, as in Nameplates.lua. Untested in the game.
+-- Quality of life page, under Nameplates: one button, "Increased plate range: Off/On". On writes 45 yards to both. The player
+-- tried 30 to 100 in 1.3.123 and 1.3.124: 30 shortened the range and 45 was the only value that did anything above it, so
+-- the distance steps were removed. (The game's own defaults are 45 for units and 40 for players, so On changes players only.)
+-- Off gives back the value the player had before we first wrote it. Nothing is written during combat and what waits is
+-- applied when the fight ends, as in Nameplates.lua. Untested in the game.
 -- Notes: docs/RESEARCH-NAVIGATION.md, "Nameplate distance (1.3.120)".
 ----------------------------------------------------------------------
 local _, UF = ...
@@ -19,9 +20,7 @@ local PR = {}
 UF.PlateRange = PR
 
 PR.CVARS = { "nameplateMaxDistance", "nameplatePlayerMaxDistance" }
-PR.STEPS = {}                                      -- 30 to 100 yards in steps of 5, so the user can find where the game stops
-for y = 30, 100, 5 do PR.STEPS[#PR.STEPS + 1] = y end
-local OLD_STEPS = { 30, 45, 60, 80, 100 }             -- 1.3.123 saved an index into this list
+PR.YARDS = 45                                     -- what On writes (what the user found works)
 PR.pending = false
 
 local function plain(v)
@@ -34,22 +33,13 @@ local function db()
     d.platerange = d.platerange or {}
     local p = d.platerange
     if p.on == nil then p.on = false end
-    if p.yards == nil then
-        -- 1.3.124 saves the yards themselves; an index saved by 1.3.123 is turned into its yards, a new install starts at 60
-        p.yards = (type(p.step) == "number" and OLD_STEPS[p.step]) or 60
-    end
-    p.step = nil
+    p.step = nil; p.yards = nil   -- 1.3.123 and 1.3.124 saved a distance here; it is not used any more
     if p.backup == nil then p.backup = {} end
     return p
 end
 PR.db = db
 
 function PR.enabled() return db().on == true end
-local function indexOf(yards)
-    for i, y in ipairs(PR.STEPS) do if y == yards then return i end end
-    return nil
-end
-function PR.name() return tostring(db().yards) end
 
 -- one cvar: remember the player's value the first time we write, give it back when Off, write the number when On
 local function one(p, cvar)
@@ -61,7 +51,7 @@ local function one(p, cvar)
             if type(was) ~= "string" then return end   -- cannot read it: nothing is remembered, nothing written
             p.backup[cvar] = was
         end
-        value = tostring(p.yards)
+        value = tostring(PR.YARDS)
     elseif p.backup[cvar] ~= nil then
         value = p.backup[cvar]
         p.backup[cvar] = nil
@@ -80,12 +70,6 @@ function PR.toggle()
     local p = db()
     p.on = not PR.enabled()
     PR.sync()
-end
-
-function PR.nextYards(dir)
-    local p = db()
-    p.yards = PR.STEPS[UF.stepIndex(indexOf(p.yards) or indexOf(60), #PR.STEPS, dir)]
-    if p.on then PR.sync() end
 end
 
 local f = CreateFrame("Frame")

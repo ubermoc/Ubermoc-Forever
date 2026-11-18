@@ -447,5 +447,7 @@ Sourced this session (claims C1-C4 in the harness):
   `nameplateMinAlphaDistance` `10.000000` before the max distance, `nameplateMinScale` `0.800000` at
   `nameplateMinScaleDistance` `10.000000` (`a8fbe6c5.txt`:1092-1095). Raising the distance extends the ramp,
   so far plates stay small and thin until about 10 yards inside the limit.
-- Values above 60 are not offered in 1.3.120: nothing checked here shows the game keeps them. Ask the user to
-  try `/console nameplateMaxDistance 60` then print the cvar to see what sticks before raising the top step.
+- Result of the user's test in the game (1.3.123 and 1.3.124, 2026-11-18): 30 shortened the range, and above it only
+  45 did anything; 60, 80 and 100 (and the steps of 5 between) gave no further reach. So the game, or the server, does
+  not draw plates farther than the default 45. The distance steps were removed in 1.3.125: one button, On writes 45
+  to both cvars (which only raises players from 40 to 45).
