@@ -600,9 +600,10 @@ local function openBag(btn)
 
     -- used on another item: one entry for each weapon you wear
     if not vendor and M.usedOnItems(itemID) then
+        local kind = UF.Applied.kindFor(M.targets(itemID) or { 16, 17 })
         for _, w in ipairs(equippedTargets(itemID)) do
             local link = GetInventoryItemLink and GetInventoryItemLink("player", w.slot)
-            add("Use on " .. w.name .. ": " .. itemName(link, "item"),
+            add("Use on " .. w.name .. ": " .. itemName(link, "item") .. UF.Applied.hint(w.slot, kind),
                 { type = "macro", macrotext = "/use " .. bag .. " " .. slot .. "\n/use " .. w.slot })
         end
     end
@@ -680,7 +681,8 @@ local function openEquip(btn)
                 for _, sl in ipairs(M.targets(e.itemID) or { 16, 17 }) do
                     if sl == id or (sl == 11 and id == 12) then fits = true end
                 end
-                if fits then add("Use " .. itemName(e.link, "item") .. ((e.count and e.count > 1) and (" (" .. e.count .. ")") or ""),
+                if fits then add("Use " .. itemName(e.link, "item") .. ((e.count and e.count > 1) and (" (" .. e.count .. ")") or "")
+                        .. UF.Applied.hint(id, UF.Applied.kindFor(M.targets(e.itemID) or { 16, 17 })),
                     { type = "macro", macrotext = "/use " .. e.bag .. " " .. e.slot .. "\n/use " .. id }) end
             end
         end

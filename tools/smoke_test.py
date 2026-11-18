@@ -627,6 +627,77 @@ r = L("""function()
 end""")()
 assert str(r) == "true,false,true,false,truefalse,falsetrue,true,Use / equip|Use on Main hand: Big Sword|Pick up / move|Delete|Sort bags", r
 print("Item menu: use-on-weapon entries and profession rules: OK")
+# Applied (Applied.lua): what a worn piece already carries, for the item menu's use-on entries and the wait for a target.
+# FAKE(C1): the stub GetTemporaryEnchantmentInfo returns the TemporaryItemEnchantInfo fields of the game's documentation
+# (enchantID, remainingTimeMs, chargesRemaining, hasExpirationTime; PaperDollInfoDocumentation.lua:491-500) or nothing.
+# FAKE(C2): the stub tooltip lines carry type and leftText, the type being Enum.TooltipDataLineType.ItemEnchantmentPermanent
+# (TooltipInfoSharedDocumentation.lua:49). FAKE(C3): a worn item link carries the enchant id after the item id.
+r = L("""function()
+    local UF = UbermocForever
+    local A, M = UF.Applied, UF.ItemMenu
+    local out = {}
+    local temp = { [16] = { enchantID = 7, remainingTimeMs = 725000, chargesRemaining = 0, hasExpirationTime = true },
+                   [17] = { enchantID = 9, remainingTimeMs = 45000, chargesRemaining = 1, hasExpirationTime = true } }
+    local links = { [5] = "|cff|Hitem:1234:2564:0:0|h[Chest]|h|r", [7] = "|cff|Hitem:1235:0:0:0|h[Legs]|h|r" }
+    local saved = { C_PaperDollInfo, GetInventoryItemLink, C_TooltipInfo, Enum, issecretvalue }
+    C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function(slot) return temp[slot] end }
+    GetInventoryItemLink = function(_, slot) return links[slot] end
+    Enum = { TooltipDataLineType = { ItemEnchantmentPermanent = 15 } }
+    C_TooltipInfo = { GetInventoryItem = function(_, slot)
+        if slot == 5 then return { lines = { { type = 22, leftText = "Chest" }, { type = 15, leftText = "Mighty Strength" } } } end
+        return { lines = {} }
+    end }
+    out[#out + 1] = tostring(A.text(16, "temporary"))                 -- 12 min left, no charges
+    out[#out + 1] = tostring(A.text(17, "temporary"))                 -- 45 sec, one charge
+    out[#out + 1] = tostring(A.text(18, "temporary"))                 -- nothing there
+    out[#out + 1] = tostring(A.text(5, "permanent"))                  -- named permanent enchant
+    out[#out + 1] = tostring(A.text(7, "permanent"))                  -- enchant id 0: nothing
+    links[7] = "|cff|Hitem:1235:99:0:0|h[Legs]|h|r"
+    out[#out + 1] = tostring(A.text(7, "permanent"))                  -- an enchant whose name is not in the tooltip
+    out[#out + 1] = tostring(A.text(16, "permanent"))                 -- a weapon with no link: nothing
+    out[#out + 1] = A.timeText(7500000) .. "/" .. A.timeText(59000) .. "/" .. tostring(A.timeText(0))
+    out[#out + 1] = A.kindFor({ 16, 17 }) .. "," .. A.kindFor({ 5, 7 }) .. "," .. A.kindFor({ 16, 18 }) .. "," .. A.kindFor(nil)
+    out[#out + 1] = A.hint(16, "temporary"):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "|" .. A.hint(18, "temporary") .. "|"
+    -- a secret answer and a raising call count as nothing
+    issecretvalue = function(v) return v == "secret" end
+    temp[16] = "secret"
+    out[#out + 1] = tostring(A.text(16, "temporary"))
+    C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function() error("restricted") end }
+    out[#out + 1] = A.hint(16, "temporary") == "" and "raise survived" or "no"
+    -- the chat line when the game starts waiting for a target
+    C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function(slot) return temp[slot] end }
+    temp[16] = { enchantID = 7, remainingTimeMs = 725000, chargesRemaining = 0, hasExpirationTime = true }
+    local said = {}
+    A.report(function(m) said[#said + 1] = m end)
+    out[#out + 1] = table.concat(said, "|")
+    -- the item menu entry for a sharpening stone on the main hand says what is already on it
+    local classes = { [1] = { 0, 6 }, [100] = { 2, 7 } }
+    C_Item = {
+        GetItemInfoInstant = function(id) local c = classes[id] or { 15, 0 }; return id, "t", "s", "", 1, c[1], c[2] end,
+        GetItemSpell = function(id) if id == 100 then return nil end return "Use it" end,
+        GetItemInfo = function(id) return "n", "l", 1 end,
+    }
+    local btn = CreateFrame("Button", "FakeStone2", UIParent)
+    btn.GetBagID = function() return 0 end
+    btn.GetID = function() return 2 end
+    C_Container = { GetContainerItemInfo = function() return { itemID = 1, hyperlink = "|cff|Hitem:1|h[Rough Stone]|h|r", stackCount = 3 } end,
+                    SortBags = function() end, PickupContainerItem = function() end }
+    GetInventoryItemID = function(_, slot) if slot == 16 then return 100 end end
+    GetInventoryItemLink = function(_, slot) if slot == 16 then return "|cff|Hitem:100|h[Big Sword]|h|r" end end
+    M.open(btn)
+    local texts = {}
+    for i = 1, 8 do local e = _G["UbermocForeverItemMenuEntry" .. i]; if e and e:IsShown() then texts[#texts + 1] = e:GetText() end end
+    UbermocForeverItemMenu:Hide()
+    out[#out + 1] = (texts[2] or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    C_PaperDollInfo, GetInventoryItemLink, C_TooltipInfo, Enum, issecretvalue = saved[1], saved[2], saved[3], saved[4], saved[5]
+    return table.concat(out, "|")
+end""")()
+assert str(r) == ("already has a poison or oil (12 min left)|already has a poison or oil (45 sec left, 1 charge)|nil|"
+                  "already enchanted: Mighty Strength|nil|already enchanted|nil|2 h 5 min/59 sec/nil|"
+                  "temporary,permanent,permanent,temporary|  already has a poison or oil (12 min left)|||nil|raise survived|"
+                  "Applying: Main hand already has a poison or oil (12 min left); Off hand already has a poison or oil (45 sec left, 1 charge).|"
+                  "Use on Main hand: Big Sword  already has a poison or oil (12 min left)"), r
+print("Applied: temporary and permanent enchants are named, replaced-by kind decides which counts, secrets and errors are survived, shown in the menu and when the wait starts: OK")
 # A poison (class 0, subclass 8) is told apart from other "Other" consumables by its use text
 r = L("""function()
     local M = UbermocForever.ItemMenu
