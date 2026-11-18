@@ -1661,7 +1661,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,7/3/1/3/2/2/1/2,true,1", r
+assert str(r) == "1,2,3,2,1,5,7/3/1/3/2/2/1/3,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -1834,6 +1834,65 @@ r = L("""function()
 end""")()
 assert str(r) == "0.8/0.8,0.5/0.8,60%,0.2/nil,0.8,nil,0.0", r
 print("Fading: a part's own mouse-over opacity, Off and Same, cleared by reset, hidden stays hidden: OK")
+# PlateLevel (PlateLevel.lua): the level of a friendly player under the game's name-only setting, which the game itself hides.
+# FAKE(C1): the stub UnitLevel returns a plain number (UnitDocumentation.lua:2474-2490 gives no secret return) or a secret/odd value.
+r = L("""function()
+    local UF = UbermocForever
+    local PL = UF.PlateLevel
+    local out = {}
+    local saved = { UnitLevel, issecretvalue, UnitIsPlayer, UnitCanAttack, UbermocForeverDB.plates }
+    UbermocForeverDB.plates = nil
+    local level = 37
+    UnitLevel = function(u) if u == "boom" then error("restricted") end return level end
+    out[#out + 1] = tostring(PL.levelText("x")) .. "/" .. tostring(PL.levelText("boom"))
+    level = 0; out[#out + 1] = tostring(PL.levelText("x"))                  -- too high to tell
+    level = -1; out[#out + 1] = tostring(PL.levelText("x"))
+    level = "secret"; issecretvalue = function(v) return v == "secret" end
+    out[#out + 1] = tostring(PL.levelText("x"))                              -- a secret is not read
+    level = "text"; out[#out + 1] = tostring(PL.levelText("x"))              -- an odd answer is not shown
+    issecretvalue = saved[2]
+    level = 60
+    -- showing: on for a wanted plate with the option on; cleared otherwise
+    local made = {}
+    local realMake = PL.make
+    PL.make = function(uf)
+        local fs = { shown = false }
+        fs.Show = function() fs.shown = true end; fs.Hide = function() fs.shown = false end
+        fs.SetText = function(_, t) fs.text = t end; fs.SetTextColor = function() end
+        fs.IsShown = function() return fs.shown end
+        local o = { fs = fs }; made[#made + 1] = o; return o
+    end
+    local uf = {}
+    PL.show(uf, "x", true)
+    local fs = made[1].fs
+    out[#out + 1] = tostring(fs.shown) .. ":" .. tostring(fs.text)
+    PL.show(uf, "x", false); out[#out + 1] = tostring(fs.shown)             -- not a plate that needs it: cleared
+    PL.show(uf, "x", true); PL.toggle(); PL.show(uf, "x", true)              -- option Off: cleared
+    out[#out + 1] = tostring(fs.shown) .. ":" .. tostring(PL.enabled()) .. ":" .. #made
+    PL.toggle()
+    -- through Nameplates: a friendly player with Friendly name-only gets it; an enemy and a friendly NPC do not
+    UbermocForeverDB.plates.friendly = true
+    local isPlayer, attack = true, false
+    UnitIsPlayer = function() return isPlayer end
+    UnitCanAttack = function() return attack end
+    local plate = { namePlateUnitToken = "nameplate1", UnitFrame = { unit = "nameplate1" } }
+    local function shownOnPlate() local o = PL.piece(plate.UnitFrame); return tostring(o and o.fs.shown) end
+    UF.Nameplates.style(plate)
+    out[#out + 1] = shownOnPlate()
+    isPlayer = false; UF.Nameplates.style(plate); out[#out + 1] = shownOnPlate()   -- an NPC: the game shows its level
+    isPlayer = true; attack = true; UF.Nameplates.style(plate); out[#out + 1] = shownOnPlate()   -- an enemy player
+    attack = false; UbermocForeverDB.plates.friendly = false; UF.Nameplates.style(plate)
+    out[#out + 1] = shownOnPlate()                                 -- Friendly name-only Off: the game shows it
+    PL.make = realMake
+    UnitLevel, issecretvalue, UnitIsPlayer, UnitCanAttack = saved[1], saved[2], saved[3], saved[4]
+    UbermocForeverDB.plates = saved[5]
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "37/nil|??|??|nil|nil|true:60|false|false:false:1|true|false|false|false", r
+src = open(ADDON + "/PlateLevel.lua", encoding="utf-8").read()
+for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "UnitHealth", "UnitName", "GetText", "GetStringWidth"]:
+    assert bad not in src, "PlateLevel.lua contains " + bad
+print("PlateLevel: the level of a friendly player under name-only is drawn, secrets and errors are survived, NPCs and enemies are left to the game: OK")
 # PlateQuest (PlateQuest.lua): a quest mark and the progress on nameplates. FAKE(C1): the stub UnitIsRelatedToActiveQuest returns a
 # plain bool (QuestLogDocumentation.lua:1287-1299 gives no secret return). FAKE(C2): the stub tooltip lines have the type and leftText
 # of TooltipInfoSharedDocumentation.lua (QuestObjective 8, QuestTitle 17), and the objective text is the unit tooltip's "name: a/b".
