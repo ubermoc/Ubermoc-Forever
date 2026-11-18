@@ -1,8 +1,3 @@
-UbermocForever 1.3.137
-- Changed: the level on friendly player nameplates (1.3.136) now sits where the level is on every other nameplate, under
-  the right end of the name row, in the game's level font and colour. It is centred on the game's own level frame.
-  The quest mark is back beside the name. Untested in the game.
-
 UbermocForever 1.3.136
 - Fixed: friendly player nameplates had no level. The game itself hides the level of a friendly player while its name-only
   nameplate setting is on (Forever's level badge says no for them), and the Friendly: name only button switches that

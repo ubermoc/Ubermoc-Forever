@@ -137,6 +137,13 @@ function PQ.show(uf, unit)
     if not want or want.done then PQ.clear(uf); return end
     local o = pieces(uf)
     if not o then return end
+    -- beside the level text we draw on friendly player plates (PlateLevel.lua), else beside the name
+    local lv = UF.PlateLevel and UF.PlateLevel.piece(uf)
+    local anchor = (lv and lv.fs and lv.fs.IsShown and lv.fs:IsShown()) and lv.fs or uf.name
+    if anchor then
+        pcall(o.icon.ClearAllPoints, o.icon)
+        pcall(o.icon.SetPoint, o.icon, "RIGHT", anchor, "LEFT", -2, 0)
+    end
     if PQ.enabled() then pcall(o.icon.Show, o.icon) else pcall(o.icon.Hide, o.icon) end
     if PQ.textEnabled() and want.text then
         pcall(o.text.SetText, o.text, want.text)
