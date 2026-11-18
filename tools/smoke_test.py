@@ -1850,12 +1850,15 @@ for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "UnitHealth", "UnitName", 
     assert bad not in src, "PlateQuest.lua contains " + bad
 print("PlateQuest: no hook, no update loop, nothing read back, nothing written on a game frame: OK")
 
-# PlateLevel (PlateLevel.lua): the level on a friendly player's plate while the game's own name-only mode is on. In that mode the game
-# keeps its own badge off the plate (Camelot/Blizzard_NamePlateLevelFrame.lua:12 ShouldDisplay), so we draw the level.
+# PlateLevel (PlateLevel.lua): the level on a PLAYER's plate when the game's own level is not showing there.
 # FAKE(C1): the stub unit calls return plain values: UnitIsPlayer (UnitDocumentation.lua:2271), UnitIsFriend (1977), UnitCanAttack (763)
-# and UnitEffectiveLevel (1124) declare no secret return. FAKE(C2): the stub GetCVarBool returns a boolean (CVarDocumentation.lua:51-64).
+# and UnitEffectiveLevel (1124) declare no secret return. FAKE(C2): GetCVarBool/GetCVar answer a boolean/string (CVarDocumentation.lua).
 # FAKE(C3): the colour constants are tables with r, g, b (CompactUnitFrame.lua:1728 reads UNIT_LEVEL_NON_ATTACKABLE.r, .g and .b).
-# FAKE(C4): the stub C_Timer.After queues the function; the test runs the queue (the game would after 0.2 s).
+# FAKE(C4): the stub C_Timer.After queues the function; the test runs the queue. FAKE(C5): IsShown on the level pieces answers a plain
+# boolean (SimpleFrameAPIDocumentation.lua:915; its secret aspect is only set on aura container pieces, Blizzard_CustomAuraButton.lua,
+# none in Blizzard_NamePlates); the stub piece can also raise or answer a secret to test those. FAKE(C6): the badge's shown state in the
+# end-to-end part follows the game's own rule, ShouldDisplay (Camelot/Blizzard_NamePlateLevelFrame.lua:12): hidden for a friendly
+# player while the CVar nameplateShowOnlyNameForFriendlyPlayerUnits is on.
 r = L("""function()
     local UF = UbermocForever
     local PL, N = UF.PlateLevel, UF.Nameplates
@@ -1864,19 +1867,16 @@ r = L("""function()
                     C_QuestLog, UNIT_LEVEL_NON_ATTACKABLE, TRIVIAL_DIFFICULTY_COLOR, EASY_DIFFICULTY_COLOR, FAIR_DIFFICULTY_COLOR,
                     DIFFICULT_DIFFICULTY_COLOR, IMPOSSIBLE_DIFFICULTY_COLOR, PL.make, GetCVar, SetCVar,
                     UbermocForeverDB.plates }
-    local cvarOn = true
     local units = {
-        friend = { player = true, friend = true, attack = false, level = 42 },
+        fp = { player = true, friend = true, attack = false, level = 42 },
+        ep = { player = true, friend = false, attack = true, level = 60 },
         npc = { player = false, friend = true, attack = false, level = 20 },
-        enemy = { player = true, friend = false, attack = true, level = 60 },
-        duel = { player = true, friend = true, attack = true, level = 60 },
     }
     local myLevel = 60
     UnitIsPlayer = function(u) if u == "boom" then error("restricted") end return units[u] and units[u].player end
     UnitIsFriend = function(_, u) return units[u] and units[u].friend end
     UnitCanAttack = function(_, u) return units[u] and units[u].attack end
     UnitEffectiveLevel = function(u) if u == "player" then return myLevel end return units[u] and units[u].level end
-    GetCVarBool = function() return cvarOn end
     C_QuestLog = { GetTrivialRange = function() return 5 end }
     UNIT_LEVEL_NON_ATTACKABLE = { r = 0.5, g = 0.6, b = 0.7 }
     TRIVIAL_DIFFICULTY_COLOR = { r = 0.1, g = 0.1, b = 0.1 }
@@ -1886,21 +1886,35 @@ r = L("""function()
     IMPOSSIBLE_DIFFICULTY_COLOR = { r = 0.9, g = 0.9, b = 0.9 }
     UbermocForeverDB.plates = nil
 
-    local madeFor, count = {}, 0
+    local madeFor = {}
     PL.make = function(uf)
         local t = { shown = false, points = {} }
         t.Show = function() t.shown = true end
         t.Hide = function() t.shown = false end
+        t.IsShown = function() return t.shown end
         t.SetText = function(_, x) t.text = x end
         t.SetTextColor = function(_, r, g, b) t.color = r .. "," .. g .. "," .. b end
         t.ClearAllPoints = function() t.points = {} end
         t.SetPoint = function(_, p, rel, rp, x, y) t.points[#t.points + 1] = p .. ">" .. tostring(rel and rel.id) .. ":" .. rp .. "/" .. x .. "/" .. y end
         local o = { holder = {}, text = t }
         madeFor[uf] = o
-        count = count + 1
         return o
     end
-    local function newUf() return { name = { id = "name" }, HealthBarsContainer = { healthBar = { id = "bar" } } } end
+    -- a plate's unit frame. badge: true / false = the game's badge is shown / not shown, "none" = the game has no such piece,
+    -- "raise" = IsShown raises, "secret" = IsShown answers a secret. inbar: the level inside the bar is shown
+    local function newUf(badge, inbar)
+        local uf = { name = { id = "name" }, HealthBarsContainer = { healthBar = { id = "bar" } } }
+        if badge ~= "none" then
+            local b = { v = badge }
+            b.IsShown = function(self)
+                if self.v == "raise" then error("forbidden") end
+                return self.v
+            end
+            uf.PlayerLevelDiffFrame = b
+        end
+        uf.LevelFrame = { IsShown = function() return inbar == true end }
+        return uf
+    end
     local function st(uf, unit)
         PL.show(uf, unit)
         local o = madeFor[uf]
@@ -1908,98 +1922,116 @@ r = L("""function()
         return o.text.text .. "@" .. o.text.color
     end
     local function flush() local t = __calls.timers or {}; __calls.timers = {}; for _, f in ipairs(t) do f() end end
+    local NA = "@0.5,0.6,0.7"
 
-    local uf = newUf()
-    out[#out + 1] = st(uf, "friend")                                   -- 1 the level, in the "non attackable" colour
-    out[#out + 1] = table.concat(madeFor[uf].text.points, ";")         -- 2 right of the name, where the game's badge sits
-    cvarOn = false
-    out[#out + 1] = st(uf, "friend")                                   -- 3 the game's own mode is off: the game shows its badge, we show nothing
-    cvarOn = true
-    out[#out + 1] = st(uf, "npc")                                      -- 4 not a player: the game shows its badge
-    out[#out + 1] = st(uf, "enemy")                                    -- 5 not a friend: the game shows its badge
-    out[#out + 1] = st(uf, "friend")                                   -- 6 the same plate reused for a friendly player again
-    out[#out + 1] = tostring(count)                                    -- 7 our text was made once
-
-    units.friend.level = 0
-    out[#out + 1] = st(uf, "friend")                                   -- 8 level 0: "??"
-    units.friend.level = -1
-    out[#out + 1] = st(uf, "friend")                                   -- 9 level -1: "??"
+    local uf = newUf(false)
+    out[#out + 1] = st(uf, "fp")                                   -- 1  a friendly player, no badge: the level (non-attackable colour)
+    out[#out + 1] = table.concat(madeFor[uf].text.points, ";")     -- 2  right of the name, where the game's badge sits
+    out[#out + 1] = st(newUf(false), "ep")                         -- 3  an ENEMY player, no badge: the level, by difficulty (fair)
+    out[#out + 1] = st(newUf(true), "fp")                          -- 4  the game shows its badge: nothing of ours
+    out[#out + 1] = st(newUf(true), "ep")                          -- 5
+    out[#out + 1] = st(newUf(false), "npc")                        -- 6  not a player: left as it was
+    out[#out + 1] = st(newUf(false, true), "fp")                   -- 7  the level inside the bar is showing: nothing of ours
+    out[#out + 1] = st(newUf("none"), "fp")                        -- 8  the game has no such piece at all: ours
+    out[#out + 1] = st(newUf("raise"), "fp")                       -- 9  unreadable: left to the game
     issecretvalue = function(v) return v == "secret" end
-    units.friend.level = "secret"
-    out[#out + 1] = st(uf, "friend")                                   -- 10 a secret level shows nothing
-    units.friend.level = nil
-    out[#out + 1] = st(uf, "friend")                                   -- 11 no level shows nothing
-    units.friend.level = "forty"
-    out[#out + 1] = st(uf, "friend")                                   -- 11b a plain answer that is not a number shows nothing, not an error
-    units.friend.level = 42
+    out[#out + 1] = st(newUf("secret"), "fp")                      -- 10 a secret answer: left to the game
     issecretvalue = saved[6]
-    out[#out + 1] = st(uf, "boom")                                     -- 12 a raising unit call shows nothing
-    issecretvalue = function(v) return v == "secret" end
-    units.friend.friend = "secret"
-    out[#out + 1] = st(uf, "friend")                                   -- 13 a secret answer counts as no
-    units.friend.friend = true; units.friend.player = "secret"
-    out[#out + 1] = st(uf, "friend")                                   -- 14
-    units.friend.player = true
-    issecretvalue = saved[6]
-    GetCVarBool = function() return nil end
-    out[#out + 1] = st(uf, "friend")                                   -- 15 an unreadable CVar shows nothing
-    GetCVarBool = function() error("restricted") end
-    out[#out + 1] = st(uf, "friend")                                   -- 16
-    GetCVarBool = function() return cvarOn end
+    -- the same plate reused: ours follows the game's badge both ways
+    local reused = newUf(false)
+    out[#out + 1] = st(reused, "fp")                               -- 11 shown
+    reused.PlayerLevelDiffFrame.v = true
+    out[#out + 1] = st(reused, "fp")                               -- 12 the game's badge came: ours goes
+    reused.PlayerLevelDiffFrame.v = false
+    out[#out + 1] = st(reused, "fp")                               -- 12b the game's badge went again: ours is back
+    out[#out + 1] = st(reused, "npc")                              -- 13 reused for an NPC while ours was showing: it goes
+    out[#out + 1] = st(reused, "fp")                               -- 14 and back
 
-    units.duel.level = 60;  out[#out + 1] = st(uf, "duel")             -- 17 can be attacked: by difficulty, same level: fair
-    units.duel.level = 70;  out[#out + 1] = st(uf, "duel")             -- 18 far above: impossible
-    units.duel.level = 50;  out[#out + 1] = st(uf, "duel")             -- 19 below the trivial range (5): trivial
-    units.duel.level = 56;  out[#out + 1] = st(uf, "duel")             -- 20 -4: easy
-    units.duel.level = 64;  out[#out + 1] = st(uf, "duel")             -- 21 +4: difficult
-    units.duel.level = 62;  out[#out + 1] = st(uf, "duel")             -- 22 +2: still fair (the game's limit is <= 2)
-    units.duel.level = 63;  out[#out + 1] = st(uf, "duel")             -- 23 +3: difficult
+    units.fp.level = 0;  out[#out + 1] = st(newUf(false), "fp")    -- 15 level 0: "??"
+    units.fp.level = -1; out[#out + 1] = st(newUf(false), "fp")    -- 16
+    issecretvalue = function(v) return v == "secret" end
+    units.fp.level = "secret"; out[#out + 1] = st(newUf(false), "fp")   -- 17 a secret level shows nothing
+    units.fp.player = "secret"; units.fp.level = 42
+    out[#out + 1] = st(newUf(false), "fp")                         -- 18 a secret player answer counts as no
+    units.fp.player = true
+    issecretvalue = saved[6]
+    units.fp.level = nil;     out[#out + 1] = st(newUf(false), "fp")    -- 19 no level shows nothing
+    units.fp.level = "forty"; out[#out + 1] = st(newUf(false), "fp")    -- 20 a plain answer that is not a number: nothing, no error
+    units.fp.level = 42
+    out[#out + 1] = st(newUf(false), "boom")                       -- 21 a raising unit call shows nothing
+
+    -- the colours of a player you can attack (a duel, an enemy)
+    units.ep.level = 70; out[#out + 1] = st(newUf(false), "ep")    -- 22 far above: impossible
+    units.ep.level = 50; out[#out + 1] = st(newUf(false), "ep")    -- 23 below the trivial range (5): trivial
+    units.ep.level = 56; out[#out + 1] = st(newUf(false), "ep")    -- 24 -4: easy
+    units.ep.level = 64; out[#out + 1] = st(newUf(false), "ep")    -- 25 +4: difficult
+    units.ep.level = 62; out[#out + 1] = st(newUf(false), "ep")    -- 26 +2: still fair (the game's limit is <= 2)
+    units.ep.level = 63; out[#out + 1] = st(newUf(false), "ep")    -- 27 +3: difficult
+    units.ep.level = 60
     UNIT_LEVEL_NON_ATTACKABLE = nil
-    out[#out + 1] = st(uf, "friend")                                   -- 24 a colour the game does not define: white
+    out[#out + 1] = st(newUf(false), "fp")                         -- 28 a colour the game does not define: white
     UNIT_LEVEL_NON_ATTACKABLE = { r = 0.5, g = 0.6, b = 0.7 }
 
     -- the events
-    local uf2 = newUf()
-    local p = { namePlateUnitToken = "friend", UnitFrame = uf2 }
-    C_NamePlate = { GetNamePlates = function() return { p } end, GetNamePlateForUnit = function(u) if u == "friend" then return p end end }
+    local uf2 = newUf(false)
+    local p = { namePlateUnitToken = "fp", UnitFrame = uf2 }
+    C_NamePlate = { GetNamePlates = function() return { p } end, GetNamePlateForUnit = function(u) if u == "fp" then return p end end }
     local ev, fr = PL._frame.__scripts.OnEvent, PL._frame
     __calls.timers = {}
-    ev(fr, "NAME_PLATE_UNIT_ADDED", "friend")
-    out[#out + 1] = tostring(madeFor[uf2].text.shown)                  -- 25 a plate added shows it
-    ev(fr, "NAME_PLATE_UNIT_REMOVED", "friend")
-    out[#out + 1] = tostring(madeFor[uf2].text.shown)                  -- 26 a plate removed hides it
-    ev(fr, "NAME_PLATE_UNIT_ADDED", "friend")
-    cvarOn = false
-    ev(fr, "CVAR_UPDATE", "x", "0"); flush()
-    out[#out + 1] = tostring(madeFor[uf2].text.shown)                  -- 27 the game's setting turned off: ours goes
-    cvarOn = true
-    ev(fr, "UNIT_LEVEL", "friend"); ev(fr, "UNIT_LEVEL", "friend"); ev(fr, "PLAYER_LEVEL_UP")
-    out[#out + 1] = tostring(#(__calls.timers or {}))                  -- 28 however many events arrive, asked once
+    ev(fr, "NAME_PLATE_UNIT_ADDED", "fp")
+    out[#out + 1] = tostring(madeFor[uf2] and madeFor[uf2].text.shown or false)    -- 29 a plate just added: nothing yet, the game fills its own badge first
+    out[#out + 1] = tostring(#(__calls.timers or {}))                     -- 30 looked at again twice (0.2 s and 1 s)
     flush()
-    out[#out + 1] = tostring(madeFor[uf2].text.shown)                  -- 29 and it is back
-    units.friend.level = 43
-    ev(fr, "PLAYER_LEVEL_UP"); flush()
-    out[#out + 1] = tostring(madeFor[uf2].text.text)                   -- 30 a level up is shown
-    units.friend.friend = false
-    ev(fr, "UNIT_FACTION", "friend"); flush()
-    out[#out + 1] = tostring(madeFor[uf2].text.shown)                  -- 31 no longer a friend: the game's badge again
-    units.friend.friend = true; units.friend.level = 42
+    out[#out + 1] = tostring(madeFor[uf2].text.shown)                     -- 31 then ours, because the game's badge is not there
+    ev(fr, "NAME_PLATE_UNIT_ADDED", "fp")
+    out[#out + 1] = tostring(madeFor[uf2].text.shown)                     -- 32 added again (reused): ours goes at once
+    flush()
+    uf2.PlayerLevelDiffFrame.v = true                                     -- the game's badge arrives late
+    ev(fr, "UNIT_LEVEL", "fp"); ev(fr, "UNIT_LEVEL", "fp"); ev(fr, "PLAYER_LEVEL_UP")
+    out[#out + 1] = tostring(#(__calls.timers or {}))                     -- 33 however many events, asked once (two looks)
+    flush()
+    out[#out + 1] = tostring(madeFor[uf2].text.shown)                     -- 34 the game shows its own: ours stays away
+    uf2.PlayerLevelDiffFrame.v = false; units.fp.level = 43
+    ev(fr, "UNIT_FACTION", "fp"); flush()
+    out[#out + 1] = tostring(madeFor[uf2].text.text)                      -- 35 and the new level is shown when it is not
+    ev(fr, "NAME_PLATE_UNIT_REMOVED", "fp")
+    out[#out + 1] = tostring(madeFor[uf2].text.shown)                     -- 36 a plate removed: ours goes at once
+    units.fp.level = 42
 
-    -- the whole way through the real option: "Friendly: name only" writes the CVar (Nameplates.lua) and the level appears
+    -- the whole way through the real option, with the game following its own rule (FAKE C6)
     local cv = { nameplateShowOnlyNameForFriendlyPlayerUnits = "0" }
     GetCVar = function(k) return cv[k] end
     SetCVar = function(k, v) cv[k] = v end
-    GetCVarBool = function(k) return cv[k] == "1" end
-    local uf3 = newUf()
-    local p3 = { namePlateUnitToken = "friend", UnitFrame = uf3 }
-    C_NamePlate = { GetNamePlates = function() return { p3 } end, GetNamePlateForUnit = function(u) if u == "friend" then return p3 end end }
+    local uf3 = newUf(true)
+    uf3.PlayerLevelDiffFrame.IsShown = function() return not (units.fp.friend and units.fp.player and cv.nameplateShowOnlyNameForFriendlyPlayerUnits == "1") end
+    local p3 = { namePlateUnitToken = "fp", UnitFrame = uf3 }
+    C_NamePlate = { GetNamePlates = function() return { p3 } end, GetNamePlateForUnit = function(u) if u == "fp" then return p3 end end }
     UbermocForeverDB.plates = nil
-    N.toggle("friendly")                                               -- on: Nameplates writes the game's CVar
+    PL.applyAll()
+    out[#out + 1] = tostring(madeFor[uf3] and madeFor[uf3].text.shown or false)    -- 37 the game's own mode off: the game shows its badge, no second number
+    N.toggle("friendly")                                                  -- Friendly: name only on: Nameplates writes the game's setting
     ev(fr, "CVAR_UPDATE", "nameplateShowOnlyNameForFriendlyPlayerUnits", "1"); flush()
-    out[#out + 1] = cv.nameplateShowOnlyNameForFriendlyPlayerUnits .. "/" .. tostring(madeFor[uf3] and madeFor[uf3].text.shown)   -- 32 1/true
-    N.toggle("friendly")                                               -- off: the player's own value is given back
+    out[#out + 1] = cv.nameplateShowOnlyNameForFriendlyPlayerUnits .. "/" .. tostring(madeFor[uf3].text.shown)   -- 38 1/true
+    N.toggle("friendly")                                                  -- off: the player's own value is given back
     ev(fr, "CVAR_UPDATE", "nameplateShowOnlyNameForFriendlyPlayerUnits", "0"); flush()
-    out[#out + 1] = cv.nameplateShowOnlyNameForFriendlyPlayerUnits .. "/" .. tostring(madeFor[uf3].text.shown)                  -- 33 0/false
+    out[#out + 1] = cv.nameplateShowOnlyNameForFriendlyPlayerUnits .. "/" .. tostring(madeFor[uf3].text.shown)   -- 39 0/false
+
+    -- /ubf plates: one line for each plate in view with what the game has there
+    local uf4 = newUf(false)
+    local p4 = { namePlateUnitToken = "ep", UnitFrame = uf4 }
+    C_NamePlate = { GetNamePlates = function() return { p4 } end, GetNamePlateForUnit = function(u) if u == "ep" then return p4 end end }
+    PL.applyAll()
+    __calls.chat = ""
+    SlashCmdList.UBERMOCFOREVER("plates")
+    local chat = __calls.chat or ""
+    out[#out + 1] = tostring(string.find(chat, "Plate levels.", 1, true) ~= nil)                       -- 40
+    out[#out + 1] = tostring(string.find(chat, "ep: player true, friend false, attackable true, level 60", 1, true) ~= nil)  -- 41
+    out[#out + 1] = tostring(string.find(chat, "game badge shown no", 1, true) ~= nil)                 -- 42
+    out[#out + 1] = tostring(string.find(chat, "ours yes", 1, true) ~= nil)                            -- 43
+    C_NamePlate = { GetNamePlates = function() return {} end }
+    __calls.chat = ""
+    PL.report()
+    out[#out + 1] = tostring(string.find(__calls.chat or "", "No nameplates in view.", 1, true) ~= nil)   -- 44
 
     UnitIsPlayer, UnitIsFriend, UnitEffectiveLevel, UnitCanAttack, GetCVarBool = saved[1], saved[2], saved[3], saved[4], saved[5]
     issecretvalue, C_NamePlate, C_QuestLog = saved[6], saved[7], saved[8]
@@ -2011,30 +2043,29 @@ r = L("""function()
 end""")()
 NA = "42@0.5,0.6,0.7"
 expected = "|".join([
-    NA, "LEFT>name:RIGHT/9/0", "-", "-", "-", NA, "1",
-    "??@0.5,0.6,0.7", "??@0.5,0.6,0.7", "-", "-", "-", "-", "-", "-", "-", "-",
-    "60@0.3,0.3,0.3", "70@0.9,0.9,0.9", "50@0.1,0.1,0.1", "56@0.2,0.2,0.2", "64@0.4,0.4,0.4", "62@0.3,0.3,0.3", "63@0.4,0.4,0.4",
+    NA, "LEFT>name:RIGHT/9/0", "60@0.3,0.3,0.3", "-", "-", "-", "-", NA, "-", "-",
+    NA, "-", NA, "-", NA,
+    "??@0.5,0.6,0.7", "??@0.5,0.6,0.7", "-", "-", "-", "-", "-",
+    "70@0.9,0.9,0.9", "50@0.1,0.1,0.1", "56@0.2,0.2,0.2", "64@0.4,0.4,0.4", "62@0.3,0.3,0.3", "63@0.4,0.4,0.4",
     "42@1,1,1",
-    "true", "false", "false", "1", "true", "43", "false",
-    "1/true", "0/false",
+    "false", "2", "true", "false", "2", "false", "43", "false",
+    "false", "1/true", "0/false",
+    "true", "true", "true", "true", "true",
 ])
 assert str(r) == expected, "\n got: %s\n want: %s" % (r, expected)
-print("PlateLevel: a friendly player's plate in the game's name-only mode gets the level (the game's colours, '??' for level 0), "
-      "nothing where the game keeps its own badge, secrets/errors survived, events ask once; the real Friendly: name only option "
-      "makes it appear and go: OK")
+print("PlateLevel: a player's plate (friendly or enemy) gets the level when the game's own is not showing; nothing where the game "
+      "shows its badge or the level in the bar, for other units, or when that cannot be read; the game's colours, '??' for level 0, "
+      "secrets/errors survived; the real Friendly: name only option makes it appear and go; /ubf plates reports each plate: OK")
 src = open(ADDON + "/PlateLevel.lua", encoding="utf-8").read()
-for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "GetAlpha", "UnitHealth", "UnitName", "GetText", "GetStringWidth", "SetCVar",
-            "SetShowOnlyName", "UpdateAnchors", "UpdateShowOnlyName", "ShouldDisplay("]:
-    assert bad not in src.split("\n---", 1)[0] or True   # (the header comment names some of these on purpose)
 code = "\n".join(l for l in src.split("\n") if not l.lstrip().startswith("--"))
-for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "GetAlpha", "UnitHealth", "UnitName", "GetText", "GetStringWidth", "SetCVar",
+for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "GetText", "GetStringWidth", "SetCVar", "UnitHealth", "UnitName",
             "SetShowOnlyName", "UpdateAnchors", "UpdateShowOnlyName", "ShouldDisplay("]:
     assert bad not in code, "PlateLevel.lua contains " + bad
 import re as _re
 assert not _re.search(r"\buf\.[A-Za-z_]+\s*=[^=]", code), "PlateLevel.lua writes a field on a game frame"
-for call in ["UnitIsPlayer", "UnitIsFriend", "GetCVarBool", "UnitEffectiveLevel", "UnitCanAttack"]:
-    assert not _re.search(r"(?<!pcall\()\b" + call + r"\(", code), call + " must only be called inside pcall"
-print("PlateLevel: no hook, no update loop, nothing written on a game frame, every unit call inside pcall: OK")
+for call in ["UnitIsPlayer", "UnitIsFriend", "UnitEffectiveLevel", "UnitCanAttack", "GetCVar", "IsShown", "GetAlpha"]:
+    assert not _re.search(r"(?<!pcall\()(?<!askBool\()\b" + call + r"\(", code), call + " must only be called inside pcall"
+print("PlateLevel: no hook, no update loop, nothing written on a game frame, every unit call and every read of a game piece inside pcall: OK")
 evs = L("""function() local f = UbermocForever.PlateLevel._frame; local t = {} for k in pairs(rawget(f, "__events") or {}) do t[#t + 1] = k end table.sort(t) return table.concat(t, ",") end""")()
 assert str(evs) == "CVAR_UPDATE,NAME_PLATE_UNIT_ADDED,NAME_PLATE_UNIT_REMOVED,PLAYER_ENTERING_WORLD,PLAYER_LEVEL_UP,PLAYER_REGEN_ENABLED,UNIT_FACTION,UNIT_LEVEL", evs
 print("PlateLevel: every event it relies on is registered: OK")

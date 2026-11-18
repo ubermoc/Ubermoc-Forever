@@ -1,3 +1,15 @@
+UbermocForever 1.3.131
+- Fixed: a player's nameplate, friendly or enemy, showed no level. 1.3.130 handled one case only (a friendly player while the
+  game's name-only setting is on) by predicting it from that setting, and the report that followed was "any player", so the
+  prediction was not the whole story. Now `PlateLevel.lua` does not predict anything, it looks at the plate: if the game's own
+  level is showing (its badge, or the level inside the bar), nothing of ours is drawn, so no plate gets two numbers; if neither is
+  showing on a PLAYER's plate, the level is drawn there (the badge's font, the game's own colours, "??" for level 0, at the right
+  end of the plate at the height of the name). Other units are not touched. A plate's text is cleared at once when the plate is
+  reused and every plate is looked at again after 0.2 s and after 1 s, because the game fills its own badge in its own time.
+- Added: `/ubf plates` prints one line for each plate in view (up to 8): whether the unit is a player, a friend, attackable, its
+  level, whether the game's badge and the level inside the bar are shown (and their alpha), and whether ours is, plus the game's
+  name-only, style and simplified settings and ours. If a plate still shows no level, this line says why. Untested in the game.
+
 UbermocForever 1.3.130
 - Fixed: a friendly player's nameplate showed no level when "Friendly: name only" was on. The cause is in the game, not in the
   pieces we hide: that option writes the game's own name-only setting, and with it on the game tells its level badge not to

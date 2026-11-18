@@ -41,7 +41,7 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
 - `ItemMenu.lua`: the Y menu. Entries are secure buttons: `type="item"`, or `type="macro"` with `/use bag slot`,
   `/cast <spell>`, `/click FrameName RightButton`. Max 8 entries. Only weapon slots 16 and 17 are offered (never ranged).
 - `Legend.lua`, `Options.lua`, `Menu.lua`, `Start.lua`: see `HANDOFF.md` section 2.
-- Debug commands in game: `/ubf check`, `/ubf tabs` (tab groups found), `/ubf item` (what the game says about the
+- Debug commands in game: `/ubf check`, `/ubf plates` (what is on each nameplate in view: player/friend/level, whether the game's level is shown, whether ours is), `/ubf tabs` (tab groups found), `/ubf item` (what the game says about the
   highlighted item), `/ubf nav on|off`. `/run` and `/dump` are blocked in Forever; never ask the user to type scripts.
 
 ## Things learned that are easy to get wrong
