@@ -53,6 +53,8 @@ function T.update()
         if not entry then
             button()
             entry = Nav.Push({}, { PAD2 = { BUTTON, "LeftButton" } }, true)
+            -- the wait just started: say what your weapons already carry (Applied.lua)
+            if UF.Applied then pcall(UF.Applied.report, UF.say) end
         end
     elseif entry then
         Nav.Pop(entry); entry = nil
