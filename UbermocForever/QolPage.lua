@@ -115,7 +115,7 @@ function QP.build(parent, inset)
     tip(healthBtn, "Name shows health", "On a name-only plate the name itself is the health bar: it keeps its colour (class colour for a player, reaction colour otherwise) for the health left, and the part standing for the health lost is white. Only while an Enemies or Friendly name-only option is on.")
     tip(percentBtn, "Health percent", "The current health percent is written to the right of the name, in the reaction colour. Only while a name-only option is on.")
     tip(rangeBtn, "Plate range", "How far from the camera the game draws nameplates. On writes the number next to it into the game's distance settings (the game's own values are 45 yards for units and 40 for players, and there is no settings row for them); Off gives back the values you had before.")
-    tip(yardsBtn, "Plate distance", "30, 45 or 60 yards. A steps forward, X steps back. Nothing is written during combat, and what waits is applied when the fight ends.")
+    tip(yardsBtn, "Plate distance", "30, 45, 60, 80 or 100 yards (60 to start). A steps forward, X steps back. Nothing is written during combat, and what waits is applied when the fight ends.")
     note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The distance row writes the game's distance settings, and Off gives back the values you had before.", -348)
 
     QP.refresh()

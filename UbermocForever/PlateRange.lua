@@ -8,8 +8,8 @@
 -- not secure (CVarDocumentation.lua:131-148, claim C1), and GetCVarInfo flags nameplateMaxDistance as a
 -- character cvar, not secure (ForeverPlusPlus docs/forever-api.md:207, claim C3); the defaults are from
 -- Ketho's Forever cvar dump (claim C2). Values are strings, so we write tostring.
--- Quality of life page, under Nameplates: "Plate range: Off/On" and "Plate distance" (30, 45 or 60 yards; no
--- values above 60 are offered, nothing checked here shows the game keeps them). On writes the number, Off gives back the value the
+-- Quality of life page, under Nameplates: "Plate range: Off/On" and "Plate distance" (30, 45, 60, 80 or 100 yards; 60 to start. Nothing
+-- checked here shows the game keeps values above 60: Retail's own default is 60). On writes the number, Off gives back the value the
 -- player had before we first wrote it. Nothing is written during combat and what waits is applied when the
 -- fight ends, as in Nameplates.lua. Untested in the game.
 -- Notes: docs/RESEARCH-NAVIGATION.md, "Nameplate distance (1.3.120)".
@@ -19,7 +19,7 @@ local PR = {}
 UF.PlateRange = PR
 
 PR.CVARS = { "nameplateMaxDistance", "nameplatePlayerMaxDistance" }
-PR.STEPS = { 30, 45, 60 }
+PR.STEPS = { 30, 45, 60, 80, 100 }
 PR.pending = false
 
 local function plain(v)

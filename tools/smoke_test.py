@@ -2018,7 +2018,7 @@ r = L("""function()
     PR.toggle()                                -- On: the player's values are remembered, both written
     out[#out + 1] = table.concat(wrote, ",")
     wrote = {}
-    PR.nextYards(1)                            -- 60 -> 30: rewritten, the remembered values stay
+    PR.nextYards(1)                            -- 60 -> 80: rewritten, the remembered values stay
     out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
     wrote = {}
     PR.toggle()                                -- Off: the player's values are given back
@@ -2051,19 +2051,19 @@ r = L("""function()
     UbermocForeverDB = {}
     PR.nextYards(1)                            -- stepping while Off writes nothing
     out[#out + 1] = PR.name() .. "=" .. table.concat(wrote, ",")
-    PR.nextYards(1); PR.nextYards(1); PR.nextYards(1)   -- 30 -> 45 -> 60 -> 30 (the steps cycle back)
+    PR.nextYards(1); PR.nextYards(1); PR.nextYards(1)   -- 80 -> 100 -> 30 -> 45 (the steps cycle back)
     out[#out + 1] = PR.name()
     UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown = savedDB, oldGet, oldSet, oldLock
     return table.concat(out, "|")
 end""")()
 want = ("|nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
-        "|30=nameplateMaxDistance=30,nameplatePlayerMaxDistance=30"
+        "|80=nameplateMaxDistance=80,nameplatePlayerMaxDistance=80"
         "|nameplateMaxDistance=45.000000,nameplatePlayerMaxDistance=40.000000"
         "|true="
-        "|false=nameplateMaxDistance=30,nameplatePlayerMaxDistance=30"
+        "|false=nameplateMaxDistance=80,nameplatePlayerMaxDistance=80"
         "||nameplateMaxDistance=60,nameplatePlayerMaxDistance=60"
         "|nameplatePlayerMaxDistance=60=nil"
-        "||30=|30")
+        "||80=|45")
 assert str(r) == want, (r, want)
 print("Plate range: writes both distance CVars, keeps and gives back the player's values, defers in combat, "
       "survives a nil or raising GetCVar, applies an On setting at login: OK")
