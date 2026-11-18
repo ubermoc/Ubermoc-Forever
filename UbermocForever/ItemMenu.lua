@@ -71,9 +71,24 @@ local function spellOf(btn)
     if type(p) == "table" and p.slotIndex and p.spellBank and p.spellBookItemInfo then return p end
 end
 
--- What the highlighted button is: "bag", "equip", "spell" or nil.
+-- A bag slot on the bag bar beside the micro menu (Blizzard_MainMenuBarBagButtons: CharacterBag0Slot to CharacterBag3Slot,
+-- CharacterReagentBag0Slot; the backpack itself cannot be swapped). Returns its bag ID, inventory slot and whether it is the
+-- reagent slot.
+function M.bagBarSlot(btn)
+    local n = btn and btn.GetName and btn:GetName()
+    if type(n) ~= "string" then return nil end
+    local reagent = n:find("^CharacterReagentBag%dSlot$") ~= nil
+    if not (reagent or n:find("^CharacterBag%dSlot$")) then return nil end
+    local okB, bagID = pcall(btn.GetBagID, btn)
+    local okI, inv = pcall(btn.GetID, btn)
+    if not (okB and okI and type(bagID) == "number" and type(inv) == "number") then return nil end
+    return bagID, inv, reagent
+end
+
+-- What the highlighted button is: "bag", "equip", "spell", "bagslot" or nil.
 function M.kind(btn)
     if not btn then return nil end
+    if M.bagBarSlot(btn) then return "bagslot" end
     local bag, slot = bagSlot(btn)
     if bag then
         if not (C_Container and C_Container.GetContainerItemInfo) then return nil end
@@ -461,6 +476,53 @@ local function openBagSlots(btn, bag, slot, info, reagent)
     menu:SetHeight(46 + count * 28)
 end
 
+-- The bags you carry that fit a bag slot (a reagent bag only in the reagent slot), with their slot counts.
+local function carriedBags(reagent)
+    local out = {}
+    for bag = 0, (NUM_BAG_SLOTS or 4) + 1 do
+        local n = C_Container.GetContainerNumSlots(bag) or 0
+        for slot = 1, n do
+            local info = C_Container.GetContainerItemInfo(bag, slot)
+            if info and info.itemID then
+                local isBag, isReagent = M.isBag(info.itemID)
+                if isBag and (isReagent and true or false) == (reagent and true or false) then
+                    out[#out + 1] = { bag = bag, slot = slot, link = info.hyperlink, size = bagItemSlots(bag, slot) }
+                end
+            end
+        end
+    end
+    table.sort(out, function(a, b) return (a.size or 0) > (b.size or 0) end)   -- the biggest first
+    return out
+end
+
+-- Y on a bag slot of the bag bar: the bags you carry that fit there, each with how many slots it gains over the one there now.
+local function openBagBarSlot(btn)
+    local bagID, inv, reagent = M.bagBarSlot(btn)
+    if not bagID then return false end
+    local link = GetInventoryItemLink and GetInventoryItemLink("player", inv)
+    local size = (link and C_Container.GetContainerNumSlots(bagID)) or 0
+    local free = (link and C_Container.GetContainerNumFreeSlots and C_Container.GetContainerNumFreeSlots(bagID)) or size
+    local here = { link = link, size = size, used = size - (free or 0) }
+    title:SetText((reagent and "Reagent bag slot" or ("Bag slot " .. bagID)) .. ": " .. (link and (itemName(link, "bag") .. " (" .. size .. ")") or "empty"))
+    reset()
+    local list = carriedBags(reagent)
+    for _, b in ipairs(list) do
+        if count >= MAX - 1 then break end
+        local gain = M.bagGain(b.size, here)
+        add(itemName(b.link, "Bag") .. (b.size and (" (" .. b.size .. ")") or "") .. "  " .. gain, nil, function()
+            if InCombatLockdown() then say("Bags can't be changed in combat."); return end
+            pcall(ClearCursor)
+            pcall(C_Container.PickupContainerItem, b.bag, b.slot)
+            if CursorHasItem and CursorHasItem() then pcall(PutItemInBag, inv) end
+            if CursorHasItem and CursorHasItem() then ClearCursor(); say("The game would not put that bag there (a bag that holds items has to be emptied first).") end
+        end)
+    end
+    if #list == 0 then say(reagent and "You carry no other reagent bag." or "You carry no other bag.") end
+    if link and here.used > 0 and #list > 0 then say("The bag in that slot still holds " .. here.used .. " item" .. (here.used == 1 and "" or "s") .. ": the game may want it emptied first.") end
+    add("Open this bag", { type = "click", clickbutton = btn })
+    return true
+end
+
 local function openBag(btn)
     local bag, slot = bagSlot(btn)
     local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
@@ -624,7 +686,7 @@ function M.open(btn)
         M.from = nil
     end
     if not kind then
-        say("The options menu works on items in your bags, items you are wearing, and spells in the spellbook.")
+        say("The options menu works on items in your bags, items you are wearing, your bag slots, and spells in the spellbook.")
         return false
     end
     build()
@@ -632,6 +694,7 @@ function M.open(btn)
     local ok, opened = pcall(function()
         if kind == "bag" then return openBag(btn) end
         if kind == "equip" then return openEquip(btn) end
+        if kind == "bagslot" then return openBagBarSlot(btn) end
         return openSpell(btn)
     end)
     if not (ok and opened) then

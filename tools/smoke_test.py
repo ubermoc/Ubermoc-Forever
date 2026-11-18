@@ -807,6 +807,34 @@ r = L("""function()
 end""")()
 assert str(r) == "true/false/true/false|31:4:0,32:0:7,33:10:0,34:-4:0|1:Reagent bag slot|unknown", r
 print("Bags: which slots a bag fits, the gain over each, items still in a bag: OK")
+# The bag bar can be moved to while bags are open (its fading is held then), and Y on one of its bag slots is a bag-slot menu
+r = L("""function()
+    local G, M, F = UbermocForever.GameNav, UbermocForever.ItemMenu, UbermocForever.Fade
+    local function frame(name, isShown) return { GetName = function() return name end, IsShown = function() return isShown end } end
+    local oldBar, oldCombined, oldHold = BagsBar, ContainerFrameCombinedBags, F.hold
+    local holds = {}
+    F.hold = function(k, on) holds[#holds + 1] = k .. "=" .. tostring(on) end
+    BagsBar = frame("BagsBar", true)
+    local function hasBar() for _, w in ipairs((G.windows())) do if w == BagsBar then return "bar" end end return "nobar" end
+    local out = {}
+    ContainerFrameCombinedBags = frame("ContainerFrameCombinedBags", false)
+    out[#out + 1] = hasBar()
+    ContainerFrameCombinedBags = frame("ContainerFrameCombinedBags", true)
+    out[#out + 1] = hasBar()
+    ContainerFrameCombinedBags = frame("ContainerFrameCombinedBags", false)
+    out[#out + 1] = hasBar()
+    out[#out + 1] = table.concat(holds, ";")
+    local slot = { GetName = function() return "CharacterBag2Slot" end, GetBagID = function() return 3 end, GetID = function() return 33 end }
+    local rslot = { GetName = function() return "CharacterReagentBag0Slot" end, GetBagID = function() return 5 end, GetID = function() return 35 end }
+    local pack = { GetName = function() return "MainMenuBarBackpackButton" end, GetBagID = function() return 0 end, GetID = function() return 0 end }
+    local b1, i1, re1 = M.bagBarSlot(slot)
+    local b2, i2, re2 = M.bagBarSlot(rslot)
+    out[#out + 1] = b1 .. "/" .. i1 .. "/" .. tostring(re1) .. "," .. b2 .. "/" .. i2 .. "/" .. tostring(re2) .. "," .. tostring(M.bagBarSlot(pack)) .. "," .. tostring(M.kind(slot))
+    BagsBar, ContainerFrameCombinedBags, F.hold = oldBar, oldCombined, oldHold
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "nobar|bar|nobar|bags=true;bags=false|3/33/false,5/35/true,nil,bagslot", r
+print("Bag bar: reachable while bags are open, kept visible then, its bag slots get the bag menu: OK")
 # Binding a spell by pressing buttons: a combination with a slot, one with no bind, one used for something else
 r = L("""function()
     local G = UbermocForever.GameNav

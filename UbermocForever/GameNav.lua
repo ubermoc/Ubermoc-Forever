@@ -196,6 +196,14 @@ local function closeMenus()
     return did
 end
 
+local bagBarHeld = false
+function G.holdBagBar(on)
+    on = on and true or false
+    if on == bagBarHeld then return end
+    bagBarHeld = on
+    if UF.Fade and UF.Fade.hold then pcall(UF.Fade.hold, "bags", on) end
+end
+
 function G.windows()
     for _, n in ipairs(POPUPS) do
         local p = _G[n]
@@ -217,6 +225,12 @@ function G.windows()
     end
     for _, n in ipairs(FIXED) do addWindow(list, seen, _G[n]) end
     for i = 1, 13 do addWindow(list, seen, _G["ContainerFrame" .. i]) end
+    -- while bags are open the bag bar (the bag slots beside the micro menu, BagsBar) can be moved to as well, so Y on a bag
+    -- slot can swap the bag in it (ItemMenu.lua); its fading is lifted while that is so
+    local bagsOpen = shown(_G.ContainerFrameCombinedBags)
+    for i = 1, 13 do if shown(_G["ContainerFrame" .. i]) then bagsOpen = true end end
+    if bagsOpen then addWindow(list, seen, _G.BagsBar) end
+    G.holdBagBar(bagsOpen)
     addWindow(list, seen, _G.GameMenuFrame)
     for _, n in ipairs(UISpecialFrames or {}) do addWindow(list, seen, _G[n]) end
     -- every window the game registered as a panel, and the windows that hang off another one (the open letter in the mail,
@@ -1577,6 +1591,12 @@ function G.active() return entry ~= nil end
 
 function G.update()
     local want = false
+    if not (G.enabled() and not InCombatLockdown()) and bagBarHeld then
+        -- the window list is not read now (combat, or navigation off): the bag bar's fading comes back once no bag is open
+        local open = shown(_G.ContainerFrameCombinedBags)
+        for i = 1, 13 do if shown(_G["ContainerFrame" .. i]) then open = true end end
+        if not open then G.holdBagBar(false) end
+    end
     if G.enabled() and not InCombatLockdown() then
         wins, popup = G.windows()
         local others = UF.Nav.Count() - (entry and 1 or 0)

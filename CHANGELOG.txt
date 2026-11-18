@@ -1,3 +1,6 @@
+UbermocForever 1.3.114
+- Added: while your bags are open, the highlight can move onto the bag bar beside the micro menu (it shows while you do, even when its fading hides it). Y on a bag slot there lists the bags you carry that fit it (a reagent bag for the reagent slot), biggest first, each with how many slots it gains or loses in green or red; A puts it there. "Open this bag" opens that bag. A chat line warns when the bag in the slot still holds items. Untested in the game.
+
 UbermocForever 1.3.113
 - Added: Y on a bag in your bags has "Equip in a bag slot" (ported from Ubermoc UI), showing the best gain on the entry (+4 slots, or no gain). It lists your bag slots (the reagent slot for a reagent bag), each with the bag there now and its size, and how many slots the new bag gains or loses in green or red; a bag there that still holds items is marked. A puts the new bag there (the old one goes into your bags); Back returns to the item menu. Untested in the game.
 
