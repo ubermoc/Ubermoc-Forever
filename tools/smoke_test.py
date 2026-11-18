@@ -1966,15 +1966,32 @@ r = L("""function()
     tick(); out[#out + 1] = (Nav.Count() - base) .. ":" .. writesAtTake          -- the wait is over: B is given back; taking B touched no click cvar (a window that takes them does, below)
     SpellIsTargeting = function() error("restricted") end
     tick(); out[#out + 1] = Nav.Count() - base                                 -- a raising call is survived
+    SpellIsTargeting = function() return waiting end
+    -- the entry is shared: GameNav keeps working beside it, but a real window of ours still counts
+    waiting = true; tick()
+    local sharedOthers = Nav.CountOthers(nil)
+    local win = Nav.Push({}, {})
+    local withWindow = Nav.CountOthers(nil)
+    Nav.Pop(win)
+    out[#out + 1] = sharedOthers .. ":" .. withWindow
+    -- the game's own question is up (the replace-this-enchant question): A and B are GameNav's, B is not taken
+    StaticPopup1 = { IsShown = function() return true end }
+    tick(); out[#out + 1] = Nav.Count() - base
+    StaticPopup1 = { IsShown = function() return false end }
+    tick(); out[#out + 1] = Nav.Count() - base                                 -- the question is gone: B is taken again
+    StaticPopup1 = nil
+    waiting = false; tick()
     for i = #stash, 1, -1 do Nav._stack[#Nav._stack + 1] = stash[i] end
     SpellIsTargeting, InCombatLockdown, SetOverrideBindingClick, SetCVar, GetCVar = savedTarget, savedCombat, savedBind, savedCVar, savedGet
     return table.concat(out, "|")
 end""")()
-assert str(r) == "0nil|0|1:UbermocForeverCancelTarget|1|UbermocForeverCancelTarget|0:0|0", r
+assert str(r) == "0nil|0|1:UbermocForeverCancelTarget|1|UbermocForeverCancelTarget|0:0|0|0:1|0|1", r
 src = open(ADDON + "/TargetCancel.lua", encoding="utf-8").read()
 code = src.split("local _, UF", 1)[1]
 assert '"/stopspelltarget"' in code and "SpellStopTargeting" not in code, "the macro, not a direct call"
 print("TargetCancel: B cancels the pick-a-target wait through the game's own /stopspelltarget, only while it waits, never in combat, clicks untouched: OK")
+gn = open(ADDON + "/GameNav.lua", encoding="utf-8").read()
+assert "local others = UF.Nav.CountOthers(entry)" in gn, "GameNav must not step aside for a shared entry (the B-cancels-the-wait one)"
 # GameNav: opening our marker menu asks for a scan on the next frame instead of waiting for the 0.15 s tick
 r = L("""function()
     local G = UbermocForever.GameNav

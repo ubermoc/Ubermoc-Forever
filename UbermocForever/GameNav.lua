@@ -1598,7 +1598,7 @@ function G.update()
     end
     if G.enabled() and not InCombatLockdown() then
         wins, popup = G.windows()
-        local others = UF.Nav.Count() - (entry and 1 or 0)
+        local others = UF.Nav.CountOthers(entry)   -- a shared entry (B cancels a target wait) does not make GameNav step aside
         want = #wins > 0 and others == 0
     end
     if want and not entry then

@@ -41,9 +41,23 @@ function T.waiting()
     return ok and plain(v) == true
 end
 
+-- Is one of the game's own question windows up (the "replace this enchant?" question after an armor kit, for one)? Then A and B
+-- belong to GameNav, which answers it (A accepts, B declines), so B is not taken for the cancel.
+local function questionUp()
+    for i = 1, 4 do
+        local p = _G["StaticPopup" .. i]
+        if p and p.IsShown then
+            local ok, shown = pcall(p.IsShown, p)
+            if ok and plain(shown) == true then return true end
+        end
+    end
+    return false
+end
+T.questionUp = questionUp
+
 -- one look: take B while the game waits, give it back when it does not
 function T.update()
-    local want = T.waiting() and not (InCombatLockdown and InCombatLockdown())
+    local want = T.waiting() and not (InCombatLockdown and InCombatLockdown()) and not questionUp()
     local Nav = UF.Nav
     if not Nav then return end
     if want then
@@ -52,7 +66,7 @@ function T.update()
         end
         if not entry then
             button()
-            entry = Nav.Push({}, { PAD2 = { BUTTON, "LeftButton" } }, true)
+            entry = Nav.Push({}, { PAD2 = { BUTTON, "LeftButton" } }, true, true)   -- noClicks, shared: GameNav keeps working beside it
         end
     elseif entry then
         Nav.Pop(entry); entry = nil
