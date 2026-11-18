@@ -1,3 +1,10 @@
+UbermocForever 1.3.127
+- Added: B cancels "pick the item it goes on" (`TargetCancel.lua`). After using a poison, an oil, an armor kit or an enchant
+  from a bag the game waits for you to pick the item (a targeting cursor) and only a right click or Escape ended it. While it
+  waits, B now sends the game's own /stopspelltarget through a secure button of ours, whether or not a window is open. B
+  is taken only for as long as the game waits, never in combat (the game blocks key changes then; applying in combat still
+  needs a right click), and the cursor clicks (R1, R2) are left alone so you can still click the item. Untested in the game.
+
 UbermocForever 1.3.126
 - Added: a description panel at the bottom of the options window. It shows what the highlighted setting does, in words,
   and follows the controller highlight (not the mouse; the mouse tooltip still says the same). The window is a little

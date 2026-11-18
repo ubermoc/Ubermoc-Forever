@@ -1684,6 +1684,53 @@ r = L("""function()
 end""")()
 assert str(r) == "0.8/0.8,0.5/0.8,60%,0.2/nil,0.8,nil,0.0", r
 print("Fading: a part's own mouse-over opacity, Off and Same, cleared by reset, hidden stays hidden: OK")
+# TargetCancel (TargetCancel.lua): while the game waits for a target (SpellIsTargeting), B goes to a secure button that runs
+# /stopspelltarget; it is given back as soon as the wait ends, never taken in combat, retaken when a window took it, and the
+# game's cursor clicks (R1, R2) are left alone. FAKE(C1): the stub SpellIsTargeting stands for the game's call of that name
+# (SecureTemplates.lua:183 and Blizzard_UIPanels_Game PaperDollFrame.lua use it as a plain boolean test).
+r = L("""function()
+    local UF = UbermocForever
+    local T, Nav = UF.TargetCancel, UF.Nav
+    local out = {}
+    local savedTarget, savedCombat, savedBind, savedCVar, savedGet = SpellIsTargeting, InCombatLockdown, SetOverrideBindingClick, SetCVar, GetCVar
+    -- the game's cursor clicks are at their defaults, so a window taking the buttons WOULD switch them off
+    GetCVar = function(n) if n == "GamePadCursorLeftClick" then return "PADRTRIGGER" elseif n == "GamePadCursorRightClick" then return "PADRSHOULDER" end return "0" end
+    local waiting, combat, boundTo, cvarWrites = false, false, {}, 0
+    SpellIsTargeting = function() return waiting end
+    InCombatLockdown = function() return combat end
+    SetOverrideBindingClick = function(_, _, key, name) boundTo[key] = name end
+    SetCVar = function() cvarWrites = cvarWrites + 1 end
+    -- start from an empty stack (earlier tests leave windows on it that would take the click cvars themselves)
+    local stash = {}
+    for i = #Nav._stack, 1, -1 do stash[#stash + 1] = table.remove(Nav._stack, i) end
+    local ticker = T._frame.__scripts.OnUpdate
+    local function tick() ticker(T._frame, 0.2) end
+    local base = Nav.Count()
+    tick(); out[#out + 1] = Nav.Count() - base .. tostring(boundTo.PAD2)       -- not waiting: nothing taken
+    waiting = true
+    combat = true
+    tick(); out[#out + 1] = Nav.Count() - base                                 -- waiting in combat: nothing taken
+    combat = false
+    tick(); out[#out + 1] = (Nav.Count() - base) .. ":" .. tostring(boundTo.PAD2)   -- waiting: B goes to our button
+    local writesAtTake = cvarWrites
+    tick(); out[#out + 1] = Nav.Count() - base                                 -- and only once
+    -- a window opens after us and takes B: we take it back
+    local other = Nav.Push({}, { PAD2 = { "SomeWindowBack", "LeftButton" } })
+    tick(); out[#out + 1] = boundTo.PAD2
+    Nav.Pop(other)
+    waiting = false
+    tick(); out[#out + 1] = (Nav.Count() - base) .. ":" .. writesAtTake          -- the wait is over: B is given back; taking B touched no click cvar (a window that takes them does, below)
+    SpellIsTargeting = function() error("restricted") end
+    tick(); out[#out + 1] = Nav.Count() - base                                 -- a raising call is survived
+    for i = #stash, 1, -1 do Nav._stack[#Nav._stack + 1] = stash[i] end
+    SpellIsTargeting, InCombatLockdown, SetOverrideBindingClick, SetCVar, GetCVar = savedTarget, savedCombat, savedBind, savedCVar, savedGet
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "0nil|0|1:UbermocForeverCancelTarget|1|UbermocForeverCancelTarget|0:0|0", r
+src = open(ADDON + "/TargetCancel.lua", encoding="utf-8").read()
+code = src.split("local _, UF", 1)[1]
+assert '"/stopspelltarget"' in code and "SpellStopTargeting" not in code, "the macro, not a direct call"
+print("TargetCancel: B cancels the pick-a-target wait through the game's own /stopspelltarget, only while it waits, never in combat, clicks untouched: OK")
 # GameNav: opening our marker menu asks for a scan on the next frame instead of waiting for the 0.15 s tick
 r = L("""function()
     local G = UbermocForever.GameNav
