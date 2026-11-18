@@ -1,4 +1,4 @@
-Confirmed in the game by the user 2026-11-18: everything through 1.3.129 (the user tested all of it and reported that it works). Earlier the same day: everything through 1.3.125, and the game draws no nameplate farther than 45. Before that, 2026-11-17: everything through 1.3.103 (see AGENTS.md). Released: 1.3.129 (GitHub and CurseForge). Nothing is untested now. Read this whole
+Confirmed in the game by the user 2026-11-18: everything through 1.3.129 (the user tested all of it and reported that it works). Earlier the same day: everything through 1.3.125, and the game draws no nameplate farther than 45. Before that, 2026-11-17: everything through 1.3.103 (see AGENTS.md). Released: 1.3.129 (GitHub and CurseForge). Untested in the game: 1.3.130 (a friendly player's plate shows its level in name-only mode, `PlateLevel.lua`; the cause was the game's own name-only setting, which keeps its level badge off friendly players). Read this whole
 file before doing anything. It says what the project is, what the user wants, what is built, what is proven and what
 is not, and what to do next.
 

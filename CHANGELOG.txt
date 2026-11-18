@@ -1,3 +1,13 @@
+UbermocForever 1.3.130
+- Fixed: a friendly player's nameplate showed no level when "Friendly: name only" was on. The cause is in the game, not in the
+  pieces we hide: that option writes the game's own name-only setting, and with it on the game tells its level badge not to
+  display for a friendly player (`NameplateLevelFrameMixin:ShouldDisplay`, Camelot/Blizzard_NamePlateLevelFrame.lua:12, then
+  `UpdateShowOnlyName` hides the badge). 1.3.121 only kept the number on the plates where we hide pieces ourselves (enemies and
+  friendly NPCs), so friendly players were never fixed. Now `PlateLevel.lua` draws the level itself where, and only where, the
+  game leaves its badge off: a friendly player while that setting is on. The number uses the badge's own font and the game's own
+  colours, and sits at the right end of the plate at the height of the name, where the badge sits on the other plates. A plate
+  where the game shows its own badge is left alone, so no plate gets two numbers. No new setting. Untested in the game.
+
 UbermocForever 1.3.129
 - Added: a quest mark and the quest progress on nameplates (`PlateQuest.lua`). A unit that one of your active quests is
   about gets the game's small quest icon beside its name, and the progress of its objective ("3/8", or "45%") is written next
