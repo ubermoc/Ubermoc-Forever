@@ -1,3 +1,9 @@
+UbermocForever 1.3.132
+- Changed: the button legend under a game window is tidier. When it fits on one row the items follow each other with even
+  gaps; when the window is too narrow they go in a grid of equal-width columns filled evenly (3 + 3 instead of a long
+  row over a short ragged one), so the left edges line up. A little more room between rows, and the dark bar behind
+  it is a bit darker with more padding and a thin gold line along its top edge. Untested in the game.
+
 UbermocForever 1.3.131
 - Changed: the "Replace what is on it?" question: the controller's A and B pictures now sit beside the Yes and No buttons
   (they follow the controller in use) and the legend under the buttons is gone; "Continue?" is a line of its own above the

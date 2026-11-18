@@ -19,6 +19,29 @@ function UF.legendScale(total, maxWidth, noWrap)
     return math.max(noWrap and 0.5 or MIN_SCALE, maxWidth / total)
 end
 
+-- Where each item of a legend goes. widths: the width of each item; limit: the room (nil = no limit); gap: space between items.
+-- Fits on one row: they follow each other. Otherwise they go in a tidy grid of equal-width cells, evenly filled
+-- (6 items in 3 + 3, not 4 + 2), so the rows line up instead of ending ragged. Returns { width, rows, items = { {x, row}, ... } }.
+function UF.legendGrid(widths, limit, gap)
+    gap = gap or 14
+    local n = #widths
+    local total = math.max(0, gap * (n - 1))
+    local cell = 0
+    for _, w in ipairs(widths) do total = total + w; cell = math.max(cell, w) end
+    local items = {}
+    if n == 0 then return { width = 1, rows = 1, items = items } end
+    if not limit or total <= limit then
+        local x = 0
+        for i, w in ipairs(widths) do items[i] = { x = x, row = 0 }; x = x + w + gap end
+        return { width = total, rows = 1, items = items }
+    end
+    local cols = math.max(1, math.min(n, math.floor((limit + gap) / (cell + gap))))
+    local rows = math.ceil(n / cols)
+    cols = math.ceil(n / rows)
+    for i = 1, n do items[i] = { x = ((i - 1) % cols) * (cell + gap), row = math.floor((i - 1) / cols) } end
+    return { width = cols * cell + (cols - 1) * gap, rows = rows, items = items }
+end
+
 function UF.CreateLegend(parent)
     local legend = CreateFrame("Frame", nil, parent)
     legend:SetHeight(22)
@@ -51,35 +74,35 @@ function UF.CreateLegend(parent)
             local t = self.texts[pad]
             if t then
                 self.items[i]:SetText(UF.glyph(pad) .. " " .. t)
-                total = total + (self.items[i]:GetStringWidth() or 0) + 10
+                total = total + (self.items[i]:GetStringWidth() or 0) + 14
                 n = n + 1
             end
         end
-        total = math.max(0, total - 10)
+        total = math.max(0, total - 14)
         local scale = UF.legendScale(total, self.maxWidth, self.noWrap)
         self:SetScale(scale)
-        local limit = self.maxWidth and (self.maxWidth / scale) or nil
-        local x, row, widest = 0, 0, 0
+        local limit = (self.maxWidth and not self.noWrap) and (self.maxWidth / scale) or nil
+        local shown, widths = {}, {}
         for i, pad in ipairs(ROLES) do
             local fs = self.items[i]
             local t = self.texts[pad]
             if t then
                 fs:SetText(UF.glyph(pad) .. " " .. t)
-                local w = fs:GetStringWidth()
-                if limit and not self.noWrap and x > 0 and x + w > limit then
-                    x, row = 0, row + 1
-                end
-                fs:ClearAllPoints()
-                fs:SetPoint("LEFT", self, "TOPLEFT", x, -11 - row * 22)
-                fs:Show()
-                x = x + w + 10
-                widest = math.max(widest, x - 10)
+                shown[#shown + 1] = fs
+                widths[#widths + 1] = fs:GetStringWidth() or 0
             else
                 fs:Hide()
             end
         end
-        self:SetWidth(math.max(widest, 1))
-        self:SetHeight(22 * (row + 1))
+        local grid = UF.legendGrid(widths, limit, 14)
+        for k, fs in ipairs(shown) do
+            local at = grid.items[k]
+            fs:ClearAllPoints()
+            fs:SetPoint("LEFT", self, "TOPLEFT", at.x, -12 - at.row * 24)
+            fs:Show()
+        end
+        self:SetWidth(math.max(grid.width, 1))
+        self:SetHeight(24 * grid.rows)
     end
 
     UF.OnDetect(function() if legend:IsVisible() then legend:Refresh() end end)
