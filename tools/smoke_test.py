@@ -1686,6 +1686,32 @@ r = L("""function()
 end""")()
 assert str(r) == "1.00,0.80,1.00,0.75", r
 print("Legends: shrink to fit, no further than 75 %: OK")
+# Legends: one row when it fits, else a grid of equal cells filled evenly (3 + 3, never 4 + 2), left edges lined up
+r = L("""function()
+    local g = UbermocForever.legendGrid
+    local function show(grid)
+        local parts = {}
+        for _, it in ipairs(grid.items) do parts[#parts + 1] = it.row .. "@" .. it.x end
+        return grid.rows .. "r w" .. grid.width .. ":" .. table.concat(parts, " ")
+    end
+    local w6 = { 70, 60, 110, 100, 100, 60 }
+    local out = {}
+    out[#out + 1] = show(g(w6, nil, 14))        -- no limit: one row, following each other
+    out[#out + 1] = show(g(w6, 700, 14))        -- the whole row fits in 700
+    out[#out + 1] = show(g(w6, 400, 14))        -- cells of 110: 3 across, 2 rows
+    out[#out + 1] = show(g(w6, 500, 14))        -- room for 4 across would be 4 + 2: it is 3 + 3
+    out[#out + 1] = show(g({ 70, 60, 110, 100, 100 }, 260, 14))   -- 5 items, 2 across would be 3 rows
+    out[#out + 1] = show(g({ 90 }, 10, 14))     -- one wide item: still shown, one row
+    out[#out + 1] = show(g({}, 100, 14))        -- nothing
+    return table.concat(out, "|")
+end""")()
+assert str(r) == ("1r w570:0@0 0@84 0@158 0@282 0@396 0@510|"
+                  "1r w570:0@0 0@84 0@158 0@282 0@396 0@510|"
+                  "2r w358:0@0 0@124 0@248 1@0 1@124 1@248|"
+                  "2r w358:0@0 0@124 0@248 1@0 1@124 1@248|"
+                  "3r w234:0@0 0@124 1@0 1@124 2@0|"
+                  "1r w90:0@0|1r w1:"), r
+print("Legends: a row when it fits, else an evenly filled grid of equal cells: OK")
 # Character window: A on a gear slot clicks its popout button (opens the equipment flyout) when it has items to offer
 r = L("""function()
     local G = UbermocForever.GameNav
