@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local CP = {}
 UF.ChatPage = CP
 
-local page, topRow, autoBtn, pickBtns, stateRows, titleFS, hideBtn, resetBtn, noteFS, mouseOwnRow
+local page, topRow, autoBtn, pickBtns, stateRows, titleFS, hideBtn, resetBtn, noteFS, mouseOwnRow, editTopBtn
 local sel
 local SHORT = { chat = "Window", chattabs = "Tabs", chatedit = "Edit box", chatbtns = "Buttons", quickjoin = "Quick join" }
 local WIDTHS = { chat = 110, chattabs = 90, chatedit = 110, chatbtns = 110, quickjoin = 120 }
@@ -48,6 +48,7 @@ function CP.refresh()
     mouseOwnRow.same:SetText(own == nil and "> Same" or "Same")
     mouseOwnRow.off:SetText(own == false and "> Off" or "Off")
     mouseOwnRow.frame:SetAlpha(hid and 0.5 or 1)
+    editTopBtn:SetText("Edit box on top: " .. (UF.ChatEdit.on() and "On" or "Off"))
     hideBtn:SetText("Hide for good: " .. (hid and "On" or "Off"))
     autoBtn:SetText("Fade by itself: " .. (Ch.autoOn(sel.key) and "On" or "Off"))
 end
@@ -141,7 +142,7 @@ function CP.build(parent, inset)
     moff:SetScript("OnClick", function() F.setMouseOwn(sel.key, false); CP.refresh() end)
     mminus:SetScript("OnClick", function() F.stepMouseOwn(sel.key, -1); CP.refresh() end)
     mplus:SetScript("OnClick", function() F.stepMouseOwn(sel.key, 1); CP.refresh() end)
-    mouseOwnRow = { frame = mf, value = mvalue, same = same, off = moff }
+    mouseOwnRow = { frame = mf, value = mvalue, same = same, off = moff, minus = mminus, plus = mplus }
     tip(same, "Mouse over", "How visible this part is while the mouse is over it. Same follows the Mouse over (all) setting on the Fading page; Off keeps it from lighting up; - and + set a value of its own. It never goes lower than the part's own opacity.")
     local y = my - 34
     hideBtn = button(page, 200, 24); hideBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y - 6)
@@ -155,6 +156,10 @@ function CP.build(parent, inset)
     noteFS:SetPoint("TOPLEFT", hideBtn, "BOTTOMLEFT", 0, -12)
     noteFS:SetWidth(640); noteFS:SetJustifyH("LEFT")
     noteFS:SetText("Normal leaves the game's own opacity; the first situation that is on and has a value wins, in the order above. The tabs follow only their own setting here: a new message or typing does not open them.")
+    -- Where the chat edit box sits (ChatEdit.lua): above the window instead of under it
+    editTopBtn = button(page, 220, 24); editTopBtn:SetPoint("TOPLEFT", noteFS, "BOTTOMLEFT", 0, -14)
+    editTopBtn:SetScript("OnClick", function() UF.ChatEdit.toggle(); CP.refresh() end)
+    tip(editTopBtn, "Edit box on top", "The box you type in sits above the chat window (above its tabs) instead of under it. Off puts it back where the game has it. Not changed during combat: it moves when the fight ends.")
     CP.refresh()
     return page
 end
@@ -170,6 +175,8 @@ function CP.navRows()
     for _, b in ipairs(pickBtns) do picks[#picks + 1] = b end
     out[2] = picks
     for _, r in ipairs(stateRows) do out[#out + 1] = { r.normal, r.zero, r.minus, r.plus } end
+    out[#out + 1] = { mouseOwnRow.same, mouseOwnRow.off, mouseOwnRow.minus, mouseOwnRow.plus }
     out[#out + 1] = { hideBtn, resetBtn, autoBtn }
+    out[#out + 1] = { editTopBtn }
     return out
 end
