@@ -1600,7 +1600,7 @@ r = L("""function()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()            -- left of the first page is the last (Quality of life)
     local q = UF.QolPage.navRows()
-    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5] .. "/" .. #q[6]   -- aim dot; fast loot; vendor; nameplates; name health; plate range
+    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5] .. "/" .. #q[6] .. "/" .. #q[7]   -- aim dot; fast loot; vendor; nameplates; name health; plate range
     local before = UF.Vendor.cfg().guild
     UF.Nav.SetFocus(q[3][3]); press("PAD1")                            -- A on Guild bank first flips it
     out[#out + 1] = tostring(UF.Vendor.cfg().guild ~= before)
@@ -1608,7 +1608,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,6/3/1/3/2/2/1,true,1", r
+assert str(r) == "1,2,3,2,1,5,7/3/1/3/2/2/1/2,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -1755,6 +1755,100 @@ r = L("""function()
 end""")()
 assert str(r) == "0.8/0.8,0.5/0.8,60%,0.2/nil,0.8,nil,0.0", r
 print("Fading: a part's own mouse-over opacity, Off and Same, cleared by reset, hidden stays hidden: OK")
+# PlateQuest (PlateQuest.lua): a quest mark and the progress on nameplates. FAKE(C1): the stub UnitIsRelatedToActiveQuest returns a
+# plain bool (QuestLogDocumentation.lua:1287-1299 gives no secret return). FAKE(C2): the stub tooltip lines have the type and leftText
+# of TooltipInfoSharedDocumentation.lua (QuestObjective 8, QuestTitle 17), and the objective text is the unit tooltip's "name: a/b".
+r = L("""function()
+    local UF = UbermocForever
+    local PQ = UF.PlateQuest
+    local out = {}
+    local saved = { C_QuestLog, C_TooltipInfo, Enum, issecretvalue, C_NamePlate, UbermocForeverDB and UbermocForeverDB.plates }
+    local related, lines = true, {}
+    C_QuestLog = { UnitIsRelatedToActiveQuest = function(unit) if unit == "boom" then error("restricted") end return related end }
+    C_TooltipInfo = { GetUnit = function() return { lines = lines } end }
+    Enum = { TooltipDataLineType = { QuestObjective = 8, QuestTitle = 17 } }
+    UbermocForeverDB.plates = nil
+    local function line(t, text) return { type = t, leftText = text } end
+    local function st(unit)
+        local s = PQ.state(unit)
+        if not s then return "none" end
+        return (s.done and "done" or "open") .. ":" .. tostring(s.text)
+    end
+    lines = { line(17, "Kill them all"), line(8, "Defias Thug slain: 3/8") }
+    out[#out + 1] = st("target")                                   -- open:3/8
+    lines = { line(17, "Kill them all"), line(8, "Defias Thug slain: 8/8") }
+    out[#out + 1] = st("target")                                   -- done
+    lines = { line(8, "Boar Meat: 8/8"), line(8, "Boar Tusk: 2/4") }
+    out[#out + 1] = st("target")                                   -- the first unfinished one
+    lines = { line(8, "Escort progress: 45%") }
+    out[#out + 1] = st("target")                                   -- a percent objective
+    lines = { line(22, "Defias Thug"), line(8, "Defias Thug slain: 1/2"), line(18, "Friend") }
+    out[#out + 1] = st("target")                                   -- other lines are ignored
+    lines = {}
+    out[#out + 1] = st("target")                                   -- related, but no objective line: marked, no text
+    related = false
+    out[#out + 1] = st("target")                                   -- not related: nothing
+    related = true
+    out[#out + 1] = st("boom")                                     -- a raising call: nothing
+    issecretvalue = function(v) return v == "secret" end
+    lines = { line(8, "secret") }
+    out[#out + 1] = st("target")                                   -- a secret line is not read
+    C_QuestLog = { UnitIsRelatedToActiveQuest = function() return "secret" end }
+    out[#out + 1] = st("target")                                   -- a secret answer counts as no
+    C_QuestLog = { UnitIsRelatedToActiveQuest = function() return related end }
+    issecretvalue = saved[4]
+    -- showing: the icon and the text follow the two settings; a finished unit is cleared
+    local made = {}
+    local realMake = PQ.make
+    PQ.make = function(uf)
+        local function piece(n) local p = { name = n, shown = false }; p.Show = function() p.shown = true end; p.Hide = function() p.shown = false end
+            p.SetText = function(_, t) p.text = t end; p.ClearAllPoints = function() end; p.SetPoint = function() end; return p end
+        local o = { icon = piece("icon"), text = piece("text") }
+        made[#made + 1] = o
+        return o
+    end
+    local uf = { unit = "target" }
+    local shownPlate = { namePlateUnitToken = "target", UnitFrame = uf }
+    C_NamePlate = { GetNamePlates = function() return { shownPlate } end, GetNamePlateForUnit = function() return nil end }
+    lines = { line(8, "Defias Thug slain: 3/8") }
+    PQ.show(uf, "target")
+    local o = made[1]
+    out[#out + 1] = tostring(o.icon.shown) .. "/" .. tostring(o.text.shown) .. "/" .. tostring(o.text.text)
+    PQ.toggle("text")
+    out[#out + 1] = tostring(o.icon.shown) .. "/" .. tostring(o.text.shown) .. "/" .. tostring(PQ.textEnabled())
+    PQ.toggle("quest")                                              -- both off: nothing shown
+    out[#out + 1] = tostring(o.icon.shown) .. "/" .. tostring(o.text.shown) .. "/" .. tostring(PQ.enabled())
+    PQ.toggle("quest"); PQ.toggle("text")                           -- back on
+    PQ.show(uf, "target")
+    out[#out + 1] = tostring(o.icon.shown) .. "/" .. tostring(o.text.shown)
+    lines = { line(8, "Defias Thug slain: 8/8") }
+    PQ.show(uf, "target")
+    out[#out + 1] = tostring(o.icon.shown) .. "/" .. tostring(o.text.shown)    -- finished: cleared
+    related = false; lines = { line(8, "x: 1/2") }
+    PQ.show(uf, "target")
+    out[#out + 1] = tostring(o.icon.shown) .. "/" .. #made           -- not related: still cleared, and the pieces were made once
+    -- the events: a plate added is styled, a removed one cleared, a quest update asks again once
+    related = true; lines = { line(8, "Defias Thug slain: 2/8") }
+    local plate = { namePlateUnitToken = "nameplate1", UnitFrame = { unit = "nameplate1" } }
+    C_NamePlate = { GetNamePlateForUnit = function(u) if u == "nameplate1" then return plate end end, GetNamePlates = function() return { plate } end }
+    local ev = PQ._frame.__scripts.OnEvent
+    ev(PQ._frame, "NAME_PLATE_UNIT_ADDED", "nameplate1")
+    local o2 = made[2]
+    out[#out + 1] = tostring(o2 and o2.icon.shown) .. "/" .. tostring(o2 and o2.text.text)
+    ev(PQ._frame, "NAME_PLATE_UNIT_REMOVED", "nameplate1")
+    out[#out + 1] = tostring(o2.icon.shown)
+    PQ.make = realMake
+    C_QuestLog, C_TooltipInfo, Enum, C_NamePlate = saved[1], saved[2], saved[3], saved[5]
+    UbermocForeverDB.plates = saved[6]
+    return table.concat(out, "|")
+end""")()
+assert str(r) == ("open:3/8|done:nil|open:2/4|open:45%|open:1/2|open:nil|none|none|open:nil|none|"
+                  "true/true/3/8|true/false/false|false/false/false|true/true|false/false|false/1|true/2/8|false"), r
+print("PlateQuest: related units are marked with their progress, finished and unrelated ones are not, secrets and errors are survived, the two options and the events work: OK")
+src = open(ADDON + "/PlateQuest.lua", encoding="utf-8").read()
+for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "UnitHealth", "UnitName", "GetText", "GetStringWidth"]:
+    assert bad not in src, "PlateQuest.lua contains " + bad
+print("PlateQuest: no hook, no update loop, nothing read back, nothing written on a game frame: OK")
 # TargetCancel (TargetCancel.lua): while the game waits for a target (SpellIsTargeting), B goes to a secure button that runs
 # /stopspelltarget; it is given back as soon as the wait ends, never taken in combat, retaken when a window took it, and the
 # game's cursor clicks (R1, R2) are left alone. FAKE(C1): the stub SpellIsTargeting stands for the game's call of that name

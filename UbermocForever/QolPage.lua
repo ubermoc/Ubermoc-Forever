@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -32,6 +32,8 @@ function QP.refresh()
     local pl = UF.NameHealth.db()
     healthBtn:SetText("Name shows health: " .. (pl.health and "On" or "Off"))
     percentBtn:SetText("Health percent: " .. (pl.percent and "On" or "Off"))
+    questBtn:SetText("Quest mobs: " .. (UF.PlateQuest.enabled() and "On" or "Off"))
+    questTextBtn:SetText("Quest progress: " .. (UF.PlateQuest.textEnabled() and "On" or "Off"))
     rangeBtn:SetText("Increased plate range: " .. (UF.PlateRange.enabled() and "On" or "Off"))
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
@@ -99,12 +101,18 @@ function QP.build(parent, inset)
     toggle(percentBtn, function() UF.NameHealth.toggle("percent") end)
     rangeBtn = button(page, 220); rangeBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -320)
     toggle(rangeBtn, UF.PlateRange.toggle)
+    questBtn = button(page, 180); questBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -346)
+    questTextBtn = button(page, 180); questTextBtn:SetPoint("LEFT", questBtn, "RIGHT", 6, 0)
+    toggle(questBtn, function() UF.PlateQuest.toggle("quest") end)
+    toggle(questTextBtn, function() UF.PlateQuest.toggle("text") end)
     tip(enemyBtn, "Enemies: name only", "Enemy nameplates show only the unit's name: the health bar and its highlight are hidden, the level stays. Off brings the bar back.")
     tip(friendlyBtn, "Friendly: name only", "Friendly nameplates show only the name. For friendly players this switches on the game's own name-only setting (your old value is kept and given back on Off); for friendly NPCs the bar is hidden by this addon.")
     tip(healthBtn, "Name shows health", "On a name-only plate the name itself is the health bar: it keeps its colour (class colour for players, otherwise by attitude) for the health left, and the part for the health lost turns white. Only works while one of the name-only options is on.")
     tip(percentBtn, "Health percent", "Writes the unit's health percent to the right of its name on a name-only plate. Only works while one of the name-only options is on.")
     tip(rangeBtn, "Increased plate range", "The game draws nameplates only up to a set distance: 45 yards for NPCs and 40 for players. On sets both to 45, so player plates reach as far as NPC plates. Off gives back the values you had. Nothing farther than 45 is drawn.")
-    note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The distance row writes the game's distance settings, and Off gives back the values you had before.", -348)
+    tip(questBtn, "Quest mobs", "A small quest mark appears beside the name of a unit that one of your active quests is about, so you can tell which mobs count. A unit whose objectives are all done is not marked. A switches it on or off.")
+    tip(questTextBtn, "Quest progress", "Writes how far the quest objective has got next to the quest mark, for example 3/8 or 45%. It is the same line the unit's tooltip shows. A switches it on or off.")
+    note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The plate range row writes the game's distance settings, and Off gives back the values you had before. The quest mark and progress work on every nameplate.", -376)
 
     QP.refresh()
     return page
@@ -114,5 +122,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn } }
 end

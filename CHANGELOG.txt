@@ -1,3 +1,10 @@
+UbermocForever 1.3.129
+- Added: a quest mark and the quest progress on nameplates (`PlateQuest.lua`). A unit that one of your active quests is
+  about gets the game's small quest icon beside its name, and the progress of its objective ("3/8", or "45%") is written next
+  to the icon. It uses the game's own "is this unit part of an active quest" answer and the objective line of the unit's
+  tooltip. A unit whose objectives are all done is not marked. Two buttons on the Quality of life page under Nameplates:
+  "Quest mobs" and "Quest progress", both on by default. Works on every nameplate, name-only or not. Untested in the game.
+
 UbermocForever 1.3.128
 - Added: the Y menu says what a worn piece already carries before you put something on it (`Applied.lua`). A poison, oil
   or sharpening stone entry ("Use on Main hand: ...") adds "already has a poison or oil (12 min left, 20 charges)" in orange
