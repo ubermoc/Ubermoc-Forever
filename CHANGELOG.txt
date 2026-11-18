@@ -1,3 +1,15 @@
+UbermocForever 1.3.138
+- Fixed: the Y menu on a bag slot did nothing in the gamepad bag window. With the gamepad interface the bag slots sit in
+  the bag window itself (`GamepadBagBar`) and have no global name, so the menu only knew the old bag bar by name. They are
+  now recognised by the game's own `slotName` key (bag slots 1 to 4 and the reagent slot; backpack and key ring are left
+  out). Y on one lists the bags you carry that fit, each with the slots it gains (green) or loses (red); A swaps it in.
+  Untested in the game.
+
+UbermocForever 1.3.137
+- Changed: the level on friendly player nameplates (1.3.136) now sits where the level is on every other nameplate, under
+  the right end of the name row, in the game's level font and colour. It is centred on the game's own level frame.
+  The quest mark is back beside the name. Untested in the game.
+
 UbermocForever 1.3.136
 - Fixed: friendly player nameplates had no level. The game itself hides the level of a friendly player while its name-only
   nameplate setting is on (Forever's level badge says no for them), and the Friendly: name only button switches that

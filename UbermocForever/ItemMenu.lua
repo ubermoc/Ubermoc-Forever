@@ -75,13 +75,29 @@ end
 -- CharacterReagentBag0Slot; the backpack itself cannot be swapped). Returns its bag ID, inventory slot and whether it is the
 -- reagent slot.
 function M.bagBarSlot(btn)
-    local n = btn and btn.GetName and btn:GetName()
-    if type(n) ~= "string" then return nil end
-    local reagent = n:find("^CharacterReagentBag%dSlot$") ~= nil
-    if not (reagent or n:find("^CharacterBag%dSlot$")) then return nil end
+    if type(btn) ~= "table" then return nil end
+    local reagent
+    local n = btn.GetName and btn:GetName()
+    if type(n) == "string" and n ~= "" then
+        reagent = n:find("^CharacterReagentBag%dSlot$") ~= nil
+        if not (reagent or n:find("^CharacterBag%dSlot$")) then n = nil end
+    else
+        n = nil
+    end
+    if not n then
+        -- the gamepad bag bar inside the combined bags window (Blizzard_MainMenuBarBagButtons GamepadBagBar): its slot
+        -- buttons have no global name, only a slotName key ("BAG0SLOT" ... "BAG3SLOT", "REAGENTBAG0SLOT"; the backpack and
+        -- the key ring have other names and are left out)
+        local sn = btn.slotName
+        if type(sn) ~= "string" then return nil end
+        reagent = sn:find("^REAGENTBAG%dSLOT$") ~= nil
+        if not (reagent or sn:find("^BAG%dSLOT$")) then return nil end
+    end
+    if not btn.GetBagID or not btn.GetID then return nil end
     local okB, bagID = pcall(btn.GetBagID, btn)
     local okI, inv = pcall(btn.GetID, btn)
     if not (okB and okI and type(bagID) == "number" and type(inv) == "number") then return nil end
+    if bagID < 1 then return nil end
     return bagID, inv, reagent
 end
 

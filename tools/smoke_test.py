@@ -953,11 +953,19 @@ r = L("""function()
     local pack = { GetName = function() return "MainMenuBarBackpackButton" end, GetBagID = function() return 0 end, GetID = function() return 0 end }
     local b1, i1, re1 = M.bagBarSlot(slot)
     local b2, i2, re2 = M.bagBarSlot(rslot)
+    -- the gamepad bag bar: no global name, a slotName key
+    local g1 = { slotName = "BAG1SLOT", GetBagID = function() return 2 end, GetID = function() return 32 end }
+    local g2 = { slotName = "REAGENTBAG0SLOT", GetBagID = function() return 5 end, GetID = function() return 35 end }
+    local g3 = { slotName = "BAG0SLOT", GetBagID = function() return 0 end, GetID = function() return 30 end }
+    local g4 = { slotName = "KEYRING", GetBagID = function() return -2 end, GetID = function() return 0 end }
+    local gb1, gi1, gr1 = M.bagBarSlot(g1)
+    local gb2, gi2, gr2 = M.bagBarSlot(g2)
+    out[#out + 1] = "g:" .. gb1 .. "/" .. gi1 .. "/" .. tostring(gr1) .. "," .. gb2 .. "/" .. gi2 .. "/" .. tostring(gr2) .. "," .. tostring(M.bagBarSlot(g3)) .. "," .. tostring(M.bagBarSlot(g4)) .. "," .. tostring(M.kind(g1))
     out[#out + 1] = b1 .. "/" .. i1 .. "/" .. tostring(re1) .. "," .. b2 .. "/" .. i2 .. "/" .. tostring(re2) .. "," .. tostring(M.bagBarSlot(pack)) .. "," .. tostring(M.kind(slot))
     BagsBar, ContainerFrameCombinedBags, F.hold = oldBar, oldCombined, oldHold
     return table.concat(out, "|")
 end""")()
-assert str(r) == "nobar|bar|nobar|bags=true;bags=false|3/33/false,5/35/true,nil,bagslot", r
+assert str(r) == "nobar|bar|nobar|bags=true;bags=false|g:2/32/false,5/35/true,nil,nil,bagslot|3/33/false,5/35/true,nil,bagslot", r
 print("Bag bar: reachable while bags are open, kept visible then, its bag slots get the bag menu: OK")
 # Pick Lock: a locked box is told by its tooltip ("Locked", "Requires Lockpicking (N)"); an opened one is not offered
 r = L("""function()
