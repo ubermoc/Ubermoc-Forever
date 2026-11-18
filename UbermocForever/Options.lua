@@ -10,7 +10,8 @@
 ----------------------------------------------------------------------
 local _, UF = ...
 
-local WIN_W, WIN_H = 740, 560
+local DESC_H = 84            -- the description panel under the list (Describe.lua)
+local WIN_W, WIN_H = 740, 560 + DESC_H
 local ROW_H = 30
 local LIST_W = 680            -- width of the rows inside the inset (the inset is WIN_W - 10 wide, minus margins and the scroll bar)
 local win, inset, content, picker, legend, info, layerButtons, rows, hovered
@@ -358,7 +359,7 @@ local function makeInset()
     local ok, f = pcall(CreateFrame, "Frame", nil, win, "InsetFrameTemplate")
     local i = ok and f or CreateFrame("Frame", nil, win)
     i:SetPoint("TOPLEFT", 4, -60)
-    i:SetPoint("BOTTOMRIGHT", -6, 26)
+    i:SetPoint("BOTTOMRIGHT", -6, 26 + DESC_H)
     return i
 end
 
@@ -374,7 +375,24 @@ end
 local function build()
     win = makeWindow()
     inset = makeInset()
+    inset:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -6, 26 + DESC_H)   -- the room under it is the description panel
     table.insert(UISpecialFrames, "UbermocForeverOptions")
+
+    -- The description panel: what the highlighted setting does, in words (Describe.lua; the mouse tooltip says the same).
+    local okD, descBox = pcall(CreateFrame, "Frame", nil, win, "InsetFrameTemplate")
+    if not okD then descBox = CreateFrame("Frame", nil, win) end
+    descBox:SetPoint("TOPLEFT", inset, "BOTTOMLEFT", 0, -2)
+    descBox:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -6, 26)
+    local descTitle = descBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    descTitle:SetPoint("TOPLEFT", descBox, "TOPLEFT", 10, -7)
+    descTitle:SetJustifyH("LEFT")
+    local descText = descBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    descText:SetPoint("TOPLEFT", descTitle, "BOTTOMLEFT", 0, -4)
+    descText:SetPoint("BOTTOMRIGHT", descBox, "BOTTOMRIGHT", -10, 6)
+    descText:SetJustifyH("LEFT")
+    descText:SetJustifyV("TOP")
+    if descText.SetWordWrap then descText:SetWordWrap(true) end
+    UF.Describe.bind(descTitle, descText)
 
     -- Header band, between the title and the inset: what controller this is, and the button to choose it by hand.
     win.controllerBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
@@ -517,6 +535,34 @@ local function build()
     local checks = bottomButton("Checks", 60)
     checks:SetPoint("RIGHT", reset, "LEFT", -1, 0)
     checks:SetScript("OnClick", function() UF.reportChecks() end)
+
+    -- What each button of this page does, for the tooltip and the description panel (Describe.lua)
+    local D = UF.Describe
+    D.set(cineBtn, "Cinematic mode", "While you talk to a quest giver or another NPC the camera moves in on them and black bars and dark edges frame the screen. The game's own quest window stays as it is, with A and B pictures on its buttons. A switches this on or off.")
+    D.set(barsBtn, "Black bars", "How thick the black bars at the top and bottom of the screen are during a cinematic talk. A steps through the choices, X steps back; a short preview shows the result.")
+    D.set(edgesBtn, "Dark edges", "How far the dark, cloudy edges come in from the sides of the screen during a cinematic talk. A steps through the choices, X steps back; a short preview shows the result.")
+    D.set(pageBtn, "Page", "This window has five pages: the controller binds, Fading, Chat, Bars and Quality of life. A moves to the next page; the left and right triggers do the same from anywhere in the window.")
+    D.fn(win.controllerBtn, function()
+        return "Controller", "The game reports: " .. (UF.deviceName or "no controller") .. ". A chooses the controller by hand (Auto, then each controller in turn); the button pictures and the default binds follow it. Version " .. UF.getVersion() .. "."
+    end)
+    local layerText = {
+        "The binds you get with no modifier held. Pick a row below to change what that controller button does.",
+        "The binds you get while the first modifier button is held (shown on this button).",
+        "The binds you get while the second modifier button is held (shown on this button).",
+        "The binds you get while both modifier buttons are held (shown on this button).",
+    }
+    for i, b in ipairs(layerButtons) do
+        D.fn(b, function(self) return "Layer: " .. (self:GetText() or ""), layerText[i] end)
+    end
+    for _, r in ipairs(rows) do
+        D.fn(r.btn, function()
+            local now = r.action and r.action:GetText() or "?"
+            return "Change what " .. (r.glyph and r.glyph:GetText() or "this button") .. " does",
+                "Right now it does: " .. now .. ". A opens the list of actions to choose from. X clears it, Y puts every bind back to this controller's defaults. This is the layer picked above."
+        end)
+    end
+    D.set(reset, "Reset to default", "Puts every bind back to the defaults for this controller. It asks you first.")
+    D.set(checks, "Checks", "Writes a report in the chat window: the addon version, the controller the game sees, the game's controller settings, and whether each of the addon's own self-checks passed. Copy it into a bug report.")
 
     buildPicker()
 

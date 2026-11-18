@@ -1391,6 +1391,66 @@ r = L("""function()
 end""")()
 assert str(r) == "true,8,4,5", r
 print("Chat page builds: message buttons, five parts, three situations, mouse over, hide and reset, edit box on top: OK")
+# Descriptions (Describe.lua): a title and text per button; the bottom panel follows the controller highlight, with a default
+# when nothing is highlighted or the highlighted button has none; the mouse tooltip uses the same words.
+r = L("""function()
+    local UF = UbermocForever
+    local D, Nav = UF.Describe, UF.Nav
+    local out = {}
+    local function fs() local t = { text = "" }; t.SetText = function(self, v) t.text = v end; return t end
+    local ti, tx = fs(), fs()
+    local function vis(b) b.IsVisible = function() return true end; return b end
+    local a, b, c = vis({}), vis({}), vis({})
+    a.SetScript = function() end; b.SetScript = function() end; c.SetScript = function() end
+    D.set(a, "Alpha", "What alpha does.")
+    D.fn(b, function() return "Beta now", "Worked out." end)
+    D.fn(c, function() error("a raising description") end)
+    D.bind(ti, tx)
+    out[#out + 1] = ti.text == D.DEFAULT_TITLE and tx.text == D.DEFAULT_TEXT and "default" or "no default"
+    Nav.focus = nil
+    Nav.SetFocus(a); out[#out + 1] = ti.text .. "/" .. tx.text
+    Nav.SetFocus(b); out[#out + 1] = ti.text .. "/" .. tx.text
+    Nav.SetFocus(c); out[#out + 1] = ti.text == D.DEFAULT_TITLE and "survived" or ti.text
+    Nav.SetFocus(a); Nav.ClearFocus(); out[#out + 1] = ti.text == D.DEFAULT_TITLE and "cleared" or ti.text
+    -- a focused button that is not shown gives the default, not its own text
+    a.IsVisible = function() return false end
+    Nav.SetFocus(a); out[#out + 1] = ti.text == D.DEFAULT_TITLE and "hidden" or ti.text
+    -- the mouse tooltip carries the same words
+    local shown = {}
+    GameTooltip = { SetOwner = function() end, SetText = function(_, t) shown[#shown + 1] = t end,
+                    AddLine = function(_, t) shown[#shown + 1] = t end, Show = function() end, Hide = function() end }
+    local m = { SetScript = function(self, ev, fn) self[ev] = fn end }
+    D.set(m, "Mouse title", "Mouse text")
+    m.OnEnter(m)
+    out[#out + 1] = table.concat(shown, "+")
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "default|Alpha/What alpha does.|Beta now/Worked out.|survived|cleared|hidden|Mouse title+Mouse text", r
+print("Descriptions: the panel follows the highlight, defaults and raising descriptions are survived, the tooltip says the same: OK")
+# Every button reachable on the Chat, Bars, Quality of life and Fading pages has a title and a text of its own
+r = L("""function()
+    local UF = UbermocForever
+    local missing, total = {}, 0
+    local function check(name, page, nav)
+        for ri, row in ipairs(nav) do
+            for ci, b in ipairs(row) do
+                total = total + 1
+                local t, x = UF.Describe.of(b)
+                if not (type(t) == "string" and #t > 0 and type(x) == "string" and #x > 20) then
+                    missing[#missing + 1] = name .. " row " .. ri .. " button " .. ci
+                end
+            end
+        end
+    end
+    UF.ChatPage.build(UIParent, UIParent);  check("Chat", UF.ChatPage, UF.ChatPage.navRows())
+    UF.BarsPage.build(UIParent, UIParent);  check("Bars", UF.BarsPage, UF.BarsPage.navRows())
+    UF.QolPage.build(UIParent, UIParent);   check("Qol", UF.QolPage, UF.QolPage.navRows())
+    UF.FadePage.build(UIParent, UIParent);  check("Fading", UF.FadePage, UF.FadePage.navRows())
+    return total .. ":" .. table.concat(missing, ",")
+end""")()
+n, _, gaps = str(r).partition(":")
+assert int(n) > 40 and gaps == "", r
+print("Descriptions: every button reachable on the Chat, Bars, Quality of life and Fading pages has a title and a text (%s buttons): OK" % n)
 # Chat edit box on top (ChatEdit.lua): the game's anchors from the XML when Off, above the dock / the tab when On, never in combat
 r = L("""function()
     local UF = UbermocForever

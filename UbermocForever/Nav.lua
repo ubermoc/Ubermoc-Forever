@@ -251,6 +251,7 @@ end
 function Nav.ClearFocus()
     lock(Nav.focus, false)
     Nav.focus = nil
+    if Nav.onFocus then pcall(Nav.onFocus) end
 end
 
 -- Scroll just enough to bring the button fully into view.
@@ -279,6 +280,7 @@ function Nav.SetFocus(b)
     Nav.focus = b
     lock(b, true)
     reveal(b)
+    if Nav.onFocus then pcall(Nav.onFocus) end   -- Describe.lua: the description panel follows the highlight
 end
 
 function Nav.Move(direction, getRows, startRow)

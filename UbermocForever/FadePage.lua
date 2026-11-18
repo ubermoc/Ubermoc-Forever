@@ -143,12 +143,14 @@ function P.build(parent, inset)
     for ci, c in ipairs(F.CATEGORIES) do
         local h = button(listChild, 250, ROW, c.name)
         h:SetScript("OnClick", function() openCat = (openCat ~= ci) and ci or nil; P.refresh(); P.reveal(h) end)
+        UF.Describe.set(h, c.name, "A group of the game's interface parts. A opens or closes the group; only one group is open at a time. The parts in it are the ones you can make more or less visible.")
         headers[ci] = h
         items[ci] = {}
         for ei, e in ipairs(c.elements) do
             local b = button(listChild, 232, ROW - 2, e.label)
             b:Hide()
             b:SetScript("OnClick", function() sel = e; P.refresh() end)
+            UF.Describe.set(b, e.label, "Choose this part to set how visible it is on the right: in combat, on a flight path and out of combat. A part you have changed is shown in gold, one that is not on screen in grey.")
             items[ci][ei] = b
         end
     end
@@ -190,6 +192,7 @@ function P.build(parent, inset)
         minus:SetScript("OnClick", function() if sel then F.step(sel.key, st.key, -1); P.refresh() end end)
         plus:SetScript("OnClick", function() if sel then F.step(sel.key, st.key, 1); P.refresh() end end)
         stateRows[i] = { frame = fr, state = st.key, value = value, normal = normal, zero = zero, minus = minus, plus = plus }
+        UF.Describe.situation(stateRows[i], st.label, function() return sel and sel.label end)
     end
     hintFS = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     hintFS:SetPoint("TOPLEFT", page, "TOPLEFT", RX, -68 - #F.STATES * 34)
@@ -219,6 +222,12 @@ function P.build(parent, inset)
     resetAllBtn = button(page, 200, 24, "Reset all fading")
     resetAllBtn:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", 0, -6)
     resetAllBtn:SetScript("OnClick", function() F.resetAll(); P.refresh() end)
+    UF.Describe.hideReset(hideBtn, resetBtn, function() return sel and sel.label end)
+    UF.Describe.set(copyBtn, "Copy", "Remembers this part's opacity settings (all three situations) so Paste can put them on another part.")
+    UF.Describe.set(pasteBtn, "Paste", "Puts the settings you copied onto the part chosen now. Greyed text beside the button says what is waiting.")
+    UF.Describe.set(applyBtn, "Apply to the whole list", "Copies this part's settings onto every other part in the open group, so a whole group can share one setting.")
+    UF.Describe.fn(resetBtn, function() return "Reset this element", "Removes every opacity setting of the chosen part, so it goes back to the game's own." end)
+    UF.Describe.set(resetAllBtn, "Reset all fading", "Removes the opacity settings of every part on this page and the Chat and Bars pages. The mouse-over value stays.")
 
     -- The one universal setting: the opacity any faded element goes to while the mouse is over it.
     local mf = CreateFrame("Frame", nil, page)
@@ -242,6 +251,9 @@ function P.build(parent, inset)
     mminus:SetScript("OnClick", function() F.stepMouse(-1); P.refresh() end)
     mplus:SetScript("OnClick", function() F.stepMouse(1); P.refresh() end)
     mouseRow = { frame = mf, value = mvalue, off = moff, minus = mminus, plus = mplus }
+    for _, mb in ipairs({ moff, mminus, mplus }) do
+        UF.Describe.set(mb, "Mouse over (all)", "How visible any part you have set becomes while the mouse is over it, never lower than its own value. Off: no change on hover. - and +: 10 % steps. A part hidden for good stays hidden.")
+    end
     mouseRow.tip = mf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     mouseRow.tip:SetPoint("TOPLEFT", mf, "BOTTOMLEFT", 0, -4)
     mouseRow.tip:SetWidth(400)
