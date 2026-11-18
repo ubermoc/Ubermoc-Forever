@@ -20,7 +20,8 @@
 -- border or background in the XML) and the badge number are kept. name (294), CastBarsContainer (173),
 -- WidgetContainer (180), RaidTargetFrame (186), ClassificationFrame (196) and AurasFrame (217) are never touched.
 -- No unit data is read: the health, name and class answers are secret for our code (UnitDocumentation.lua:1526, 2489,
--- 911). The only unit call is UnitCanAttack (763), as Fade.lua's applyPlates.
+-- 911). The unit calls are UnitCanAttack (763), as Fade.lua's applyPlates, and UnitIsPlayer (PlateLevel.lua draws the level of
+-- a friendly player, which the game hides under its own name-only setting).
 -- Our state lives in our own weak-keyed table; nothing is written on a game frame.
 ----------------------------------------------------------------------
 local _, UF = ...
@@ -116,6 +117,16 @@ function N.style(plate)
     local kind = N.kindOf(unit)
     local list = N.parts(uf)
     local NH = UF.NameHealth
+    local PL = UF.PlateLevel
+    if PL then
+        -- a friendly PLAYER under "Friendly: name only": the game hides its level itself in that mode (PlateLevel.lua)
+        local isPlayer = false
+        if kind == "friendly" and N.wanted("friendly") and UnitIsPlayer then
+            local okP, p = pcall(UnitIsPlayer, unit)
+            isPlayer = okP and plain(p) == true
+        end
+        pcall(PL.show, uf, unit, isPlayer)
+    end
     if N.wanted(kind) then
         for _, p in ipairs(list) do N.hide(p) end
         if not NH then return end

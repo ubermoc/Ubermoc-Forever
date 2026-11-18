@@ -29,6 +29,7 @@ Vendor.lua
 Nameplates.lua
 NameHealth.lua
 PlateQuest.lua
+PlateLevel.lua
 PlateRange.lua
 Chat.lua
 ChatEdit.lua
