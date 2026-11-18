@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: "are you sure?" before something replaces what a worn piece already carries (UF.ApplyConfirm), 1.3.130.
--- In the middle of the screen: what the piece already has, what will replace it, A for yes and B for no.
+-- In the middle of the screen: what the piece already has, what will replace it, A for yes and B for no, their pictures beside the buttons.
 --   * Yes is a SECURE button of ours (type "macro", the same two lines the menu entry would have run: "/use <bag> <slot>" then
 --     "/use <inventory slot>"), because using an item has to come from a real secure press. Its macro is set when the question is
 --     opened, which the game only allows out of combat; in combat the question is not asked (the caller applies at once).
@@ -13,7 +13,7 @@ local AC = {}
 UF.ApplyConfirm = AC
 
 local YES_NAME = "UbermocForeverApplyYes"
-local frame, titleFS, textFS, yesBtn, noBtn, legend
+local frame, titleFS, textFS, continueFS, yesBtn, noBtn, yesGlyph, noGlyph
 local entry
 
 local DEAD_KEYS = { "PADDUP", "PADDDOWN", "PADDLEFT", "PADDRIGHT", "PAD3", "PAD4", "PADLSHOULDER", "PADRSHOULDER", "PADLTRIGGER", "PADRTRIGGER" }
@@ -30,7 +30,7 @@ local function build()
     local okF, f = pcall(CreateFrame, "Frame", "UbermocForeverApplyConfirm", UIParent, "BackdropTemplate")
     frame = okF and f or CreateFrame("Frame", "UbermocForeverApplyConfirm", UIParent)
     frame:SetFrameStrata("FULLSCREEN_DIALOG")
-    frame:SetSize(460, 190)
+    frame:SetSize(480, 210)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
     frame:EnableMouse(true)
     if frame.SetBackdrop then
@@ -40,32 +40,34 @@ local function build()
     end
     titleFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     titleFS:SetPoint("TOP", frame, "TOP", 0, -20)
+    -- the question (what it has, what replaces it), then "Continue?" just above the buttons so the two never overlap
     textFS = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    textFS:SetPoint("TOPLEFT", frame, "TOPLEFT", 24, -52)
-    textFS:SetPoint("RIGHT", frame, "RIGHT", -24, 0)
+    textFS:SetPoint("TOPLEFT", frame, "TOPLEFT", 24, -50)
+    textFS:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -24, 88)
     textFS:SetJustifyH("CENTER")
     textFS:SetJustifyV("TOP")
     if textFS.SetWordWrap then textFS:SetWordWrap(true) end
+    continueFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    continueFS:SetPoint("BOTTOM", frame, "BOTTOM", 0, 62)
 
+    -- [A] Yes      [B] No: the controller's own pictures beside the buttons they answer
     yesBtn = CreateFrame("Button", YES_NAME, frame, "SecureActionButtonTemplate,UIPanelButtonTemplate")
     yesBtn:RegisterForClicks("AnyUp")
     yesBtn:SetAttribute("useOnKeyDown", false)
     yesBtn:SetAttribute("type", "macro")
-    yesBtn:SetSize(150, 26)
-    yesBtn:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 60, 44)
+    yesBtn:SetSize(130, 28)
+    yesBtn:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 80, 24)
     yesBtn:SetText(YES or "Yes")
     yesBtn:HookScript("PostClick", function() close() end)   -- after the macro ran
     noBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    noBtn:SetSize(150, 26)
-    noBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -60, 44)
+    noBtn:SetSize(130, 28)
+    noBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -70, 24)
     noBtn:SetText(NO or "No")
     noBtn:SetScript("OnClick", close)
-
-    if UF.CreateLegend then
-        legend = UF.CreateLegend(frame)
-        legend:SetPoint("BOTTOM", frame, "BOTTOM", 0, 14)
-        legend:Set({ PAD1 = "Yes", PAD2 = "No" })
-    end
+    yesGlyph = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    yesGlyph:SetPoint("RIGHT", yesBtn, "LEFT", -8, 0)
+    noGlyph = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    noGlyph:SetPoint("RIGHT", noBtn, "LEFT", -8, 0)
     frame:SetScript("OnHide", function() if entry and UF.Nav then UF.Nav.Pop(entry); entry = nil end end)
     if UISpecialFrames then table.insert(UISpecialFrames, "UbermocForeverApplyConfirm") end   -- Escape says no
     frame:Hide()
@@ -80,8 +82,10 @@ function AC.ask(info)
     AC.last = info   -- for the offline test
     titleFS:SetText(info.title or "Are you sure?")
     textFS:SetText(info.text or "")
+    continueFS:SetText(info.question or "Continue?")
+    yesGlyph:SetText(UF.glyph and UF.glyph("PAD1") or "A")   -- follows the controller in use
+    noGlyph:SetText(UF.glyph and UF.glyph("PAD2") or "B")
     yesBtn:SetAttribute("macrotext", info.macro)
-    if legend then legend:Refresh() end
     frame:Show()
     if UF.Nav and not entry then
         local map = { PAD2 = close }

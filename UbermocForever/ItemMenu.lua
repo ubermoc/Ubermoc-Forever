@@ -362,7 +362,7 @@ local function useOn(label, macro, target, kind, what, pieceName)
         return add(label, nil, function()
             UF.ApplyConfirm.ask({
                 title = "Replace what is on it?",
-                text = string.format("%s (%s) %s.\n\nUsing %s on it will replace that.\n\nContinue?", pieceName or target.name, target.name, warn, what),
+                text = string.format("%s (%s) %s.\n\nUsing %s on it will replace that.", pieceName or target.name, target.name, warn, what),
                 macro = macro,
             })
         end)
