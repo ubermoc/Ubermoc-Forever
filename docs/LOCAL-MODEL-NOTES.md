@@ -59,6 +59,7 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
 - Cite the source file that defines the thing (the documentation or Blizzard file), not a community note, when both exist.
 
 ## 6. Version, docs and the usual checklist (per change)
+Every new button in the options window needs a description in plain words: `UF.Describe.set(button, title, text)` (or `Describe.fn` when it depends on a selection). It shows in the bottom panel while the highlight is on it and in the mouse tooltip, and a smoke test fails when a button on the Chat, Bars, Quality of life or Fading page has none. Say what it does, and what A and X do on it. About 300 characters at most: the panel has four lines.
 `UbermocForever.toc` version, `CHANGELOG.txt` entry on top, `HANDOFF.md` first-line note, `docs/DESCRIPTION.md` and `README.md`
 if the behaviour is user-visible, a case in `tools/smoke_test.py`, research notes in `docs/RESEARCH-NAVIGATION.md` with file:line.
 Everything not seen in the game is "untested in the game", in the changelog, the commit and your report.
