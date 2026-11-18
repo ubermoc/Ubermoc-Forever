@@ -1,13 +1,13 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: the Quality of life page of the options window (fifth page): the aim dot for ground spells (Aim.lua),
--- fast loot (Loot.lua) and selling junk and repairing at a vendor (Vendor.lua). Built like the Chat and Bars pages: the game's own buttons, a heading per group,
--- a grey note under each.
+-- fast loot (Loot.lua), selling junk and repairing at a vendor (Vendor.lua) and name-only nameplates (Nameplates.lua).
+-- Built like the Chat and Bars pages: the game's own buttons, a heading per group, a grey note under each.
 ----------------------------------------------------------------------
 local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -26,6 +26,8 @@ function QP.refresh()
     sellBtn:SetText("Sell junk: " .. (v.sell and "On" or "Off"))
     repairBtn:SetText("Repair: " .. (v.repair and "On" or "Off"))
     guildBtn:SetText("Guild bank first: " .. (v.guild and "On" or "Off"))
+    enemyBtn:SetText("Enemies: name only: " .. (UF.Nameplates.enabled("enemy") and "On" or "Off"))
+    friendlyBtn:SetText("Friendly: name only: " .. (UF.Nameplates.enabled("friendly") and "On" or "Off"))
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -89,6 +91,15 @@ function QP.build(parent, inset)
     tip(guildBtn, "Guild bank first", "Repairs are paid from the guild bank when your guild lets you and the bank and your daily allowance cover the whole cost; otherwise from your own money.")
     note("Grey items are sold and your gear is repaired as soon as you talk to a vendor. The guild bank pays for repairs when it can.", -214)
 
+    heading("Nameplates", -246)
+    enemyBtn = button(page, 180); enemyBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -268)
+    friendlyBtn = button(page, 180); friendlyBtn:SetPoint("LEFT", enemyBtn, "RIGHT", 6, 0)
+    toggle(enemyBtn, function() UF.Nameplates.toggle("enemy") end)
+    toggle(friendlyBtn, function() UF.Nameplates.toggle("friendly") end)
+    tip(enemyBtn, "Enemies: name only", "An enemy nameplate shows its name and nothing else: the health bar, the level and the highlight are made invisible. The cast bar and the auras stay, and clicking where the bar was still targets. Off puts the bar back.")
+    tip(friendlyBtn, "Friendly: name only", "Friendly players: the game's own setting for that (Nameplates options) is switched on, and its previous value is kept so it can be given back. Friendly NPCs also get the bar made invisible, which the game cannot do by itself.")
+    note("A nameplate can show only the name. Off brings the bar back on the plates already shown.", -296)
+
     QP.refresh()
     return page
 end
@@ -97,5 +108,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn } }
 end

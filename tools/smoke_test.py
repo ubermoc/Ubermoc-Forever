@@ -1408,7 +1408,7 @@ r = L("""function()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()            -- left of the first page is the last (Quality of life)
     local q = UF.QolPage.navRows()
-    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3]   -- aim dot row; fast loot; sell, repair, guild bank first
+    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4]   -- aim dot; fast loot; vendor; nameplates
     local before = UF.Vendor.cfg().guild
     UF.Nav.SetFocus(q[3][3]); press("PAD1")                            -- A on Guild bank first flips it
     out[#out + 1] = tostring(UF.Vendor.cfg().guild ~= before)
@@ -1416,7 +1416,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,3/3/1/3,true,1", r
+assert str(r) == "1,2,3,2,1,5,4/3/1/3/2,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -1705,6 +1705,186 @@ r = L("""function()
 end""")()
 assert str(r) == "guild,self,self,self,self,nil,true,false", r
 print("Vendor: repairs paid by the guild bank first when it can, else your own money: OK")
+
+# Name-only nameplates: only the five listed pieces get alpha 0 (never the name or the cast bar), a reused plate gets
+# each piece back to its OWN original alpha, and a forbidden, missing or nil plate makes no call at all
+r = L("""function()
+    local N = UbermocForever.Nameplates
+    local savedDB, savedCan, savedSec, savedCN = UbermocForeverDB, UnitCanAttack, issecretvalue, C_NamePlate
+    UbermocForeverDB = { plates = { enemy = true, friendly = false, prevOnlyName = nil } }
+    issecretvalue = function(v) return v == "secret" end
+    local attack = true
+    UnitCanAttack = function(_, u) return u == "boss" or attack end
+    local function piece(nm, a)
+        local t = { name = nm, alpha = a, calls = 0 }
+        t.SetAlpha = function(self, v) t.alpha = v; t.calls = t.calls + 1 end
+        t.GetAlpha = function(self) return t.alpha end
+        return t
+    end
+    local START = { HealthBarsContainer = 1, selectionHighlight = 0.25, aggroHighlight = 0.5, LevelFrame = 0.75,
+                    PlayerLevelDiffFrame = 0.9, name = 0.8, CastBarsContainer = 0.6, WidgetContainer = 0.4,
+                    RaidTargetFrame = 0.3, ClassificationFrame = 0.2, AurasFrame = 0.1 }
+    local HIDDEN = { "HealthBarsContainer", "selectionHighlight", "aggroHighlight", "LevelFrame", "PlayerLevelDiffFrame" }
+    local LEFT = { "name", "CastBarsContainer", "WidgetContainer", "RaidTargetFrame", "ClassificationFrame", "AurasFrame" }
+    local function plateFor(unit, forbidden, token)
+        local uf = { unit = unit }
+        for k, v in pairs(START) do uf[k] = piece(k, v) end
+        if forbidden then uf.IsForbidden = function() return true end end
+        return { namePlateUnitToken = token or unit, UnitFrame = uf }
+    end
+    local function alphas(pl, list)
+        local s = {}
+        for _, nm in ipairs(list) do s[#s + 1] = tostring(pl.UnitFrame[nm].alpha) end
+        return table.concat(s, "-")
+    end
+    local out = {}
+    -- a piece that is not there, or is there without a SetAlpha, is skipped
+    local u = { HealthBarsContainer = piece("HealthBarsContainer", 1), LevelFrame = piece("LevelFrame", 0.75),
+                selectionHighlight = { name = "selectionHighlight" }, CastBarsContainer = { name = "CastBarsContainer" } }
+    local names = {}
+    for _, p in ipairs(N.parts(u)) do names[#names + 1] = p.name end
+    out[#out + 1] = table.concat(names, "-")
+    -- Enemies on: exactly the five pieces hidden, the name and the other containers never touched
+    local p = plateFor("target")
+    N.style(p)
+    out[#out + 1] = alphas(p, HIDDEN) .. "/" .. alphas(p, LEFT)
+    -- the same unit frame reused for a friendly unit with Friendly off: its own original alpha, not 1
+    attack = false
+    N.style(p)
+    out[#out + 1] = alphas(p, HIDDEN)
+    -- hidden twice in a row: the remembered alpha is still the one from before the first hide
+    UbermocForeverDB.plates.enemy = true
+    local pr = plateFor("target")
+    attack = true
+    N.style(pr); N.style(pr)
+    UbermocForeverDB.plates.enemy = false
+    N.style(pr)
+    out[#out + 1] = alphas(pr, HIDDEN)
+    -- a piece we never hid: no call
+    local p2 = plateFor("target")
+    UbermocForeverDB.plates.enemy = false
+    N.style(p2)
+    out[#out + 1] = tostring(p2.UnitFrame.HealthBarsContainer.calls)
+    -- a plate the game will not show us, a plate with no unit frame, a nil plate: no call
+    UbermocForeverDB.plates.enemy = true
+    attack = true
+    local p3 = plateFor("target", true)
+    N.style(p3)
+    out[#out + 1] = tostring(p3.UnitFrame.HealthBarsContainer.calls)
+    N.style({ UnitFrame = nil })
+    N.style(nil)
+    -- a secret answer for the kind counts as unknown: everything put back
+    UbermocForeverDB.plates.enemy = true
+    local p4 = plateFor("target")
+    N.style(p4)
+    attack = "secret"
+    N.style(p4)
+    out[#out + 1] = alphas(p4, HIDDEN)
+    -- switching the option off brings the bars back on a plate already shown
+    local p5 = plateFor("target")
+    attack = true
+    N.style(p5)
+    UbermocForeverDB.plates.enemy = false
+    N.style(p5)
+    out[#out + 1] = alphas(p5, HIDDEN)
+    -- the game refuses one piece: that piece keeps its own alpha, the rest still hides
+    UbermocForeverDB.plates.enemy = true
+    local p6 = plateFor("target")
+    p6.UnitFrame.LevelFrame.SetAlpha = function() error("the game refuses") end
+    N.style(p6)
+    out[#out + 1] = alphas(p6, HIDDEN)
+    -- GetAlpha can answer a secret value: it cannot be remembered, so that piece goes back to 1, the others to their own
+    local p7 = plateFor("target")
+    p7.UnitFrame.aggroHighlight.GetAlpha = function(self) return "secret" end
+    N.style(p7)
+    attack = false
+    N.style(p7)
+    out[#out + 1] = alphas(p7, HIDDEN)
+    -- the events: NAME_PLATE_UNIT_ADDED for a unit, UNIT_FACTION restyles the plate that unit has
+    local pe = plateFor("target", false, "boss")   -- its own unit is a boss, the event talks about target
+    C_NamePlate = {
+        GetNamePlates = function() return { p2, pe } end,
+        GetNamePlateForUnit = function(unit) return (unit == "target") and pe or nil end,
+    }
+    local evs = rawget(N._frame, "__events")
+    out[#out + 1] = tostring(evs["NAME_PLATE_UNIT_ADDED"]) .. "," .. tostring(evs["UNIT_FACTION"]) .. "," ..
+                    tostring(evs["PLAYER_REGEN_ENABLED"])
+    local sc = rawget(N._frame, "__scripts")
+    -- the kind comes from the plate's own unit, not from the unit in the event: boss = enemy, so it is hidden
+    UbermocForeverDB.plates.enemy = true
+    attack = false
+    sc.OnEvent(f, "NAME_PLATE_UNIT_ADDED", "target")
+    out[#out + 1] = alphas(pe, HIDDEN)
+    -- flipping the option through the page re-styles the plates already on screen
+    UbermocForeverDB.plates.enemy = false
+    N.toggle("enemy")
+    out[#out + 1] = alphas(pe, HIDDEN)
+    N.toggle("enemy")
+    out[#out + 1] = alphas(pe, HIDDEN)
+    -- GetNamePlates answers nil: nothing is set and nothing fails
+    C_NamePlate = { GetNamePlates = function() return nil end, GetNamePlateForUnit = function() return nil end }
+    N.applyAll()
+    out[#out + 1] = "ok"
+    UbermocForeverDB, UnitCanAttack, issecretvalue, C_NamePlate = savedDB, savedCan, savedSec, savedCN
+    return table.concat(out, "|")
+end""")()
+assert str(r) == ("HealthBarsContainer-LevelFrame|0-0-0-0-0/0.8-0.6-0.4-0.3-0.2-0.1|1-0.25-0.5-0.75-0.9|"
+                  "1-0.25-0.5-0.75-0.9|0|0|1-0.25-0.5-0.75-0.9|1-0.25-0.5-0.75-0.9|0-0-0-0.75-0|"
+                  "1-0.25-1-0.75-0.9|true,true,true|0-0-0-0-0|0-0-0-0-0|1-0.25-0.5-0.75-0.9|ok"), r
+print("Nameplates: only the five pieces hidden, each piece gets its own original alpha back, forbidden and missing plates make no call: OK")
+
+# Nameplates CVar: on keeps the value the player had and gives it back on Off, nothing is written in combat, a nil
+# GetCVar answer is survived (nothing remembered, so nothing written)
+r = L("""function()
+    local N = UbermocForever.Nameplates
+    local savedDB, oldGet, oldSet, oldLock, oldCN = UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown, C_NamePlate
+    UbermocForeverDB = { plates = { enemy = false, friendly = false, prevOnlyName = nil } }
+    C_NamePlate = { GetNamePlates = function() return {} end, GetNamePlateForUnit = function() return nil end }
+    local cv = { value = "0" }
+    local wrote = {}
+    GetCVar = function() return cv.value end
+    SetCVar = function(k, v) wrote[#wrote + 1] = tostring(v); cv.value = v end
+    local lock = false
+    InCombatLockdown = function() return lock end
+    N.pending = false
+    local out = {}
+    UbermocForeverDB.plates.friendly = true
+    N.syncCVar()
+    out[#out + 1] = table.concat(wrote, ",") .. "=" .. tostring(UbermocForeverDB.plates.prevOnlyName)
+    UbermocForeverDB.plates.friendly = false
+    N.syncCVar()
+    out[#out + 1] = table.concat(wrote, ",") .. "=" .. tostring(UbermocForeverDB.plates.prevOnlyName)
+    lock = true
+    UbermocForeverDB.plates.friendly = true
+    N.syncCVar()
+    out[#out + 1] = tostring(N.pending) .. "=" .. table.concat(wrote, ",")
+    lock = false
+    rawget(N._frame, "__scripts").OnEvent(N._frame, "PLAYER_REGEN_ENABLED", nil)
+    out[#out + 1] = tostring(N.pending) .. "=" .. table.concat(wrote, ",")
+    N.toggle("friendly")                                   -- Off: the player's value is given back
+    out[#out + 1] = table.concat(wrote, ",")
+    cv.value = nil
+    UbermocForeverDB.plates = { enemy = false, friendly = true, prevOnlyName = nil }
+    N.syncCVar()
+    out[#out + 1] = table.concat(wrote, ",") .. "=" .. tostring(UbermocForeverDB.plates.prevOnlyName)
+    GetCVar = function() error("restricted") end       -- a raising GetCVar is survived, nothing written
+    N.syncCVar()
+    out[#out + 1] = table.concat(wrote, ",")
+    UbermocForeverDB.plates = { enemy = false, friendly = false, prevOnlyName = nil }
+    N.toggle("enemy"); out[#out + 1] = tostring(N.enabled("enemy"))
+    N.toggle("enemy"); out[#out + 1] = tostring(N.enabled("enemy"))
+    UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown, C_NamePlate = savedDB, oldGet, oldSet, oldLock, oldCN
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "1=0|1,0=nil|true=1,0|false=1,0,1|1,0,1,0|1,0,1,0=nil|1,0,1,0|true|false", r
+print("Nameplates CVar: the player's value is kept and given back, nothing written in combat, nil GetCVar survived: OK")
+
+# Nameplates: nothing of the game's is called beyond SetAlpha and the one CVar
+src = open(ADDON + "/Nameplates.lua", encoding="utf-8").read()
+for bad in ["hooksecurefunc", "OnUpdate", "SetPoint", "UnitHealth", "UnitName", "UnitClass", "GetText", ":Show(", ":Hide("]:
+    assert bad not in src, "Nameplates.lua contains " + bad
+assert src.count("SetCVar") == 1, "SetCVar must be written in one place"
+print("Nameplates: no hook, no OnUpdate, no anchoring, no unit data, no Show/Hide, one SetCVar: OK")
 
 # Fading page: elements the gamepad layout hides for good are not listed
 r = L("""function()
