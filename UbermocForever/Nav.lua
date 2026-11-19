@@ -99,6 +99,19 @@ function Nav.manageClicks(taking)
     end
 end
 
+-- A login with no window open and no saved values: if a click button is still NONE, something else switched it off and
+-- never gave it back (another addon removed while it held the buttons), so the game's cursor cannot click anything.
+-- Nothing of ours is holding them, so put the game's defaults back.
+function Nav.healClicks()
+    if InCombatLockdown() then return end   -- the login hook calls this only when no window is open
+    local db = UF.DB and UF.DB()
+    if db and db.clickBackup then return end
+    for _, def in pairs(CLICK_CVARS) do
+        local ok, current = pcall(GetCVar, def[1])
+        if ok and current == "NONE" then pcall(SetCVar, def[1], def[2]) end
+    end
+end
+
 -- Take every button any window on the stack wants. Out of combat only (the game blocks it in combat).
 local function rebind()
     if InCombatLockdown() then return end
@@ -168,7 +181,7 @@ after:RegisterEvent("PLAYER_REGEN_ENABLED")
 after:RegisterEvent("PLAYER_REGEN_DISABLED")
 after:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_REGEN_DISABLED" then held = nil
-    elseif event == "PLAYER_LOGIN" then if #stack == 0 then Nav.manageClicks(false) end
+    elseif event == "PLAYER_LOGIN" then if #stack == 0 then Nav.manageClicks(false); Nav.healClicks() end
     else rebind() end
 end)
 after:RegisterEvent("PLAYER_LOGIN")   -- cursor clicks taken before a /reload or a crash are given back
