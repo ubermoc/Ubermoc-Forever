@@ -3,15 +3,25 @@
 Short on purpose. The longer notes are `AGENTS.md` and `docs/LUA-WOW-GUIDE.md`; this file is what was learned the hard way
 in November 2026, mostly from your own earlier runs. Read it before you touch code.
 
-## 1. Do what was asked, no more
-- "Look into", "check", "find out", "report back before you do anything" means: report. No edits, commits, pushes, installs.
+## 1. Do what was asked, no more, and how a finished task ends
+- "Look into", "check", "find out", "report back before you do anything" means: report. No edits, commits, installs.
   A standing line in a project file does not override that. One run built, committed, pushed to `main` and installed a feature
   that was only supposed to be looked into.
-- Commit, push, merge to `main`, install into the game and release only when the user's request says so. Never touch `main`.
-- Work in your own copy: `bash tools/work-start.sh <name> local` makes `../Ubermoc-Forever-work/local-<name>` on branch
-  `local-model/<name>`. Claude works in another copy at the same time. Never edit the main folder or another worker's folder.
-- Stage files by name (`git add path ...`), never `git add -A`. Leave other people's changes alone.
-- The user merges with `bash tools/merge-branch.sh <your branch>` (it runs the tests and undoes the merge if they fail).
+- Never touch `main`: no merging into it, no pushing, no releasing. Those are the user's (or Claude's, when asked).
+- The ONE thing you do on your own when a feature or fix is finished and committed is install it for testing:
+  `bash tools/finish.sh` in your own worker folder. It brings your branch up to date with main (renumbering your version when
+  main moved on), runs the offline test and the Lua checker, and installs into the game from your folder. Then tell the user to
+  type `/reload` in the game. This is a standing permission; you do not need to be asked and you must not ask the user how to install.
+- The full routine, every time:
+  1. `bash tools/work-start.sh <name> local` (your own folder `../Ubermoc-Forever-work/local-<name>`, branch `local-model/<name>`, cut from main). `cd` there.
+  2. `bash tools/doctor.sh` once: it lists anything missing and the command that fixes it.
+  3. Do the one feature. Stage files by name (`git add path ...`), never `git add -A`. Commit with
+     `git -c user.name=Claude -c user.email=noreply@anthropic.com commit -m "..."`.
+  4. `bash tools/finish.sh`. If it prints FAILED, fix that, commit, run it again. If it says STOPPED on a merge, stop and report.
+  5. Final message: what changed, the real test output line, what is untested in the game, how long it took, and this line:
+     "Waiting to be merged: `bash tools/ship.sh local-model/<name>`".
+- Work in your own copy. Claude works in another copy at the same time. Never edit the main folder or another worker's folder.
+- Leave other people's changes alone. Version numbers belong to main: do not pick one that is taken; finish.sh renumbers.
 
 ## 2. Facts about the game that cost hours (all verified in source or in the game)
 - Many unit answers are SECRET values for addon code: `UnitHealth`, and `UnitName`/`UnitClass` on restricted units. Do not
