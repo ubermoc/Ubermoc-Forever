@@ -103,7 +103,7 @@ end
 -- never gave it back (another addon removed while it held the buttons), so the game's cursor cannot click anything.
 -- Nothing of ours is holding them, so put the game's defaults back.
 function Nav.healClicks()
-    if InCombatLockdown() or #stack > 0 then return end
+    if InCombatLockdown() then return end   -- the login hook calls this only when no window is open
     local db = UF.DB and UF.DB()
     if db and db.clickBackup then return end
     for _, def in pairs(CLICK_CVARS) do
