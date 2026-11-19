@@ -83,10 +83,12 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
    A worker never merges into `main`, pushes, or releases on its own. A report-only request gets a report: no commits.
 
 ## How work gets to main (the same for Claude and the local model)
+In words: **commit** = save your work in git on your own branch; **merge + push** (`ship.sh`) = put it into `main` and upload `main` to GitHub; **release** = publish that version for everyone who uses the mod. Finished work is ALWAYS installed in the user's game first (`finish.sh` does it): he tests at the end.
 1. Start: `bash tools/work-start.sh <name> [claude|local]` makes your own worktree and branch cut from the latest `main`
    (`../Ubermoc-Forever-work/<who>-<name>`, branch `claude/<name>` or `local-model/<name>`). Never two workers in one folder,
    never edit the main folder. One feature per branch.
-2. Check the toolbox once: `bash tools/doctor.sh` says what is missing and how to fix it.
+2. Start AND end every session with `bash tools/status.sh` (one screen: version, pushed or not, released or not, unmerged branches,
+   uncommitted work, local model up). Check the toolbox once: `bash tools/doctor.sh` says what is missing and how to fix it.
 3. Finish: commit, then `bash tools/finish.sh` (sync with main + renumber, tests, checker, install for testing). It does not merge.
 4. Ship (the user, or Claude when the user says "ship it"/"merge it"): in the main folder `bash tools/ship.sh <branch>`
    merges with the tests as a gate, and pushes `main`. If a merge ever conflicts outside the version, changelog and
