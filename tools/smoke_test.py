@@ -2849,5 +2849,52 @@ r = L("""function()
 end""")()
 assert str(r) == "true40trueleft|nilnilright", r
 print("Fresh install: the author's settings are the defaults, existing settings untouched: OK")
+# The reused buffers of GameNav (openMenus, the window list): each call clears its buffer at entry, so a window or menu
+# that closed between two calls is gone. The result must be read at once, as every caller does.
+# FAKE(C5): the stub window answers `GetName` with a plain string; FAKE(C6): the stub frame answers `IsShown` with a plain
+# bool, as the game does. Both are read at once, which is the contract the reused buffer relies on.
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local open = true
+    local w = { GetName = function() return "UBFTestWin" end, IsShown = function() return open end }
+    local savedU = UISpecialFrames
+    UISpecialFrames = { "UBFTestWin" }
+    _G.UBFTestWin = w
+    local function has(t) for _, x in ipairs(t) do if x == w then return "in" end end return "out" end
+    local first = G.windows()
+    local a = has(first)
+    open = false
+    local b = has(G.windows())
+    -- the same for the menus: one open, then closed
+    local menuOpen = true
+    local d = { GetName = function() return "DropDownList1" end, IsShown = function() return menuOpen end }
+    _G.DropDownList1 = d
+    local c = #G.openMenus()
+    menuOpen = false
+    local e = #G.openMenus()
+    _G.DropDownList1 = nil
+    _G.UBFTestWin = nil
+    UISpecialFrames = savedU
+    return a .. "," .. b .. "," .. c .. "," .. e
+end""")()
+assert str(r) == "in,out,1,0", r
+print("GameNav buffers: a window or menu that closed between two calls is not left in the reused buffer: OK")
+
+# F.target takes the mouse-over answer as a boolean or as a function; the function is now given the key, so the fading
+# tick can pass its own check without building a closure per key. Booleans must still work.
+r = L("""function()
+    local F = UbermocForever.Fade
+    UbermocForeverDB.fade = nil; UbermocForeverDB.fadeMouse = nil
+    F.set("minimap", "idle", 0.2); F.setMouse(0.8)
+    local idle = { combat = false, flight = false, idle = true }
+    local out = {}
+    out[#out + 1] = string.format("%.1f", F.target("minimap", idle, function(k) return k == "minimap" end))    -- asked with the key: lifts
+    out[#out + 1] = string.format("%.1f", F.target("minimap", idle, function(k) return k == "other" end))      -- not over it: its own value
+    out[#out + 1] = string.format("%.1f", F.target("minimap", idle, true))                                     -- a plain boolean still works
+    F.resetAll(); UbermocForeverDB.fadeMouse = nil
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "0.8,0.2,0.8", r
+print("Fading: the mouse-over answer is asked with the key, plain booleans still work: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

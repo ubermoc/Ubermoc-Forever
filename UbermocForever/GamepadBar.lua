@@ -822,6 +822,15 @@ UF.OnLogin(function()
     end)
     -- the modifier events do not always arrive for the controller's emulated keys: look a few times a second
     local acc, wasEditing, sig = 0, false, nil
+    local BAR_NAMES = { "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7" }
+    local CAP_NAMES = { "LeftEndCap", "RightEndCap" }
+    local sigParts = {}
+    -- one frame's shown flag for the signature: the secret guard as before, the call made without a closure per frame
+    local function sigFlag(f)
+        if not (f and f.IsShown) then return "0" end
+        local okS, v = pcall(f.IsShown, f)
+        return (okS and not (issecretvalue and issecretvalue(v)) and v) and "1" or "0"
+    end
     ev:SetScript("OnUpdate", function(_, dt)
         acc = acc + dt
         if acc < 0.1 then return end
@@ -829,19 +838,15 @@ UF.OnLogin(function()
         -- a bar switched on (or off) in the game's settings, or the end caps shown again by the game, happens without an event we hear: the
         -- shown state of the game's bar frames is looked at, and a change redoes the layout and the hiding (no hooks on the game's frames)
         if cfg().on then
-            local t = {}
-            for _, n in ipairs({ "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7" }) do
-                local f = _G[n]
-                local okS, v = pcall(function() return f and f.IsShown and f:IsShown() end)
-                t[#t + 1] = (okS and not (issecretvalue and issecretvalue(v)) and v) and "1" or "0"
+            for i = #sigParts, 1, -1 do sigParts[i] = nil end
+            for _, n in ipairs(BAR_NAMES) do
+                sigParts[#sigParts + 1] = sigFlag(_G[n])
             end
             local caps = _G.MainActionBar and _G.MainActionBar.EndCaps
-            for _, k in ipairs({ "LeftEndCap", "RightEndCap" }) do
-                local f = caps and caps[k]
-                local okS, v = pcall(function() return f and f.IsShown and f:IsShown() end)
-                t[#t + 1] = (okS and not (issecretvalue and issecretvalue(v)) and v) and "1" or "0"
+            for _, k in ipairs(CAP_NAMES) do
+                sigParts[#sigParts + 1] = sigFlag(caps and caps[k])
             end
-            local now = table.concat(t)
+            local now = table.concat(sigParts)
             if sig and now ~= sig then
                 B.layoutSoon()
                 if UF.Fade then UF.Fade.evaluate() end
