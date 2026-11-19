@@ -2325,6 +2325,28 @@ end""")()
 assert str(r) == "NONE/PAD4,PADRTRIGGER/PAD4/nil", r
 print("Cursor clicks: R2 taken from the game's cursor while a window is open, given back: OK")
 
+# Stuck cursor clicks (switched off by something else, nothing saved to give back) are reset at login
+r = L("""function()
+    local Nav = UbermocForever.Nav
+    local oldG, oldS = GetCVar, SetCVar
+    local cv = { GamePadCursorLeftClick = "NONE", GamePadCursorRightClick = "NONE" }
+    GetCVar = function(k) return cv[k] end
+    SetCVar = function(k, v) cv[k] = v end
+    local out = {}
+    UbermocForeverDB.clickBackup = nil
+    Nav.healClicks()
+    out[#out + 1] = cv.GamePadCursorLeftClick .. "/" .. cv.GamePadCursorRightClick
+    cv.GamePadCursorLeftClick, cv.GamePadCursorRightClick = "NONE", "PAD4"
+    UbermocForeverDB.clickBackup = { left = "PADRTRIGGER" }   -- ours is holding them: leave alone
+    Nav.healClicks()
+    out[#out + 1] = cv.GamePadCursorLeftClick .. "/" .. cv.GamePadCursorRightClick
+    UbermocForeverDB.clickBackup = nil
+    GetCVar, SetCVar = oldG, oldS
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "PADRTRIGGER/PADRSHOULDER,NONE/PAD4", r
+print("Stuck cursor clicks: reset to the defaults at login, left alone while ours holds them: OK")
+
 # Fast loot: every slot at once with Auto Loot on, nothing as the master looter or with it switched off
 r = L("""function()
     local Lt = UbermocForever.Loot

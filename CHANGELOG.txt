@@ -1,3 +1,6 @@
+UbermocForever 1.3.143
+- Fixed: the controller cursor could be left unable to click anything (R2 and R1 set to NONE) after another addon that was holding those buttons was removed. At login, with no window open and nothing of ours holding the buttons, a click button still set to NONE is put back to the game's default (R2 left click, R1 right click).
+
 UbermocForever 1.3.142
 - Release: no change to how the addon plays. Re-release of the 1.3.141 performance pass under a new version number, so every player and the Mod Updater pick it up.
 
