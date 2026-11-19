@@ -8,8 +8,9 @@ The code is the truth; where a note here disagrees with it, trust the code and f
 ## Where things live (the layout under ~/Downloads; keep it this way)
 - `Projects/` holds only projects, each in its own folder named after it: `Ubermoc-Forever` (this repo, branch `main`, never edited directly), `Ubermoc-UI`, `Ubermoc-Warcraft-Mod-Updater`, `Jobs`, `Jobfit`.
 - `Project Support/` holds what a project uses, named "<project> - <what it is>": `Ubermoc-Forever - Worker Copies` (one folder per task: your work happens there) and `Ubermoc-Forever - WoW Research and Tools` (Blizzard's UI source, the API data, and the Python with `lupa` that runs the offline test; made by `tools/setup-research.sh`).
-- `Harness/` holds the working rules and the proof tool (`Ubermoc-Harness`), and the phone link folder (`Claude-Remote`). `Strata` (the local model, 67 GB) stays at the top of Downloads because of its size.
+- `Harness/` holds the working rules and the proof tool (`Ubermoc-Harness`), and the phone link folder (`Claude-Remote`). `Strata/` (the local model, 67 GB) sits at the top level of Downloads in its own folder, by the user's choice.
 - `Installers and Archives/` holds downloaded installers and old zips. `Backups/` holds the backup sets (see its README).
+- **This layout is the user's standard and always applies.** Never put loose files or tools at the top of Downloads or inside a project folder. New project: `Projects/<Name>`, its tools: `Project Support/<Name> - <what>`. After any move or addition, update every reference (scripts, docs, services) and run `bash "$HOME/Downloads/Harness/Config Backups/make-backup.sh"`. Map: `~/Downloads/README - folder map.md`.
 - Scripts find these through `UBF_RESEARCH` (research folder) and `UBF_DOWNLOADS`; the defaults are the folders above.
 
 ## What this is
