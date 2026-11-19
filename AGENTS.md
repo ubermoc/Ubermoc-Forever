@@ -10,7 +10,7 @@ A controller-first addon for **WoW: Forever** (game type "camelot", Interface 16
 (also PS5, Xbox, Switch). Author: Marcos (GitHub `ubermoc`). Rules from the user: only Blizzard's own art and
 templates, one feature at a time, research with sources first, short answers, be honest about what is untested.
 The author's other addon, UbermocUI (repo `ubermoc/Ubermoc-UI`), is checked out next to this repo at `~/Downloads/Ubermoc/Ubermoc-UI` (reference for how he builds things; its own `CLAUDE.md` has its rules).
-Repo `ubermoc/Ubermoc-Forever`, working branch `claude/affectionate-cray-lhlr0j`, releases are cut from `main`.
+Repo `ubermoc/Ubermoc-Forever`. `main` is the single source of truth and the only thing released. Every worker (Claude, the local model) works on a short-lived branch cut from the latest `main` in its own worktree and brings it back to `main` as soon as it is finished (see "How work gets to main").
 
 ## Confirmed in the game by the user (2026-11-18: everything through 1.3.129; 2026-11-17: 22 items through 1.3.103)
 The gamepad layout through 1.3.93 (rows, art hidden, glyphs, cooldowns, range hue, Other binds, Bars page), the question windows (move bars, switched-off bar), the Fading page changes, the auction house Y entries (Sell at auction, Create auction), the Select + modifier default binds, the fresh start. Later the same day he confirmed 1.3.94 (icon slots for binds to another layer's button, L3/R3), 1.3.95 (XP bar parts removed) and 1.3.96 (end caps option removed): everything through 1.3.103 is tested. Released as 1.3.103 on 2026-11-17 (GitHub and CurseForge, description updated); 1.3.97 to 1.3.103 were released with offline tests only. 1.3.111 released on 2026-11-18 on GitHub and CurseForge (uploaded, waiting for approval; description updated with the Quality of life page, fast loot and the vendor features); 1.3.104 to 1.3.111 offline tests only.
@@ -71,26 +71,35 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
    `python3 tools/smoke_test.py` (needs `lupa`, e.g. in a venv; `tools/setup-research.sh` can make one). It must end with
    `ALL TESTS PASSED`. The test stubs the game: mocks must be plain tables where `GetParent` etc. matter.
    Also run `python3 tools/check_lua.py UbermocForever/<file>.lua [--risky]`: the game runs Lua 5.1 and the test runs 5.5, so only this catches 5.4-only syntax, an accidental global, or a typo'd game function. It must end with `PASSED`.
-3. **Run `bash tools/install.sh` at the end of every feature or fix you finish, without being asked** so their game has
-   it (then `/reload` in game). Install is part of finishing the task, not a step the user has to ask for. Do not install
-   for a report-only request ("look into", "report back first").
-   The hand-off summary also says how long the task took (working rule 5).
+3. **When the work is finished and committed, run `bash tools/finish.sh`** in your own worker folder, without being asked.
+   It brings your branch up to date with `main`, renumbers your version if `main` moved on, runs the offline test and the
+   Lua checker, and installs the addon into the game from your folder so the user can test it (`/reload` in game). That is
+   the one standing permission; do not install any other way and do not install for a report-only request
+   ("look into", "report back first"). The hand-off summary also says how long the task took (working rule 5).
 4. Bump `## Version` in the `.toc`, add a `CHANGELOG.txt` entry on top (short "Added:/Fixed:" lines), update the version
    note at the top of `HANDOFF.md`, and keep `README.md` and `docs/DESCRIPTION.md` ("What it does now") in step.
 5. Commit on YOUR OWN branch only. Commit identity in this repo: `Claude <noreply@anthropic.com>`
-   (set with `git -c user.name=... -c user.email=...`; there is no global identity). **Push or merge to `main` only when the
-   user asks.** A report-only request gets a report: no commits, pushes or installs.
+   (set with `git -c user.name=... -c user.email=...`; there is no global identity). Stage files by name, never `git add -A`.
+   A worker never merges into `main`, pushes, or releases on its own. A report-only request gets a report: no commits.
 
-## Two workers at once (Claude, the local model)
-- Each worker gets its own copy of the repo: `bash tools/work-start.sh <name> [claude|local]` makes a git worktree in
-  `../Ubermoc-Forever-work/` on its own branch cut from `main`. Never two workers in one folder.
-- The main folder stays on `main`. When a worker is done the user runs `bash tools/merge-branch.sh <branch>` there: it
-  merges, runs the offline test and the Lua checker, and keeps the merge only if they pass. Nothing is pushed.
-- Install into the game from the main folder after merging (`bash tools/install.sh`). Before a merge, install from the
-  worker's own copy so the user can test the work as it is finished.
+## How work gets to main (the same for Claude and the local model)
+1. Start: `bash tools/work-start.sh <name> [claude|local]` makes your own worktree and branch cut from the latest `main`
+   (`../Ubermoc-Forever-work/<who>-<name>`, branch `claude/<name>` or `local-model/<name>`). Never two workers in one folder,
+   never edit the main folder. One feature per branch.
+2. Check the toolbox once: `bash tools/doctor.sh` says what is missing and how to fix it.
+3. Finish: commit, then `bash tools/finish.sh` (sync with main + renumber, tests, checker, install for testing). It does not merge.
+4. Ship (the user, or Claude when the user says "ship it"/"merge it"): in the main folder `bash tools/ship.sh <branch>`
+   merges with the tests as a gate, and pushes `main`. If a merge ever conflicts outside the version, changelog and
+   hand-off notes, nothing is changed: ask Claude to resolve it.
+5. Release (only when the user says to; it publishes): `bash tools/release.sh vX.Y.Z` (GitHub). CurseForge is a manual step below.
+6. Version numbers belong to `main`: the next free number is whatever `main` has plus one. Two branches open at the same time
+   both get renumbered by `tools/sync-main.sh` when the second one finishes, so a clash never reaches `main`.
+7. Never leave a finished branch unmerged: if the user does not say what to do with it, say in your final message that it
+   waits for `bash tools/ship.sh <branch>`.
+- Claude Code and the local model read this same file (`CLAUDE.md` points here); the local model also reads `docs/LOCAL-MODEL-NOTES.md`.
 
 ## Releasing (only when the user says to; it publishes)
-- **GitHub:** zip whose top folder is `UbermocForever/`, named `UbermocForever-vX.Y.Z-forever.zip`
+- **GitHub:** `bash tools/release.sh vX.Y.Z` does it (zip, notes from CHANGELOG, `gh release create`). By hand: zip whose top folder is `UbermocForever/`, named `UbermocForever-vX.Y.Z-forever.zip`
   (no `zip` binary here: use `python3 -c "import shutil; shutil.make_archive(...)"`), then
   `gh release create vX.Y.Z <zip> --title "Version X.Y.Z" --target main --latest --notes "..."`. The Ubermoc Warcraft Mod
   Updater installs from the latest non-prerelease release.
