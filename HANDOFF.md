@@ -1,3 +1,30 @@
+2026-11-19 (local model, branch `local-model/trigger-claim`, 1.3.140, offline tests only): X (the mod's right click) on a
+bag item. The game's right click on a bag button is a protected action run by that button, and the secure `click` action
+refuses a `clickbutton` stored by our code (`SECURE_ACTIONS.click`, SecureTemplates.lua:557-564), which is why X did nothing
+in the bags. X now uses the string actions ItemMenu already proved work: `type = "item"` for the item's own use (a recipe,
+a hearthstone), and a `/click <name> RightButton` macro at a vendor when the slot has a global name; an unnamed gamepad bag
+slot has no name to click, so X keeps no action there. Armor kits, poisons, oils, stones, enchants and bags keep the Y menu
+as their way (the user wants that). `GameNav.lua` `G.xAction(f)` builds the attributes and `G.xLabel(f)` makes the legend
+say what X can do (`Use`, `Right-click`, `Train`, `Take all`, or nothing). Sources in `docs/RESEARCH-NAVIGATION.md`, case in
+`tools/smoke_test.py`; offline tests and the Lua checker pass. Not shown in the game yet by the user: X on a recipe, on a
+hearthstone, on an armor kit (must do nothing), the legend label, a vendor sell on a named slot. The user reports
+everything working on 2026-11-19, so 1.3.140 was released on offline tests only.
+Time for this task: 08:13 (first record in `.harness/proof.json`) to 10:58, 2 h 45 min, of which 5.7 s were `proof run`
+executions; the part before the first record cannot be measured (the context was replaced).
+
+Confirmed in the game by the user 2026-11-19: everything through 1.3.135 (the "are you sure?" question, the question
+layouts, the legend layout, A and B inside Yes and No, the no-chat-line change, A answering the replace-enchant question),
+plus the friendly nameplate level (1.3.136, drawn by PlateLevel.lua) and Y on a bag slot in the gamepad bag window (1.3.138).
+He also reports the trigger fix working; the four observations asked for are in `docs/RESEARCH-NAVIGATION.md`.
+
+2026-11-19 (local model, branch `local-model/trigger-claim`, 1.3.139, untested in the game): the triggers are no longer
+claimed for every open window — `GameNav.lua` `triggersUsable()` takes them only where they have something to do (a stack
+of side tabs, or a scrollable list under the highlight) and `G.syncTriggers()` re-checks on every highlight move, so a
+spell bound to the right trigger fires again when nothing needs paging or scrolling. This was the user's report: after
+coming out of stealth his stealth button (the right trigger) did nothing until Escape was pressed twice, with no panel
+open. Sources in `docs/RESEARCH-NAVIGATION.md`. The other way this can happen (the game still in cursor mode with no
+panel open) is not fixed here — see that file, and the four observations asked of the user.
+
 Confirmed in the game by the user 2026-11-18 (evening): 1.3.138 works, including the friendly player level on nameplates (the 1.3.136 version, drawn by PlateLevel.lua to the left of the name; the 1.3.137 move onto the game's level frame was REVERTED because it did not show) and Y on a bag slot in the gamepad bag window (GamepadBagBar slots have no global name, found by their slotName key in ItemMenu.lua bagBarSlot). Released: 1.3.138 on GitHub (v1.3.138) and uploaded to CurseForge (waiting for approval); CurseForge description rebuilt from docs/DESCRIPTION.md with 10 new screenshots (custom nameplates, all five options pages, cinematic camera). Not done: a chat window screenshot (none taken yet), the unused gravestone nameplate shot. The CHANGELOG may still list a 1.3.137 entry that describes the reverted move. Workflow used: worktrees in ../Ubermoc-Forever-work, merged with tools/merge-branch.sh, installed with tools/install.sh, pushed to main.
 
 Confirmed in the game by the user 2026-11-18: everything through 1.3.129 (the user tested all of it and reported that it works). Earlier the same day: everything through 1.3.125, and the game draws no nameplate farther than 45. Before that, 2026-11-17: everything through 1.3.103 (see AGENTS.md). Released: 1.3.129 (GitHub and CurseForge). Untested in the game: 1.3.136 (level on friendly player nameplates), 1.3.135 (A answers the game's replace-enchant question again), 1.3.134 (one question only: ours for poisons, the game's for kits; no chat line), 1.3.133 (A and B inside the Yes and No buttons), 1.3.132 (tidier legend layout), 1.3.131 (layout of the question: pictures beside Yes and No, Continue? apart), 1.3.130 (the "are you sure?" question before replacing a poison, oil, kit or enchant). Read this whole

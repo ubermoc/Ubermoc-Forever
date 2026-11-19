@@ -71,8 +71,10 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
    `python3 tools/smoke_test.py` (needs `lupa`, e.g. in a venv; `tools/setup-research.sh` can make one). It must end with
    `ALL TESTS PASSED`. The test stubs the game: mocks must be plain tables where `GetParent` etc. matter.
    Also run `python3 tools/check_lua.py UbermocForever/<file>.lua [--risky]`: the game runs Lua 5.1 and the test runs 5.5, so only this catches 5.4-only syntax, an accidental global, or a typo'd game function. It must end with `PASSED`.
-3. **Run `bash tools/install.sh` after a change the user asked you to make** so their game has it (then `/reload` in game).
-   Do not install for a report-only request ("look into", "report back first").
+3. **Run `bash tools/install.sh` at the end of every feature or fix you finish, without being asked** so their game has
+   it (then `/reload` in game). Install is part of finishing the task, not a step the user has to ask for. Do not install
+   for a report-only request ("look into", "report back first").
+   The hand-off summary also says how long the task took (working rule 5).
 4. Bump `## Version` in the `.toc`, add a `CHANGELOG.txt` entry on top (short "Added:/Fixed:" lines), update the version
    note at the top of `HANDOFF.md`, and keep `README.md` and `docs/DESCRIPTION.md` ("What it does now") in step.
 5. Commit on YOUR OWN branch only. Commit identity in this repo: `Claude <noreply@anthropic.com>`
@@ -84,7 +86,8 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
   `../Ubermoc-Forever-work/` on its own branch cut from `main`. Never two workers in one folder.
 - The main folder stays on `main`. When a worker is done the user runs `bash tools/merge-branch.sh <branch>` there: it
   merges, runs the offline test and the Lua checker, and keeps the merge only if they pass. Nothing is pushed.
-- Install into the game from the main folder after merging (`bash tools/install.sh`), not from a worker's copy.
+- Install into the game from the main folder after merging (`bash tools/install.sh`). Before a merge, install from the
+  worker's own copy so the user can test the work as it is finished.
 
 ## Releasing (only when the user says to; it publishes)
 - **GitHub:** zip whose top folder is `UbermocForever/`, named `UbermocForever-vX.Y.Z-forever.zip`

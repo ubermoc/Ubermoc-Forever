@@ -1,3 +1,20 @@
+UbermocForever 1.3.140
+Fixed: X on a bag item did nothing. The game's right click on a bag button runs from that button, and a button stored by
+our code is refused by the secure click, so X now goes through the secure string actions: it uses the item (learn a
+recipe, use a hearthstone), and at a vendor it sells through the button's name. The item types the Y menu already
+handles (poisons, oils, sharpening stones, armor kits, enchants) and bags stay with the Y menu, as the user likes. A
+gamepad bag slot has no global name, so at a vendor X has nothing to click there and keeps no action. The legend under a
+window now says what X can do (Use, Right-click, Train, Take all) and shows nothing where X has nothing to do. Offline
+tests only at release (the user reports everything else working 2026-11-19).
+
+UbermocForever 1.3.139
+Fixed: the right trigger (and the left) were taken for paging and scrolling whenever a window was open, even a window
+with no stack of side tabs and nothing to scroll. A spell bound to the trigger (the author's stealth, reported 2026-11-19)
+could not be cast while the mod held the key, and the key only came back after pressing Escape twice. The triggers are
+now taken only where they have something to do, and given back when the highlight moves somewhere with nothing to page
+or scroll -- which is what the legend already showed, so legend and claim agree. The user reports it working
+(2026-11-19), no item-by-item report.
+
 UbermocForever 1.3.138
 - Fixed: the Y menu on a bag slot did nothing in the gamepad bag window. With the gamepad interface the bag slots sit in
   the bag window itself (`GamepadBagBar`) and have no global name, so the menu only knew the old bag bar by name. They are
@@ -24,7 +41,7 @@ UbermocForever 1.3.135
   item to put the kit on, B is taken to cancel the wait (1.3.127), and GameNav steps aside whenever another key-taking entry exists,
   so for those seconds GameNav was not answering A. The B entry is now marked shared (GameNav keeps working beside it,
   `Nav.CountOthers`), and it lets go of B while one of the game's own question windows is up, so A accepts and B declines
-  that question as for every other one. Untested in the game.
+  that question as for every other one. Confirmed in the game by the user 2026-11-19.
 
 UbermocForever 1.3.134
 - Fixed: using an armor kit (or any item that is not a poison, oil or stone) no longer prints "Applying: Main hand already
@@ -32,22 +49,22 @@ UbermocForever 1.3.134
   it is gone. The same goes for the second, duplicate question: our "Replace what is on it?" window is now asked only for a
   temporary enchant (poison, oil, stone), which the game never asks about. For a permanent one (armor kit, scope, enchant) the
   game's own question appears alone; it names what is replaced and with what ("replace Stamina +2 and Armor +16 with
-  Stamina +3 and Armor +24"). Untested in the game.
+  Stamina +3 and Armor +24"). Confirmed in the game by the user 2026-11-19.
 
 UbermocForever 1.3.133
 - Changed: in the "Replace what is on it?" question the controller's A and B pictures are inside the red Yes and No buttons
-  ("[A] Yes", "[B] No") instead of beside them, with a larger label font so the pictures are easy to read. Untested in the game.
+  ("[A] Yes", "[B] No") instead of beside them, with a larger label font so the pictures are easy to read. Confirmed in the game by the user 2026-11-19.
 
 UbermocForever 1.3.132
 - Changed: the button legend under a game window is tidier. When it fits on one row the items follow each other with even
   gaps; when the window is too narrow they go in a grid of equal-width columns filled evenly (3 + 3 instead of a long
   row over a short ragged one), so the left edges line up. A little more room between rows, and the dark bar behind
-  it is a bit darker with more padding and a thin gold line along its top edge. Untested in the game.
+  it is a bit darker with more padding and a thin gold line along its top edge. Confirmed in the game by the user 2026-11-19.
 
 UbermocForever 1.3.131
 - Changed: the "Replace what is on it?" question: the controller's A and B pictures now sit beside the Yes and No buttons
   (they follow the controller in use) and the legend under the buttons is gone; "Continue?" is a line of its own above the
-  buttons so it no longer overlaps them, and the window is a little taller to fit. Untested in the game.
+  buttons so it no longer overlaps them, and the window is a little taller to fit. Confirmed in the game by the user 2026-11-19.
 
 UbermocForever 1.3.130
 - Changed: the "already has a poison or oil" note no longer sits inside the Y menu entry (it ran past the edge of the menu
@@ -55,7 +72,7 @@ UbermocForever 1.3.130
   question in the middle of the screen: what it already has, what will replace it, "Continue?", with A for Yes and B (or
   Escape) for No. Yes applies it; No applies nothing. While the question is up the other controller buttons do nothing. When
   the piece carries nothing the entry applies at once as before; in combat the question cannot be set up (the game does not
-  allow changing the secure button then), so the entry applies at once. (`ApplyConfirm.lua`) Untested in the game.
+  allow changing the secure button then), so the entry applies at once. (`ApplyConfirm.lua`) Confirmed in the game by the user 2026-11-19.
 
 UbermocForever 1.3.129
 - Added: a quest mark and the quest progress on nameplates (`PlateQuest.lua`). A unit that one of your active quests is
