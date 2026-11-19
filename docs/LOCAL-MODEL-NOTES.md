@@ -13,7 +13,7 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
   main moved on), runs the offline test and the Lua checker, and installs into the game from your folder. Then tell the user to
   type `/reload` in the game. This is a standing permission; you do not need to be asked and you must not ask the user how to install.
 - The full routine, every time:
-  1. `bash tools/work-start.sh <name> local` (your own folder `../Ubermoc-Forever-work/local-<name>`, branch `local-model/<name>`, cut from main). `cd` there.
+  1. `bash tools/work-start.sh <name> local` (your own folder `~/Downloads/Project Support/Ubermoc-Forever - Worker Copies/local-<name>`, branch `local-model/<name>`, cut from main). `cd` there.
   2. `bash tools/status.sh` (start and end of every session) and `bash tools/doctor.sh` once: they list the state and anything missing.
   3. Do the one feature. Stage files by name (`git add path ...`), never `git add -A`. Commit with
      `git -c user.name=Claude -c user.email=noreply@anthropic.com commit -m "..."`.
@@ -52,7 +52,7 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
 - Your fake of an outside system must come from a cited source (`proof claim`, then a FAKE marker naming the claim on the
   fake, like `FAKE` followed by the claim id in parentheses). A fake that
   returns what you assumed (a number for font flags, a plain string for a secret) makes every test agree with the bug.
-- Run the tests like this (own worktree): `"$HOME/Downloads/WoW Forever Tools and Research/.venv/bin/python" tools/smoke_test.py`
+- Run the tests like this (own worktree): `"$HOME/Downloads/Project Support/Ubermoc-Forever - WoW Research and Tools/.venv/bin/python" tools/smoke_test.py`
   must end `ALL TESTS PASSED`; `python3 tools/check_lua.py UbermocForever/<file>.lua` must end `PASSED` (the game is Lua 5.1, the
   test is Lua 5.5; only the checker catches 5.4 syntax and misspelt globals).
 - A test that replaces a global (`InCombatLockdown`, `GENERAL_CHAT_DOCK`) must put the original back. One that set it to nil

@@ -15,7 +15,7 @@ case "$branch" in ""|main) echo "FAILED: run this in your own worker folder on y
 [ -z "$(git status --porcelain)" ] || { echo "FAILED: uncommitted changes. Commit them first (git add <files>; git commit -m ...)."; git status --short; exit 1; }
 echo "== 1/4 bring $branch up to date with main"
 bash tools/sync-main.sh || { echo "FAILED: could not bring the branch up to date. Report this to the user."; exit 1; }
-PY="${UBF_PYTHON:-$HOME/Downloads/WoW Forever Tools and Research/.venv/bin/python}"
+PY="${UBF_PYTHON:-${UBF_RESEARCH:-$HOME/Downloads/Project Support/Ubermoc-Forever - WoW Research and Tools}/.venv/bin/python}"
 [ -x "$PY" ] || { echo "FAILED: no Python with lupa at $PY. Run: bash tools/doctor.sh"; exit 1; }
 echo "== 2/4 offline test"
 out=$("$PY" tools/smoke_test.py 2>&1 | tail -3); echo "$out" | tail -1
