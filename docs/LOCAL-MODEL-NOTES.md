@@ -39,7 +39,8 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
 - After a change that touches game frames, ask the user for the taint log before building on it.
 
 ## 4. Tests: how your earlier tests fooled you, and how to not do it again
-- Your fake of an outside system must come from a cited source (`proof claim`, then `FAKE(C<n>)` on the fake). A fake that
+- Your fake of an outside system must come from a cited source (`proof claim`, then a FAKE marker naming the claim on the
+  fake, like `FAKE` followed by the claim id in parentheses). A fake that
   returns what you assumed (a number for font flags, a plain string for a secret) makes every test agree with the bug.
 - Run the tests like this (own worktree): `"$HOME/Downloads/WoW Forever Tools and Research/.venv/bin/python" tools/smoke_test.py`
   must end `ALL TESTS PASSED`; `python3 tools/check_lua.py UbermocForever/<file>.lua` must end `PASSED` (the game is Lua 5.1, the

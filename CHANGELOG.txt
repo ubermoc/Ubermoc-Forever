@@ -1,3 +1,13 @@
+UbermocForever 1.3.141
+- Performance: the always-on tickers build less work per frame; nothing you can see changes. GameNav: the window list and
+  the open-menu list are buffers reused between ticks instead of new tables, the bag frames are found in the single
+  `ContainerFrame` pass, `G.update` counts the open menus once for its three menu branches, and the right stick scroller is
+  looked for once per frame instead of twice. Fade: `F.active` reuses its situation table, and the fading tick hands the
+  mouse-over check the key instead of building a closure per key. GamepadBar: the bar names, the cap names, the signature
+  parts and the shown flag call sit outside the tick. Aim: the last size, fraction and height are kept as three numbers
+  instead of a string built each tick, and the cursor check calls `IsGamePadCursorControlEnabled` without a closure.
+  Offline tests only, untested in the game. (Built as 1.3.139 on the local branch before 1.3.139 and 1.3.140 were released from another branch; renumbered when merged.)
+
 UbermocForever 1.3.140
 Fixed: X on a bag item did nothing. The game's right click on a bag button runs from that button, and a button stored by
 our code is refused by the secure click, so X now goes through the secure string actions: it uses the item (learn a

@@ -80,6 +80,7 @@ end
 ----------------------------------------------------------------------
 local POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
 local FIXED = { "WorldMapFrame", "SettingsPanel", "ContainerFrameCombinedBags" }
+local SIDES = { "left", "center", "right", "doublewide", "fullscreen" }
 
 local function shown(f) return type(f) == "table" and f.IsShown and f:IsShown() and true or false end
 
@@ -137,8 +138,11 @@ end
 
 -- Drop-down menus that are open: the game's newer menu (Blizzard_Menu: Menu.GetManager) and the older lists
 -- (DropDownList1..3). While one is open it is modal: only its entries count.
+-- The buffer is reused (cleared at entry): callers read the result at once, so no caller keeps it across a second call.
+local menuList = {}
 local function openMenus()
-    local list = {}
+    for i = #menuList, 1, -1 do menuList[i] = nil end
+    local list = menuList
     if Menu and Menu.GetManager then
         local ok, m = pcall(Menu.GetManager)
         if ok and m then
@@ -204,6 +208,8 @@ function G.holdBagBar(on)
     if UF.Fade and UF.Fade.hold then pcall(UF.Fade.hold, "bags", on) end
 end
 
+-- The two buffers are reused (cleared at entry): every caller reads the result at once, so none keeps it across a second call.
+local winList, winSeen = {}, {}
 function G.windows()
     for _, n in ipairs(POPUPS) do
         local p = _G[n]
@@ -216,19 +222,26 @@ function G.windows()
     -- the game's equipment flyout (the items that fit a gear slot, opened from the character window) takes the highlight like a menu
     local fly = _G.EquipmentFlyoutFrame
     if shown(fly) then return { fly }, nil end
-    local list, seen = {}, {}
+    local list, seen = winList, winSeen
+    for i = #list, 1, -1 do list[i] = nil end
+    for k in pairs(seen) do seen[k] = nil end
     if GetUIPanel then
-        for _, side in ipairs({ "left", "center", "right", "doublewide", "fullscreen" }) do
+        for _, side in ipairs(SIDES) do
             local ok, f = pcall(GetUIPanel, side)
             if ok then addWindow(list, seen, f) end
         end
     end
     for _, n in ipairs(FIXED) do addWindow(list, seen, _G[n]) end
-    for i = 1, 13 do addWindow(list, seen, _G["ContainerFrame" .. i]) end
-    -- while bags are open the bag bar (the bag slots beside the micro menu, BagsBar) can be moved to as well, so Y on a bag
-    -- slot can swap the bag in it (ItemMenu.lua); its fading is lifted while that is so
+    -- the bag bar (the bag slots beside the micro menu, BagsBar) can be moved to as well, so Y on a bag slot can swap
+    -- the bag in it (ItemMenu.lua); its fading is lifted while bags are open — one pass finds the frames and the state
     local bagsOpen = shown(_G.ContainerFrameCombinedBags)
-    for i = 1, 13 do if shown(_G["ContainerFrame" .. i]) then bagsOpen = true end end
+    for i = 1, 13 do
+        local f = _G["ContainerFrame" .. i]
+        if shown(f) then
+            bagsOpen = true
+            addWindow(list, seen, f)
+        end
+    end
     if bagsOpen then addWindow(list, seen, _G.BagsBar) end
     G.holdBagBar(bagsOpen)
     addWindow(list, seen, _G.GameMenuFrame)
@@ -1602,9 +1615,7 @@ local function findRightStick()
     end
 end
 
-local function stickScroll(dt)
-    local sc, kind = scrollerOf(focus)
-    if not sc then return end
+local function stickScroll(sc, kind, dt)
     local ok, state = pcall(C_GamePad.GetDeviceMappedState)
     local pos = ok and state and state.sticks and rightStick and state.sticks[rightStick]
     if not pos or not pos.len or pos.len < 0.3 then return end
@@ -1629,7 +1640,10 @@ end
 
 local stickTicker = CreateFrame("Frame")
 stickTicker:SetScript("OnUpdate", function(_, dt)
-    local want = entry ~= nil and focus ~= nil and not InCombatLockdown() and scrollerOf(focus) ~= nil
+    -- the scroller is looked for once here and handed to the scroll, not walked twice per frame
+    local sc, kind
+    if entry ~= nil and focus ~= nil and not InCombatLockdown() then sc, kind = scrollerOf(focus) end
+    local want = sc ~= nil
     if want and not stickFrame then
         stickFrame = CreateFrame("Frame", "UbermocForeverStickBlocker", UIParent)
         stickFrame:SetScript("OnGamePadStick", function() end)
@@ -1639,7 +1653,7 @@ stickTicker:SetScript("OnUpdate", function(_, dt)
         stickFrame.stickOn = want
         pcall(stickFrame.EnableGamePadStick, stickFrame, want)
     end
-    if want then pcall(stickScroll, dt) end
+    if want then pcall(stickScroll, sc, kind, dt) end
 end)
 
 G.known = {}
@@ -1672,11 +1686,13 @@ function G.update()
         release()
     elseif want then
         -- keep the highlight honest: a popup appearing takes it, a vanished button is replaced, a scroll re-picks it
-        if G.menuFrom and #openMenus() == 0 and not G.menuWait then
+        -- counted once here: openMenus hands out its reused buffer, and when a menu is open that buffer is wins itself
+        local n = #openMenus()
+        if G.menuFrom and n == 0 and not G.menuWait then
             G.menuWait = (G.menuWait or 0) + 1
-        elseif G.menuFrom and #openMenus() == 0 then
+        elseif G.menuFrom and n == 0 then
             G.restore, G.menuFrom, G.menuWait = G.menuFrom, nil, nil
-        elseif #openMenus() > 0 then
+        elseif n > 0 then
             G.menuWait = nil
         end
         -- a window that has just opened (the letter you opened in the mail) takes the highlight
