@@ -589,6 +589,146 @@ r = L("""function()
 end""")()
 assert str(r) == "1,3,2", r
 print("Side tabs that are plain frames are found, with the chosen one: OK")
+# The triggers are only claimed where they have something to do (the legend must agree): stacked side tabs, or a list
+# under the highlight. With neither they stay the player's own bind -- a spell on the right trigger (stealth, say)
+# could not be cast while any window was open, because a key this mod claims never reaches the action bar.
+# FAKE(C5): the stub scroll frame stands for the game's scroll list, which is a frame answering
+# IsObjectType("ScrollFrame") with GetVerticalScrollRange (SmartNavigation.lua:1100-1102). The other stubs are plain
+# frames and buttons with the methods our scan reads.
+r = L("""function()
+    local G, UF = UbermocForever.GameNav, UbermocForever
+    local out = {}
+    local savedWins = G.windows
+    local stash = {}
+    for i = #UF.Nav._stack, 1, -1 do stash[#stash + 1] = table.remove(UF.Nav._stack, i) end
+    local savedUpdate = UF.Nav.Update
+    local updates = 0
+    UF.Nav.Update = function() updates = updates + 1 end
+    local function node(name, kind, parent, cx, cy)
+        return { GetName = function() return name end, IsShown = function() return true end,
+                 IsObjectType = function(_, t) return t == kind end, IsMouseEnabled = function() return true end,
+                 IsVisible = function() return true end,
+                 GetCenter = function() return cx, cy end, GetWidth = function() return 32 end,
+                 GetHeight = function() return 32 end, GetEffectiveScale = function() return 1 end,
+                 GetChildren = function() return end, GetParent = function() return parent end,
+                 Click = function() end, GetScript = function() return nil end }
+    end
+    local function claim()
+        local m = G.entryMaps()          -- the map as Nav holds it now
+        return tostring(G.triggersUsable()) .. ":" .. (m.PADRTRIGGER and "taken" or "free")
+    end
+    -- 1. a window with one plain button: nothing stacked and nothing to scroll, so nothing is taken
+    local win = node("SomeFrame", "Frame", nil, 100, 100)
+    local b = node("SomeFrameButton", "Button", win, 100, 100)
+    win.GetChildren = function() return b end
+    G.windows = function() return { win } end
+    G.update()
+    out[#out + 1] = tostring(G.active()) .. "," .. tostring(G.focusFrame() == b) .. "," .. claim()
+    -- 2. the same kind of button inside a scroll frame: the triggers scroll it
+    local win2 = node("OtherFrame", "Frame", nil, 200, 200)
+    local sc = node("OtherFrameScroll", "ScrollFrame", win2, 200, 200)
+    sc.GetVerticalScrollRange = function() return 300 end
+    local b2 = node("OtherFrameRow", "Button", sc, 200, 200)
+    win2.GetChildren = function() return sc end
+    sc.GetChildren = function() return b2 end
+    G.windows = function() return { win2 } end
+    G.update()
+    out[#out + 1] = claim()
+    -- 3. stacked side tabs with nothing to scroll: the triggers page the tabs
+    local win3 = node("ThirdFrame", "Frame", nil, 300, 300)
+    local tabs = {}
+    for i = 1, 3 do
+        local t = node("ThirdTab" .. i, "Frame", win3, 300, 500 - i * 40)
+        t.SelectedTexture = { IsShown = function() return i == 2 end }
+        t.TabGlow = {}
+        tabs[i] = t
+    end
+    win3.GetChildren = function() return tabs[1], tabs[2], tabs[3] end
+    G.windows = function() return { win3 } end
+    G.update()
+    out[#out + 1] = claim()
+    -- 4. back to a window with nothing to do: the triggers are given back, and the entry's map is rebuilt only when
+    -- the claim changes (2 changes so far: taken at 2, given back here)
+    G.windows = function() return { win } end
+    G.update()
+    out[#out + 1] = claim() .. "," .. tostring(updates)
+    UF.Nav.Update = savedUpdate
+    G.windows = savedWins
+    G.update()                 -- nothing open: the entry is released
+    for i = #stash, 1, -1 do UF.Nav._stack[#UF.Nav._stack + 1] = stash[i] end
+    return table.concat(out, "|")
+end""")()
+assert str(r) == "true,true,false:free|true:taken|true:taken|false:free,2", r
+print("The triggers are only claimed when they have something to do, and given back when they have nothing: OK")
+# X on a bag item: the game's own right click is a protected action on the game's button, and a button stored by
+# our code is refused by the secure click, so X goes through the string actions instead. It uses the item
+# (a recipe, a hearthstone), sells at a vendor when the slot has a name, and does nothing for the item types the
+# Y menu already handles (armor kits, poisons, oils, stones, enchants) and for bags. The legend says what X does.
+# FAKE(C11): the stub stands for C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its
+# itemID (ContainerDocumentation.lua:192-206 and 766-780). FAKE(C12): the class numbers are the game's
+# (ItemConstantsDocumentation.lua:276-291). FAKE(C13): the consumable subclass Potion is 1 (same file:307-308).
+# FAKE(C9): the vendor stands for MerchantFrame with selectedTab (ContainerFrame.lua:1543-1549).
+r = L("""function()
+    local G, M = UbermocForever.GameNav, UbermocForever.ItemMenu
+    local classes = { [501] = { 9, 0 }, [502] = { 0, 1 }, [503] = { 8, 0 }, [504] = { 1, 11 } }
+    C_Item = {
+        GetItemInfoInstant = function(id)
+            local c = classes[id] or { 15, 0 }
+            return id, "n", "l", (id == 504) and "INVTYPE_BAG" or "", 1, c[1], c[2]
+        end,
+        GetItemSpell = function(id) if id == 503 then return "Use: applies the kit" end return nil end,
+    }
+    local at = { ["0 5"] = 501, ["0 6"] = 502, ["0 7"] = 503, ["0 8"] = 504 }
+    C_Container = { GetContainerItemInfo = function(bag, slot)
+        local id = at[bag .. " " .. slot]
+        return id and { itemID = id, hyperlink = "|cff|Hitem|h[x]|h|r", stackCount = 1 } or nil
+    end }
+    local g1, g2, g3 = {}, {}, {}
+    local function act(a)
+        if not a then return "none" end
+        return a.type .. "|" .. tostring(a.item or a.macrotext)
+    end
+    local function slot(name, bag, id, slotName)
+        local b = CreateFrame("Button", name, UIParent)
+        if not name then b.GetName = function() return nil end end   -- a gamepad slot has no global name
+        b.GetBagID = function() return bag end
+        b.GetID = function() return id end
+        if slotName then b.slotName = slotName end
+        return b
+    end
+    local recipe = slot("FakeRecipe", 0, 5)              -- a recipe (class 9): X uses it
+    local gamepad = slot(nil, 0, 6, "BAG0SLOT")          -- a gamepad bag slot, no global name
+    local kit = slot("FakeKit", 0, 7)                    -- an armor kit: the Y menu's way, so X does nothing
+    local bagItem = slot("FakeBag", 0, 8)                -- a bag: its own Y flow, so X does nothing
+    g1[#g1 + 1] = act(M.rightClickAction(recipe))
+    g1[#g1 + 1] = act(M.rightClickAction(gamepad))
+    g1[#g1 + 1] = act(M.rightClickAction(kit))
+    g1[#g1 + 1] = act(M.rightClickAction(bagItem))
+    MerchantFrame = { IsShown = function() return true end, selectedTab = 1 }
+    g2[#g2 + 1] = act(M.rightClickAction(recipe))         -- sells, through the button's name
+    g2[#g2 + 1] = act(M.rightClickAction(gamepad))        -- no name to click: nothing
+    MerchantFrame.selectedTab = 2                         -- the buyback tab: the game sells nothing
+    g2[#g2 + 1] = act(M.rightClickAction(recipe))
+    MerchantFrame = nil
+    -- the rest of the highlight keeps the plain click and the mail as before
+    local plain = CreateFrame("Button", "FakePlain", UIParent)
+    local a = G.xAction(plain)
+    g3[#g3 + 1] = tostring(a.type == "click" and a.clickbutton == plain)
+    g3[#g3 + 1] = act(G.xAction(recipe))
+    g3[#g3 + 1] = act(G.xAction(kit))                     -- a bag slot left to the Y menu: no click
+    local mail = CreateFrame("Button", "MailItem1", UIParent)
+    g3[#g3 + 1] = act(G.xAction(mail))                    -- mail: no target, X takes it in the hook
+    g3[#g3 + 1] = tostring(G.xLabel(recipe)) .. "," .. tostring(G.xLabel(kit) or "no label") .. ","
+        .. tostring(G.xLabel(plain))
+    return table.concat(g1, ";"), table.concat(g2, ";"), table.concat(g3, ";")
+end""")()
+g1, g2, g3 = r
+assert str(g1) == "item|0 5;item|0 6;none;none", g1
+print("X on a bag item: the secure item action for a recipe or a potion, nothing for Y-menu types (armor kits, bags): OK")
+assert str(g2) == "macro|/click FakeRecipe RightButton;none;none", g2
+print("X at a vendor: sells through the button name, nothing for an unnamed gamepad slot, nothing on the buyback tab: OK")
+assert str(g3) == "true;item|0 5;none;none;Use,no label,Right-click", g3
+print("X on the rest of the highlight: plain button still clicked, mail still taken in the hook, legend says Use / nothing / Right-click: OK")
 # Items used on other items, profession actions, and what the bag menu offers
 r = L("""function()
     local UF = UbermocForever

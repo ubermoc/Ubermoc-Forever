@@ -451,3 +451,67 @@ Sourced this session (claims C1-C4 in the harness):
   45 did anything; 60, 80 and 100 (and the steps of 5 between) gave no further reach. So the game, or the server, does
   not draw plates farther than the default 45. The distance steps were removed in 1.3.125: one button, On writes 45
   to both cvars (which only raises players from 40 to 45).
+
+## The triggers, the player's own bind, and why a trigger key can go dead (2026-11-19, 1.3.139)
+
+- A key the mod claims never reaches the player's action bar bind: the game binds a controller key with
+  `SetOverrideBinding(UIParent, true, key, action)` and marks that action binding inactive as soon as another binding
+  is bound over the same key (`OnOverbound` sets `isActive` false) —
+  `blizzard-ui-source-forever/Interface/AddOns/Blizzard_GamepadSharedUtility/InputBindingStack/InputActionBinding.lua`:21-32
+  (claim C1). So while our Nav stack holds `PADRTRIGGER`, the bind the player put on the right trigger cannot fire.
+- The game treats the HUD (the player's own binds) as usable only when nothing else is on the binding stack, unless the
+  set is `treatBindsAsCore` or the game was told `assumeCoreBindingsUsable` —
+  `.../InputBindingStack/InputBindingManager.lua`:52-62 (claim C2). Our claim is exactly such a non-core set.
+- The right trigger is also the game's cursor left click by default (`GamePadCursorLeftClick` = `PADRTRIGGER`), and that
+  only applies while the game is controlling the mouse cursor —
+  `Atraeau-WoW-Addons/docs/console-commands.md`:560 (claim C3). Escape is what returns controller input to world-style
+  interaction: `TryHandleWorldEsc` calls `SetGamePadCursorControl(false)` when `CanAutoSetGamePadCursorControl(false)`
+  allows it — `.../Blizzard_Game/Shared/Game.lua`:40-45 (claim C4). This is the second way the user's report can be
+  explained with no panel open: the game is still in cursor mode, and the first Escape closes something (or answers the
+  menu), the second puts the input back — so the trigger works only after two presses. Our `Nav.lua` `manageClicks`
+  only sets the click cvars to `NONE` while one of our windows wants the buttons, so a window we see and the player
+  does not can keep the cvar switched off.
+- A scroll list in the game is a frame answering `IsObjectType("ScrollFrame")` with `GetVerticalScrollRange` —
+  `.../Blizzard_GamepadSmartNavigation/SmartNavigation.lua`:1100-1102 (claim C5), the shape the new test stub stands for.
+- What changed in 1.3.139 (`UbermocForever/GameNav.lua`): `triggersUsable()` is `pickGroup(true) ~= nil or scrollerOf(focus) ~= nil`,
+  and `entryMaps()` adds `PADLTRIGGER`/`PADRTRIGGER` to the map only when it is true; `G.syncTriggers()` re-checks at
+  the end of `setFocus` and in the two `startFocus` branches, rebuilding the entry's map only when the claim changes.
+  The legend already showed `Prev page`/`Next page` or `Scroll up`/`Scroll down` only in those same cases, so the legend
+  and the claim now agree: when the legend shows nothing for a trigger, the trigger is the player's own bind.
+- Not checked here, and it decides which of the two mechanisms the user saw: (1) whether `/ubf tabs` at that moment
+  reports a window (then our stack held the key), (2) what the legend showed for the right trigger, (3) whether the
+  action bars were hidden (the game's gamepad UI, `MainActionBar.lua`:103 hides the end caps while
+  `InputUtil.IsGamepadUIEnabled()` is true), and (4) whether the mod's options show the right trigger as the Ctrl
+  modifier for his controller — on the standard (non-Steam) layout `Binds.lua:119` makes both triggers modifiers, which
+  can carry no bind at all; on the Steam layout the right trigger is action button 10 (`STEAM_SLOTS` index 10).
+
+## X (the mod's right click) on a bag item — 1.3.140, sources read 2026-11-19
+
+- The secure `click` action only clicks a stored `clickbutton` when that frame has no access constraints and no
+  forbidden scripted-input aspect; a frame our code put there is refused, so the game's own protected right click never
+  runs through it — `Blizzard_FrameXML/SecureTemplates.lua`:557-564 (claim C6). This is why X did nothing on a bag slot.
+- The secure `item` action reads the `item` attribute (a bag and slot, or a hyperlink), parses it with
+  `SecureCmdItemParse`, and then uses or equips the item from inside the secure environment — string attributes, no
+  access-constraint problem — `SecureTemplates.lua`:418-438 (claim C7). It is the pattern the Y menu's working
+  "Use / equip" entry already uses.
+- The game's right click on a bag button ends with `C_Container.UseContainerItem(self:GetBagID(), self:GetID(), nil,
+  BankFrame:GetActiveBankType(), isReagentBankOpen);` — the item's own use: learn a recipe, use a hearthstone —
+  `Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua`:1604-1612 (claim C8).
+- At a vendor the same right click sells, and the buyback tab returns without selling (`MerchantFrame.selectedTab == 2`)
+  — `ContainerFrame.lua`:1543-1549 (claim C9). `ContainerFrameItemButtonMixin:OnModifiedClick` (1781-1860) has no
+  `AuctionHouseFrame` branch, so at the auction house X is just the item's use; posting an item there stays the Y menu's job.
+- `C_Container.GetContainerItemInfo(containerIndex, slotIndex)` returns a `ContainerItemInfo` that may return nothing;
+  the struct carries `itemID` — `Blizzard_APIDocumentationGenerated/ContainerDocumentation.lua`:192-206 (claim C10) and
+  :766-780 (claim C11).
+- Classes: Consumable 0, Container 1, ItemEnhancement 8, Recipe 9 (`ItemClass`,
+  `ItemConstantsDocumentation.lua`:276-291, claim C12); consumable subclass Potion is 1 (:307-308, claim C13). So a
+  recipe (class 9) is used, and the types the Y menu already handles — poisons, oils, stones, kits, enchants (class 8,
+  the `usedOnItems` list) — are left to the Y menu, as the user asked.
+- What changed: `UbermocForever/ItemMenu.lua` `M.rightClickAction(btn)` answers what X should do on a bag slot
+  (vendor: nothing on the buyback tab, a `/click <name> RightButton` macro when the slot has a global name, nothing for a
+  gamepad slot which has none; otherwise the `item` action unless the item is a Y-menu type or a bag), and
+  `UbermocForever/GameNav.lua` `G.xAction(f)` + `G.xLabel(f)` put those attributes on the secure right-click button and
+  show the same thing in the legend (`Use`, `Right-click`, `Train`, `Take all`, or nothing when X has no action).
+- Untested in the game: X on a recipe, X on a hearthstone, X on an armor kit (must do nothing), the legend label, and a
+  vendor sell on a named slot. Gamepad bag slots have no global name, so a vendor sell there is not possible from our
+  code — state this, do not fake a fallback.

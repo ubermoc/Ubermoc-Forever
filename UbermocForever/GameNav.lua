@@ -589,6 +589,38 @@ local function flyoutOpener(f)
 end
 G.flyoutOpener = flyoutOpener
 
+-- What X should do on the highlighted node, as attributes for the secure right-click button. A bag item
+-- cannot be reached by pointing the button at the game's frame: the secure click is refused once the game's
+-- slot script calls a protected action (docs/LUA-WOW-GUIDE.md section 3, SecureTemplates.lua:557-564), which
+-- is why X did nothing in the bags (the user's report, 1.3.140). ItemMenu answers for those (the secure
+-- "item" action or the vendor/auction macro); everything else keeps the plain click, the trainer button and
+-- the mail, which are as before.
+function G.xAction(f)
+    if not f or G.placing or popup then return nil end
+    if wins[1] == _G.UbermocForeverItemMenu or #openMenus() > 0 then return nil end
+    local tr = trainButton(f)
+    if tr then return { type = "click", clickbutton = tr } end
+    if mailIndex(f) then return nil end       -- X takes the mail in the PostClick hook, with no target
+    local right = UF.ItemMenu and UF.ItemMenu.rightClickAction
+    if not right then return { type = "click", clickbutton = f } end
+    local act, isBagSlot = right(f)
+    if act then return act end
+    if isBagSlot then return nil end   -- a bag slot we leave to the Y menu: no click, nothing to show
+    return { type = "click", clickbutton = f }
+end
+
+-- what the legend says for X on the highlighted node: nothing when X has nothing to do there
+function G.xLabel(f)
+    if not f then return nil end
+    if trainButton(f) then return "Train" end
+    local mi = mailIndex(f)
+    if mi and mailTakeable(mi) then return "Take all" end
+    local act = G.xAction(f)
+    if not act then return nil end
+    if act.type == "item" then return "Use" end       -- the secure use of the item (a recipe, a hearthstone)
+    return "Right-click"
+end
+
 local function setTargets()
     if InCombatLockdown() then return end
     local c, b, rc = buttons()
@@ -606,9 +638,10 @@ local function setTargets()
     else
         c:SetAttribute("clickbutton", target)
     end
-    local menuUp = wins[1] and wins[1] == _G.UbermocForeverItemMenu
-    local train = trainButton(focus)
-    rc:SetAttribute("clickbutton", (not (G.placing or popup or menuUp or #openMenus() > 0)) and (train or (not mailIndex(focus) and focus or nil)) or nil)
+    -- X: the attributes are cleared and rewritten on every move, so a bag slot gets the secure action
+    -- (type "item" or a macro) and a plain button gets the plain click, never both
+    for _, k in ipairs({ "type", "item", "clickbutton", "macrotext" }) do rc:SetAttribute(k, nil) end
+    for k, v in pairs(G.xAction(focus) or {}) do rc:SetAttribute(k, v) end
     local closer
     if G.placing then
         closer = nil   -- B cancels the placing (fallbackClose)
@@ -1039,6 +1072,25 @@ local function stepTab(step, vertical)
     return true
 end
 
+-- Whether the triggers have something to do where the highlight is: the stacked side tabs, or a list under the
+-- highlight. When neither has, the triggers are not claimed at all and stay the player's own bind, so a spell put on
+-- the right trigger (stealth, say) can still be cast: a key this mod claims never reaches the action bar bind, because
+-- the game's own binding stack marks the action binding inactive as soon as another set takes the key
+-- (docs/RESEARCH-NAVIGATION.md, InputActionBinding.lua). Before this the triggers were claimed for every window, so
+-- a bar bind on a trigger did nothing whenever any window was open -- even one with nothing to scroll, which is what
+-- the legend shows (the legend and the claim must agree).
+local function triggersUsable()
+    return pickGroup(true) ~= nil or scrollerOf(focus) ~= nil
+end
+G.triggersUsable = triggersUsable       -- for the offline test
+
+-- The triggers the mod holds right now, so the map is only rebuilt when they start or stop being wanted.
+local claimedTriggers = false
+function G.syncTriggers()
+    if not entry or InCombatLockdown() then return end
+    if triggersUsable() ~= claimedTriggers then G.applyMap() end
+end
+
 ----------------------------------------------------------------------
 -- The highlight
 ----------------------------------------------------------------------
@@ -1106,6 +1158,7 @@ local function setFocus(f, noReveal)
     setTargets()
     if f and not noReveal then pcall(reveal, f) end
     pcall(tooltipShow, f)
+    G.syncTriggers()      -- the new place may have nothing to scroll: give the triggers back
 end
 
 local function rescan()
@@ -1234,6 +1287,7 @@ local function startFocus()
         drawAt(nil)
         setTargets()
         pcall(tooltipHide)
+        G.syncTriggers()
         return
     end
     G.direct = nil
@@ -1243,6 +1297,7 @@ local function startFocus()
         focus = nil
         drawAt(nil)
         setTargets()
+        G.syncTriggers()
         return
     end
     setFocus(startNode())
@@ -1327,9 +1382,7 @@ local function legendTexts()
     end
     t.PAD1, t.PAD2 = "Select", "Close"
     if focus then
-        t.PAD3 = trainButton(focus) and "Train" or "Right-click"
-        local mi = mailIndex(focus)
-        if mi and mailTakeable(mi) then t.PAD3 = "Take all" end
+        t.PAD3 = G.xLabel(focus)
         local w = G.windowOfFocus()
         local dc = dialogCloser(w)
         if dc then t.PAD2 = "Decline" end
@@ -1493,7 +1546,7 @@ end
 local function entryMaps()
     if G.placing then return captureMap(), nil end
     local c, b, rc = buttons()
-    return {
+    local map = {
         PADDUP = function() move("UP") end,
         PADDDOWN = function() move("DOWN") end,
         PADDLEFT = function() move("LEFT") end,
@@ -1505,15 +1558,21 @@ local function entryMaps()
         end,
         PADLSHOULDER = function() stepTab(-1) end,
         PADRSHOULDER = function() stepTab(1) end,
-        -- the side tabs when the window has them, else scroll the list
-        PADLTRIGGER = function() if not stepTab(-1, true) then scrollBy(-1) end end,
-        PADRTRIGGER = function() if not stepTab(1, true) then scrollBy(1) end end,
-    }, {
+    }
+    -- the side tabs when the window has them, else scroll the list, and only then: with nothing stacked and nothing to
+    -- scroll the triggers stay the player's own bind (see triggersUsable above)
+    claimedTriggers = triggersUsable()
+    if claimedTriggers then
+        map.PADLTRIGGER = function() if not stepTab(-1, true) then scrollBy(-1) end end
+        map.PADRTRIGGER = function() if not stepTab(1, true) then scrollBy(1) end end
+    end
+    return map, {
         PAD1 = { c:GetName(), "LeftButton" },
         PAD3 = { rc:GetName(), "RightButton" },
         PAD2 = { b:GetName(), "LeftButton" },
     }
 end
+G.entryMaps = entryMaps   -- for the offline test
 
 local function engage()
     local m, s = entryMaps()

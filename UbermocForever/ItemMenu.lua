@@ -115,6 +115,41 @@ function M.kind(btn)
     if spellOf(btn) then return "spell" end
 end
 
+-- What X (the right click) should do on the highlighted button, as attributes for the secure right-click
+-- button, or nil when X has nothing to do there. Second return: true when the button is a bag slot, so the
+-- caller knows X has no action for it and must not fall back to a plain click.
+-- Our code cannot run the game's own right click on a bag slot: the secure click only reaches a button when
+-- the frame was not stored by our code (`SECURE_ACTIONS.click` refuses a delegate with access constraints,
+-- SecureTemplates.lua:557-564), and the game's right click on a bag item is a protected action (the item's
+-- own use, ContainerFrame.lua:1604-1612) - which is why X did nothing in the bags (the user's report). What
+-- does work is the pattern the Y menu already uses: attributes that are strings, the secure "item" action
+-- (SecureTemplates.lua:418-438) or a macro.
+function M.rightClickAction(btn)
+    if type(btn) ~= "table" then return nil end
+    local bag, slot = bagSlot(btn)
+    if not bag then return nil end
+    local no = function() return nil, true end
+    local name = btn.GetName and btn.GetName()
+    -- At a vendor the game's own right click sells (ContainerFrame.lua:1543-1549, and nothing on the buyback
+    -- tab). That click is the game's action on the button itself, so we can only reach it through a macro,
+    -- which needs the button's name; a slot inside the gamepad bag window has no name (see bagBarSlot above),
+    -- so X has nothing to do there at a vendor. Everywhere else the right click is the item's own use.
+    if MerchantFrame and MerchantFrame:IsShown() then
+        if MerchantFrame.selectedTab == 2 then return no() end   -- the game sells nothing on the buyback tab
+        if name and name ~= "" then return { type = "macro", macrotext = "/click " .. name .. " RightButton" } end
+        return no()
+    end
+    if not (C_Container and C_Container.GetContainerItemInfo) then return no() end
+    local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+    if not (ok and info) then return no() end
+    -- armor kits, poisons, oils, stones and enchants keep the Y menu as their way (the user wants that), and
+    -- bags have their own Y flow (Equip in a bag slot), so X is left out for both
+    if M.usedOnItems(info.itemID) or M.isBag(info.itemID) then return no() end
+    -- with no vendor open the game's right click is the item's own use: learning a recipe, using a hearthstone
+    -- - the same secure action as the Y menu's "Use / equip" entry
+    return { type = "item", item = bag .. " " .. slot }
+end
+
 ----------------------------------------------------------------------
 -- Item facts from the game's own data
 ----------------------------------------------------------------------
