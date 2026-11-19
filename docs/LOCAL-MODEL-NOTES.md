@@ -14,7 +14,7 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
   type `/reload` in the game. This is a standing permission; you do not need to be asked and you must not ask the user how to install.
 - The full routine, every time:
   1. `bash tools/work-start.sh <name> local` (your own folder `../Ubermoc-Forever-work/local-<name>`, branch `local-model/<name>`, cut from main). `cd` there.
-  2. `bash tools/doctor.sh` once: it lists anything missing and the command that fixes it.
+  2. `bash tools/status.sh` (start and end of every session) and `bash tools/doctor.sh` once: they list the state and anything missing.
   3. Do the one feature. Stage files by name (`git add path ...`), never `git add -A`. Commit with
      `git -c user.name=Claude -c user.email=noreply@anthropic.com commit -m "..."`.
   4. `bash tools/finish.sh`. If it prints FAILED, fix that, commit, run it again. If it says STOPPED on a merge, stop and report.
