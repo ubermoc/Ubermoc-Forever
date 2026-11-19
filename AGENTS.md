@@ -5,11 +5,18 @@ The code is the truth; where a note here disagrees with it, trust the code and f
 
 **Start here if you are the local model: read `docs/LOCAL-MODEL-NOTES.md` first (short), then this file.**
 
+## Where things live (the layout under ~/Downloads; keep it this way)
+- `Projects/` holds only projects, each in its own folder named after it: `Ubermoc-Forever` (this repo, branch `main`, never edited directly), `Ubermoc-UI`, `Ubermoc-Warcraft-Mod-Updater`, `Jobs`, `Jobfit`.
+- `Project Support/` holds what a project uses, named "<project> - <what it is>": `Ubermoc-Forever - Worker Copies` (one folder per task: your work happens there) and `Ubermoc-Forever - WoW Research and Tools` (Blizzard's UI source, the API data, and the Python with `lupa` that runs the offline test; made by `tools/setup-research.sh`).
+- `Harness/` holds the working rules and the proof tool (`Ubermoc-Harness`), and the phone link folder (`Claude-Remote`). `Strata` (the local model, 67 GB) stays at the top of Downloads because of its size.
+- `Installers and Archives/` holds downloaded installers and old zips. `Backups/` holds the backup sets (see its README).
+- Scripts find these through `UBF_RESEARCH` (research folder) and `UBF_DOWNLOADS`; the defaults are the folders above.
+
 ## What this is
 A controller-first addon for **WoW: Forever** (game type "camelot", Interface 16001) for Steam Deck / Steam Controller
 (also PS5, Xbox, Switch). Author: Marcos (GitHub `ubermoc`). Rules from the user: only Blizzard's own art and
 templates, one feature at a time, research with sources first, short answers, be honest about what is untested.
-The author's other addon, UbermocUI (repo `ubermoc/Ubermoc-UI`), is checked out next to this repo at `~/Downloads/Ubermoc/Ubermoc-UI` (reference for how he builds things; its own `CLAUDE.md` has its rules).
+The author's other addon, UbermocUI (repo `ubermoc/Ubermoc-UI`), is checked out next to this repo at `~/Downloads/Projects/Ubermoc-UI` (reference for how he builds things; its own `CLAUDE.md` has its rules).
 Repo `ubermoc/Ubermoc-Forever`. `main` is the single source of truth and the only thing released. Every worker (Claude, the local model) works on a short-lived branch cut from the latest `main` in its own worktree and brings it back to `main` as soon as it is finished (see "How work gets to main").
 
 ## Confirmed in the game by the user (2026-11-18: everything through 1.3.129; 2026-11-17: 22 items through 1.3.103)
@@ -85,7 +92,7 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
 ## How work gets to main (the same for Claude and the local model)
 In words: **commit** = save your work in git on your own branch; **merge + push** (`ship.sh`) = put it into `main` and upload `main` to GitHub; **release** = publish that version for everyone who uses the mod. Finished work is ALWAYS installed in the user's game first (`finish.sh` does it): he tests at the end.
 1. Start: `bash tools/work-start.sh <name> [claude|local]` makes your own worktree and branch cut from the latest `main`
-   (`../Ubermoc-Forever-work/<who>-<name>`, branch `claude/<name>` or `local-model/<name>`). Never two workers in one folder,
+   (`~/Downloads/Project Support/Ubermoc-Forever - Worker Copies/<who>-<name>`, branch `claude/<name>` or `local-model/<name>`). Never two workers in one folder,
    never edit the main folder. One feature per branch.
 2. Start AND end every session with `bash tools/status.sh` (one screen: version, pushed or not, released or not, unmerged branches,
    uncommitted work, local model up). Check the toolbox once: `bash tools/doctor.sh` says what is missing and how to fix it.

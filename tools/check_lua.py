@@ -19,7 +19,7 @@ import subprocess
 import sys
 
 HOME = os.path.expanduser("~")
-RESEARCH = os.path.join(HOME, "Downloads", "WoW Forever Tools and Research")
+RESEARCH = os.environ.get("UBF_RESEARCH", os.path.join(HOME, "Downloads", "Project Support", "Ubermoc-Forever - WoW Research and Tools"))
 BLIZZARD = os.environ.get("UBF_BLIZZARD", os.path.join(RESEARCH, "blizzard-ui-source-forever", "Interface"))
 API_DUMP = os.path.join(RESEARCH, "forever-addon-kit", "data", "forever_api.json")
 

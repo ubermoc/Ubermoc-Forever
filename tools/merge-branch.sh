@@ -9,7 +9,7 @@ root=$(cd "$(dirname "$0")/.." && pwd); cd "$root"
 [ "$(git branch --show-current)" = main ] || { echo "Not on main. Run: git switch main"; exit 1; }
 [ -z "$(git status --porcelain)" ] || { echo "Uncommitted changes here: commit or stash them first."; git status --short; exit 1; }
 git rev-parse --verify -q "$branch" >/dev/null || { echo "No branch $branch"; exit 1; }
-PY="${UBF_PYTHON:-$HOME/Downloads/WoW Forever Tools and Research/.venv/bin/python}"
+PY="${UBF_PYTHON:-${UBF_RESEARCH:-$HOME/Downloads/Project Support/Ubermoc-Forever - WoW Research and Tools}/.venv/bin/python}"
 [ -x "$PY" ] || PY=python3
 before=$(git rev-parse HEAD)
 if ! git -c user.name=Claude -c user.email=noreply@anthropic.com merge --no-ff -m "Merge $branch" "$branch"; then
