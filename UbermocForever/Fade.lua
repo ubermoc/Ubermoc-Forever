@@ -326,12 +326,12 @@ function F.percentText(v) return v == nil and "Normal" or (math.floor(v * 100 + 
 ----------------------------------------------------------------------
 -- Which situations are on right now
 ----------------------------------------------------------------------
+local act = {}   -- reused: the tick uses it inside one call, no caller keeps it across a second F.active()
 function F.active()
-    local a = {}
-    a.combat = (InCombatLockdown() or (UnitAffectingCombat and UnitAffectingCombat("player"))) and true or false
-    a.flight = (UnitOnTaxi and UnitOnTaxi("player")) and true or false
-    a.idle = not a.combat
-    return a
+    act.combat = (InCombatLockdown() or (UnitAffectingCombat and UnitAffectingCombat("player"))) and true or false
+    act.flight = (UnitOnTaxi and UnitOnTaxi("player")) and true or false
+    act.idle = not act.combat
+    return act
 end
 
 -- The opacity wanted for an element now: 0 when hidden, else the first active situation it has a value for, else nil (left alone).
@@ -496,7 +496,7 @@ function F.target(key, active, isOver)
     local goal = F.goal(key, active)
     if goal ~= nil and F.mouse(key) ~= nil and goal < F.mouse(key) then
         local over = isOver
-        if type(isOver) == "function" then over = isOver() end
+        if type(isOver) == "function" then over = isOver(key) end   -- the tick hands over the key, so it needs no closure per key
         goal = F.wanted(key, active, over)
     end
     if goal ~= nil and not F.hidden(key) and revealed(key) then goal = 1 end
@@ -512,7 +512,7 @@ local function tick(self, dt)
     if force then reapply = 0 end
     local any = false
     for key in pairs(byKey) do
-        local goal = F.target(key, active, function() return hovering(key) end)
+        local goal = F.target(key, active, hovering)
         local c = cur[key] or 1
         if goal ~= nil or touchedKeys[key] then
             any = true

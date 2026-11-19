@@ -100,14 +100,15 @@ local function centerFraction()
 end
 
 local function pointerVisible()
-    local ok, cur = pcall(function() return IsGamePadCursorControlEnabled and IsGamePadCursorControlEnabled() end)
+    if not IsGamePadCursorControlEnabled then return false end
+    local ok, cur = pcall(IsGamePadCursorControlEnabled)
     return ok and cur and true or false
 end
 
 -- Is the game waiting for a ground spot right now?
 function A.aiming() return (SpellIsTargeting and SpellIsTargeting()) and true or false end
 
-local sigSeen
+local lastPx, lastFrac, lastH   -- the last anchor looked at (nil until the first show); compared as numbers, no string built per tick
 local function update()
     local a = cfg()
     local want = a.on and A.aiming() and not pointerVisible()
@@ -115,11 +116,11 @@ local function update()
         local m = build()
         local px = (A.SIZES[a.size] or A.SIZES[2]).px
         local h = UIParent:GetHeight() or 768
-        local sig = px .. "|" .. centerFraction() .. "|" .. h
-        if sig ~= sigSeen then
-            sigSeen = sig
+        local frac = centerFraction()
+        if px ~= lastPx or frac ~= lastFrac or h ~= lastH then
+            lastPx, lastFrac, lastH = px, frac, h
             m:ClearAllPoints()
-            m:SetPoint("CENTER", UIParent, "BOTTOM", 0, h * centerFraction())
+            m:SetPoint("CENTER", UIParent, "BOTTOM", 0, h * frac)
             m.dot:SetSize(px, px)
         end
         if not m:IsShown() then m:Show() end
@@ -144,7 +145,7 @@ function A.nextDistance(dir)
     a.dist = UF.stepIndex(a.dist, #A.DISTANCES, dir)
     A.apply()
 end
-function A.nextSize(dir) local a = cfg(); a.size = UF.stepIndex(a.size, #A.SIZES, dir); sigSeen = nil end
+function A.nextSize(dir) local a = cfg(); a.size = UF.stepIndex(a.size, #A.SIZES, dir); lastPx, lastFrac, lastH = nil, nil, nil end
 function A.distanceName() local s = A.DISTANCES[cfg().dist]; return s and s.name or "Game's own" end
 function A.sizeName() return (A.SIZES[cfg().size] or A.SIZES[2]).name end
 
