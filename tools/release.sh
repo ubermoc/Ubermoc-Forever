@@ -10,15 +10,15 @@ tag="${1:?usage: release.sh vX.Y.Z}"; ver="${tag#v}"
 [ -z "$(git status --porcelain)" ] || { echo "Uncommitted changes."; exit 1; }
 git fetch -q origin
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main and origin/main differ: push first (bash tools/ship.sh ...)."; exit 1; }
-[ "$ver" = "$(grep '^## Version' UbermocForever/UbermocForever.toc | sed 's/.*: *//')" ] || { echo "The .toc version is not $ver."; exit 1; }
+[ "$ver" = "$(grep '^## Version' Ubermoc-Forever/Ubermoc-Forever.toc | sed 's/.*: *//')" ] || { echo "The .toc version is not $ver."; exit 1; }
 gh release view "$tag" >/dev/null 2>&1 && { echo "$tag is already released."; exit 1; }
-zip="/tmp/UbermocForever-$tag-forever.zip"; rm -f "$zip"
+zip="/tmp/Ubermoc-Forever-$tag-forever.zip"; rm -f "$zip"
 python3 -I - "$zip" <<'PY'
 import shutil, sys, os
 base = sys.argv[1][:-4]
-shutil.make_archive(base, "zip", root_dir=".", base_dir="UbermocForever")
+shutil.make_archive(base, "zip", root_dir=".", base_dir="Ubermoc-Forever")
 PY
-notes=$(awk -v v="UbermocForever $ver" 'index($0,v)==1{f=1;next} f&&/^UbermocForever [0-9]/{exit} f' CHANGELOG.txt)
+notes=$(awk -v v="Ubermoc-Forever $ver" 'index($0,v)==1{f=1;next} f&&/^Ubermoc-Forever [0-9]/{exit} f' CHANGELOG.txt)
 [ -n "$notes" ] || { echo "No CHANGELOG entry for $ver."; exit 1; }
 gh release create "$tag" "$zip" --title "Version $ver" --target main --latest --notes "$notes"
 echo "Released $tag on GitHub. CurseForge: upload $zip by hand (AGENTS.md, Releasing)."

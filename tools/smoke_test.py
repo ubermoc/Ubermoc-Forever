@@ -7,8 +7,8 @@ import sys, os
 import lupa
 from lupa import LuaRuntime
 
-ADDON = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "UbermocForever")
-toc = [l.strip() for l in open(ADDON + "/UbermocForever.toc") if l.strip() and not l.startswith("##")]
+ADDON = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Ubermoc-Forever")
+toc = [l.strip() for l in open(ADDON + "/Ubermoc-Forever.toc") if l.strip() and not l.startswith("##")]
 
 lua = LuaRuntime(unpack_returned_tuples=True)
 
@@ -146,7 +146,7 @@ for f in toc:
     src = open(os.path.join(ADDON, f)).read()
     fn = lua.eval("function(s, n) return load(s, n) end")(src, f)
     try:
-        fn("UbermocForever", ns)
+        fn("Ubermoc-Forever", ns)
     except Exception as e:
         print("LOAD ERROR", f, e); sys.exit(1)
 print("all files load")

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the "Ubermoc-Forever - WoW Research and Tools" folder (Downloads/Project Support) and keeps it up to date.
+# Builds the project's "Ubermoc-Forever - WoW Research and Tools" folder (Project Support inside this project) and keeps it up to date.
 #
 #   bash tools/setup-research.sh
 #
@@ -8,8 +8,8 @@
 # Also fetch Blizzard's texture repository (large):  WITH_TEXTURES=1 bash tools/setup-research.sh
 set -euo pipefail
 
-DEST="${DEST:-${UBF_RESEARCH:-$HOME/Downloads/Project Support/Ubermoc-Forever - WoW Research and Tools}}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEST="${DEST:-${UBF_RESEARCH:-$HERE/../Project Support/Ubermoc-Forever - WoW Research and Tools}}"
 export GIT_LFS_SKIP_SMUDGE=1
 
 command -v git >/dev/null || { echo "git is needed. Install it first."; exit 1; }

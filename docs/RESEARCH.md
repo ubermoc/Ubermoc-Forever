@@ -18,7 +18,7 @@ Forever is a beta-era client: recheck anything marked below after a patch.
 ## The client
 
 - Interface `16001`, product `wowf`, folder `_forever_`, internal name Camelot. **[community]**; the Updater in this account relies on the same values.
-- A plain `UbermocForever.toc` with `## Interface: 16001` loads. **[community]** (tested in game by ForeverPlusPlus)
+- A plain `Ubermoc-Forever.toc` with `## Interface: 16001` loads. **[community]** (tested in game by ForeverPlusPlus)
 - Detect Forever by interface number range (`16000` to `16999`) or by probing for the function you need, never by "starts with 1". **[community]**
 - `/run` and `/dump` can be switched off: Blizzard's chat code checks `C_AddOns.GetScriptsDisallowedForBeta()`. **[source]** This is why the addon tests itself after login (Checks button) instead of asking you to type commands.
 

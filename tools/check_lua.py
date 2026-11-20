@@ -7,7 +7,7 @@
      Blizzard's Forever UI source, not set by the file itself) is reported as a likely typo or a missing helper.
   3. --risky: lines that use calls needing a second look for taint or secret values (hooks, SetPoint, Show/Hide, unit data ...).
 
-Usage:  python3 tools/check_lua.py UbermocForever/Loot.lua [more files] [--risky]
+Usage:  python3 tools/check_lua.py Ubermoc-Forever/Loot.lua [more files] [--risky]
 Exit code 0 only when every file passes steps 1 and 2. Needs luac5.1 (package lua51) and, for step 2's lookups, the Blizzard
 source made by tools/setup-research.sh (set UBF_BLIZZARD to another folder if it is elsewhere).
 """
@@ -19,7 +19,8 @@ import subprocess
 import sys
 
 HOME = os.path.expanduser("~")
-RESEARCH = os.environ.get("UBF_RESEARCH", os.path.join(HOME, "Downloads", "Project Support", "Ubermoc-Forever - WoW Research and Tools"))
+PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RESEARCH = os.environ.get("UBF_RESEARCH", os.path.join(PROJECT, "Project Support", "Ubermoc-Forever - WoW Research and Tools"))
 BLIZZARD = os.environ.get("UBF_BLIZZARD", os.path.join(RESEARCH, "blizzard-ui-source-forever", "Interface"))
 API_DUMP = os.path.join(RESEARCH, "forever-addon-kit", "data", "forever_api.json")
 

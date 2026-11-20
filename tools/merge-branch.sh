@@ -9,15 +9,15 @@ root=$(cd "$(dirname "$0")/.." && pwd); cd "$root"
 [ "$(git branch --show-current)" = main ] || { echo "Not on main. Run: git switch main"; exit 1; }
 [ -z "$(git status --porcelain)" ] || { echo "Uncommitted changes here: commit or stash them first."; git status --short; exit 1; }
 git rev-parse --verify -q "$branch" >/dev/null || { echo "No branch $branch"; exit 1; }
-PY="${UBF_PYTHON:-${UBF_RESEARCH:-$HOME/Downloads/Project Support/Ubermoc-Forever - WoW Research and Tools}/.venv/bin/python}"
+PY="${UBF_PYTHON:-${UBF_RESEARCH:-$root/Project Support/Ubermoc-Forever - WoW Research and Tools}/.venv/bin/python}"
 [ -x "$PY" ] || PY=python3
 before=$(git rev-parse HEAD)
-if ! git -c user.name=Claude -c user.email=noreply@anthropic.com merge --no-ff -m "Merge $branch" "$branch"; then
+if ! git -c user.name=Ubermoc -c user.email=ubermoc@users.noreply.github.com merge --no-ff -m "Merge $branch" "$branch"; then
   echo; echo "CONFLICT in:"; git diff --name-only --diff-filter=U
-  git merge --abort; echo "Main is unchanged. Ask Claude to resolve it: both branches changed the same lines."; exit 1
+  git merge --abort; echo "Main is unchanged. Ask Ubermoc to resolve it: both branches changed the same lines."; exit 1
 fi
 fail=0
 "$PY" tools/smoke_test.py 2>&1 | tail -3 | grep -q "ALL TESTS PASSED" || { echo "Offline test FAILED after the merge."; fail=1; }
-for f in UbermocForever/*.lua; do python3 tools/check_lua.py "$f" 2>&1 | tail -1 | grep -q PASSED || { echo "check_lua FAILED on $f"; fail=1; }; done
+for f in Ubermoc-Forever/*.lua; do python3 tools/check_lua.py "$f" 2>&1 | tail -1 | grep -q PASSED || { echo "check_lua FAILED on $f"; fail=1; }; done
 if [ "$fail" = 1 ]; then git reset -q --hard "$before"; echo "Main put back as it was ($before). Nothing merged."; exit 1; fi
 echo; echo "Merged $branch into main and everything passes. Not pushed. Install: bash tools/install.sh   Push: git push origin main"

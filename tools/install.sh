@@ -12,7 +12,7 @@
 # `wowf` (the same test the Ubermoc Warcraft Mod Updater uses).
 set -euo pipefail
 
-ADDON="UbermocForever"
+ADDON="Ubermoc-Forever"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$HERE/../$ADDON"
 

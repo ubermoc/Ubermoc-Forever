@@ -9,6 +9,6 @@ branch="${1:?usage: ship.sh <branch>}"
 bash tools/merge-branch.sh "$branch" || exit 1
 git push origin main || { echo "Merged here, but the push failed. Retry: git push origin main"; exit 1; }
 git push origin "$branch" 2>/dev/null || true
-ver=$(grep '^## Version' UbermocForever/UbermocForever.toc | sed 's/.*: *//')
+ver=$(grep '^## Version' Ubermoc-Forever/Ubermoc-Forever.toc | sed 's/.*: *//')
 echo "Pushed main ($ver). Install into the game from here: bash tools/install.sh"
 echo "Release it only if the user asks: bash tools/release.sh v$ver"

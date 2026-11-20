@@ -5,7 +5,7 @@ Run through tools/sync-main.sh, inside the worker's own folder (never main), wit
 
 What it does:
   1. merges the local `main` into the current branch;
-  2. if only UbermocForever.toc, CHANGELOG.txt and HANDOFF.md conflict (two workers each added an entry on top and a
+  2. if only Ubermoc-Forever.toc, CHANGELOG.txt and HANDOFF.md conflict (two workers each added an entry on top and a
      version number), it resolves them by itself: main's entries stay, the branch's entry goes on top, and the branch's
      version becomes main's version + 1 (in the .toc, in the top CHANGELOG heading, in the HANDOFF note);
   3. any other conflict: the merge is aborted, nothing changes, and the files are listed so a person can look.
@@ -15,8 +15,8 @@ import re
 import subprocess
 import sys
 
-GIT = ["git", "-c", "user.name=Claude", "-c", "user.email=noreply@anthropic.com"]
-AUTO = {"UbermocForever/UbermocForever.toc", "CHANGELOG.txt", "HANDOFF.md"}
+GIT = ["git", "-c", "user.name=Ubermoc", "-c", "user.email=ubermoc@users.noreply.github.com"]
+AUTO = {"Ubermoc-Forever/Ubermoc-Forever.toc", "CHANGELOG.txt", "HANDOFF.md"}
 VER = re.compile(r"\d+\.\d+\.\d+")
 
 
@@ -55,13 +55,13 @@ def main():
     if behind == "0":
         print("Already up to date with main.")
         return 0
-    main_ver = toc_version(run("git", "show", "main:UbermocForever/UbermocForever.toc").stdout)
-    mine_before = toc_version(open("UbermocForever/UbermocForever.toc").read())
+    main_ver = toc_version(run("git", "show", "main:Ubermoc-Forever/Ubermoc-Forever.toc").stdout)
+    mine_before = toc_version(open("Ubermoc-Forever/Ubermoc-Forever.toc").read())
     r = run(*GIT, "merge", "--no-ff", "--no-commit", "main", check=False)
     conflicted = run("git", "diff", "--name-only", "--diff-filter=U").stdout.split()
     if r.returncode == 0 and not conflicted:
         # clean merge; the version may still be behind main's
-        toc_path = "UbermocForever/UbermocForever.toc"
+        toc_path = "Ubermoc-Forever/Ubermoc-Forever.toc"
         mine = toc_version(open(toc_path).read())
         if mine_before and main_ver and tuple(map(int, mine.split("."))) <= tuple(map(int, main_ver.split("."))):
             new = bump(main_ver)
@@ -76,7 +76,7 @@ def main():
     if others:
         run(*GIT, "merge", "--abort", check=False)
         print("STOPPED: main and this branch changed the same lines in:\n  " + "\n  ".join(others))
-        print("Nothing was changed. Ask Claude (or the user) to resolve it; do not guess.")
+        print("Nothing was changed. Ask Ubermoc (or the user) to resolve it; do not guess.")
         return 1
     new = bump(main_ver)
     for f in conflicted:
@@ -87,7 +87,7 @@ def main():
             if f.endswith(".toc"):
                 resolved = f"## Version: {new}\n"
             elif f == "CHANGELOG.txt":
-                ours = re.sub(r"(UbermocForever )" + VER.pattern, r"\g<1>" + new, ours, count=1)
+                ours = re.sub(r"(Ubermoc-Forever )" + VER.pattern, r"\g<1>" + new, ours, count=1)
                 resolved = ours.rstrip("\n") + "\n\n" + theirs
             else:  # HANDOFF.md: the branch's own note first, its version number renumbered
                 if mine_before:

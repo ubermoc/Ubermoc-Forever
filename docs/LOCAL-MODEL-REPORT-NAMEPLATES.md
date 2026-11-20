@@ -1,12 +1,12 @@
 # Local model report: name-only nameplates (1.3.117)
 
-Branch `local-model/nameplates` (from `claude/affectionate-cray-lhlr0j`). Branch only, not pushed to `main`, nothing released.
+Branch `local-model/nameplates` (from `ubermoc/affectionate-cray-lhlr0j`). Branch only, not pushed to `main`, nothing released.
 
 **Status: passes the offline test and the checker; untested in the game.** Nothing below was seen in the game.
 
 ## Files
-- `UbermocForever/Nameplates.lua` — new file, `UF.Nameplates`, added to the toc after `Vendor.lua`.
-- `UbermocForever/QolPage.lua` — a "Nameplates" group on the Quality of life page: `enemyBtn` ("Enemies: name only"), `friendlyBtn` ("Friendly: name only"), as a new fourth navigation row. `QP.refresh` text, `QP.build`, `QP.navRows`.
+- `Ubermoc-Forever/Nameplates.lua` — new file, `UF.Nameplates`, added to the toc after `Vendor.lua`.
+- `Ubermoc-Forever/QolPage.lua` — a "Nameplates" group on the Quality of life page: `enemyBtn` ("Enemies: name only"), `friendlyBtn` ("Friendly: name only"), as a new fourth navigation row. `QP.refresh` text, `QP.build`, `QP.navRows`.
 - `tools/smoke_test.py` — three new tests (pieces and restore, the CVar, the source text) and the Quality of life page row-count test updated to `4/3/1/3/2` (that is the only existing test changed, as the prompt allowed).
 - `docs/RESEARCH-NAVIGATION.md` — new section "Name-only nameplates (1.3.117)".
 - `CHANGELOG.txt`, `README.md`, `docs/DESCRIPTION.md`, `HANDOFF.md` — one entry each, saying off by default and untested in the game.
@@ -20,8 +20,8 @@ No hook, no OnUpdate, no method call on a game piece, no field written on a game
 
 ## Check A — checker
 ```
-$ python3 tools/check_lua.py UbermocForever/Nameplates.lua --risky
-UbermocForever/Nameplates.lua: syntax ok (Lua 5.1); 11 globals read, 0 written, 0 unknown
+$ python3 tools/check_lua.py Ubermoc-Forever/Nameplates.lua --risky
+Ubermoc-Forever/Nameplates.lua: syntax ok (Lua 5.1); 11 globals read, 0 written, 0 unknown
   risky  SetCVar|C_CVar\.SetCVar  lines 151  -> writes a game setting: out of combat, remember the old value, give it back
 PASSED
 ```
@@ -64,7 +64,7 @@ Blizzard_NamePlates/Blizzard_NamePlates.xml:299: <Texture parentKey="selectionHi
 10. our saved settings: `plates.enemy`, `plates.friendly` (boolean), `plates.prevOnlyName` (string or nil). Nothing else. `orig` is a weak-keyed table, not saved.
 
 ## Check E — mutation checks
-Each mutation was applied to `UbermocForever/Nameplates.lua`, the offline test re-run, and undone. All made a test fail: restore puts back 1 instead of the remembered value; `name` hidden as well; the `pcall` in `hide` removed; the `pcall` around `GetCVar` removed; the combat guard in `syncCVar` removed; the `issecretvalue` answer in `kindOf` removed; the `type(v) ~= "number"` guard removed; the `IsForbidden` check removed; a piece without `SetAlpha` no longer skipped; only the hide branch (no restore on a reused plate); the pending flag not applied at combat end; the original alpha remembered every time instead of the first time only; `NAME_PLATE_UNIT_ADDED`, `UNIT_FACTION` or `PLAYER_REGEN_ENABLED` not registered; the plate styled from the event's unit instead of its own unit; nil plate / nil `UnitFrame` not survived; `prevOnlyName` not remembered; writing when the value cannot be read; `toggle` not re-applying to plates already on screen; `GetNamePlates` answering nil not survived. The file was restored afterwards (`diff` clean).
+Each mutation was applied to `Ubermoc-Forever/Nameplates.lua`, the offline test re-run, and undone. All made a test fail: restore puts back 1 instead of the remembered value; `name` hidden as well; the `pcall` in `hide` removed; the `pcall` around `GetCVar` removed; the combat guard in `syncCVar` removed; the `issecretvalue` answer in `kindOf` removed; the `type(v) ~= "number"` guard removed; the `IsForbidden` check removed; a piece without `SetAlpha` no longer skipped; only the hide branch (no restore on a reused plate); the pending flag not applied at combat end; the original alpha remembered every time instead of the first time only; `NAME_PLATE_UNIT_ADDED`, `UNIT_FACTION` or `PLAYER_REGEN_ENABLED` not registered; the plate styled from the event's unit instead of its own unit; nil plate / nil `UnitFrame` not survived; `prevOnlyName` not remembered; writing when the value cannot be read; `toggle` not re-applying to plates already on screen; `GetNamePlates` answering nil not survived. The file was restored afterwards (`diff` clean).
 
 ## Check F — no local used before it is declared
 `plain` (35) before `db` (40), `db` before `N.enabled`/`N.wanted`/`syncCVar`/`toggle`, `orig` (32) before `hide`/`restore`, `N.pending` (33) before `syncCVar`, `CVAR` (28) before `syncCVar`, `PIECES` (30) before `parts`, `styleFor` (122) before the `OnEvent` (169). `pcall` return positions: `ok, was` (80, 137), `ok, plates` (116), `ok, plate` (124), `ok, forbidden` (102), `ok, can` (59). `ipairs` runs over `PIECES` and over the list `parts` built, never over a table with holes.

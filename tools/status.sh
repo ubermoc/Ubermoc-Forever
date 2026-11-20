@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# One screen: where everything stands. Run it at the START and at the END of every session (Claude and the local model):
+# One screen: where everything stands. Run it at the START and at the END of every session (Ubermoc and the local model):
 #   bash tools/status.sh
 # Read-only. Works from any worker folder or the main folder.
 common=$(git rev-parse --git-common-dir 2>/dev/null) || { echo "Not in the repo."; exit 1; }
 main_dir=$(cd "$common/.." && pwd)
 g() { git -C "$main_dir" "$@"; }
-ver=$(git -C "$main_dir" show main:UbermocForever/UbermocForever.toc | grep '^## Version' | sed 's/.*: *//')
+ver=$(git -C "$main_dir" show main:Ubermoc-Forever/Ubermoc-Forever.toc | grep '^## Version' | sed 's/.*: *//')
 rel=$(gh release list --limit 1 2>/dev/null | awk '{print $1" "$2}' | head -1)
 g fetch -q origin 2>/dev/null
 ahead=$(g rev-list --count origin/main..main 2>/dev/null); behind=$(g rev-list --count main..origin/main 2>/dev/null)

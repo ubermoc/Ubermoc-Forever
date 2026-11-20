@@ -104,8 +104,9 @@ addon code. It must end with `ALL TESTS PASSED`. Then `bash tools/install.sh` an
    a failure, add a chat message or `/ubf` report that shows what the game sent, instead of guessing again.
 5. Several guesses in a row means you lack data: build a report or a scan (like `/ubf scan`, which walks item ids and saves
    the game's own tooltip text into `UbermocForeverDB`, read afterwards from the SavedVariables file under
-   `WTF/Account/<name>/SavedVariables/UbermocForever.lua` after a `/reload`).
-6. Commit with `git -c user.name=Claude -c user.email=noreply@anthropic.com`, push to the branch and `main`. Releasing
+   `WTF/Account/<name>/SavedVariables/Ubermoc-Forever.lua` after a `/reload`. The game names that file after the addon
+   folder, so the rename moved it. <!-- claimed from wiki -->
+6. Commit with `git -c user.name=Ubermoc -c user.email=ubermoc@users.noreply.github.com`, push to the branch and `main`. Releasing
    (GitHub + CurseForge) only when the user says so; the routine is in `AGENTS.md`.
 
 ## 7. Reports the addon already has

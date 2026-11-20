@@ -473,7 +473,7 @@ Sourced this session (claims C1-C4 in the harness):
   does not can keep the cvar switched off.
 - A scroll list in the game is a frame answering `IsObjectType("ScrollFrame")` with `GetVerticalScrollRange` —
   `.../Blizzard_GamepadSmartNavigation/SmartNavigation.lua`:1100-1102 (claim C5), the shape the new test stub stands for.
-- What changed in 1.3.139 (`UbermocForever/GameNav.lua`): `triggersUsable()` is `pickGroup(true) ~= nil or scrollerOf(focus) ~= nil`,
+- What changed in 1.3.139 (`Ubermoc-Forever/GameNav.lua`): `triggersUsable()` is `pickGroup(true) ~= nil or scrollerOf(focus) ~= nil`,
   and `entryMaps()` adds `PADLTRIGGER`/`PADRTRIGGER` to the map only when it is true; `G.syncTriggers()` re-checks at
   the end of `setFocus` and in the two `startFocus` branches, rebuilding the entry's map only when the claim changes.
   The legend already showed `Prev page`/`Next page` or `Scroll up`/`Scroll down` only in those same cases, so the legend
@@ -507,10 +507,10 @@ Sourced this session (claims C1-C4 in the harness):
   `ItemConstantsDocumentation.lua`:276-291, claim C12); consumable subclass Potion is 1 (:307-308, claim C13). So a
   recipe (class 9) is used, and the types the Y menu already handles — poisons, oils, stones, kits, enchants (class 8,
   the `usedOnItems` list) — are left to the Y menu, as the user asked.
-- What changed: `UbermocForever/ItemMenu.lua` `M.rightClickAction(btn)` answers what X should do on a bag slot
+- What changed: `Ubermoc-Forever/ItemMenu.lua` `M.rightClickAction(btn)` answers what X should do on a bag slot
   (vendor: nothing on the buyback tab, a `/click <name> RightButton` macro when the slot has a global name, nothing for a
   gamepad slot which has none; otherwise the `item` action unless the item is a Y-menu type or a bag), and
-  `UbermocForever/GameNav.lua` `G.xAction(f)` + `G.xLabel(f)` put those attributes on the secure right-click button and
+  `Ubermoc-Forever/GameNav.lua` `G.xAction(f)` + `G.xLabel(f)` put those attributes on the secure right-click button and
   show the same thing in the legend (`Use`, `Right-click`, `Train`, `Take all`, or nothing when X has no action).
 - Untested in the game: X on a recipe, X on a hearthstone, X on an armor kit (must do nothing), the legend label, and a
   vendor sell on a named slot. Gamepad bag slots have no global name, so a vendor sell there is not possible from our

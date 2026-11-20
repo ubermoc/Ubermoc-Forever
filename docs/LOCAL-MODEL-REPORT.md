@@ -18,7 +18,7 @@ new heading "The marker submenu built with the game's own menu code (1.3.71)".
 
 ## What I changed
 
-- **`UbermocForever/MarkerMenu.lua`** (new, toc after `GameNav.lua`), `UF.MarkerMenu`: `M.order()` (game's order, 8 down to 1,
+- **`Ubermoc-Forever/MarkerMenu.lua`** (new, toc after `GameNav.lua`), `UF.MarkerMenu`: `M.order()` (game's order, 8 down to 1,
   then None), `M.markerNumber(text)` (None is 0, names map back, anything else or a non-string is nil), `M.menu` (menu frame of
   the last open), `M.open(anchorFrame)`. Owner is `_G.TargetFrame` — the entry we were called from cannot be it (opening closes
   the other menus, so the entry hides, and the OnUpdate closes a menu whose owner is not visible); `open` returns false when the

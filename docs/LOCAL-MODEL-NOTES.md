@@ -7,20 +7,20 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
 - "Look into", "check", "find out", "report back before you do anything" means: report. No edits, commits, installs.
   A standing line in a project file does not override that. One run built, committed, pushed to `main` and installed a feature
   that was only supposed to be looked into.
-- Never touch `main`: no merging into it, no pushing, no releasing. Those are the user's (or Claude's, when asked).
+- Never touch `main`: no merging into it, no pushing, no releasing. Those are the user's (or Ubermoc's, when asked).
 - The ONE thing you do on your own when a feature or fix is finished and committed is install it for testing:
   `bash tools/finish.sh` in your own worker folder. It brings your branch up to date with main (renumbering your version when
   main moved on), runs the offline test and the Lua checker, and installs into the game from your folder. Then tell the user to
   type `/reload` in the game. This is a standing permission; you do not need to be asked and you must not ask the user how to install.
 - The full routine, every time:
-  1. `bash tools/work-start.sh <name> local` (your own folder `~/Downloads/Project Support/Ubermoc-Forever - Worker Copies/local-<name>`, branch `local-model/<name>`, cut from main). `cd` there.
+  1. `bash tools/work-start.sh <name> local` (your own folder `~/Downloads/Projects/Ubermoc-Forever/Project Support/Ubermoc-Forever - Worker Copies/local-<name>`, branch `local-model/<name>`, cut from main). `cd` there.
   2. `bash tools/status.sh` (start and end of every session) and `bash tools/doctor.sh` once: they list the state and anything missing.
   3. Do the one feature. Stage files by name (`git add path ...`), never `git add -A`. Commit with
-     `git -c user.name=Claude -c user.email=noreply@anthropic.com commit -m "..."`.
+     `git -c user.name=Ubermoc -c user.email=ubermoc@users.noreply.github.com commit -m "..."`.
   4. `bash tools/finish.sh`. If it prints FAILED, fix that, commit, run it again. If it says STOPPED on a merge, stop and report.
   5. Final message: what changed, the real test output line, what is untested in the game, how long it took, and this line:
      "Waiting to be merged: `bash tools/ship.sh local-model/<name>`".
-- Work in your own copy. Claude works in another copy at the same time. Never edit the main folder or another worker's folder.
+- Work in your own copy. Ubermoc works in another copy at the same time. Never edit the main folder or another worker's folder.
 - Leave other people's changes alone. Version numbers belong to main: do not pick one that is taken; finish.sh renumbers.
 
 ## 2. Facts about the game that cost hours (all verified in source or in the game)
@@ -52,8 +52,8 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
 - Your fake of an outside system must come from a cited source (`proof claim`, then a FAKE marker naming the claim on the
   fake, like `FAKE` followed by the claim id in parentheses). A fake that
   returns what you assumed (a number for font flags, a plain string for a secret) makes every test agree with the bug.
-- Run the tests like this (own worktree): `"$HOME/Downloads/Project Support/Ubermoc-Forever - WoW Research and Tools/.venv/bin/python" tools/smoke_test.py`
-  must end `ALL TESTS PASSED`; `python3 tools/check_lua.py UbermocForever/<file>.lua` must end `PASSED` (the game is Lua 5.1, the
+- Run the tests like this (own worktree): `"$HOME/Downloads/Projects/Ubermoc-Forever/Project Support/Ubermoc-Forever - WoW Research and Tools/.venv/bin/python" tools/smoke_test.py`
+  must end `ALL TESTS PASSED`; `python3 tools/check_lua.py Ubermoc-Forever/<file>.lua` must end `PASSED` (the game is Lua 5.1, the
   test is Lua 5.5; only the checker catches 5.4 syntax and misspelt globals).
 - A test that replaces a global (`InCombatLockdown`, `GENERAL_CHAT_DOCK`) must put the original back. One that set it to nil
   broke every later test and the failure pointed somewhere else.
@@ -71,7 +71,7 @@ in November 2026, mostly from your own earlier runs. Read it before you touch co
 
 ## 6. Version, docs and the usual checklist (per change)
 Every new button in the options window needs a description in plain words: `UF.Describe.set(button, title, text)` (or `Describe.fn` when it depends on a selection). It shows in the bottom panel while the highlight is on it and in the mouse tooltip, and a smoke test fails when a button on the Chat, Bars, Quality of life or Fading page has none. Say what it does, and what A and X do on it. About 300 characters at most: the panel has four lines.
-`UbermocForever.toc` version, `CHANGELOG.txt` entry on top, `HANDOFF.md` first-line note, `docs/DESCRIPTION.md` and `README.md`
+`Ubermoc-Forever.toc` version, `CHANGELOG.txt` entry on top, `HANDOFF.md` first-line note, `docs/DESCRIPTION.md` and `README.md`
 if the behaviour is user-visible, a case in `tools/smoke_test.py`, research notes in `docs/RESEARCH-NAVIGATION.md` with file:line.
 Everything not seen in the game is "untested in the game", in the changelog, the commit and your report.
 

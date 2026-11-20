@@ -2,7 +2,7 @@
 
 Taken in the game with `/ubf scan` (build 1.60.1): every item id 1 to 60000, kept when class 0 (consumable) or 8 with a "Use:"
 line that names a weapon, armor or a slot. 986 candidates had data; the list below is what matched. The scan tool is
-`UbermocForever/Scan.lua`; its output is in `UbermocForeverDB.scan` in the SavedVariables file.
+`Ubermoc-Forever/Scan.lua`; its output is in `UbermocForeverDB.scan` in the SavedVariables file.
 
 | Kind | Example (id) | Class / sub | Use text (start) | Goes on |
 | --- | --- | --- | --- | --- |

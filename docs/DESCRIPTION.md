@@ -55,7 +55,7 @@ Four projects made to be used together, so you can play World of Warcraft from t
 
 ## Install
 
-Install it with the Ubermoc Warcraft Mod Updater, or copy the `UbermocForever` folder into your Forever `Interface/AddOns` folder.
+Install it with the Ubermoc Warcraft Mod Updater, or copy the `Ubermoc-Forever` folder into your Forever `Interface/AddOns` folder.
 
 Source: https://github.com/ubermoc/Ubermoc-Forever
 
