@@ -1,50 +1,78 @@
-# Quest direction arrow — sourced notes
+# Quest arrow research
 
-Base for paths: `~/Downloads/Project Support/Ubermoc-Forever - WoW Research and Tools/`.
-Claims as recorded in `.harness/proof.json` (C5–C15). Built 2026-11-19; implemented in `UbermocForever/QuestArrow.lua`.
+Sources are Blizzard's Forever UI (`blizzard-ui-source-forever/Interface`) and its API index
+(`AddOns/Blizzard_APIDocumentationGenerated`). Short names: `R` is the Interface folder, `D` is the API
+index inside it. Claim numbers are the ones recorded in the harness (`proof status`); the offline test
+blocks in `tools/smoke_test.py` are marked `FAKE(C<n>)` against them.
 
-## What the game can tell us
+## What the client gives, and what it does not
 
-1. `C_QuestLog.GetQuestsOnMap(uiMapID)` returns `QuestPOIMapInfo` rows (claim C11,
-   `blizzard-ui-source-forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/QuestLogDocumentation.lua:579-591`):
-   `Name = "GetQuestsOnMap"`, `{ Name = "uiMapID", Type = "number", Nilable = false }`,
-   `{ Name = "quests", Type = "table", InnerType = "QuestPOIMapInfo", Nilable = false }`.
-   A row carries `questID`, `mapID`, `x`, `y` and `inProgress` (claim C12,
-   `QuestInfoSharedDocumentation.lua:27-53`).
-2. `C_Map.GetBestMapForUnit("player")` gives the map we are on, or nil (claim C13,
-   `MapDocumentation.lua:49-62`).
-3. `C_Map.GetPlayerMapPosition(mapID, "player")` returns `position` as `vector2` with the
-   `Vector2DMixin`, or nil (claim C14, `MapDocumentation.lua:437-455`).
-4. `C_Map.GetMapWorldSize(mapID)` returns `width` and `height`, the size in yards of the area the map
-   represents (claim C15, `MapDocumentation.lua:420-436`). ForeverPlusPlus notes it can be nil when the
-   game cannot say (`ForeverPlusPlus/ForeverPlusPlus/Lib/WorldMap.lua:312-326`) — so the code checks it.
-5. `C_QuestLog.GetNextWaypointForMap(questID, uiMapID)` returns `x` and `y` when the quest has a
-   waypoint on that map (claim C5, `Atraeau-WoW-Addons/types/WowForeverAPI.lua:23370-23377`); Blizzard's
-   own tracker prefers it over the row position (`QuestNavigationWorldMapTemplate.lua:366-388`).
-6. `GetPlayerFacing()` returns a number that can be nil (claim C6,
-   `PlayerScriptDocumentation.lua:828-834`).
+- **No walkability data.** A search of the whole Forever source and the API index for navmesh, walkability,
+  pathfinding, terrain and obstacle terms returns nothing (`R`, `D`: 0 hits; evidence **E50**). So mode 3
+  cannot be a real route around obstacles: it is the closest thing the client allows, which is the map
+  areas (see below). The options row and the code say this plainly.
+- **No route for a quest from the content tracker.** `ContentTrackingType` has four values — Appearance,
+  Mount, Achievement, Decor — and none is a quest (`D/ContentTrackingTypesDocumentation.lua:60-72`, C30),
+  so `GetNextWaypointForTrackable` (C18) is not used for quests.
 
-## The maths
+## Art, size, rotation
 
-- Bearing: `east = (toX - fromX) * width`, `south = (toY - fromY) * height`,
-  angle = `atan2(-east, -south) % (2 * pi)` — counter-clockwise from north, 0 to 2 pi, like
-  `GetPlayerFacing`, so an arrow pointing ahead turns by `angle - facing` (claim C7,
-  `ForeverPlusPlus/ForeverPlusPlus/Lib/WorldMap.lua:341-355`).
-- Blizzard's own quest arrow: `Vector2D_CalculateAngleBetween` is `atan2(cross, dot)` (claim C8,
-  `Blizzard_SharedXML/Vector2D.lua:43-45`) and the arrow turns with `SetRotation(-angle)` (claim C9,
-  `Blizzard_QuestNavigation/SuperTrackedFrame.lua:143-158`).
-- The arrow art is Blizzard's own quest navigation atlas `Navigation-Tracked-Arrow` (claim C10,
-  `Blizzard_QuestNavigation/SuperTrackedFrame.xml:14`). No new art, no new colour.
+- The quest navigation picture is the atlas `Navigation-Tracked-Arrow` (C10).
+- Blizzard's own arrow is a `100` x `100` frame with `useAtlasSize`, anchored `CENTER`, with a distance line
+  on `GameFontNormal` (`R/AddOns/Blizzard_QuestNavigation/SuperTrackedFrame.xml:5-24`, C39).
+- `AtlasInfo` answers `width` and `height`, so the size we draw is a share of the size the game gives the
+  atlas (`D/TextureUtilsDocumentation.lua:207-224`, C42). Three sizes: 0.75, 1, 1.35.
+- A picture turned by `SetRotation` turns by the negative of the angle (C9), and the angle between two
+  directions is `atan2(cross, dot)` (C8). The bearing to a point on a map is `atan2(-east, -south)` taken
+  modulo 2 pi, north at 0, increasing counter-clockwise (C7). Facing is `GetPlayerFacing` (C6).
+  Our arrow turns by `-(angle - facing)`, which is the negative of that, so the picture points at the
+  objective.
+- The frame is clamped to the screen with `SetClampedToScreen` (`D/SimpleFrameAPIDocumentation.lua:1207-1216`, C38),
+  and it keeps one anchor because `ClearAllPoints` clears all its points
+  (`D/SimpleScriptRegionResizingAPIDocumentation.lua:22-30`, C43).
 
-Test values (offline test case): from (0.2, 0.2) to (0.2, 0.7) on a 100x100-yard map = 50 yards,
-angle pi (south); east case (0.6, 0.2): angle 3 pi / 2. Facing pi/2 (east), objective south:
-turn = -(pi - pi/2) = -pi/2.
+## The target, including another map
 
-## Limits (stated, not guessed)
+- The quest the game has focused on: `GetSuperTrackedQuestID` (C20).
+- The map the quest route is on: `GetNextWaypoint(questID)` answers `mapID`, `x`, `y`
+  (`D/QuestLogDocumentation.lua:251-265`, C23). The `QuestInfo` structure has no map field
+  (`D/QuestLogDocumentation.lua:1547`), so this is the only way to get a quest onto its own map.
+- The rows for the map we are on: `GetQuestsOnMap` (C11), rows carrying `questID`, `mapID`, `x`, `y`,
+  `inProgress` (C12). The map we are on: `GetBestMapForUnit` (C13); our position on it (C14); its size in
+  yards for the distance line (C15).
+- Blizzard shows its own arrow only while the quest is clamped (`R/AddOns/Blizzard_QuestNavigation/SuperTrackedFrame.lua:158`, C40),
+  and writes the distance when it is not clamped, `Round(C_Navigation.GetDistance())`
+  (`SuperTrackedFrame.lua:201-205`, C41). Our distance is yards from map fractions times the map size, with
+  `~` when the point is on another map, because that is a straight line, not a walked route.
 
-- The arrow points at a quest in progress **on the map you are on**; a quest whose spot is on another
-  map is not pointed at (`mapID` on the row must equal the current map).
-- Nothing shows when the game cannot say the player's spot, the map size, or the facing.
-- Display-only: no click, no `/use`, no targeting, so no taint path (LUA-WOW-GUIDE §3/§8).
-- In-game check at install time: `C_QuestLog.GetQuestsOnMap(1416)` printed 4 rows, all with
-  `questID`, `mapID`, `x`, `y`, `inProgress` (`evidence:E11`, as reported by the author 2026-11-19).
+## The three modes
+
+1. **Direct** — the straight bearing from our position to the objective, taken on the map the objective is
+   on, or on the map that holds both areas when it is elsewhere.
+2. **Route** — the games own route data for the map we stand on: `GetNextWaypointForMap(questID, uiMapID)`
+   (C5), then `C_Navigation.GetNextWaypointForMap(uiMapID)` (`D/InGameNavigationDocumentation.lua:39-53`, C29).
+   Read again as we move; nothing is stored.
+3. **Around areas** — the map hierarchy the game exposes: `GetMapChildrenInfo` lists the areas on a map
+   (`D/MapDocumentation.lua:197-214`, C24), `GetMapInfo` answers `parentMapID` (`:312-326`, C27, fields at
+   `:696-706`, C25), and `GetMapRectOnMap(childMapID, parentMapID)` gives the rectangle of an area on the
+   map above it (`:400-418`, C26), used exactly that way by Blizzards own zone labels
+   (`R/AddOns/Blizzard_SharedMapDataProviders/ZoneLabelDataProvider.lua:39`, C28). From our position the
+   arrow aims at the border of the next area on the way up to the shared map; inside a single area there is
+   nothing to route around, so there it is the straight line. This is the honest limit of mode 3: see the
+   walkability note above.
+
+## Place and size, without Edit Mode
+
+- `RegisterEditableExemplar` (the Move bars system) does not exist in the Forever source or API index
+  (0 hits; evidence **E51**), so an addon frame cannot join it. The frame instead takes its own drags:
+  `EnableMouse(true)` (`D/SimpleScriptRegionAPIDocumentation.lua:73-83`, C34) and
+  `RegisterForDrag("LeftButton")` (`R/AddOns/Blizzard_ActionBar/Shared/SpellFlyout.lua:25`, C22), with the
+  games handler names `OnDragStart` and `OnDragStop` (`R/AddOns/Blizzard_ActionBar/Mainline/ActionButtonTemplate.xml:142-181`, C37).
+- While a drag is held the cursor is followed: `GetCursorPosition` answers `posX`, `posY`
+  (`D/InputDocumentation.lua:30-38`, C31), divided by the frames effective scale exactly as Blizzard does
+  (`R/AddOns/Blizzard_SharedXML/InputUtil.lua:9-13`, C32), then put into the screen rect (`GetRect`:
+  `left, bottom, width, height`, `D/SimpleScriptRegionAPIDocumentation.lua:193-207`, C33).
+- The place is kept per character as fractions of the screen, and applied with `SetPoint` in `uiUnit`
+  (`D/SimpleScriptRegionResizingAPIDocumentation.lua:135-148`, C35); the size is applied with `SetSize`
+  (`:163-173`, C36). Default place: `fx 0.88, fy 0.90`, default size Medium.
+- Nothing here clicks, uses or targets, so nothing can taint (`docs/LUA-WOW-GUIDE.md` sections 3 and 8).

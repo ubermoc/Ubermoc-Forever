@@ -285,9 +285,12 @@ function UF.cycleButton(b, step, after)
     b:SetScript("OnClick", function(_, button) step(button == "RightButton" and -1 or 1); if after then after() end end)
 end
 
--- The highlight colour shared by the game-window highlight (GameNav.lua) and our own windows (Nav.lua): a yellow tint over
--- the game's own button highlight art (ButtonHilight-Square, added to what is underneath) and a light yellow wash.
-UF.HIGHLIGHT = { glow = { 1, 0.82, 0.12, 1 }, wash = { 1, 0.8, 0.05, 0.3 } }
+-- Yellow belongs to one place only: the active keybind layer button in the options window (Options.lua), so the layer you
+-- are binding is obvious when the bumpers (L1/R1) switch it - the size change alone was too subtle.
+UF.KEYBIND_GLOW = { 1, 0.82, 0.12, 1 }
+-- Everywhere else the highlight is the game's own button art (ButtonHilight-Square, added to what is underneath) with the
+-- warm tint it had before 1.3.116. Nav.lua uses no tint at all: its buttons keep the game's own gold LockHighlight.
+UF.HIGHLIGHT = { glow = { 1, 0.9, 0.55, 1 }, wash = { 1, 0.85, 0.4, 0.22 } }
 function UF.tintHighlight(frame)
     local h = UF.HIGHLIGHT
     local glow = frame:CreateTexture(nil, "OVERLAY")
