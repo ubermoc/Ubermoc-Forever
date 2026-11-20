@@ -1801,7 +1801,7 @@ r = L("""function()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()            -- left of the first page is the last (Quality of life)
     local q = UF.QolPage.navRows()
-    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5] .. "/" .. #q[6] .. "/" .. #q[7]   -- aim dot; fast loot; vendor; nameplates; name health; plate range
+    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5] .. "/" .. #q[6] .. "/" .. #q[7] .. "/" .. #q[8]   -- aim dot; fast loot; vendor; nameplates; name health; plate range; quest marks; quest arrow
     local before = UF.Vendor.cfg().guild
     UF.Nav.SetFocus(q[3][3]); press("PAD1")                            -- A on Guild bank first flips it
     out[#out + 1] = tostring(UF.Vendor.cfg().guild ~= before)
@@ -1809,7 +1809,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,7/3/1/3/2/2/1/3,true,1", r
+assert str(r) == "1,2,3,2,1,5,8/3/1/3/2/2/1/3/1,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -3058,5 +3058,43 @@ r = L("""function()
 end""")()
 assert str(r) == "0.8,0.2,0.8", r
 print("Fading: the mouse-over answer is asked with the key, plain booleans still work: OK")
+# QuestArrow (QuestArrow.lua): the bearing maths, the turn, and which quest is pointed at.
+# FAKE(C11): the stub GetQuestsOnMap returns rows in the shape claim C11 states, carrying the fields of claim C12.
+# FAKE(C13): the stub GetBestMapForUnit returns a number or nil as claim C13 states.
+# FAKE(C14): the stub GetPlayerMapPosition returns a plain table with x and y, the vector2 Vector2DMixin shape of claim C14.
+# FAKE(C15): the stub GetMapWorldSize returns width and height in yards as claim C15 states.
+# FAKE(C6): the stub GetPlayerFacing returns a number in radians or nil as claim C6 states.
+r = L("""function()
+    local Q = UbermocForever.QuestArrow
+    local saved = { C_Map, C_QuestLog, GetPlayerFacing }
+    C_Map = {
+        GetBestMapForUnit = function(unit) return unit == "player" and 961 or nil end,
+        GetPlayerMapPosition = function(m, unit) return (m == 961) and { x = 0.2, y = 0.2 } or nil end,
+        GetMapWorldSize = function(m) return (m == 961) and 100 or nil end,
+    }
+    C_QuestLog = {
+        GetQuestsOnMap = function(m)
+            return { { questID = 7, mapID = 961, x = 0.3, y = 0.3, inProgress = false },
+                     { questID = 8, mapID = 1000, x = 0.4, y = 0.4, inProgress = true },
+                     { questID = 9, mapID = 961, x = 0.2, y = 0.7, inProgress = true } }
+        end,
+    }
+    GetPlayerFacing = function() return 0 end
+    local out = {}
+    local mapID, q = Q.picking()
+    out[#out + 1] = tostring(mapID) .. "/" .. tostring(q and q.questID)          -- first in-progress quest on our map
+    local yards, angle = Q.bearing(100, 100, 0.2, 0.2, 0.2, 0.7)                 -- straight south: 50 yards, angle pi
+    out[#out + 1] = string.format("%.0f %.6f", yards, angle)
+    local _, east = Q.bearing(100, 100, 0.2, 0.2, 0.6, 0.2)                      -- straight east: 3 pi / 2
+    out[#out + 1] = string.format("%.6f", east)
+    out[#out + 1] = string.format("%.6f", Q.rotation(angle, math.pi / 2))         -- facing east, objective south: -(pi - pi/2)
+    out[#out + 1] = tostring(Q.facing())                                          -- facing given, not read here: kept as passed
+    C_QuestLog.GetQuestsOnMap = nil
+    out[#out + 1] = tostring(Q.picking())                                         -- cannot ask the game: nothing
+    C_Map, C_QuestLog, GetPlayerFacing = saved[1], saved[2], saved[3]
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "961/9,50 3.141593,4.712389,-1.570796,0,nil", r
+print("Quest arrow: the bearing maths, the turn, and the quest choice: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -36,6 +36,7 @@ function QP.refresh()
     questTextBtn:SetText("Quest progress: " .. (UF.PlateQuest.textEnabled() and "On" or "Off"))
     levelBtn:SetText("Friendly level: " .. (UF.PlateLevel.enabled() and "On" or "Off"))
     rangeBtn:SetText("Increased plate range: " .. (UF.PlateRange.enabled() and "On" or "Off"))
+    arrowBtn:SetText("Quest arrow: " .. UF.QuestArrow.name())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -118,6 +119,12 @@ function QP.build(parent, inset)
     tip(levelBtn, "Friendly level", "The game hides the level of a friendly player when its name-only nameplate setting is on, which the Friendly: name only button above switches on. On draws the level number to the left of the name, in grey. Only for friendly players with name-only on; everyone else keeps the game's own level. A switches it on or off.")
     note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The plate range row writes the game's distance settings, and Off gives back the values you had before. The quest mark and progress work on every nameplate.", -376)
 
+    heading("Quest arrow", -408)
+    arrowBtn = button(page, 130); arrowBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -430)
+    toggle(arrowBtn, UF.QuestArrow.toggle)
+    tip(arrowBtn, "Quest arrow", "While a quest is in progress on the map you are on, a small arrow near the top right of the screen points at its objective and turns as you turn. It only shows while the game can say both your spot and the objective spot on that map, and only for quests on that map. A switches it on or off.")
+    note("The arrow points at a quest on the map you are on, with the game's own quest arrow art.", -456)
+
     QP.refresh()
     return page
 end
@@ -126,5 +133,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn } }
 end

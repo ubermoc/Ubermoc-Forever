@@ -20,6 +20,7 @@ UF.SEED = {
     fadeMouse = 1,
     gbar = { extras = false, faceColor = false, gap = 0, hideEmpty = true, on = true, raise = 0, size = 40 },
     aim = { dist = 3, on = true, size = 1, v2 = true },
+    qarrow = { on = true },
     cinemaEdges = 3,
     cinemaBars = 3,
     chat = { auto = { chat = true, chatbtns = true, chatedit = true, chattabs = true, quickjoin = true }, fade = 3, on = true, reveal = true, visible = 5 },

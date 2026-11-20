@@ -1,3 +1,6 @@
+UbermocForever 1.3.146
+- Added: quest direction arrow (QuestArrow.lua): while a quest is in progress on the map you are on, a small arrow near the top right of the screen points at its objective and turns as you turn. It uses the game's own quest navigation art and the documented map maths (docs/RESEARCH-QUEST-ARROW.md); it shows only while the game can say your spot, the map size and your facing, and quests on other maps are not pointed at. On by default, with a row on the Quality of life page.
+
 UbermocForever 1.3.144
 - Release: no change to how the addon plays. A new version number so every player and the Mod Updater pick up the latest build (1.3.143 included the fix for the controller cursor's click buttons being stuck on NONE).
 
