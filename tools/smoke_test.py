@@ -2607,7 +2607,7 @@ r = L("""function()
     local lock = false
     InCombatLockdown = function() return lock end
     local out = {}
-    UbermocForeverDB = {}
+    UbermocForeverDB = { platerange = { on = false } }   -- default is On (the author's setting); pin Off for this run
     PR.pending = false
     PR.sync()                                  -- Off and never written: nothing is written
     out[#out + 1] = table.concat(wrote, ",")
@@ -2624,7 +2624,7 @@ r = L("""function()
     rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_REGEN_ENABLED", nil)
     out[#out + 1] = tostring(PR.pending) .. "=" .. table.concat(wrote, ",")
     wrote = {}
-    UbermocForeverDB = {}                      -- a fresh Off at login applies nothing
+    UbermocForeverDB = { platerange = { on = false } }   -- a fresh Off at login applies nothing
     rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
     out[#out + 1] = table.concat(wrote, ",")
     UbermocForeverDB = {}                      -- an On setting is applied again at login
@@ -2632,12 +2632,12 @@ r = L("""function()
     rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
     out[#out + 1] = table.concat(wrote, ",")
     wrote = {}
-    UbermocForeverDB = {}
+    UbermocForeverDB = { platerange = { on = false } }   -- pin Off so the toggle goes On and reads the player's values
     cv.nameplateMaxDistance = nil
     PR.toggle()                                -- nil GetCVar answer: nothing remembered, nothing written for it
     out[#out + 1] = table.concat(wrote, ",") .. "=" .. tostring(PR.db().backup.nameplateMaxDistance)
     wrote = {}
-    UbermocForeverDB = {}
+    UbermocForeverDB = { platerange = { on = false } }   -- pin Off for the On toggle
     GetCVar = function() error("restricted") end
     PR.toggle()                                -- a raising GetCVar is survived, nothing written
     out[#out + 1] = table.concat(wrote, ",")
@@ -2662,6 +2662,25 @@ want = ("|nameplateMaxDistance=45,nameplatePlayerMaxDistance=45"
 assert str(r) == want, (r, want)
 print("Plate range: On writes 45 to both distance CVars, keeps and gives back the player's values, defers in combat, "
       "survives a nil or raising GetCVar, applies an On setting at login, drops an old saved distance: OK")
+
+# 1.3.144: a brand-new install defaults to On (the author's setting, UF.SEED), so login applies it.
+r = L("""function()
+    local PR = UbermocForever.PlateRange
+    local savedDB, oldGet, oldSet, oldLock = UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown
+    local cv = { nameplateMaxDistance = "45.000000", nameplatePlayerMaxDistance = "40.000000" }
+    local wrote = {}
+    GetCVar = function(k) return cv[k] end
+    SetCVar = function(k, v) wrote[#wrote + 1] = k .. "=" .. tostring(v); cv[k] = v end
+    InCombatLockdown = function() return false end
+    UbermocForeverDB = {}
+    PR.pending = false
+    local on = tostring(PR.db().on)
+    rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
+    UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown = savedDB, oldGet, oldSet, oldLock
+    return on .. "|" .. table.concat(wrote, ",")
+end""")()
+assert str(r) == ("true|nameplateMaxDistance=45,nameplatePlayerMaxDistance=45"), (r)
+print("Plate range: a brand-new install defaults to On and applies it at login: OK")
 
 # NameHealth: nothing is read back from our strings or the bar, no health numbers, no hook, no game method
 src = open(ADDON + "/NameHealth.lua", encoding="utf-8").read()
@@ -3009,7 +3028,7 @@ r = L("""function()
     UbermocForeverDB = saved
     return a .. "|" .. b
 end""")()
-assert str(r) == "true40trueleft|nilnilright", r
+assert str(r) == "true40nilleft|nilnilright", r
 print("Fresh install: the author's settings are the defaults, existing settings untouched: OK")
 # The reused buffers of GameNav (openMenus, the window list): each call clears its buffer at entry, so a window or menu
 # that closed between two calls is gone. The result must be read at once, as every caller does.

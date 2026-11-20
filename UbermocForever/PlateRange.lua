@@ -32,7 +32,7 @@ local function db()
     local d = UF.DB()
     d.platerange = d.platerange or {}
     local p = d.platerange
-    if p.on == nil then p.on = false end
+    if p.on == nil then p.on = true end   -- the author's setting, in UF.SEED
     p.step = nil; p.yards = nil   -- 1.3.123 and 1.3.124 saved a distance here; it is not used any more
     if p.backup == nil then p.backup = {} end
     return p

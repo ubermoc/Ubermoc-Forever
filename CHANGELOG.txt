@@ -1,3 +1,7 @@
+UbermocForever 1.3.145
+- Added: a yellow glow effect on the active layer button (Base, Hold Shift, etc.) in the options window.
+- Updated: the settings for nameplates (enemy and friendly name-only, increased range) now default to On for new installs, matching the author's current settings.
+- Fixed: the experience bar no longer hides by default (xpall fade setting), and the action bar's idle fading defaults to 20% opacity (gbar 0.2) for better visibility.
 UbermocForever 1.3.144
 - Release: no change to how the addon plays. A new version number so every player and the Mod Updater pick up the latest build (1.3.143 included the fix for the controller cursor's click buttons being stuck on NONE).
 

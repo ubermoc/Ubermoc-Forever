@@ -13,7 +13,7 @@ function UF.say(msg)
     end
 end
 
--- The settings a new install starts with: the author's own (2026-11-17), copied once into a brand-new saved-variables table (an install that
+-- The settings a new install starts with: the author's own (2026-11-19), copied once into a brand-new saved-variables table (an install that
 -- already has settings is not touched).
 UF.SEED = {
     menuSide = "left",
@@ -22,7 +22,10 @@ UF.SEED = {
     aim = { dist = 3, on = true, size = 1, v2 = true },
     cinemaEdges = 3,
     cinemaBars = 3,
-    chat = { auto = { chat = true, chatbtns = true, chatedit = true, chattabs = true, quickjoin = true }, fade = 3, on = true, reveal = true, visible = 5 },
+    chat = { auto = { chat = true, chatbtns = true, chatedit = true, chattabs = true, quickjoin = true }, fade = 3, on = true, reveal = true, visible = 5, editTop = false },
+    plates = { enemy = true, friendly = true, health = true, percent = true, quest = true, questText = true, friendlyLevel = true },
+    vendor = { repair = true, sell = true, guild = true },
+    platerange = { on = true, backup = {} },
     fade = {
     arena = { flight = 0, idle = 0.4 },
     bags = { combat = 0, flight = 0, idle = 0 },
@@ -51,7 +54,7 @@ UF.SEED = {
     focus_portrait = { flight = 0, idle = 0.4 },
     focus_power = { flight = 0, idle = 0.4 },
     fot = { flight = 0, idle = 0.4 },
-    gbar = { flight = 0, idle = 0 },
+    gbar = { flight = 0, idle = 0.2 },
     mainbar = { flight = 0, idle = 0.4 },
     mb_border = { flight = 0, idle = 0.4 },
     mb_leftcap = { flight = 0, idle = 0.4 },
@@ -108,7 +111,7 @@ UF.SEED = {
     tr_world = { hide = true, idle = 0.4 },
     tracker = { hide = true, idle = 0.4 },
     vehicleexit = { flight = 0, idle = 0.4 },
-    xpall = { combat = 0, flight = 0, hide = true, idle = 0 },
+    xpall = { combat = 0, flight = 0, idle = 0 },
     zoneabil = { flight = 0, idle = 0.4 },
     },
 }
