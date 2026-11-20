@@ -137,7 +137,7 @@ end
 
 -- The version in the TOC, so what is installed can be told at a glance.
 function UF.getVersion()
-    local ok, v = pcall(function() return C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("UbermocForever", "Version") end)
+    local ok, v = pcall(function() return C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("Ubermoc-Forever", "Version") end)
     return (ok and v) or "?"
 end
 
