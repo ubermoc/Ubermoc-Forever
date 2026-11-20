@@ -473,13 +473,12 @@ local function build()
         if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36)
         else b:SetPoint("LEFT", layerButtons[i - 1], "RIGHT", 6, 0) end
         b:SetScript("OnClick", function() layer = i; UF.RefreshOptions() end)
-        -- glow over the game's own button highlight art, the same yellow as the navigation highlight (UF.HIGHLIGHT)
+        -- glow over the game's own button highlight art, the same yellow as the navigation highlight (UF.HIGHLIGHT);
+        -- keybind layer row only: the active layer button, covering the button exactly
         local h = UF.HIGHLIGHT
-        -- wider than the button itself so it reads past the pressed-button state
         local glow = b:CreateTexture(nil, "OVERLAY")
+        glow:SetAllPoints(b)
         glow:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
-        glow:SetPoint("TOPLEFT", b, "TOPLEFT", -4, 4)
-        glow:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 4, -4)
         glow:SetBlendMode("ADD")
         glow:SetVertexColor(h.glow[1], h.glow[2], h.glow[3], h.glow[4])
         glow:Hide()
