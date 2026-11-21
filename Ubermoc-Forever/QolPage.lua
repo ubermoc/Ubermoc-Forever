@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowArtBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -40,7 +40,7 @@ function QP.refresh()
     arrowModeBtn:SetText("Aim: " .. UF.QuestArrow.modeName())
     arrowSizeBtn:SetText("Size: " .. UF.QuestArrow.sizeName())
     arrowPosBtn:SetText("Place: " .. UF.QuestArrow.positionName())
-    arrowArtBtn:SetText("Art: " .. UF.QuestArrow.artName())
+    arrowOpacityBtn:SetText("Opacity: " .. UF.QuestArrow.opacityName())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -129,12 +129,12 @@ function QP.build(parent, inset)
     arrowModeBtn = button(page, 150); arrowModeBtn:SetPoint("LEFT", arrowBtn, "RIGHT", 6, 0)
     arrowSizeBtn = button(page, 105); arrowSizeBtn:SetPoint("LEFT", arrowModeBtn, "RIGHT", 6, 0)
     arrowPosBtn = button(page, 160); arrowPosBtn:SetPoint("LEFT", arrowSizeBtn, "RIGHT", 6, 0)
-    arrowArtBtn = button(page, 190); arrowArtBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -456)
+    arrowOpacityBtn = button(page, 140); arrowOpacityBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -456)
     UF.cycleButton(arrowModeBtn, function(dir) UF.QuestArrow.nextMode(dir) end, QP.refresh)
     UF.cycleButton(arrowSizeBtn, function(dir) UF.QuestArrow.nextSize(dir) end, QP.refresh)
     UF.cycleButton(arrowPosBtn, function(dir) UF.QuestArrow.nextPosition(dir) end, QP.refresh)
-    UF.cycleButton(arrowArtBtn, function(dir) UF.QuestArrow.nextArt(dir) end, QP.refresh)
-    tip(arrowArtBtn, "Quest arrow: art", "The picture the arrow is drawn with. Minimap arrow is the gold dart the game draws at the edge of the minimap; Quest arrow is the game's tracked-quest atlas; the Old arrow is the plain gold arrow with a black edge, and Old arrow, no edge hides that edge. A picture this client does not have is skipped. A steps forward, X steps back.")
+    UF.cycleButton(arrowOpacityBtn, function(dir) UF.QuestArrow.nextOpacity(dir) end, QP.refresh)
+    tip(arrowOpacityBtn, "Quest arrow: opacity", "How solid the arrow and its distance are, from 100 percent down to 10 in steps of ten. A makes it one step fainter, X one step more solid, and it wraps round.")
     tip(arrowModeBtn, "Quest arrow: aim", "Direct points straight at the objective. Route follows the game's own route, which uses the roads and paths it plans. Around obstacles points straight, and bends along the game's route only where that route shows something in the way. The game gives addons no terrain data, so the third reads the obstacle from the route. A steps forward, X steps back.")
     tip(arrowSizeBtn, "Quest arrow: size", "How wide the arrow is on the screen, in pixels. A makes it one step bigger, X one step smaller (16 to 128), and it wraps round.")
     tip(arrowPosBtn, "Quest arrow: place", "Where the arrow sits on the screen. With a mouse or the trackpad you can also drag the arrow itself and it stays where you drop it (Custom). A steps forward, X steps back.")
@@ -149,5 +149,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowArtBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn } }
 end

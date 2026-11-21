@@ -44,7 +44,7 @@ local function cfg()
     if a.on == nil then a.on = true end
     if not a.mode then a.mode = 1 end
     if not a.px then a.px = Q.DEFAULTPX end
-    if not a.art then a.art = 1 end
+    if not a.opacity then a.opacity = 100 end
     if not a.place then a.place = {} end
     return a
 end
@@ -81,71 +81,27 @@ function Q.nextPosition(dir)
     return Q.POSITIONS[n].name
 end
 
--- The pictures the arrow can be drawn with. The minimap's own quest arrow (the gold dart at the minimap's edge) is drawn by the game
--- engine, not by Lua, so its file cannot be asked of any frame: ROTATING-MINIMAPGUIDEARROW is the engine's guide arrow file and the
--- likeliest match, and the Art button steps through the rest so the one that looks right can be picked. A file counts only when the
--- client knows it (GetFileIDFromPath), an atlas only when it sets and reads back (SetAtlas answers nothing, GetAtlasInfo can answer
--- nothing for an atlas that sets). "Old, no edge" draws the old arrow additively, which hides its hard black edge.
-Q.ARTS = {
-    { name = "Minimap arrow", file = "Interface\\Minimap\\ROTATING-MINIMAPGUIDEARROW", blend = "BLEND" },
-    { name = "Quest arrow", atlas = "Navigation-Tracked-Arrow", blend = "BLEND" },
-    { name = "Old arrow, no edge", file = "Interface\\Minimap\\MiniMap-QuestArrow", blend = "ADD" },
-    { name = "Old arrow", file = "Interface\\Minimap\\MiniMap-QuestArrow", blend = "BLEND" },
-}
-Q.ATLAS = "Navigation-Tracked-Arrow"
-
-local function atlasSets(tex, atlas)
-    local okS = pcall(tex.SetAtlas, tex, atlas)
-    if not okS then return false end
-    local okG, got = pcall(tex.GetAtlas, tex)
-    return okG and got == atlas
-end
-
-local probe
--- whether art number i can be drawn in this client
-function Q.artAvailable(i)
-    local a = Q.ARTS[i]
-    if not a then return false end
-    if a.file then
-        if not GetFileIDFromPath then return true end   -- cannot ask: try it
-        local ok, id = pcall(GetFileIDFromPath, a.file)
-        return ok and id ~= nil
-    end
-    if not probe then probe = UIParent:CreateTexture(nil, "BACKGROUND") end
-    return atlasSets(probe, a.atlas)
-end
-
-function Q.artName() return (Q.ARTS[cfg().art] or Q.ARTS[1]).name end
-function Q.nextArt(dir)
+-- The arrow's picture: the old minimap quest arrow only (no other pictures, not selectable). The setting beside it is how opaque the
+-- arrow is, from 100 down to 10 percent in steps of ten (a press of A is one step less opaque, X one step more, and it wraps round).
+Q.ART = "Interface\\Minimap\\MiniMap-QuestArrow"
+Q.OPACITY = { 100, 90, 80, 70, 60, 50, 40, 30, 20, 10 }
+function Q.opacityName() return tostring(cfg().opacity) .. "%" end
+function Q.nextOpacity(dir)
     local a = cfg()
-    local n = #Q.ARTS
-    local i = a.art
-    for _ = 1, n do
-        i = UF.stepIndex(i, n, dir or 1)
-        if Q.artAvailable(i) then a.art = i; return i end
+    local at, best = 1, math.huge
+    for i, v in ipairs(Q.OPACITY) do
+        if math.abs(v - a.opacity) < best then at, best = i, math.abs(v - a.opacity) end
     end
-    return a.art
+    a.opacity = Q.OPACITY[UF.stepIndex(at, #Q.OPACITY, dir)]
+    return a.opacity
 end
-
--- draws the chosen art on the frame's picture (again only when the choice changed); a choice this client cannot draw falls to the
--- next one it can, and the art that is really drawn is kept for /ubf arrow
-function Q.applyArt(f)
-    local a = cfg()
-    if f.artKey == a.art then return end
-    local n = #Q.ARTS
-    local i = a.art
-    for _ = 1, n do
-        if Q.artAvailable(i) then break end
-        i = UF.stepIndex(i, n, 1)
+-- the whole arrow (picture and distance) at the chosen opacity; set again only when it changed
+function Q.applyOpacity(f)
+    local v = cfg().opacity
+    if f.opacity ~= v then
+        f:SetAlpha(v / 100)
+        f.opacity = v
     end
-    local art = Q.ARTS[i]
-    if art.atlas then
-        atlasSets(f.art, art.atlas)
-    else
-        f.art:SetTexture(art.file)
-    end
-    f.art:SetBlendMode(art.blend)
-    f.artKey, Q.drawnArt = a.art, art.name
 end
 
 function Q.sizeName() return tostring(cfg().px) .. " px" end
@@ -405,7 +361,7 @@ local function build()
     arrow:SetClampedToScreen(true)       -- claim C38
     arrow.art = arrow:CreateTexture(nil, "OVERLAY")
     arrow.art:SetPoint("CENTER", arrow, "CENTER", 0, 0)   -- a texture with no point is never drawn
-    Q.applyArt(arrow)
+    arrow.art:SetTexture(Q.ART)
     -- the games own distance font (claim C39), under the arrow like Blizzard's
     arrow.text = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     arrow.text:SetPoint("TOP", arrow, "BOTTOM", 0, 4)
@@ -562,7 +518,7 @@ local function update()
     local turn = Q.rotation(angle, face)
 
     Q.why = nil
-    Q.applyArt(f)
+    Q.applyOpacity(f)
     f.art:SetRotation(turn)  -- claims C8 and C9
     -- The numbers behind the arrow, kept in the saved settings (DB.qarrow.debug, written at /reload or logout) and printed by /ubf arrow, so
     -- a wrong direction can be read from the real values instead of guessed: where you stand, where it aims, which way you face, what the
@@ -576,7 +532,6 @@ local function update()
     d.applied = (okR and type(applied) == "number") and applied or nil
     local okA, atlas = pcall(f.art.GetAtlas, f.art)
     d.atlas = (okA and type(atlas) == "string") and atlas or nil
-    d.art = Q.drawnArt
     local okT, tex = pcall(f.art.GetTexture, f.art)
     d.texture = (okT and (type(tex) == "string" or type(tex) == "number")) and tex or nil
     Q.showDistance(f, yards, aimMap ~= here)

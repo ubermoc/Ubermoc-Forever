@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.168
+- Changed: the quest arrow uses the old minimap quest arrow only, with no other pictures. The Art button is replaced by an Opacity button on the Quality of life page: 100 percent down to 10 in steps of ten (A one step fainter, X one step more solid), applied to the arrow and its distance.
+
 Ubermoc-Forever 1.3.167
 - Changed: the quest arrow has one way of turning and no setting for it: the Turns button is gone. It turns by the bearing to the objective minus the direction your character faces (the way ThePath and ForeverPlusPlus draw theirs), so it points up when you face the objective. The way that followed the game's own navigation target did not move in Forever and is removed with the compass-fixed way.
 

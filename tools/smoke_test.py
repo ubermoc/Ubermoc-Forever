@@ -95,6 +95,7 @@ local function proxy(name)
         -- SetAtlas, SetTexture and SetPoint answer nothing (the 1.3.146 arrow took "answers nothing" for "failed" and never drew)
         if k == "SetPoint" or k == "SetAllPoints" then return function(s) rawset(s, "__points", (rawget(s, "__points") or 0) + 1) end end
         if k == "SetBlendMode" then return function(s, v) rawset(s, "__blend", v) end end
+        if k == "SetAlpha" then return function(s, v) rawset(s, "__alpha", v) end end
         -- SetAtlas answers nothing; GetAtlas reads back what was set, and nothing when the atlas is not in the client (as the game does)
         if k == "SetAtlas" then return function(s, v) if not rawget(_G, "__noAtlas") then rawset(s, "__art", v); rawset(s, "__atlas", v) end end end
         if k == "GetAtlas" then return function(s) return rawget(s, "__atlas") end end
@@ -3530,7 +3531,7 @@ r = L("""function()
     Q.setPlace(0.88, 0.90)
     return table.concat(out, " | ")
 end""")()
-assert str(r) == ("art true | art points 1 | text points 1 | drawn Interface\\Minimap\\ROTATING-MINIMAPGUIDEARROW | Direct | Route | Around obstacles | Direct | "
+assert str(r) == ("art true | art points 1 | text points 1 | drawn Interface\\Minimap\\MiniMap-QuestArrow | Direct | Route | Around obstacles | Direct | "
                   "Top right | Top centre | Top left | Custom | Top right"), r
 print("Quest arrow: the picture is the game's tracked-quest arrow and is anchored, the distance text is anchored, aim and place buttons step: OK")
 r = L("""function()
@@ -3561,38 +3562,6 @@ assert str(r) == ("4.7124 0.0000 | face N, objective E: right | face N, objectiv
 print("Quest arrow: the arrow turns the way the objective lies (right of you is right on screen), all four facings: OK")
 r = L("""function()
     local Q = _G.UbermocForever.QuestArrow
-    local out = {}
-    local function fresh(setup)
-        local f = { art = CreateFrame("Frame", nil, UIParent):CreateTexture(nil, "OVERLAY") }
-        Q.cfg().art = 1
-        setup()
-        Q.applyArt(f)
-        return tostring(Q.drawnArt) .. ":" .. tostring(rawget(f.art, "__art")) .. ":" .. tostring(rawget(f.art, "__blend"))
-    end
-    -- the client knows every file: the minimap arrow is the first choice
-    _G.GetFileIDFromPath = function() return 1 end
-    out[#out + 1] = fresh(function() end)
-    -- a client without that file: the next art it can draw (the atlas) stands in, and the button skips what is missing
-    _G.GetFileIDFromPath = function(p) if p:find("GUIDEARROW") then return nil end return 1 end
-    out[#out + 1] = fresh(function() end)
-    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- from 1, not available: 2 (the atlas)
-    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- 3: old, no edge
-    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- 4: old
-    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- wraps, skips 1: 2
-    -- the old arrow without its edge is drawn additively, with the edge as it is
-    Q.cfg().art = 3
-    local f3 = { art = CreateFrame("Frame", nil, UIParent):CreateTexture(nil, "OVERLAY") }
-    Q.applyArt(f3)
-    out[#out + 1] = tostring(rawget(f3.art, "__blend"))
-    _G.GetFileIDFromPath = nil
-    Q.cfg().art = 1
-    return table.concat(out, " | ")
-end""")()
-assert str(r) == ("Minimap arrow:Interface\\Minimap\\ROTATING-MINIMAPGUIDEARROW:BLEND | Quest arrow:Navigation-Tracked-Arrow:BLEND | 2 Quest arrow | 3 Old arrow, no edge | "
-                  "4 Old arrow | 2 Quest arrow | ADD"), r
-print("Quest arrow: the art button steps through the pictures this client has, the minimap arrow first, the old arrow without its edge is additive: OK")
-r = L("""function()
-    local Q = _G.UbermocForever.QuestArrow
     -- the real case from the game (1.3.162, quest 1459 on map 1443, a 4500 x 3000 yard map): the objective is 442 yd south and 99 yd west,
     -- so the bearing is 167 degrees, not 89, and the picture is turned 167 - 298 = -131 degrees, which the first screenshot of it showed as wrong
     local yards, angle = Q.bearing(4500, 3000, 0.6546, 0.0734, 0.6327, 0.2208)
@@ -3615,5 +3584,22 @@ r = L("""function()
 end""")()
 assert str(r) == "40 px 44 48 56 48 44 40 36 32 wrap 128 16 near 56", r
 print("Quest arrow: the size steps one press at a time in pixels, both ways, wrapping: OK")
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local f = Q.frame()
+    local a = Q.cfg()
+    a.opacity = 100
+    local out = { Q.opacityName() }
+    for i = 1, 3 do Q.nextOpacity(1); out[#out + 1] = Q.opacityName() end        -- fainter, one step at a time
+    for i = 1, 2 do Q.nextOpacity(-1); out[#out + 1] = Q.opacityName() end       -- and back
+    a.opacity = 10; Q.nextOpacity(1); out[#out + 1] = "wrap " .. Q.opacityName() -- the faintest wraps to the most solid
+    Q.nextOpacity(-1); out[#out + 1] = Q.opacityName()
+    a.opacity = 70; f.opacity = nil; Q.applyOpacity(f)
+    out[#out + 1] = "alpha " .. tostring(rawget(f, "__alpha"))
+    a.opacity = 100; Q.applyOpacity(f)
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == "100% | 90% | 80% | 70% | 80% | 90% | wrap 100% | 10% | alpha 0.7", r
+print("Quest arrow: opacity steps from 100 to 10 percent by tens, wraps, and sets the frame's alpha: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
