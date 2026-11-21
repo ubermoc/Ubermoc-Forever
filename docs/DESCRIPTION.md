@@ -1,5 +1,7 @@
 # Ubermoc Forever
 
+Current version: 1.3.152.
+
 A default UI for World of Warcraft: Forever that works 100% with a controller. It is designed specifically for the Steam Deck and the Steam Controller, and also works with PlayStation 5, Xbox and Nintendo Switch controllers.
 
 It uses only Blizzard's own art, frames and button pictures, so it looks like it has always been part of the game.
