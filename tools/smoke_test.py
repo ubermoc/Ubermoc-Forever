@@ -3626,17 +3626,10 @@ r = L("""function()
     local r4, why4 = Q.viewRotation()
     out[#out + 1] = tostring(r4) .. " " .. tostring(why4)
     C_Navigation, WorldFrame = savedN, savedW
-    -- the turn button steps through the three ways and wraps
-    local a = Q.cfg(); a.turn = 1
-    out[#out + 1] = Q.turnName()
-    Q.nextTurn(1); out[#out + 1] = Q.turnName()
-    Q.nextTurn(1); out[#out + 1] = Q.turnName()
-    Q.nextTurn(1); out[#out + 1] = Q.turnName()
     return table.concat(out, " | ")
 end""")()
 assert str(r) == ("0.0 -90.0 90.0 180.0 nil | -78.7 | nil the game has no screen position for its target | "
-                  "nil the game has no navigation target (no quest selected in the tracker) | nil the game has no navigation system | "
-                  "With the view | With the map | With you | With the view"), r
-print("Quest arrow: the view turn is Blizzard's own formula on the game's navigation target, falls back with a reason, and the turn button steps: OK")
+                  "nil the game has no navigation target (no quest selected in the tracker) | nil the game has no navigation system"), r
+print("Quest arrow: the view turn is Blizzard's own formula on the game's navigation target, falls back with a reason: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

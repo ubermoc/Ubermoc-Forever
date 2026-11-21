@@ -108,3 +108,7 @@ Read, not guessed (both are Forever addons the user runs; ThePath is kept next t
   and only the distance changed, so it was removed. 1.3.167 removed the Turns button and the compass-fixed way too: the user asked for one way, not selectable.
 - Neither example gives a road route or obstacle avoidance: the client has no walkability data (see the top of this file), so Route and
   Around obstacles can only use a route step the game gives for the quest (`/ubf arrow` shows whether it does).
+
+## The user's choice (1.3.170): With the view
+
+The user tried the three ways (1.3.169) and chose "With the view". Their saved `qarrow.debug` from 1.3.165: `viewX` 1130.3, `viewY` 1026.2 with the screen centre at 1052.1, 600.0 (UI units), so in Forever `C_Navigation.GetFrame():GetCenter()` does give the marker's screen position (here near the top of the view, the objective ahead). The turn is `-atan2(viewX - centreX, viewY - centreY)`. With no valid position the arrow now uses `bearing - GetPlayerFacing()` instead of the compass direction.
