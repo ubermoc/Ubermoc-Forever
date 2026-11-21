@@ -37,5 +37,6 @@
  "Start.lua": 1,
  "TargetCancel.lua": 0,
  "TargetMenu.lua": 1,
+ "Trail.lua": 0,
  "Vendor.lua": 1
 }

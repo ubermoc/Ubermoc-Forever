@@ -24,12 +24,13 @@ local rawAtan = math.atan
 local atan2 = math.atan2 or function(y, x) return rawAtan(y, x) end   -- the second form only where there is no math.atan2 (the offline test)
 
 -- the three modes, in the order the options row steps through them (claim R12)
-Q.MODES = { "direct", "route", "obstacle" }
-Q.MODENAME = { direct = "Direct", route = "Route", obstacle = "Around obstacles" }
+Q.MODES = { "direct", "route", "obstacle", "breadcrumbs" }
+Q.MODENAME = { direct = "Direct", route = "Route", obstacle = "Around obstacles", breadcrumbs = "Breadcrumbs" }
 Q.MODENOTE = {
     direct = "the straight line from you to the objective",
     route = "the games own route data, read again as you move",
     obstacle = "straight at the objective, bending along the games route only where that route shows something in the way (the game gives no terrain data, so this is read from its route)",
+    breadcrumbs = "waypoints along the trail you have walked, and the boat, zeppelin or tram you have ridden for another continent; it learns as you play",
 }
 
 -- the sizes the picture is drawn at, as a share of the size the game gives its own arrow (claims C39, C42)
@@ -402,6 +403,10 @@ local function build()
     -- the games own distance font (claim C39), under the arrow like Blizzard's
     arrow.text = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     arrow.text:SetPoint("TOP", arrow, "BOTTOM", 0, 4)
+    -- the narration under the distance (Breadcrumbs): what the next step is
+    arrow.note = arrow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    arrow.note:SetPoint("TOP", arrow.text, "BOTTOM", 0, -2)
+    arrow.note:SetWidth(300)
     -- the games handler names for a frame that registers for drags (claim C37): start keeps it moving,
     -- stop leaves the place saved for this character
     arrow:SetScript("OnDragStart", function(self)
@@ -487,6 +492,79 @@ function Q.showDistance(f, yards, approximate)
     f.text:SetText((approximate and "~" or "") .. tostring(math.floor(yards + 0.5)) .. " yd")
 end
 
+-- Breadcrumbs. The positions are the game's world positions (yards; x to the north, y to the west on a continent, checked against the map scan), so
+-- the bearing counter-clockwise from north is atan2(west, north) = atan2(dy, dx).
+function Q.worldBearing(fx, fy, tx, ty)
+    local dx, dy = tx - fx, ty - fy
+    return math.sqrt(dx * dx + dy * dy), atan2(dy, dx) % (2 * math.pi)
+end
+
+-- what the guides say can be ridden between the two big continents (Forever guides, Method.gg and games.gg), for the narration only: the
+-- positions of the docks are learned, not taken from anywhere
+Q.RIDEHINT = {
+    ["0>1"] = { Horde = "a zeppelin from Undercity or Grom'gol to Orgrimmar, or the Booty Bay boat to Ratchet",
+                Alliance = "a boat from Menethil Harbor to Theramore Isle or to Auberdine, from Stormwind Harbour to Auberdine, or from Booty Bay to Ratchet" },
+    ["1>0"] = { Horde = "a zeppelin from Orgrimmar to Undercity or Grom'gol, or the Ratchet boat to Booty Bay",
+                Alliance = "a boat from Theramore Isle or Auberdine to Menethil Harbor, from Auberdine to Stormwind Harbour, or from Ratchet to Booty Bay" },
+}
+
+-- Where to go next, from where the player stands (p) to where the objective is (t), both { cont, wx, wy }: the walked trail when it
+-- leads there, the ride you learned for another continent, else straight on. Returns { x, y, yards, angle, note, kind } (x and y absent
+-- when there is nothing to point at yet), or nil when positions are missing.
+function Q.crumbFor(p, t, faction)
+    local T = UF.Trail
+    if not (p and t and p.cont and t.cont and p.wx and t.wx) then return nil end
+    if p.cont == t.cont then
+        local path, len
+        if T then path, len = T.path(p.cont, p.wx, p.wy, t.wx, t.wy) end     -- (not `T and T.path(...)`: that keeps only the first value)
+        local straight = math.sqrt((p.wx - t.wx) ^ 2 + (p.wy - t.wy) ^ 2)
+        if path and len and len < straight * 3 + 200 then
+            local walked, pick, idx = 0, nil, nil
+            for i = 2, #path do
+                walked = walked + math.sqrt((path[i].x - path[i - 1].x) ^ 2 + (path[i].y - path[i - 1].y) ^ 2)
+                if walked >= 80 or i == #path then pick, idx = path[i], i; break end
+            end
+            local yards, angle = Q.worldBearing(p.wx, p.wy, pick.x, pick.y)
+            return { x = pick.x, y = pick.y, yards = yards, angle = angle, kind = "trail",
+                     note = string.format("Following your trail, waypoint %d of %d, %d yd to go", idx - 1, #path - 1, math.floor(len + 0.5)) }
+        end
+        local yards, angle = Q.worldBearing(p.wx, p.wy, t.wx, t.wy)
+        return { x = t.wx, y = t.wy, yards = yards, angle = angle, kind = "straight",
+                 note = string.format("No trail walked here yet: straight on, %d yd", math.floor(straight + 0.5)) }
+    end
+    local leg = T and T.bestRide(p, t, faction)
+    if leg then
+        local yards, angle = Q.worldBearing(p.wx, p.wy, leg.a.wx, leg.a.wy)
+        if yards > 40 then
+            return { x = leg.a.wx, y = leg.a.wy, yards = yards, angle = angle, kind = "ride",
+                     note = "To the boat, zeppelin or tram you rode before, then the other side" }
+        end
+        return { kind = "board", note = "Board here and ride to the other continent, then the arrow points on" }
+    end
+    local hint = Q.RIDEHINT[p.cont .. ">" .. t.cont]
+    hint = hint and hint[faction]
+    return { kind = "unknown", note = "Another continent: ride " .. (hint or "a boat, zeppelin or tram") .. " once and it is learned" }
+end
+
+-- the same, from the map position of the objective, reading the player and converting through the game
+function Q.crumbHere(tmap, tx, ty)
+    local T = UF.Trail
+    if not (T and T.read and C_Map and C_Map.GetWorldPosFromMapPos) then return nil end
+    local p = T.read()
+    if not p then return nil end
+    local ok, cont, wp = pcall(C_Map.GetWorldPosFromMapPos, tmap, { x = tx, y = ty })
+    if not ok or type(wp) ~= "table" or type(wp.x) ~= "number" or type(cont) ~= "number" then return nil end
+    if issecretvalue and (issecretvalue(wp.x) or issecretvalue(wp.y)) then return nil end
+    return Q.crumbFor(p, { cont = cont, wx = wp.x, wy = wp.y }, (UnitFactionGroup and UnitFactionGroup("player")) or "Neutral")
+end
+
+local function setNote(f, text)
+    if f.note and f.noteText ~= text then
+        f.note:SetText(text or "")
+        f.noteText = text
+    end
+end
+
 local acc = 0
 local drv = CreateFrame("Frame")
 
@@ -535,26 +613,38 @@ local function update()
     end
     if not tmap then Q.why = "no quest to point at: none selected in the tracker and none in progress on this map"; hide(); return end
 
-    local wp = waypointFor(quest, here)
-    local aimMap, ax, ay, source, fromX, fromY, bent = Q.aimFor(Q.MODES[a.mode], here, pos, tmap, tx, ty,
-        wp, parentOf, rowsOf, rectOf, Q.bent)
-    if not aimMap then Q.why = "no way to aim with this mode"; hide(); return end
-    Q.bent = bent or false
-    f.source = source
-    Q.last = { here = here, target = tmap, source = source, route = wp, bent = Q.bent, quest = quest }
-
-    local w, h
-    if C_Map and C_Map.GetMapWorldSize then
-        local ok, ww, hh = pcall(C_Map.GetMapWorldSize, aimMap)  -- claim C15
-        if ok then w, h = ww, hh end
+    local crumb = (Q.MODES[a.mode] == "breadcrumbs") and Q.crumbHere(tmap, tx, ty) or nil
+    local aimMap, ax, ay, source, fromX, fromY, bent, wp, w, h, yards, angle
+    if crumb then
+        aimMap, ax, ay, source = here, tx, ty, crumb.kind
+        f.source = source
+        Q.last = { here = here, target = tmap, source = source, quest = quest, crumb = crumb.kind }
+        yards, angle = crumb.yards, crumb.angle
+    else
+        wp = waypointFor(quest, here)
+        aimMap, ax, ay, source, fromX, fromY, bent = Q.aimFor(Q.MODES[a.mode], here, pos, tmap, tx, ty,
+            wp, parentOf, rowsOf, rectOf, Q.bent)
+        if not aimMap then Q.why = "no way to aim with this mode"; hide(); return end
+        Q.bent = bent or false
+        f.source = source
+        Q.last = { here = here, target = tmap, source = source, route = wp, bent = Q.bent, quest = quest }
+        if C_Map and C_Map.GetMapWorldSize then
+            local ok, ww, hh = pcall(C_Map.GetMapWorldSize, aimMap)  -- claim C15
+            if ok then w, h = ww, hh end
+        end
+        yards, angle = Q.bearing(w, h, fromX, fromY, ax, ay)  -- claim C7
+        if not yards then Q.why = "the map size is not known"; hide(); return end
     end
-    local yards, angle = Q.bearing(w, h, fromX, fromY, ax, ay)  -- claim C7
-    if not yards then Q.why = "the map size is not known"; hide(); return end
     -- which way to turn the picture: toward the game's marker on the screen, else relative to where the character faces
     local turn, used, face, vx, vy, cx, cy, whyNoView
-    turn, whyNoView, vx, vy, cx, cy = Q.viewRotation()
+    if crumb then
+        if not crumb.angle then turn = 0 end                  -- nothing to point at yet: only the note shows
+        whyNoView = "breadcrumbs point at the waypoint, not at the game's marker"
+    else
+        turn, whyNoView, vx, vy, cx, cy = Q.viewRotation()
+    end
     if turn then
-        used = "view"
+        used = crumb and "none" or "view"
     else
         face = Q.facing()  -- claim C6
         if not face then Q.why = "the game does not give the direction you face"; hide(); return end
@@ -590,7 +680,15 @@ local function update()
     d.atlas = (okA and type(atlas) == "string") and atlas or nil
     local okT, tex = pcall(f.art.GetTexture, f.art)
     d.texture = (okT and (type(tex) == "string" or type(tex) == "number")) and tex or nil
-    Q.showDistance(f, yards, aimMap ~= here)
+    if crumb then
+        setNote(f, crumb.note)
+        f.art:SetShown(crumb.angle ~= nil)
+        Q.showDistance(f, crumb.angle and yards or nil, false)
+    else
+        setNote(f, "")
+        f.art:SetShown(true)
+        Q.showDistance(f, yards, aimMap ~= here)
+    end
     if not f:IsShown() then f:Show() end
 end
 

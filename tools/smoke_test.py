@@ -3382,7 +3382,7 @@ r = L("""function()
     return table.concat(out, " | ")
 end""")()
 assert str(r) == ("walk 961-1416-1000 lca 1416 | held 1000 | on parent 0.12 0.74 | cross 0.50 0.40 | "
-                  "direct 1416 0.62 0.22 shared map | route 961 0.15 0.55 route | obstacle 1416 0.50 0.40 areas | "
+                  "direct 1416 0.62 0.22 shared map | route 961 0.15 0.55 route | obstacle 1416 0.50 0.40 areas | breadcrumbs 1416 0.62 0.22 shared map | "
                   "route fallback 1416 0.62 0.22 shared map | same area 961 0.40 0.40 straight (no route) | "
                   "tracking 8 | target 1000 0.4 0.4 | target from the row 961 0.2 0.6 | "
                   "40 px 40, 44 px 44, 48 px 48, 56 px 56 | cursor 0.50 1.00 | point 0.00 10.00 | "
@@ -3523,6 +3523,7 @@ r = L("""function()
     Q.nextMode(1); out[#out + 1] = Q.modeName()
     Q.nextMode(1); out[#out + 1] = Q.modeName()
     Q.nextMode(1); out[#out + 1] = Q.modeName()
+    Q.nextMode(1)                                           -- round to Direct again
     Q.setPlace(0.88, 0.90); out[#out + 1] = Q.positionName()
     out[#out + 1] = Q.nextPosition(1)
     out[#out + 1] = Q.nextPosition(1)
@@ -3531,7 +3532,7 @@ r = L("""function()
     Q.setPlace(0.88, 0.90)
     return table.concat(out, " | ")
 end""")()
-assert str(r) == ("art true | art points 1 | text points 1 | drawn Interface\\Minimap\\MiniMap-QuestArrow | Direct | Route | Around obstacles | Direct | "
+assert str(r) == ("art true | art points 1 | text points 1 | drawn Interface\\Minimap\\MiniMap-QuestArrow | Direct | Route | Around obstacles | Breadcrumbs | "
                   "Top right | Top centre | Top left | Custom | Top right"), r
 print("Quest arrow: the picture is the game's tracked-quest arrow and is anchored, the distance text is anchored, aim and place buttons step: OK")
 r = L("""function()
@@ -3685,5 +3686,131 @@ r = L("""function()
 end""")()
 assert str(r) == ("2/1/Booty Bay Dock/1,250.0/1/false | 1/7/true/2 | 2/4000.0/0.1/500.0 | 1/9/600.0 | truetruefalse | nil"), r
 print("Navigation scans: docks, taxi, maps and entrances read the game's own calls, one at a time, and stop on request: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local T = UF.Trail
+    local out = {}
+    local function reset()
+        UF.DB().learned = nil
+        local st = T.state
+        st.prev, st.lastWalk, st.ride, st.still, st.crossed = nil, nil, nil, 0, false
+        T.breakWalk()
+    end
+    local clock = 0
+    local function sample(cont, x, y, speed, extra)
+        clock = clock + 0.5
+        local s = { t = clock, cont = cont, wx = x, wy = y, m = 1, mx = 0.5, my = 0.5, speed = speed, onTaxi = false, dead = false, swimming = false, flying = false, inInstance = false }
+        for k, v in pairs(extra or {}) do s[k] = v end
+        T.feed(s)
+    end
+    -- the walked trail: an L round something in the way, from (0,0) east to (300,0), then north to (300,300), 3.5 yards a sample
+    reset()
+    for x = 0, 300, 3.5 do sample(1, x, 0, 7) end
+    for y = 0, 300, 3.5 do sample(1, 300, y, 7) end
+    local nodes1, edges1 = T.counts()
+    for x = 0, 300, 3.5 do sample(1, x, 0, 7) end                       -- walking it again adds nothing
+    T.breakWalk()
+    for x = 0, 300, 3.5 do sample(1, x + 4, 5, 7) end                   -- nor does a path beside it
+    local nodes2 = T.counts()
+    out[#out + 1] = (nodes1 > 20 and nodes1 < 60 and "n ok" or "n " .. nodes1) .. " " .. (nodes2 == nodes1 and "same" or ("grew " .. nodes2))
+    local path, len, straight = T.path(1, 0, 0, 300, 300)
+    out[#out + 1] = string.format("path %s len %.0f straight %.0f points %s", tostring(path ~= nil), len or 0, straight or 0, path and (#path > 10 and "many" or #path) or "-")
+    out[#out + 1] = tostring(T.path(1, 900, 900, 300, 300))                -- never walked near (900, 900): no path
+    out[#out + 1] = tostring(T.path(2, 0, 0, 300, 300))                    -- another continent: nothing known
+    -- a taxi, a swim, a mount in the air and a ghost add nothing
+    reset()
+    for x = 0, 200, 3.5 do sample(1, x, 0, 7, { onTaxi = true }) end
+    for x = 0, 200, 3.5 do sample(1, x, 50, 7, { swimming = true }) end
+    for x = 0, 200, 3.5 do sample(1, x, 90, 7, { flying = true }) end
+    for x = 0, 200, 3.5 do sample(1, x, 130, 7, { dead = true }) end
+    out[#out + 1] = "skipped " .. T.counts()
+    -- a ride: walk to the dock, stand still while the platform carries you 400 yards in 40 seconds, then the world loads on another continent
+    reset()
+    UnitFactionGroup = function() return "Alliance" end
+    for x = -50, 0, 3.5 do sample(0, x, 0, 7) end
+    for i = 1, 80 do sample(0, i * 5, 0, 0) end                           -- 5 yards a sample while standing still
+    T.loaded()
+    sample(1, -3800, 4700, 0)
+    local L1 = UF.DB().learned
+    out[#out + 1] = #L1.rides .. "/" .. L1.rides[1].f .. "/" .. L1.rides[1].a.cont .. ">" .. L1.rides[1].b.cont .. "/n" .. L1.rides[1].n
+    -- the same ride again is the same route, seen twice
+    for x = -50, 0, 3.5 do sample(0, x, 0, 7) end
+    for i = 1, 80 do sample(0, i * 5, 0, 0) end
+    T.loaded()
+    sample(1, -3790, 4705, 0)
+    out[#out + 1] = #L1.rides .. "/n" .. L1.rides[1].n
+    -- a Horde ride is its own
+    UnitFactionGroup = function() return "Horde" end
+    for x = -50, 0, 3.5 do sample(0, x, 0, 7) end
+    for i = 1, 80 do sample(0, i * 5, 0, 0) end
+    T.loaded(); sample(1, -3800, 4700, 0)
+    out[#out + 1] = #L1.rides
+    -- the best ride for a player and a target on other continents, for the right faction only
+    local leg = T.bestRide({ cont = 0, wx = 100, wy = 0 }, { cont = 1, wx = -3700, wy = 4600 }, "Alliance")
+    local none = T.bestRide({ cont = 0, wx = 100, wy = 0 }, { cont = 1, wx = -3700, wy = 4600 }, "Neutral")
+    out[#out + 1] = tostring(leg and leg.f) .. "/" .. tostring(none)
+    -- a short wobble on a platform is no route, and standing at a dock is none either
+    reset()
+    for i = 1, 6 do sample(0, i * 2, 0, 0) end
+    for i = 1, 12 do sample(0, 12, 0, 0) end
+    out[#out + 1] = "wobble " .. #(UF.DB().learned and UF.DB().learned.rides or {})
+    -- entrances
+    reset()
+    T.instance(nil, { m = 1, mx = 0.4, my = 0.6, cont = 1, wx = 100, wy = 200 })
+    T.instance({ id = 33, name = "Shadowfang Keep", kind = "party" }, nil)
+    T.instance({ id = 33, name = "Shadowfang Keep", kind = "party" }, nil)
+    T.instance(nil, { m = 1, mx = 0.41, my = 0.61, cont = 1, wx = 110, wy = 210 })
+    local e = T.entranceFor(33)
+    out[#out + 1] = e.name .. "/" .. e.a.wx .. "/" .. e.b.wx .. "/n" .. e.n .. "/" .. tostring(T.entranceFor("Shadowfang Keep") == e)
+    UnitFactionGroup = nil
+    reset()
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("n ok same | path true len 595 straight 424 points many | nil | nil | skipped 0 | 1/Alliance/0>1/n1 | 1/n2 | 2 | Alliance/nil | "
+                  "wobble 0 | Shadowfang Keep/100/110/n1/true"), r
+print("Learning: the walked trail routes round what you walked round, rides are learned per faction and merge, entrances learn both sides, taxis and swims add nothing: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local Q, T = UF.QuestArrow, UF.Trail
+    local out = {}
+    local function deg(r) return string.format("%.0f", r * 180 / math.pi) end
+    UF.DB().learned = nil
+    -- the bearing of a world position: x is north, y is west (checked against the map scan): north 0, west 90, south 180, east 270
+    local _, n = Q.worldBearing(0, 0, 100, 0)
+    local _, w = Q.worldBearing(0, 0, 0, 100)
+    local _, s = Q.worldBearing(0, 0, -100, 0)
+    local y, e = Q.worldBearing(0, 0, 0, -100)
+    out[#out + 1] = deg(n) .. " " .. deg(w) .. " " .. deg(s) .. " " .. deg(e) .. " " .. string.format("%.0f", y)
+    -- nothing walked: straight on, with a note that says so
+    local c = Q.crumbFor({ cont = 1, wx = 0, wy = 0 }, { cont = 1, wx = 300, wy = 300 }, "Alliance")
+    out[#out + 1] = c.kind .. " " .. deg(c.angle) .. " " .. string.format("%.0f", c.yards)
+    -- walk an L: east... in world terms along +y then +x, the objective is diagonal; the crumb follows the trail, 80 yards ahead
+    local clock = 0
+    local function sample(x, y) clock = clock + 0.5; T.feed({ t = clock, cont = 1, wx = x, wy = y, m = 1, mx = 0.5, my = 0.5, speed = 7, onTaxi = false, dead = false, swimming = false, flying = false, inInstance = false }) end
+    for y2 = 0, 300, 3.5 do sample(0, y2) end
+    for x2 = 0, 300, 3.5 do sample(x2, 300) end
+    local c2 = Q.crumbFor({ cont = 1, wx = 0, wy = 0 }, { cont = 1, wx = 300, wy = 300 }, "Alliance")
+    out[#out + 1] = c2.kind .. " " .. deg(c2.angle) .. " " .. (c2.note:find("waypoint") and "waypoint" or "no note") .. " " .. string.format("%.0f", c2.yards)
+    -- the arrow is at the far end of the trail's bend: the crumb is then the objective itself
+    local c3 = Q.crumbFor({ cont = 1, wx = 280, wy = 300 }, { cont = 1, wx = 300, wy = 300 }, "Alliance")
+    out[#out + 1] = c3.kind .. " " .. string.format("%.0f", c3.yards)
+    -- another continent with nothing learned: no arrow, and the note names what the guides say for the faction
+    local c4 = Q.crumbFor({ cont = 0, wx = 0, wy = 0 }, { cont = 1, wx = 5000, wy = 0 }, "Horde")
+    out[#out + 1] = c4.kind .. " " .. tostring(c4.angle) .. " " .. (c4.note:find("zeppelin") and "zeppelin" or "?")
+    local c5 = Q.crumbFor({ cont = 0, wx = 0, wy = 0 }, { cont = 1, wx = 5000, wy = 0 }, "Alliance")
+    out[#out + 1] = (c5.note:find("Menethil") and "menethil" or "?")
+    -- after riding: the arrow goes to the learned dock, and at the dock it says to board
+    UF.DB().learned.rides[1] = { f = "Alliance", a = { cont = 0, wx = 400, wy = 0 }, b = { cont = 1, wx = 4900, wy = 0 }, n = 1, secs = 100 }
+    local c6 = Q.crumbFor({ cont = 0, wx = 0, wy = 0 }, { cont = 1, wx = 5000, wy = 0 }, "Alliance")
+    out[#out + 1] = c6.kind .. " " .. deg(c6.angle) .. " " .. string.format("%.0f", c6.yards)
+    local c7 = Q.crumbFor({ cont = 0, wx = 390, wy = 0 }, { cont = 1, wx = 5000, wy = 0 }, "Alliance")
+    out[#out + 1] = c7.kind .. " " .. tostring(c7.angle)
+    local c8 = Q.crumbFor({ cont = 0, wx = 0, wy = 0 }, { cont = 1, wx = 5000, wy = 0 }, "Horde")      -- a Horde player does not use an Alliance ride
+    out[#out + 1] = c8.kind
+    UF.DB().learned = nil
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("0 90 180 270 100 | straight 45 424 | trail 90 waypoint 84 | trail 20 | unknown nil zeppelin | menethil | ride 0 400 | board nil | unknown"), r
+print("Breadcrumbs: the world bearing, straight on where nothing is walked, the trail waypoint ahead, the learned ride and its dock, the faction hint: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
