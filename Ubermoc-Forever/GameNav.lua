@@ -635,6 +635,33 @@ function G.xLabel(f)
     return "Right-click"
 end
 
+-- A restricted button reads an attribute through the suffixed spelling first, then the plain name (C151): with button 2
+-- that is macrotext2, then macrotext. Which of the two the game tries first is not in Blizzard's Lua (A1), so X does not
+-- depend on it: both spellings are written. R9.
+function G.setAttrBoth(f, name, value)
+    f:SetAttribute(name, value)
+    f:SetAttribute(name .. "2", value)
+end
+
+-- /ubf x: what X would do on the highlighted node right now, and why. The legend has no X exactly when this says nothing.
+-- `out` defaults to the chat (the offline test passes its own collector).
+function G.xReport(f, out)
+    f = f or focus
+    out = out or UF.say
+    if not f then out("X: nothing is highlighted."); return end
+    local w, p = G.windows()
+    out("X: window " .. tostring(w[1] and w[1]:GetName() or "none") .. ", place mode " .. (G.placing and "yes" or "no") ..
+        ", popup " .. (p and "yes" or "no") .. ", menu open " .. (#openMenus() > 0 and "yes" or "no"))
+    local act = G.xAction(f)
+    if not act then
+        out("X on this node: nothing (this is why the legend has no X).")
+        return
+    end
+    local what = act.macrotext or act.item or (act.clickbutton and act.clickbutton:GetName()) or "?"
+    out("X on this node: " .. act.type .. " " .. tostring(what))
+    if UF.ItemMenu and UF.ItemMenu.xInfo then UF.ItemMenu.xInfo(f, out) end
+end
+
 local function setTargets()
     if InCombatLockdown() then return end
     local c, b, rc = buttons()
@@ -654,8 +681,8 @@ local function setTargets()
     end
     -- X: the attributes are cleared and rewritten on every move, so a bag slot gets the secure action
     -- (type "item" or a macro) and a plain button gets the plain click, never both
-    for _, k in ipairs({ "type", "item", "clickbutton", "macrotext" }) do rc:SetAttribute(k, nil) end
-    for k, v in pairs(G.xAction(focus) or {}) do rc:SetAttribute(k, v) end
+    for _, k in ipairs({ "type", "item", "clickbutton", "macrotext" }) do G.setAttrBoth(rc, k, nil) end
+    for k, v in pairs(G.xAction(focus) or {}) do G.setAttrBoth(rc, k, v) end
     local closer
     if G.placing then
         closer = nil   -- B cancels the placing (fallbackClose)

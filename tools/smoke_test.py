@@ -743,7 +743,7 @@ print("X on a bag item: the game's use command as a macro (/use <bag> <slot>) fo
 assert str(g2) == "macro|/click FakeRecipe RightButton;none;none;Right-click", g2
 print("X at a vendor: sells through the button name, nothing for an unnamed gamepad slot, nothing on the buyback tab, legend still Right-click: OK")
 assert str(g3) == "true;macro|/use 0 5;macro|/use 0 7;macro|/use 0 9;none;none;Use,Use,Use,Right-click", g3
-print("X on the rest of the highlight: plain button still clicked, an empty slot gives nothing, mail still taken in the hook, legend says Use for the use command (kit, poison, recipe): OK")
+print("X on the rest of the highlight: plain button still clicked, an empty slot gives nothing, mail still taken in the hook, legend says Use for the use command (kit, poison, recipe):", g3)
 # Items used on other items, profession actions, and what the bag menu offers
 r = L("""function()
     local UF = UbermocForever
@@ -3109,5 +3109,51 @@ r = L("""function()
 end""")()
 assert str(r) == "0.8,0.2,0.8", r
 print("Fading: the mouse-over answer is asked with the key, plain booleans still work: OK")
+# X's secure right-click button: every attribute is written in both spellings, so nothing in the code depends on the
+# order the game tries them in (C151 builds the name from prefix, name and suffix; that order is not in Blizzard's Lua).
+# FAKE(C151): the fake restricted handle records what SetAttribute was given - SecureTemplates.lua:119-126.
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local got = {}
+    local handle = { SetAttribute = function(self, name, value) got[name] = value end }
+    G.setAttrBoth(handle, "type", "macro")
+    G.setAttrBoth(handle, "macrotext", "/use 0 5")
+    local keys = {}
+    for k, v in pairs(got) do keys[#keys + 1] = k .. "=" .. tostring(v) end
+    table.sort(keys)
+    return table.concat(keys, ",")
+end""")()
+assert str(r) == "macrotext2=/use 0 5,macrotext=/use 0 5,type2=macro,type=macro", r
+print("GameNav: X writes both spellings of each attribute, so the action does not depend on the lookup order:", r)
+# /ubf x: the report prints the state X is in and what X resolves to, so the missing legend can be read in the game.
+# The same gate the legend uses: place mode, a popup, an open menu. FAKE(C146): the stub stands for
+# C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its itemID (ContainerDocumentation.lua
+# 192-206, 766-782); FAKE(C143): the item stands for a poison, consumable subclass Other = 8 (ItemConstantsDocumentation.lua:307-315).
+r = L("""function()
+    local G = UbermocForever.GameNav
+    C_Item = { GetItemInfoInstant = function(id) return id, "n", "l", "", 1, 0, 8 end,
+               GetItemSpell = function(id) return "Use: it", 173555 end }
+    C_Container = { GetContainerItemInfo = function(bag, slot)
+        if bag == 0 and slot == 9 then return { itemID = 3775, hyperlink = "|cff|Hitem|h[x]|h|r", stackCount = 1 } end
+        return nil
+    end }
+    local btn = CreateFrame("Button", "FakeXSlot", UIParent)
+    btn.GetBagID = function() return 0 end
+    btn.GetID = function() return 9 end
+    local out = {}
+    local function say(m) out[#out + 1] = m end
+    G.xReport(btn, say)
+    local open = table.concat(out, " | ")
+    out = {}
+    _G.DropDownList1 = { GetName = function() return "DropDownList1" end, IsShown = function() return true end }
+    G.xReport(btn, say)
+    local gated = table.concat(out, " | ")
+    _G.DropDownList1 = nil
+    return open .. ";;" .. gated
+end""")()
+assert "X on this node: macro /use 0 9" in r and "X sees bag 0 slot 9: /use 0 9" in r, r
+assert "menu open yes" in r.split(";;")[1] and "X on this node: nothing" in r.split(";;")[1], r
+print("GameNav /ubf x, nothing open:", r.split(";;")[0])
+print("GameNav /ubf x, a menu open (this is why the legend has no X):", r.split(";;")[1])
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

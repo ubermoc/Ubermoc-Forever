@@ -548,3 +548,7 @@ Sourced this session (claims C1-C4 in the harness):
   (`RightButton` = `2`, claim C152); the order inside the C-side `LOCAL_CHECK_Frame.GetAttribute` is not in the Lua
   source, so whether the plain name is reached for a right click stays open (assumption A1). The user's in-game report
   that the menu's macro entries work for every item type shows the plain name is reached for a left click.
+- **1.3.155, so the code does not depend on that order:** `G.setAttrBoth` writes the plain name and the suffix-2 spelling of
+  every attribute X's button uses, so a right click finds the action whichever way the game tries them, and assumption A1
+  is no longer something the code rests on. `/ubf x` prints the state X is in and what it resolves to on the highlighted
+  node - the same state the legend uses, so no X in the legend means the report says nothing.

@@ -38,6 +38,7 @@ local function locationOf(btn)
 end
 
 -- Returns bag, slot for a bag or bank item button.
+
 local function bagSlot(btn)
     if btn and btn.GetBagID and btn.GetID then
         local ok, bag = pcall(btn.GetBagID, btn)
@@ -49,6 +50,17 @@ local function bagSlot(btn)
         local ok, bag, slot = pcall(loc.GetBagAndSlot, loc)
         if ok and bag and slot then return bag, slot end
     end
+end
+
+-- what X's rule sees on this button (for /ubf x): which bag and slot it is, and what X resolves to there
+function M.xInfo(btn, out)
+    out = out or UF.say
+    local bag, slot = bagSlot(btn)
+    if not bag then return end
+    local act = M.rightClickAction(btn)
+    local what = "nothing"
+    if act then what = tostring(act.macrotext or act.item or act.type) end
+    out("X sees bag " .. bag .. " slot " .. slot .. ": " .. what)
 end
 
 local EQUIP_NAME = "^Character%u%a+Slot$"

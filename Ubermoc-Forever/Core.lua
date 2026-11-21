@@ -260,6 +260,9 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.GameNav and UF.GameNav.dialogReport then UF.GameNav.dialogReport() end
     elseif msg == "item" then
         if UF.ItemMenu and UF.GameNav then UF.ItemMenu.report(UF.GameNav.focusFrame()) end
+    elseif msg == "x" then
+        -- what X would do on the highlighted node, and what stands in the way: this is the state the legend uses too
+        if UF.GameNav and UF.GameNav.xReport then UF.GameNav.xReport() end
     elseif msg == "tabs" then
         if UF.GameNav then UF.GameNav.report() end
     elseif UF.ToggleOptions then

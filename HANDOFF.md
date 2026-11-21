@@ -1,3 +1,13 @@
+2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.155, offline tests only, untested in the game): the user
+says X still does nothing on a bag slot in the game and the legend has no X, while Y then `Use` works. Two changes, both
+readable in the game now. `/ubf x` prints the state X is in (which window, place mode, popup, open menu), what X
+resolves to on the highlighted node, and the bag and slot the item rule sees: the legend has no X exactly when this says
+nothing, because `G.xAction` answers nothing for place mode, a popup or an open menu before the bag rule is reached.
+And `setTargets` writes both spellings of every attribute on X's secure button (`type`/`type2`, `macrotext`/`macrotext2`,
+`item`/`item2`, `clickbutton`/`clickbutton2`), so the action no longer depends on the order the game tries them in
+(C151; that order is not in Blizzard's Lua, so it stays assumption A1 - it is no longer something the code rests on).
+Offline tests pass; whether X uses the item in the game is the user's to confirm.
+
 2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.154, offline tests only, untested in the game): X on a bag
 slot now runs the game's own use command as a macro - `type = "macro"`, `macrotext = "/use <bag> <slot>"` - the route the
 user confirmed working in the game (the menu's use entries), because the secure `item` attribute route is where he says X
