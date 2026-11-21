@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.167
+- Changed: the quest arrow has one way of turning and no setting for it: the Turns button is gone. It turns by the bearing to the objective minus the direction your character faces (the way ThePath and ForeverPlusPlus draw theirs), so it points up when you face the objective. The way that followed the game's own navigation target did not move in Forever and is removed with the compass-fixed way.
+
 Ubermoc-Forever 1.3.166
 - Fixed: the quest arrow stayed pointing one way and only the distance changed. 1.3.165 made it follow the screen position of the game's own navigation target, which in Forever does not move. The arrow is back to the way the two working guide addons (ThePath and ForeverPlusPlus) draw theirs, which I read in their code: it turns by the bearing to the objective minus the direction your character faces, so it points up when you face the objective. The Turns button now has two ways: With you (the default) and With the map (the compass direction, north at the top, like the minimap's arrow).
 - Note: the game gives addons no camera direction, so an arrow that follows where you look cannot be made; and neither example addon routes along roads or around obstacles.

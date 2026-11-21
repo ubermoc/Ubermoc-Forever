@@ -105,6 +105,6 @@ Read, not guessed (both are Forever addons the user runs; ThePath is kept next t
 - So the arrow is `bearing - facing` ("With you"). The camera direction is not available to addons (ForeverPlusPlus `docs/forever-api.md`,
   from `CameraDocumentation.lua`), so a view-relative arrow cannot be computed. 1.3.165 tried the screen position of the game's navigation
   target (`C_Navigation.GetFrame`, as Blizzard's `SuperTrackedFrame` does); in the user's Forever client the arrow then stayed in one place
-  and only the distance changed, so it was removed. "With the map" (the bearing itself, north at the top) is kept as the second way.
+  and only the distance changed, so it was removed. 1.3.167 removed the Turns button and the compass-fixed way too: the user asked for one way, not selectable.
 - Neither example gives a road route or obstacle avoidance: the client has no walkability data (see the top of this file), so Route and
   Around obstacles can only use a route step the game gives for the quest (`/ubf arrow` shows whether it does).

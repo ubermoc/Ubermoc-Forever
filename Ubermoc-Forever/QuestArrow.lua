@@ -44,7 +44,6 @@ local function cfg()
     if a.on == nil then a.on = true end
     if not a.mode then a.mode = 1 end
     if not a.px then a.px = Q.DEFAULTPX end
-    if not a.turn or a.turn > #Q.TURNS then a.turn = 1 end   -- 1.3.165 had three ways; the old view way is gone
     if not a.art then a.art = 1 end
     if not a.place then a.place = {} end
     return a
@@ -228,20 +227,12 @@ end
 -- objective north: 0 - 3 pi / 2 = a quarter turn counter-clockwise, the arrow points left, and north is on your left.
 function Q.rotation(angle, facing) return angle - facing end
 
--- How the arrow turns. The game does not give addons the camera's direction (CameraDocumentation: no yaw), so "where you look" is not
--- available; the arrow of both example addons (ForeverPlusPlus Waypoints.lua, ThePath Nav.lua Paint) turns the picture by
+-- How the arrow turns: one way, not selectable. The game does not give addons the camera's direction (CameraDocumentation: no yaw), so the
+-- arrow of both working example addons (ForeverPlusPlus Waypoints.lua, ThePath Nav.lua Paint) is used: the picture is turned by
 -- bearing - GetPlayerFacing(), the bearing counter-clockwise from north (ThePath's HereBeDragons:GetWorldVector is atan2(-dX, dY)
--- normalised to the same convention), and that is "With you". "With the map" is the bearing itself, a compass direction with north
--- at the top, like the arrow at the edge of the north-up minimap.
--- (1.3.165 tried the screen position of the game's own navigation frame, C_Navigation.GetFrame, as Blizzard's arrow does; in Forever it
--- stayed in one place, so it was removed.)
-Q.TURNS = { "With you", "With the map" }
-function Q.turnName() return Q.TURNS[cfg().turn] or Q.TURNS[1] end
-function Q.nextTurn(dir)
-    local a = cfg()
-    a.turn = UF.stepIndex(a.turn, #Q.TURNS, dir)
-    return a.turn
-end
+-- normalised to the same convention). It points up when your character faces the objective and swings the other way as you turn.
+-- (1.3.165 tried the screen position of the game's own navigation frame, C_Navigation.GetFrame, as Blizzard's arrow does; in Forever the
+-- arrow then stayed in one place, so that way was removed, and with it the compass-fixed way and the button that chose between them.)
 
 function Q.facing()
     if not GetPlayerFacing then return nil end
@@ -566,15 +557,9 @@ local function update()
     end
     local yards, angle = Q.bearing(w, h, fromX, fromY, ax, ay)  -- claim C7
     if not yards then Q.why = "the map size is not known"; hide(); return end
-    -- which way to turn the picture: with you (bearing - facing, as ThePath and ForeverPlusPlus do) or with the map (the bearing itself)
-    local turn, face
-    if a.turn == 2 then
-        turn = angle                                           -- counter-clockwise from north (claim C7)
-    else
-        face = Q.facing()  -- claim C6
-        if not face then Q.why = "the game does not give the direction you face"; hide(); return end
-        turn = Q.rotation(angle, face)
-    end
+    local face = Q.facing()  -- claim C6
+    if not face then Q.why = "the game does not give the direction you face"; hide(); return end
+    local turn = Q.rotation(angle, face)
 
     Q.why = nil
     Q.applyArt(f)
@@ -586,8 +571,7 @@ local function update()
     a.debug = d
     d.mode, d.source, d.quest, d.here, d.aimMap = Q.MODES[a.mode], source, quest, here, aimMap
     d.px, d.py, d.ax, d.ay, d.tx, d.ty, d.tmap = pos.x, pos.y, ax, ay, tx, ty, tmap
-    d.facing, d.bearing, d.turn, d.yards, d.mapW, d.mapH = face or Q.facing(), angle, turn, yards, w, h
-    d.turnMode = Q.TURNS[a.turn]
+    d.facing, d.bearing, d.turn, d.yards, d.mapW, d.mapH = face, angle, turn, yards, w, h
     local okR, applied = pcall(f.art.GetRotation, f.art)
     d.applied = (okR and type(applied) == "number") and applied or nil
     local okA, atlas = pcall(f.art.GetAtlas, f.art)
@@ -620,7 +604,6 @@ function Q.report()
         local function deg(r) return string.format("%.0f", (r or 0) * 180 / math.pi) end
         UF.say(string.format("Numbers: you at %.4f %.4f on map %s, aiming at %.4f %.4f on map %s (objective %.4f %.4f on map %s), %.0f yd",
             d.px or 0, d.py or 0, tostring(d.here), d.ax or 0, d.ay or 0, tostring(d.aimMap), d.tx or 0, d.ty or 0, tostring(d.tmap), d.yards or 0))
-        UF.say("Turns: " .. tostring(d.turnMode))
         UF.say("You face " .. deg(d.facing) .. " deg counter-clockwise from north, the bearing is " .. deg(d.bearing) .. ", the arrow is turned "
             .. deg(d.turn) .. " (the picture reports " .. (d.applied and deg(d.applied) or "nothing") .. "), art " .. tostring(d.atlas or d.texture)
             .. ", mode " .. tostring(d.mode) .. ", aim source " .. tostring(d.source))

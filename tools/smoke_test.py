@@ -3615,18 +3615,5 @@ r = L("""function()
 end""")()
 assert str(r) == "40 px 44 48 56 48 44 40 36 32 wrap 128 16 near 56", r
 print("Quest arrow: the size steps one press at a time in pixels, both ways, wrapping: OK")
-r = L("""function()
-    local Q = _G.UbermocForever.QuestArrow
-    local out = {}
-    local a = Q.cfg(); a.turn = 1
-    out[#out + 1] = Q.turnName()
-    Q.nextTurn(1); out[#out + 1] = Q.turnName()
-    Q.nextTurn(1); out[#out + 1] = Q.turnName()
-    a.turn = 3; Q.cfg(); out[#out + 1] = tostring(a.turn)      -- the saved "turn 3" of 1.3.165 has no meaning now: back to With you
-    Q.cfg().turn = 1
-    return table.concat(out, " | ")
-end""")()
-assert str(r) == "With you | With the map | With you | 1", r
-print("Quest arrow: the turn button steps between with you (bearing - facing) and with the map, and an old saved value is reset: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

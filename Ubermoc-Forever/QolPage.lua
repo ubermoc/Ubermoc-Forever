@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowArtBtn, arrowTurnBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowArtBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -41,7 +41,6 @@ function QP.refresh()
     arrowSizeBtn:SetText("Size: " .. UF.QuestArrow.sizeName())
     arrowPosBtn:SetText("Place: " .. UF.QuestArrow.positionName())
     arrowArtBtn:SetText("Art: " .. UF.QuestArrow.artName())
-    arrowTurnBtn:SetText("Turns: " .. UF.QuestArrow.turnName())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -135,9 +134,6 @@ function QP.build(parent, inset)
     UF.cycleButton(arrowSizeBtn, function(dir) UF.QuestArrow.nextSize(dir) end, QP.refresh)
     UF.cycleButton(arrowPosBtn, function(dir) UF.QuestArrow.nextPosition(dir) end, QP.refresh)
     UF.cycleButton(arrowArtBtn, function(dir) UF.QuestArrow.nextArt(dir) end, QP.refresh)
-    arrowTurnBtn = button(page, 190); arrowTurnBtn:SetPoint("LEFT", arrowArtBtn, "RIGHT", 6, 0)
-    UF.cycleButton(arrowTurnBtn, function(dir) UF.QuestArrow.nextTurn(dir) end, QP.refresh)
-    tip(arrowTurnBtn, "Quest arrow: turns", "With you: the arrow points the way the objective lies from where your character faces, so it swings the other way when you turn and points up when you face the objective (the way ThePath and ForeverPlusPlus draw theirs). With the map: the compass direction, north at the top, like the arrow at the edge of the minimap. The game gives addons no camera direction, so these are the two there are. A steps forward, X steps back.")
     tip(arrowArtBtn, "Quest arrow: art", "The picture the arrow is drawn with. Minimap arrow is the gold dart the game draws at the edge of the minimap; Quest arrow is the game's tracked-quest atlas; the Old arrow is the plain gold arrow with a black edge, and Old arrow, no edge hides that edge. A picture this client does not have is skipped. A steps forward, X steps back.")
     tip(arrowModeBtn, "Quest arrow: aim", "Direct points straight at the objective. Route follows the game's own route, which uses the roads and paths it plans. Around obstacles points straight, and bends along the game's route only where that route shows something in the way. The game gives addons no terrain data, so the third reads the obstacle from the route. A steps forward, X steps back.")
     tip(arrowSizeBtn, "Quest arrow: size", "How wide the arrow is on the screen, in pixels. A makes it one step bigger, X one step smaller (16 to 128), and it wraps round.")
@@ -153,5 +149,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowArtBtn, arrowTurnBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowArtBtn } }
 end
