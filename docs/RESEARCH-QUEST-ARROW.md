@@ -112,3 +112,26 @@ Read, not guessed (both are Forever addons the user runs; ThePath is kept next t
 ## The user's choice (1.3.170): With the view
 
 The user tried the three ways (1.3.169) and chose "With the view". Their saved `qarrow.debug` from 1.3.165: `viewX` 1130.3, `viewY` 1026.2 with the screen centre at 1052.1, 600.0 (UI units), so in Forever `C_Navigation.GetFrame():GetCenter()` does give the marker's screen position (here near the top of the view, the objective ahead). The turn is `-atan2(viewX - centreX, viewY - centreY)`. With no valid position the arrow now uses `bearing - GetPlayerFacing()` instead of the compass direction.
+
+## Navigation research (2026-11-21): what the game and the examples give, and what had to be learned
+
+Sources: `Blizzard_APIDocumentationGenerated` (Forever build), ForeverPlusPlus (MIT, `Project Support/.../ForeverPlusPlus`), ThePath 1.6.2 (GPL-3.0, `ThePath-1.6.2`), FarstriderLib and its Data package v1794960000 (GPL-3.0, `FarstriderLibData-v1794960000`), two Forever travel guides, and the user's own game through the `/ubf` scans (`tools/read_saved.py navData.<name>`).
+
+**No road, terrain, water, collision, dock or entrance data for addons.**
+- The map points of interest (`C_AreaPoiInfo.GetAreaPOIForMap` on all 60 maps): 16 in total (the six capital-city markers on the world and continent maps, four on the Darkspear Islands), `atlasName` always missing, no boat, zeppelin, skyship or tram. The only "transport-like" hit was Shipwreck Cove (a false positive).
+- `C_EncounterJournal.GetDungeonEntrancesForMap`: empty on every map (the Encounter Journal is switched off in Forever: ForeverPlusPlus `docs/forever-api.md`, game rule `EncounterJournalDisabled`).
+- `C_QuestLog.GetNextWaypoint` / `GetNextWaypointForMap` / `C_Navigation.GetNextWaypointForMap`: existed but answered nothing for the user's quest on its own map ("route step: none from the game").
+- Camera direction: not available to addons (ForeverPlusPlus `docs/forever-api.md`). The screen position of the game's navigation target (`C_Navigation.GetFrame():GetCenter()`) is: the user's saved numbers showed it at (1130.3, 1026.2) with the screen centre at (1052.1, 600.0) while the objective was ahead. In 1.3.165 the arrow built on it seemed to "sit in place" because the objective stayed ahead, and because with no valid position it fell back to the compass direction; the user then chose "with the view" anyway.
+
+**What the maps scan gave**: 60 maps with sizes in yards (Kalimdor 36799.8 x 24533.2, Eastern Kingdoms 35199.9 x 23466.6, zones 790 to 10133 yd wide), their parents and rectangles on the parent. World positions: `cx = -south_yd + c1`, `cy = -east_yd + c2` (least squares over the 23 Kalimdor zones: coefficients -1.000 and -0.000), so x is north and y is west; Orgrimmar to Durotar's middle is 1775 yd. The 1463 and 1464 maps (type 2, parent 0) are older duplicates of the continents.
+
+**Flight masters** (`C_TaxiMap.GetTaxiNodesForMap`, any time, not only at a flight master): 76 distinct nodes on the two continent maps, each map listing both factions' nodes (faction 0 neutral 9, 1 Horde 33, 2 Alliance 34), atlas `TaxiNode_Alliance/Horde/Neutral`; one node is named `zzOLDPowderfuse Port, Riverglades`. The first scan stored `isUndiscovered` as `n.isUndiscovered and true or false`, which turned nil into false, so it could not say whether the game reports discovery; `FlightPaths.lua` keeps nil, true and false apart and trusts the flag only when some node says true. ThePath's finding for Forever: every node the flight map lists is discovered (`C_TaxiMap.GetAllTaxiNodes` at a master).
+
+**The examples**
+- ThePath: the trail is a straight line of dots; the arrow is `SetRotation(angle - GetPlayerFacing())`; zone crossings are learned from players (where the zone changes on foot) and shared; one hand-made water pair; a travel planner over walking, flights, hearth and eight Horde/neutral docks ("approximate dock positions"); it sets the game's waypoint (`C_Map.SetUserWaypoint` then `C_SuperTrack.SetSuperTrackedUserWaypoint(true)`).
+- ForeverPlusPlus: the same arrow; the quest point from `GetNextWaypoint` else `GetQuestsOnMap` up the map tree; a map pin layer built on a map data provider (`CreateFromMixins(MapCanvasDataProviderMixin)`, plain frames on `map:GetCanvas()`), which `FlightPaths.lua` follows.
+- FarstriderLib (Dijkstra over a travel graph, `FindTrail`/`FindTrailTo`): edge types travel (a straight line times a detour factor), flight path, portal, boat, zeppelin, item, spell, tram; "isolated area" settings say whether two places can be reached directly. Its Forever ("Camelot") data has 16 connections: the Deeprun Tram (8), Menethil-Theramore (as Baradin Bay - Theramore - Menethil), Booty Bay-Ratchet and 8 mage portals; no zeppelins.
+- The wiki pages for boats and zeppelins (warcraft.wiki.gg) give no dock coordinates.
+
+**Therefore** the addon learns, and keeps everything in `DB.learned` (never expires, only grows): `Trail.lua`. Open question for the next reader: how `GetUnitSpeed("player")` and the map position behave on a boat or zeppelin in Forever (the ride detector assumes speed 0 while the position moves; the first play data showed `GetUnitSpeed` 0 with 1 to 3 yd of drift while standing, hence the 8 yd in 2 s rule).
+

@@ -3733,6 +3733,14 @@ r = L("""function()
     local leg = T.bestRide({ cont = 0, wx = 100, wy = 0 }, { cont = 1, wx = -3700, wy = 4600 }, "Alliance")
     local none = T.bestRide({ cont = 0, wx = 100, wy = 0 }, { cont = 1, wx = -3700, wy = 4600 }, "Neutral")
     out[#out + 1] = tostring(leg and leg.f) .. "/" .. tostring(none)
+    -- the drift seen in the first real play data (1 to 3 yards a sample while standing still) starts no ride at all
+    reset()
+    local xd = 0
+    sample(0, xd, 0, 0)
+    for _, m in ipairs({ 2, 1, 3, 1, 1, 2, 1, 2, 1, 2, 1, 3, 1, 1 }) do xd = xd + m; sample(0, xd, 0, 0) end
+    local drift = 0
+    for _, e in ipairs((UF.DB().learned and UF.DB().learned.log) or {}) do if e[1] == "ride-start" then drift = drift + 1 end end
+    out[#out + 1] = "drift " .. drift
     -- a short wobble on a platform is no route, and standing at a dock is none either
     reset()
     for i = 1, 6 do sample(0, i * 2, 0, 0) end
@@ -3751,7 +3759,7 @@ r = L("""function()
     return table.concat(out, " | ")
 end""")()
 assert str(r) == ("n ok same | path true len 595 straight 424 points many | nil | nil | skipped 0 | 1/Alliance/0>1/n1 | 1/n2 | 2 | Alliance/nil | "
-                  "wobble 0 | Shadowfang Keep/100/110/n1/true"), r
+                  "drift 0 | wobble 0 | Shadowfang Keep/100/110/n1/true"), r
 print("Learning: the walked trail routes round what you walked round, rides are learned per faction and merge, entrances learn both sides, taxis and swims add nothing: OK")
 r = L("""function()
     local UF = _G.UbermocForever

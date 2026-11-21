@@ -1,3 +1,8 @@
+Ubermoc-Forever 1.3.177
+- Fixed: the ride learning started "rides" on tiny drift. The first real play data (your game, 2026-11-21) showed 27 false ride starts on 1 to 3 yards of drift while you walked about and talked to NPCs; none was long enough to be learned, but it fired far too easily. A ride now needs about 8 yards of movement in 2 seconds while you stand still (a boat or a zeppelin moves 4 yards a second or more). The offline test checks the drift and fails with the old rule. The trail learning itself worked: 83 points and 83 steps from one short walk.
+- Added: `tools/read_saved.py`, which reads the game's saved settings and prints any part (the learned data, the scans, the timeline, the stealth incidents, the arrow's numbers), so the next person can read what the game has recorded.
+- Docs: the hand-off (`HANDOFF.md`, "WHERE THINGS STAND"), the notes for the local model, the agent notes and the research notes now record everything learned about navigation: what the game gives and does not give, the coordinate system, the example addons and their licences, the routes Forever has, and the open work.
+
 Ubermoc-Forever 1.3.176
 - Added: a refused Stealth (also Prowl and Shadowmeld) saves itself. When one of those casts fails, the last ten seconds of the timeline are kept as an incident in the saved settings (the last 12), together with the game's own error text that follows, and one line in chat says what happened ("Stealth refused 2.5 s after the fight ended. In combat: yes. The game said: ..."). So the delay does not have to be repeated on purpose: play, and when it happens the evidence is already there. `/ubf combat` shows the last one.
 

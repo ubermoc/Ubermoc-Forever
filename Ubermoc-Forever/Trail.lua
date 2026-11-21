@@ -21,7 +21,10 @@ T.NODE_GAP = 15          -- a new trail point only when this far from the last o
 T.MERGE = 20             -- a point this close to a known one is that one
 T.EDGE_MAX = 70          -- the longest step between two joined points
 T.MAX_NODES = 8000       -- per continent: more would make the saved settings too big
-T.PLATFORM_MIN = 1.5     -- yards moved in one sample while standing still: the ground is moving (a boat, a zeppelin, a tram)
+T.PLATFORM_MIN = 1.5     -- yards moved in one sample while standing still, once a ride has started
+T.PLATFORM_SUM = 8       -- a ride starts when the last 4 samples (2 seconds) at rest add up to this many yards: from the first real play data (2026-11-21)
+                         -- the 1.5-yard rule alone started 27 false rides on 1 to 3 yards of drift while walking about and talking; none was long
+                         -- enough to be learned, but a boat or a zeppelin moves 4 yards a second or more
 T.RIDE_MIN = 150         -- a ride shorter than this is not a route
 T.RIDE_SECONDS = 8       -- nor one shorter than this
 T.RIDE_MERGE = 120       -- two rides whose ends are this close together are the same route
@@ -215,7 +218,7 @@ end
 ----------------------------------------------------------------------
 -- Rides: a moving platform under a player who is not moving (boat, zeppelin, tram), or the world loading during one
 ----------------------------------------------------------------------
-local st = { prev = nil, lastWalk = nil, ride = nil, still = 0, crossed = false }
+local st = { prev = nil, lastWalk = nil, ride = nil, still = 0, crossed = false, win = {} }
 T.state = st
 
 local function faction()
@@ -254,21 +257,29 @@ function T.feed(s)
         if st.ride then endRide(s, "loading") end
         T.breakWalk()
         prev = nil
+        st.win = {}
     end
     if s.onTaxi or s.dead then
-        st.ride, st.lastWalk = nil, nil
+        st.ride, st.lastWalk, st.win = nil, nil, {}
         T.breakWalk()
         return
     end
     local moved = prev and dist(prev, s) or nil
     local selfMove = (s.speed or 0) > 0.5
     if selfMove then
+        st.win = {}
         if st.ride then endRide(s, "stepped off") end
         st.lastWalk = copyPos(s)
         -- the trail grows only from steps on foot on open ground
         if not (s.swimming or s.flying or s.inInstance or (s.speed or 0) > 20) then T.walk(s.cont, s.wx, s.wy) else T.breakWalk() end
     else
-        if moved and moved >= T.PLATFORM_MIN then
+        local w = st.win
+        w[#w + 1] = moved or 0
+        if #w > 4 then table.remove(w, 1) end
+        local sum, least = 0, 1e9
+        for _, v in ipairs(w) do sum = sum + v; if v < least then least = v end end
+        local sustained = #w == 4 and sum >= T.PLATFORM_SUM and least >= 1
+        if moved and moved >= T.PLATFORM_MIN and (st.ride or sustained) then
             if not st.ride then
                 st.ride = { from = st.lastWalk or (prev and copyPos(prev)) or copyPos(s), t0 = s.t, len = 0 }
                 T.breakWalk()

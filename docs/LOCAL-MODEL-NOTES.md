@@ -85,8 +85,22 @@ Short answers. Believe a bug report and reproduce it. Do not change stated behav
 templates, no invented textures. One feature at a time. Ask before anything outward-facing (release, push, install on his machine).
 Fish shell: one command per code block.
 
-## 5. When something "does nothing" in the game (added 1.3.157)
+## 9. When something "does nothing" in the game (added 1.3.157)
 - No error in the error addon does NOT mean no error: a bare `pcall(f)` throws the message away (the X-on-bags bug hid inside `pcall(G.update)` for a day). Use `UF.try("label", fn, ...)` for our own code that runs from a ticker, an event or a click; `/ubf errors` in the game prints what it caught. `tools/check_lua.py` refuses a file whose count of statement-level `pcall(` grows past `tools/silent-pcall-baseline.json`.
 - Find which step fails before changing the approach: does the legend show it (`/ubf x`), does the action resolve, does the click fire. Ask the user for one answer per step.
 - The stub frames in `tools/smoke_test.py` raise when a method is called without its frame (`f.GetName()` instead of `f:GetName()`), like the game. Do not loosen them; if a test fails on that, the addon has the bug.
 - A fix is proven by a test that fails on the old code: `proof run ... --fails-on main --keep tools/smoke_test.py -- ...` (see the harness README). Three failed attempts at one thing: stop and write a blocked hand-off.
+
+## 10. State at 1.3.177 and what this session taught (read with HANDOFF.md, "WHERE THINGS STAND")
+- The top of `HANDOFF.md` lists what exists, what is verified in the game and what is not, what was learned, and the open work in order. Start there.
+- Lessons that cost days, in one line each:
+  - A test stub more forgiving than the game hides the bug. Make the stub reject what the game rejects (`f.Method()` without the frame, a second argument to `math.atan`, a texture with no point, `SetAtlas` answering nothing). When a fix "works offline" and not in the game, the first suspect is a stub.
+  - `x and f()` keeps only the first return value of `f`. `pcall(f)` as a statement throws the error away. The game's Lua is 5.1.
+  - "No error shown" is not "no error": look for a bare `pcall`. Add `UF.try` and read `/ubf errors`.
+  - When something does nothing, find WHICH step fails (does it start, resolve, fire) before changing the approach. Ask the user for one fact per step, or add a recorder that saves the facts to disk (`DB.*`, read with `tools/read_saved.py` after a `/reload`). That solved the arrow direction in one round once the numbers were on disk.
+  - Do not guess what the game exposes: read `Blizzard_APIDocumentationGenerated` and the example addons (ForeverPlusPlus, ThePath), then scan the live game with the `/ubf` scan tools and read the result. The scans showed in one minute that docks and entrances are not available.
+  - Do not fix a symptom you cannot reproduce. Record it (see `Diag.lua`), then fix what the record shows. A guessed stealth fix broke other things once.
+  - The user's wording matters: "with the view", "breadcrumbs", "old arrow only", "no options". When they remove options, remove the button and the code path; when they bring them back to choose, restore the exact earlier version (it is in git history).
+  - Licences: this addon is MIT. Read GPL addons for ideas, copy nothing. Ask before downloading anything; put downloads in the research folder in their own folder.
+- Before a release: the offline test, the checker for every file, `bash tools/test_install.sh`, then the user's own test in the game. Release only when the user says (this one he did).
+
