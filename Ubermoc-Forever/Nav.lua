@@ -182,7 +182,7 @@ after:RegisterEvent("PLAYER_REGEN_DISABLED")
 after:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_REGEN_DISABLED" then held = nil
     elseif event == "PLAYER_LOGIN" then if #stack == 0 then Nav.manageClicks(false); Nav.healClicks() end
-    else rebind() end
+    else if UF.diag then UF.diag("ours", "window buttons rebound") end; rebind() end
 end)
 after:RegisterEvent("PLAYER_LOGIN")   -- cursor clicks taken before a /reload or a crash are given back
 Nav._after = after   -- for the offline test

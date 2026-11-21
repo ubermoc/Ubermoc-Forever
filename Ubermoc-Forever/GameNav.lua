@@ -1492,6 +1492,7 @@ end
 -- Active or not
 ----------------------------------------------------------------------
 local function release()
+    if entry and UF.diag then UF.diag("ours", "window buttons given back") end
     if entry then UF.Nav.Pop(entry); entry = nil end
     focus = nil
     G.direct = nil
@@ -1620,6 +1621,7 @@ G.entryMaps = entryMaps   -- for the offline test
 
 local function engage()
     local m, s = entryMaps()
+    if UF.diag then UF.diag("ours", "window buttons taken") end
     entry = UF.Nav.Push(m, s)
 end
 

@@ -3878,5 +3878,46 @@ end""")()
 assert str(r) == ("4 nodes | false/0/3 | true/1/2 | 2/1 | Near Post/0 | Horde Camp | true/Free Port | 0.5,0.5 0.50,0.50 0.30,0.40 nil | "
                   "Far Tower+Free Port | Far Tower | Off: | On:Far Tower+Free Port | Free Port | 1414/0.3/0.7/nil"), r
 print("Flight paths: the game's flags are used only when they say something, the flight map marks what it lists, the map pins show only what you have not found, of your faction, and go when hidden, switched off or found: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local D = UF.Diag
+    local saved = { GetTime, IsStealthed, UnitAffectingCombat }
+    UF.DB().combatLog = nil
+    local now = 100
+    GetTime = function() return now end
+    local stealthed = false
+    IsStealthed = function() return stealthed end
+    local out = {}
+    -- a conversation ends: the log notes it, and the work of ours after it
+    D.on("GOSSIP_SHOW"); now = 103
+    UF.diag("ours", "window buttons given back")
+    now = 103.4; D.on("GOSSIP_CLOSED")
+    now = 104.1; D.on("UNIT_SPELLCAST_FAILED", "player", "guid", 1784)
+    now = 104.2; D.on("UI_ERROR_MESSAGE", 50, "Not yet.")
+    now = 104.3; D.on("UNIT_SPELLCAST_FAILED", "party1", "guid", 1784)            -- somebody else: ignored
+    now = 105; stealthed = true; D.on("UPDATE_STEALTH")
+    local log = UF.DB().combatLog
+    local kinds = {}
+    for _, e in ipairs(log) do kinds[#kinds + 1] = e.k end
+    out[#out + 1] = table.concat(kinds, ",")
+    out[#out + 1] = log[#log - 2].a .. "/" .. tostring(log[#log - 1].a) .. "/" .. tostring(log[#log].a)
+    -- the ring keeps the last 80
+    for i = 1, 100 do D.log("x" .. i) end
+    out[#out + 1] = #UF.DB().combatLog .. "/" .. UF.DB().combatLog[1].k
+    -- the report runs and is relative to the end of the talk
+    UF.DB().combatLog = nil
+    now = 10; D.on("PLAYER_REGEN_ENABLED"); now = 12.5; D.on("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 1784)
+    local said = {}
+    local realSay = UF.say
+    UF.say = function(m) said[#said + 1] = m end
+    D.report()
+    UF.say = realSay
+    out[#out + 1] = (said[2]:find("%+0.00") and "base" or "?") .. "/" .. (said[3]:find("%+2.50") and "+2.5" or said[3])
+    GetTime, IsStealthed, UnitAffectingCombat = saved[1], saved[2], saved[3]
+    UF.DB().combatLog = nil
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == "gossip_show,ours,talk-ended,SPELLCAST_FAILED,error-text,stealth | 1784/Not yet./on | 80/x21 | base/+2.5", r
+print("Combat timeline: conversations, fights, casts and the game's error text are recorded, other players' casts are not, the log keeps 80, the report is relative to the end: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

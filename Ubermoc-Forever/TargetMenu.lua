@@ -118,6 +118,7 @@ local function build()
     plain:SetScript("OnEvent", function(_, e, unit)
         if e == "UNIT_FLAGS" and unit ~= "target" then return end
         if e == "PLAYER_REGEN_ENABLED" and not pending then
+            if UF.diag then UF.diag("ours", "interact key re-applied") end
             T.apply()   -- a target may have changed during the fight
             return
         end

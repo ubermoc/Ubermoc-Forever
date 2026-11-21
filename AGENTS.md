@@ -50,7 +50,7 @@ TOC load order: `Core, Layouts, Detect, Binds, Start, Legend, Nav, GameNav, Item
   `/cast <spell>`, `/click FrameName RightButton`. Max 8 entries. Only weapon slots 16 and 17 are offered (never ranged).
 - `Legend.lua`, `Options.lua`, `Menu.lua`, `Start.lua`: see `HANDOFF.md` section 2.
 - Debug commands in game: `/ubf check`, `/ubf tabs` (tab groups found), `/ubf item` (what the game says about the
-  highlighted item), `/ubf nav on|off`; navigation scans, one at a time, saved into the saved settings: `/ubf docks`, `/ubf taxi`, `/ubf maps`, `/ubf entrances`, `/ubf scans [stop]`; `/ubf learned` (what the trail, ride and entrance learning knows); `/ubf flightpaths [show]` (what the game says about flight points; show brings hidden pins back); `/ubf arrow`, `/ubf errors`, `/ubf loads`. `/run` and `/dump` are blocked in Forever; never ask the user to type scripts.
+  highlighted item), `/ubf nav on|off`; navigation scans, one at a time, saved into the saved settings: `/ubf docks`, `/ubf taxi`, `/ubf maps`, `/ubf entrances`, `/ubf scans [stop]`; `/ubf learned` (what the trail, ride and entrance learning knows); `/ubf combat` (the timeline around the end of a fight or a talk, for the stealth delay); `/ubf flightpaths [show]` (what the game says about flight points; show brings hidden pins back); `/ubf arrow`, `/ubf errors`, `/ubf loads`. `/run` and `/dump` are blocked in Forever; never ask the user to type scripts.
 
 ## Things learned that are easy to get wrong
 - **Taint / secure rules:** protected actions (clicking, `/use`, targeting) must run from a secure button, not from our

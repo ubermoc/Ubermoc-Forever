@@ -1,3 +1,7 @@
+Ubermoc-Forever 1.3.175
+- Added: a timeline recorder for the stealth delay (stealth not working straight after a fight or after talking to an NPC). It keeps the last 80 events in the saved settings: combat starting and ending, conversations opening and closing, stealth on and off, the player's casts starting, succeeding or failing, the red error text the game shows, when Stealth becomes usable in the six seconds after a fight or a talk, and what this addon does at those moments (the window buttons taken and given back, the cinematic camera, the gamepad layout, the interact key, the nameplate setting). `/ubf combat` prints it relative to the end of the fight or the talk. Nothing in play changes; the cause is read from it, not guessed.
+- Changed: the flight path pins on the world map are on for a new install too (they were already on unless you switched them off).
+
 Ubermoc-Forever 1.3.174
 - Changed: the quest arrow has one way of aiming, Breadcrumbs, and no setting for it. The Aim button and the Direct, Route and Around obstacles aims are gone. Where the player cannot be read, the arrow falls back to the plain straight line.
 

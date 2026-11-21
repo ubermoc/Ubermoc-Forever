@@ -11,6 +11,7 @@
  "Core.lua": 0,
  "Describe.lua": 0,
  "Detect.lua": 1,
+ "Diag.lua": 1,
  "DialogButtons.lua": 1,
  "Fade.lua": 1,
  "FadePage.lua": 0,

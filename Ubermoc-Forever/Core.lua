@@ -50,6 +50,7 @@ UF.SEED = {
     gbar = { extras = false, faceColor = false, gap = 0, hideEmpty = true, on = true, raise = 0, size = 40 },
     aim = { dist = 3, on = true, size = 1, v2 = true },
     qarrow = { on = true },
+    flightPins = { on = true, hidden = {} },
     cinemaEdges = 3,
     cinemaBars = 3,
     chat = { auto = { chat = true, chatbtns = true, chatedit = true, chattabs = true, quickjoin = true }, fade = 3, on = true, reveal = true, visible = 5, editTop = false },
@@ -337,6 +338,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.NavScan then UF.NavScan.start(msg) end
     elseif msg == "scans" or msg == "scans stop" then
         if UF.NavScan then UF.NavScan.status(msg == "scans stop") end
+    elseif msg == "combat" then
+        if UF.Diag then UF.Diag.report() end
     elseif msg == "flightpaths" then
         if UF.FlightPaths then UF.FlightPaths.report() end
     elseif msg == "flightpaths show" then

@@ -196,7 +196,10 @@ f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_REGEN_ENABLED" then
-        if N.pending then N.syncCVar() end
+        if N.pending then
+            if UF.diag then UF.diag("ours", "nameplate setting written") end
+            N.syncCVar()
+        end
         return
     end
     if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then

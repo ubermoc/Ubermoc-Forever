@@ -223,6 +223,7 @@ local function start()
     local em = _G.EditModeManagerFrame
     if em and em.IsShown and em:IsShown() then return end
     S.active, S.goal = true, 1
+    if UF.diag then UF.diag("ours", "cinematic camera started") end
     C.guard(4)
     for cvar, v in pairs(FACE_CVARS) do put(cvar, v) end
     for _, cvar in ipairs(PLATE_CVARS) do put(cvar, "0") end
@@ -237,6 +238,7 @@ end
 local function stop(snap)
     if not S.active then return end
     S.active, S.goal = false, 0
+    if UF.diag then UF.diag("ours", "cinematic camera stopped") end
     if S.oldZoom and GetCameraZoom and not InCombatLockdown() then
         local cur = GetCameraZoom()
         if cur and S.oldZoom > cur + 0.05 and CameraZoomOut then pcall(CameraZoomOut, S.oldZoom - cur) end
