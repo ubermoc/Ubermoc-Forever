@@ -79,6 +79,19 @@ function Q.nextPosition(dir)
     return Q.POSITIONS[n].name
 end
 
+-- The arrow's picture has a hard black edge. Drawn with additive blending black adds nothing, so the edge disappears and only the gold
+-- arrow is seen (a little brighter over light ground); drawn normally the edge is kept as the game's art has it. Off is the default.
+function Q.outlineName() return cfg().outline and "On" or "Off" end
+function Q.toggleOutline() local a = cfg(); a.outline = not a.outline; return a.outline end
+function Q.applyLook(f, a)
+    if not (f and f.art) then return end
+    local want = a.outline and "BLEND" or "ADD"
+    if f.look ~= want then
+        f.art:SetBlendMode(want)
+        f.look = want
+    end
+end
+
 function Q.sizeName() return Q.SIZES[cfg().size].name end
 function Q.nextSize(dir)
     local a = cfg()
@@ -318,6 +331,35 @@ function Q.aimFor(mode, hereMap, pos, targetMap, tx, ty, waypoint, parentOf, row
     return lca, tr.minX + tx * (tr.maxX - tr.minX), tr.minY + ty * (tr.maxY - tr.minY), "shared map", px, py
 end
 
+-- The picture is Blizzard's own tracked-quest arrow, found three ways, best first; the way is kept in Q.artSource for /ubf arrow:
+--  1. what the game's own arrow frame (SuperTrackedFrame.Arrow, Blizzard_QuestNavigation) is drawing: asked of the frame itself, so it is
+--     exactly the art this client uses, whatever its name;
+--  2. the atlas Navigation-Tracked-Arrow (claim C10), set and then read back (SetAtlas answers nothing, and GetAtlasInfo can answer
+--     nothing for an atlas that does set);
+--  3. the older minimap quest arrow, so there is always a picture.
+-- The game's frame may not exist yet when the arrow is first built, so update() asks again every few seconds until way 1 has answered.
+function Q.pickArt(f)
+    local art = f.art
+    local function readBack(wanted)
+        local okG, got = pcall(art.GetAtlas, art)
+        return okG and got == wanted
+    end
+    local src = _G.SuperTrackedFrame and _G.SuperTrackedFrame.Arrow
+    if src and src.GetAtlas then
+        local okA, atlas = pcall(src.GetAtlas, src)
+        if okA and type(atlas) == "string" and atlas ~= "" then
+            local okS = pcall(art.SetAtlas, art, atlas)
+            if okS and readBack(atlas) then Q.artSource, Q.artName = "the game's own arrow frame", atlas; return end
+        end
+    end
+    if Q.artSource == "the atlas" then return end
+    local okS = pcall(art.SetAtlas, art, Q.ATLAS)
+    if okS and readBack(Q.ATLAS) then Q.artSource, Q.artName = "the atlas", Q.ATLAS; return end
+    if Q.artSource then return end
+    art:SetTexture(Q.FALLBACKART)
+    Q.artSource, Q.artName = "the older minimap arrow (the atlas could not be set)", Q.FALLBACKART
+end
+
 local arrow
 
 local function build()
@@ -329,14 +371,7 @@ local function build()
     arrow:SetClampedToScreen(true)       -- claim C38
     arrow.art = arrow:CreateTexture(nil, "OVERLAY")
     arrow.art:SetPoint("CENTER", arrow, "CENTER", 0, 0)   -- a texture with no point is never drawn
-    -- the games own quest navigation art (claim C10), the same atlas Blizzard's tracked-quest arrow uses. SetAtlas answers nothing, so whether
-    -- the atlas exists is asked of GetAtlasInfo; without it the older minimap quest arrow stands in (the arrow always has a picture)
-    local hasAtlas = false
-    if C_Texture and C_Texture.GetAtlasInfo then
-        local okA, info = pcall(C_Texture.GetAtlasInfo, Q.ATLAS)
-        hasAtlas = okA and info ~= nil
-    end
-    if hasAtlas then arrow.art:SetAtlas(Q.ATLAS) else arrow.art:SetTexture(Q.FALLBACKART) end
+    Q.pickArt(arrow)
     -- the games own distance font (claim C39), under the arrow like Blizzard's
     arrow.text = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     arrow.text:SetPoint("TOP", arrow, "BOTTOM", 0, 4)
@@ -492,7 +527,28 @@ local function update()
     if not face then Q.why = "the game does not give the direction you face"; hide(); return end
 
     Q.why = nil
-    f.art:SetRotation(Q.rotation(angle, face))  -- claims C8 and C9
+    if Q.artSource ~= "the game's own arrow frame" and GetTime and (GetTime() - (Q.artAsked or -9) >= 3) then
+        Q.artAsked = GetTime()
+        Q.pickArt(f)
+    end
+    Q.applyLook(f, a)
+    local turn = Q.rotation(angle, face)
+    f.art:SetRotation(turn)  -- claims C8 and C9
+    -- The numbers behind the arrow, kept in the saved settings (DB.qarrow.debug, written at /reload or logout) and printed by /ubf arrow, so
+    -- a wrong direction can be read from the real values instead of guessed: where you stand, where it aims, which way you face, what the
+    -- bearing is, how far the picture was turned, what the picture reports back, and which art it is.
+    local d = a.debug or {}
+    a.debug = d
+    d.mode, d.source, d.quest, d.here, d.aimMap = Q.MODES[a.mode], source, quest, here, aimMap
+    d.px, d.py, d.ax, d.ay, d.tx, d.ty, d.tmap = pos.x, pos.y, ax, ay, tx, ty, tmap
+    d.facing, d.bearing, d.turn, d.yards, d.mapW, d.mapH = face, angle, turn, yards, w, h
+    local okR, applied = pcall(f.art.GetRotation, f.art)
+    d.applied = (okR and type(applied) == "number") and applied or nil
+    local okA, atlas = pcall(f.art.GetAtlas, f.art)
+    d.atlas = (okA and type(atlas) == "string") and atlas or nil
+    d.artSource, d.artName = Q.artSource, Q.artName
+    local okT, tex = pcall(f.art.GetTexture, f.art)
+    d.texture = (okT and (type(tex) == "string" or type(tex) == "number")) and tex or nil
     Q.showDistance(f, yards, aimMap ~= here)
     if not f:IsShown() then f:Show() end
 end
@@ -513,6 +569,15 @@ function Q.report()
         .. has("C_Navigation", "GetNextWaypointForMap") .. ", GetNextWaypoint " .. has("C_QuestLog", "GetNextWaypoint")
         .. ", GetMapRectOnMap " .. has("C_Map", "GetMapRectOnMap"))
     if Q.why then UF.say("The arrow is hidden: " .. Q.why .. ".") end
+    local d = cfg().debug
+    if d and d.facing then
+        local function deg(r) return string.format("%.0f", (r or 0) * 180 / math.pi) end
+        UF.say(string.format("Numbers: you at %.4f %.4f on map %s, aiming at %.4f %.4f on map %s (objective %.4f %.4f on map %s), %.0f yd",
+            d.px or 0, d.py or 0, tostring(d.here), d.ax or 0, d.ay or 0, tostring(d.aimMap), d.tx or 0, d.ty or 0, tostring(d.tmap), d.yards or 0))
+        UF.say("You face " .. deg(d.facing) .. " deg counter-clockwise from north, the bearing is " .. deg(d.bearing) .. ", the arrow is turned "
+            .. deg(d.turn) .. " (the picture reports " .. (d.applied and deg(d.applied) or "nothing") .. "), art " .. tostring(d.atlas or d.texture)
+            .. ", mode " .. tostring(d.mode) .. ", aim source " .. tostring(d.source))
+    end
     local l = Q.last
     if not l then UF.say("Nothing has been pointed at yet."); return end
     UF.say("Standing on map " .. tostring(l.here) .. ", objective on map " .. tostring(l.target) .. ", quest " .. tostring(l.quest)

@@ -86,7 +86,11 @@ local function proxy(name)
         -- like the game: a texture or text with no point is never drawn, so the stub counts the points a region was given;
         -- SetAtlas, SetTexture and SetPoint answer nothing (the 1.3.146 arrow took "answers nothing" for "failed" and never drew)
         if k == "SetPoint" or k == "SetAllPoints" then return function(s) rawset(s, "__points", (rawget(s, "__points") or 0) + 1) end end
-        if k == "SetAtlas" or k == "SetTexture" then return function(s, v) rawset(s, "__art", v) end end
+        if k == "SetBlendMode" then return function(s, v) rawset(s, "__blend", v) end end
+        -- SetAtlas answers nothing; GetAtlas reads back what was set, and nothing when the atlas is not in the client (as the game does)
+        if k == "SetAtlas" then return function(s, v) if not rawget(_G, "__noAtlas") then rawset(s, "__art", v); rawset(s, "__atlas", v) end end end
+        if k == "GetAtlas" then return function(s) return rawget(s, "__atlas") end end
+        if k == "SetTexture" then return function(s, v) rawset(s, "__art", v); rawset(s, "__atlas", nil) end end
         return function() return proxy("ret") end
     end
     setmetatable(t, mt)
@@ -1884,7 +1888,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,8/3/1/3/2/2/1/3/4,true,1", r
+assert str(r) == "1,2,3,2,1,5,8/3/1/3/2/2/1/3/5,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -3548,5 +3552,41 @@ assert str(r) == ("4.7124 0.0000 | face N, objective E: right | face N, objectiv
                   "face E, objective S: right | face W, objective N: right | face S, objective N: behind | "
                   "face N, objective N: ahead | face E, objective E: ahead"), r
 print("Quest arrow: the arrow turns the way the objective lies (right of you is right on screen), all four facings: OK")
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local f = Q.frame()
+    local a = Q.cfg()
+    a.outline = nil
+    Q.applyLook(f, a)
+    local out = { Q.outlineName() .. " " .. tostring(rawget(f.art, "__blend")) }      -- no outline: additive blending hides the black edge
+    Q.toggleOutline(); Q.applyLook(f, a)
+    out[#out + 1] = Q.outlineName() .. " " .. tostring(rawget(f.art, "__blend"))      -- the game's art as drawn
+    Q.toggleOutline(); Q.applyLook(f, a)
+    out[#out + 1] = Q.outlineName() .. " " .. tostring(rawget(f.art, "__blend"))
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == "Off ADD | On BLEND | Off ADD", r
+print("Quest arrow: the outline button switches between additive (no black edge) and the game's art as drawn: OK")
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local out = {}
+    local function pick(setup)
+        local f = { art = CreateFrame("Frame", nil, UIParent):CreateTexture(nil, "OVERLAY") }
+        Q.artSource, Q.artName = nil, nil
+        setup()
+        Q.pickArt(f)
+        return tostring(Q.artSource):sub(1, 22) .. ":" .. tostring(Q.artName) .. ":" .. tostring(rawget(f.art, "__art"))
+    end
+    _G.__noAtlas = nil
+    out[#out + 1] = pick(function() _G.SuperTrackedFrame = { Arrow = { GetAtlas = function() return "Navigation-Tracked-Arrow" end } } end)
+    out[#out + 1] = pick(function() _G.SuperTrackedFrame = nil end)
+    _G.__noAtlas = true                                                 -- a client without the atlas: the older art stands in
+    out[#out + 1] = pick(function() end)
+    _G.__noAtlas = nil
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("the game's own arrow f:Navigation-Tracked-Arrow:Navigation-Tracked-Arrow | the atlas:Navigation-Tracked-Arrow:Navigation-Tracked-Arrow | "
+                  "the older minimap arro:Interface\\Minimap\\MiniMap-QuestArrow:Interface\\Minimap\\MiniMap-QuestArrow"), r
+print("Quest arrow: the picture comes from the game's own arrow frame, else the atlas, else the older art; SetAtlas is read back: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

@@ -1,3 +1,8 @@
+Ubermoc-Forever 1.3.162
+- Changed: the quest arrow's picture is now taken from the game's own arrow frame (the one Blizzard draws for a selected quest) when this client has it, then the Navigation-Tracked-Arrow atlas, set and read back, and only then the older minimap arrow. The earlier check asked `GetAtlasInfo`, which can answer nothing for an atlas that does set, so the older art could be drawn instead of Blizzard's. `/ubf arrow` says which one is drawn.
+- Added: an Outline button on the Quality of life page. Off (the default) hides the arrow picture's hard black edge by drawing it with additive blending; On draws the game's art as it is.
+- Added: the numbers behind the arrow (where you stand, where it aims, which way you face, the bearing, the turn, the art) are kept in the saved settings and printed by `/ubf arrow`, so a wrong direction can be read instead of guessed.
+
 Ubermoc-Forever 1.3.161
 - Fixed: the quest arrow pointed the wrong way (to the mirror image of the objective). It turned by the negative of the angle between where you face and where the objective lies, but the game turns a picture counter-clockwise by what it is given, as both the bearing and your facing are measured. Now an objective on your right is on the right of the arrow. The offline test checks all four facings against the real geometry.
 

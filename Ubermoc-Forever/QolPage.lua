@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowLookBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -40,6 +40,7 @@ function QP.refresh()
     arrowModeBtn:SetText("Aim: " .. UF.QuestArrow.modeName())
     arrowSizeBtn:SetText("Size: " .. UF.QuestArrow.sizeName())
     arrowPosBtn:SetText("Place: " .. UF.QuestArrow.positionName())
+    arrowLookBtn:SetText("Outline: " .. UF.QuestArrow.outlineName())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -123,11 +124,14 @@ function QP.build(parent, inset)
     note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The plate range row writes the game's distance settings, and Off gives back the values you had before. The quest mark and progress work on every nameplate.", -376)
 
     heading("Quest arrow", -408)
-    arrowBtn = button(page, 130); arrowBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -430)
+    arrowBtn = button(page, 120); arrowBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -430)
     toggle(arrowBtn, UF.QuestArrow.toggle)
-    arrowModeBtn = button(page, 190); arrowModeBtn:SetPoint("LEFT", arrowBtn, "RIGHT", 6, 0)
-    arrowSizeBtn = button(page, 110); arrowSizeBtn:SetPoint("LEFT", arrowModeBtn, "RIGHT", 6, 0)
-    arrowPosBtn = button(page, 210); arrowPosBtn:SetPoint("LEFT", arrowSizeBtn, "RIGHT", 6, 0)
+    arrowModeBtn = button(page, 150); arrowModeBtn:SetPoint("LEFT", arrowBtn, "RIGHT", 6, 0)
+    arrowSizeBtn = button(page, 90); arrowSizeBtn:SetPoint("LEFT", arrowModeBtn, "RIGHT", 6, 0)
+    arrowPosBtn = button(page, 160); arrowPosBtn:SetPoint("LEFT", arrowSizeBtn, "RIGHT", 6, 0)
+    arrowLookBtn = button(page, 100); arrowLookBtn:SetPoint("LEFT", arrowPosBtn, "RIGHT", 6, 0)
+    toggle(arrowLookBtn, UF.QuestArrow.toggleOutline)
+    tip(arrowLookBtn, "Quest arrow: outline", "The game's arrow picture has a hard black edge. Off hides it, so only the gold arrow shows (it can look a little brighter over light ground). On keeps the picture as the game draws it. A switches it.")
     UF.cycleButton(arrowModeBtn, function(dir) UF.QuestArrow.nextMode(dir) end, QP.refresh)
     UF.cycleButton(arrowSizeBtn, function(dir) UF.QuestArrow.nextSize(dir) end, QP.refresh)
     UF.cycleButton(arrowPosBtn, function(dir) UF.QuestArrow.nextPosition(dir) end, QP.refresh)
@@ -145,5 +149,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowLookBtn } }
 end
