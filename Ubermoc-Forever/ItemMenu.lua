@@ -124,6 +124,11 @@ end
 -- own use, ContainerFrame.lua:1604-1612) - which is why X did nothing in the bags (the user's report). What
 -- does work is the pattern the Y menu already uses: attributes that are strings, the secure "item" action
 -- (SecureTemplates.lua:418-438) or a macro.
+-- 1.3.152: X now does that use for EVERY item in a bag slot. The user's rule: X is a right click, and the game's
+-- right click on a bag slot is the item's own use. So the item types the Y menu also handles (poisons, armour kits,
+-- oils, stones, enchants) and bags are no longer left out; the Y menu keeps its entries, it is just not the only way.
+-- The secure "item" action is the same call the game's right click ends with (C140, C141), so a poison, a kit or a
+-- bag goes through it like anything else.
 function M.rightClickAction(btn)
     if type(btn) ~= "table" then return nil end
     local bag, slot = bagSlot(btn)
@@ -142,11 +147,10 @@ function M.rightClickAction(btn)
     if not (C_Container and C_Container.GetContainerItemInfo) then return no() end
     local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
     if not (ok and info) then return no() end
-    -- armor kits, poisons, oils, stones and enchants keep the Y menu as their way (the user wants that), and
-    -- bags have their own Y flow (Equip in a bag slot), so X is left out for both
-    if M.usedOnItems(info.itemID) or M.isBag(info.itemID) then return no() end
-    -- with no vendor open the game's right click is the item's own use: learning a recipe, using a hearthstone
-    -- - the same secure action as the Y menu's "Use / equip" entry
+    -- with no vendor open the game's right click is the item's own use: learning a recipe, using a hearthstone,
+    -- applying a poison or a kit, equipping a bag - the same secure action as the Y menu's "Use / equip" entry
+    -- (C140: it equips when the item is equippable and not equipped, else uses it; C141: the game's right click
+    -- ends with the same call). 1.3.152: no item type is left out any more.
     return { type = "item", item = bag .. " " .. slot }
 end
 

@@ -661,24 +661,30 @@ end""")()
 assert str(r) == "true,true,false:free|true:taken|true:taken|false:free,2", r
 print("The triggers are only claimed when they have something to do, and given back when they have nothing: OK")
 # X on a bag item: the game's own right click is a protected action on the game's button, and a button stored by
-# our code is refused by the secure click, so X goes through the string actions instead. It uses the item
-# (a recipe, a hearthstone), sells at a vendor when the slot has a name, and does nothing for the item types the
-# Y menu already handles (armor kits, poisons, oils, stones, enchants) and for bags. The legend says what X does.
-# FAKE(C11): the stub stands for C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its
-# itemID (ContainerDocumentation.lua:192-206 and 766-780). FAKE(C12): the class numbers are the game's
-# (ItemConstantsDocumentation.lua:276-291). FAKE(C13): the consumable subclass Potion is 1 (same file:307-308).
-# FAKE(C9): the vendor stands for MerchantFrame with selectedTab (ContainerFrame.lua:1543-1549).
+# our code is refused by the secure click (C141), so X goes through the string actions instead. 1.3.152: X is the
+# game's right click on EVERY item in a slot - the item's own use for a recipe, a hearthstone, a poison or an armor
+# kit (C138, C140), and the equip of an equippable item such as a bag - and it still sells at a vendor through the
+# button name (C145). The legend says what X does.
+# FAKE(C146): the stub stands for C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its
+# itemID (ContainerDocumentation.lua:192-206 and 766-782). FAKE(C142): the class numbers are the game's
+# (ItemConstantsDocumentation.lua:276-291). FAKE(C143): a poison is consumable subclass Other = 8 (same file:307-315).
+# FAKE(C139): the stub tooltip line stands for a line read as lineData.leftText (TooltipDataHandler.lua:339-348).
+# FAKE(C145): the vendor stands for MerchantFrame with selectedTab (ContainerFrame.lua:1543-1550).
 r = L("""function()
     local G, M = UbermocForever.GameNav, UbermocForever.ItemMenu
-    local classes = { [501] = { 9, 0 }, [502] = { 0, 1 }, [503] = { 8, 0 }, [504] = { 1, 11 } }
+    local classes = { [501] = { 9, 0 }, [502] = { 0, 1 }, [503] = { 8, 0 }, [504] = { 1, 11 }, [505] = { 0, 8 } }
     C_Item = {
         GetItemInfoInstant = function(id)
             local c = classes[id] or { 15, 0 }
             return id, "n", "l", (id == 504) and "INVTYPE_BAG" or "", 1, c[1], c[2]
         end,
-        GetItemSpell = function(id) if id == 503 then return "Use: applies the kit" end return nil end,
+        GetItemSpell = function(id) if id == 504 then return nil end return "Use: it" end,
     }
-    local at = { ["0 5"] = 501, ["0 6"] = 502, ["0 7"] = 503, ["0 8"] = 504 }
+    local savedTip = C_TooltipInfo
+    C_TooltipInfo = { GetItemByID = function(id)
+        return { lines = { { leftText = "Name" }, { leftText = "Use: " .. ((id == 505) and "poisons the weapon" or "applies onto an item") } } }
+    end }
+    local at = { ["0 5"] = 501, ["0 6"] = 502, ["0 7"] = 503, ["0 8"] = 504, ["0 9"] = 505 }
     C_Container = { GetContainerItemInfo = function(bag, slot)
         local id = at[bag .. " " .. slot]
         return id and { itemID = id, hyperlink = "|cff|Hitem|h[x]|h|r", stackCount = 1 } or nil
@@ -698,12 +704,15 @@ r = L("""function()
     end
     local recipe = slot("FakeRecipe", 0, 5)              -- a recipe (class 9): X uses it
     local gamepad = slot(nil, 0, 6, "BAG0SLOT")          -- a gamepad bag slot, no global name
-    local kit = slot("FakeKit", 0, 7)                    -- an armor kit: the Y menu's way, so X does nothing
-    local bagItem = slot("FakeBag", 0, 8)                -- a bag: its own Y flow, so X does nothing
+    local kit = slot("FakeKit", 0, 7)                    -- an armor kit (class 8): X uses it like the game would
+    local bagItem = slot("FakeBag", 0, 8)                -- a bag (class 1): the same action equips it
+    local poison = slot("FakePoison", 0, 9)              -- a poison: consumable class 0, subclass Other 8
+    local empty = slot("FakeEmpty", 0, 99)               -- an empty slot: no item to use
     g1[#g1 + 1] = act(M.rightClickAction(recipe))
     g1[#g1 + 1] = act(M.rightClickAction(gamepad))
     g1[#g1 + 1] = act(M.rightClickAction(kit))
     g1[#g1 + 1] = act(M.rightClickAction(bagItem))
+    g1[#g1 + 1] = act(M.rightClickAction(poison))
     MerchantFrame = { IsShown = function() return true end, selectedTab = 1 }
     g2[#g2 + 1] = act(M.rightClickAction(recipe))         -- sells, through the button's name
     g2[#g2 + 1] = act(M.rightClickAction(gamepad))        -- no name to click: nothing
@@ -715,20 +724,23 @@ r = L("""function()
     local a = G.xAction(plain)
     g3[#g3 + 1] = tostring(a.type == "click" and a.clickbutton == plain)
     g3[#g3 + 1] = act(G.xAction(recipe))
-    g3[#g3 + 1] = act(G.xAction(kit))                     -- a bag slot left to the Y menu: no click
+    g3[#g3 + 1] = act(G.xAction(kit))                     -- an armor kit in a slot: the item action
+    g3[#g3 + 1] = act(G.xAction(poison))                  -- a poison in a slot: the item action
+    g3[#g3 + 1] = act(G.xAction(empty))                   -- an empty slot: nothing, and no click to fall back on
     local mail = CreateFrame("Button", "MailItem1", UIParent)
     g3[#g3 + 1] = act(G.xAction(mail))                    -- mail: no target, X takes it in the hook
-    g3[#g3 + 1] = tostring(G.xLabel(recipe)) .. "," .. tostring(G.xLabel(kit) or "no label") .. ","
-        .. tostring(G.xLabel(plain))
+    g3[#g3 + 1] = tostring(G.xLabel(recipe)) .. "," .. tostring(G.xLabel(kit)) .. "," .. tostring(G.xLabel(poison))
+        .. "," .. tostring(G.xLabel(plain))
+    C_TooltipInfo = savedTip
     return table.concat(g1, ";"), table.concat(g2, ";"), table.concat(g3, ";")
 end""")()
 g1, g2, g3 = r
-assert str(g1) == "item|0 5;item|0 6;none;none", g1
-print("X on a bag item: the secure item action for a recipe or a potion, nothing for Y-menu types (armor kits, bags): OK")
+assert str(g1) == "item|0 5;item|0 6;item|0 7;item|0 8;item|0 9", g1
+print("X on a bag item: the secure item action for every type now, recipe, gamepad slot, armor kit, bag and poison: OK")
 assert str(g2) == "macro|/click FakeRecipe RightButton;none;none", g2
 print("X at a vendor: sells through the button name, nothing for an unnamed gamepad slot, nothing on the buyback tab: OK")
-assert str(g3) == "true;item|0 5;none;none;Use,no label,Right-click", g3
-print("X on the rest of the highlight: plain button still clicked, mail still taken in the hook, legend says Use / nothing / Right-click: OK")
+assert str(g3) == "true;item|0 5;item|0 7;item|0 9;none;none;Use,Use,Use,Right-click", g3
+print("X on the rest of the highlight: plain button still clicked, an empty slot gives nothing, mail still taken in the hook, legend says Use for a kit and a poison: OK")
 # Items used on other items, profession actions, and what the bag menu offers
 r = L("""function()
     local UF = UbermocForever

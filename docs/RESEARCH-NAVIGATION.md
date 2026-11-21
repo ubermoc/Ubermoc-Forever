@@ -504,14 +504,26 @@ Sourced this session (claims C1-C4 in the harness):
   the struct carries `itemID` — `Blizzard_APIDocumentationGenerated/ContainerDocumentation.lua`:192-206 (claim C10) and
   :766-780 (claim C11).
 - Classes: Consumable 0, Container 1, ItemEnhancement 8, Recipe 9 (`ItemClass`,
-  `ItemConstantsDocumentation.lua`:276-291, claim C12); consumable subclass Potion is 1 (:307-308, claim C13). So a
-  recipe (class 9) is used, and the types the Y menu already handles — poisons, oils, stones, kits, enchants (class 8,
-  the `usedOnItems` list) — are left to the Y menu, as the user asked.
+  `ItemConstantsDocumentation.lua`:276-291, claim C142); consumable subclass Potion is 1 and `Other` (which is what a
+  poison reports) is 8 (`ItemConsumableSubclass`, :307-315, claim C143). A recipe (class 9) is used. The Y-menu types —
+  poisons, oils, stones, kits, enchants (class 8, the `usedOnItems` list) — were left to the Y menu, as the user asked
+  then; he changed that rule for 1.3.152 (below).
 - What changed: `Ubermoc-Forever/ItemMenu.lua` `M.rightClickAction(btn)` answers what X should do on a bag slot
   (vendor: nothing on the buyback tab, a `/click <name> RightButton` macro when the slot has a global name, nothing for a
-  gamepad slot which has none; otherwise the `item` action unless the item is a Y-menu type or a bag), and
+  gamepad slot which has none; otherwise the `item` action, and from 1.3.152 for every item in the slot), and
   `Ubermoc-Forever/GameNav.lua` `G.xAction(f)` + `G.xLabel(f)` put those attributes on the secure right-click button and
   show the same thing in the legend (`Use`, `Right-click`, `Train`, `Take all`, or nothing when X has no action).
 - Untested in the game: X on a recipe, X on a hearthstone, X on an armor kit (must do nothing), the legend label, and a
   vendor sell on a named slot. Gamepad bag slots have no global name, so a vendor sell there is not possible from our
   code — state this, do not fake a fallback.
+- **1.3.152, the user's rule for X:** X is a right click, and a right click in a bag slot is the item's own use, so nothing
+  is left out any more — a poison, an armour kit, an oil, a stone, an enchant and a bag go through the secure `item`
+  action like anything else. Sources: the game's right click on a bag button ends with
+  `C_Container.UseContainerItem(self:GetBagID(), self:GetID(), nil, BankFrame:GetActiveBankType(), isReagentBankOpen);`
+  (`Mainline/ContainerFrame.lua`:1604-1612, claim C138); the secure `item` action parses the string attribute and equips
+  when `C_Item.IsEquippableItem` is true and `C_Item.IsEquippedItem` is false, else uses it (`SecureTemplates.lua`:418-440,
+  claim C140); the secure `click` still refuses a delegate our code stored (`SecureTemplates.lua`:557-565, claim C141);
+  the vendor path and the buyback tab are as before (`ContainerFrame.lua`:1543-1550, claim C145); the class numbers are
+  claim C142 and the poison subclass is claim C143; `GetContainerItemInfo` and its `itemID` are claims C146 and C144.
+  What the game does with an armour kit or a poison once it uses it cannot be checked offline — only the user in the game
+  can say whether the item is used, applied or just fails with an error.

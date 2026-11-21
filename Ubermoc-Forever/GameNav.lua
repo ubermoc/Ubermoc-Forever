@@ -618,7 +618,7 @@ function G.xAction(f)
     if not right then return { type = "click", clickbutton = f } end
     local act, isBagSlot = right(f)
     if act then return act end
-    if isBagSlot then return nil end   -- a bag slot we leave to the Y menu: no click, nothing to show
+    if isBagSlot then return nil end   -- a bag slot with nothing X can do (no item, or a vendor slot with no name): no click, nothing to show
     return { type = "click", clickbutton = f }
 end
 
