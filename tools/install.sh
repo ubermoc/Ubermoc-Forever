@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Installs the Ubermoc Forever addon into your World of Warcraft: Forever addon folder.
 #
-#   bash tools/install.sh              delete the addon folder in the game's AddOns and copy the WHOLE addon folder in (run again to update)
+#   bash tools/install.sh              delete the addon folder in the game's AddOns and copy the WHOLE addon folder you are working in (run again to update)
+#                                      the folder copied is the project folder this script lives in, so running it from a worker copy installs that worker's work, not main
 #   bash tools/install.sh --link       link it instead of copying, so every change shows up after /reload
 #   bash tools/install.sh --uninstall  remove it again (your saved settings are not touched)
 #   bash tools/install.sh "/path/to/_forever_/Interface/AddOns"   use this folder, skip the search
@@ -14,15 +15,18 @@ set -euo pipefail
 
 ADDON="Ubermoc-Forever"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC="$HERE/../$ADDON"
+WORK="$(cd "$HERE/.." && pwd -P)"    # the project folder this script belongs to: a worker copy, or main
+SRC="${UBF_SRC:-$WORK/$ADDON}"        # what gets copied into the game
 
 MODE="copy"
 EXPLICIT="${WOW_ADDONS:-}"
-for arg in "$@"; do
+while [ $# -gt 0 ]; do
+  arg="$1"; shift
   case "$arg" in
     --link) MODE="link" ;;
     --uninstall) MODE="uninstall" ;;
-    -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    --from) SRC="$(cd "$1" && pwd -P)"; shift ;;   # install this folder instead of the one the script lives in
+    -h|--help) sed -n '2,14p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) EXPLICIT="$arg" ;;
   esac
 done
@@ -129,7 +133,8 @@ for dest in "${FOUND[@]}"; do
       echo "linked    $target -> $(cd "$SRC" && pwd -P)"
       ;;
     copy)
-      # the whole folder, not single files: remove the game's folder, then copy the whole source folder as one unit
+      # the whole folder, not single files: remove the game's folder, then copy the whole folder you are working in as one unit
+      echo "copy from $SRC (project folder $(basename "$WORK"), branch $(git -C "$WORK" rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown))"
       if [ -e "$target" ] || [ -L "$target" ]; then
         rm -rf "$target" || { echo "Could not remove $target"; exit 1; }
         echo "removed   $target"
