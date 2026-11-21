@@ -1,3 +1,8 @@
+Ubermoc-Forever 1.3.178
+- Changed: the line under the quest arrow distance is the quest's objective, the first one whatever is finished, and it wraps over lines when it is long. When the way crosses to another continent the line names the ride you have to take (boat, zeppelin or tram). With no quest followed the line is not shown at all. The distance itself is unchanged.
+- Changed: a fresh install starts with the author's own values, so a new character looks like his: quest arrow `px` `56`, `opacity` `50`, its place `fx 0.4992 fy 0.2322`, and the gamepad bar fade `idle` `0` (`flight` `0`). Settings already saved are left alone.
+- Docs: the quest arrow research note records what the game answers for objectives (`C_QuestLog.GetQuestObjectives`, claims C163, C164) and the font string wrap (`SetWordWrap`, claims C165, C166).
+
 Ubermoc-Forever 1.3.177
 - Fixed: the ride learning started "rides" on tiny drift. The first real play data (your game, 2026-11-21) showed 27 false ride starts on 1 to 3 yards of drift while you walked about and talked to NPCs; none was long enough to be learned, but it fired far too easily. A ride now needs about 8 yards of movement in 2 seconds while you stand still (a boat or a zeppelin moves 4 yards a second or more). The offline test checks the drift and fails with the old rule. The trail learning itself worked: 83 points and 83 steps from one short walk.
 - Added: `tools/read_saved.py`, which reads the game's saved settings and prints any part (the learned data, the scans, the timeline, the stealth incidents, the arrow's numbers), so the next person can read what the game has recorded.

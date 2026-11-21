@@ -135,3 +135,25 @@ Sources: `Blizzard_APIDocumentationGenerated` (Forever build), ForeverPlusPlus (
 
 **Therefore** the addon learns, and keeps everything in `DB.learned` (never expires, only grows): `Trail.lua`. Open question for the next reader: how `GetUnitSpeed("player")` and the map position behave on a boat or zeppelin in Forever (the ride detector assumes speed 0 while the position moves; the first play data showed `GetUnitSpeed` 0 with 1 to 3 yd of drift while standing, hence the 8 yd in 2 s rule).
 
+
+## The line under the distance (1.3.178)
+
+- `C_QuestLog.GetQuestObjectives(questID)` answers `objectives`, a table of `QuestObjectiveInfo`, and may return nothing
+  (`D/QuestLogDocumentation.lua:476-490`, **C163**). A `QuestObjectiveInfo` carries `text` as a `string`, `type` as a
+  `string`, `finished` as a `bool`, `numFulfilled` and `numRequired` as `number` (`D/QuestLogDocumentation.lua:1581-1589`,
+  **C164**). `text` is the sentence the quest log shows, so an objective that is an action ("Ride the boat to ...") reads
+  as one. The code takes objective number 1 always, whatever is finished (the author's rule).
+- A font string does not wrap unless it is asked to: `SetWordWrap` takes a `bool` (`D/SimpleFontStringAPIDocumentation.lua:719-726`,
+  **C166**) and `SetMaxLines` takes a `number` (**C165**). The note line is 300 px wide and is given `SetWordWrap(true)`, so a
+  long objective wraps instead of running off the screen.
+- With no quest followed the line writes nothing and is hidden; when the aim crosses to another continent the line names the
+  ride (`Q.noteLine`, `crumb.kind` `ride`/`board`/`unknown`), because there the objective is the crossing itself.
+
+## The numbers a fresh install starts with (1.3.178)
+
+The author's own live saved settings (`WTF/Account/FAQJOO/SavedVariables/Ubermoc-Forever.lua:32006-32012`, **C159**) hold
+qarrow `px` `56`, `opacity` `50`, `mode` `4`, `art` `4`, `size` `3`, `turn` `1`, and `fade.gbar.idle` `0`. Those are now the
+defaults (`UF.SEED` in Core.lua and `Q.DEFAULTPX` / `Q.DEFAULTOPACITY` / `Q.DEFAULTPLACE` in QuestArrow.lua); before this
+the code fell back to `px` `40` and `opacity` `100` (**C162**) and the seed gave `qarrow` only `on` = `true` (**C161**).
+The place is the spot he dragged it to (`fx 0.4992`, `fy 0.2322`), not one of the six named places; a character with
+nothing saved gets that place through `Q.place()`. Settings already saved for a character are left alone.
