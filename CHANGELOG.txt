@@ -1,3 +1,7 @@
+Ubermoc-Forever 1.3.157
+- Added: `/ubf errors` prints the errors the addon caught since login. Our own code that runs from the highlight ticker and a few other places now goes through `UF.try`, which keeps the error instead of throwing it away (the 1.3.155 bag-item bug failed silently inside a bare `pcall`).
+- Changed: nothing you can see in play. The offline test's stub frames now raise when a method is called without its frame, like the game, and the Lua checker stops the number of silent `pcall`s from growing.
+
 Ubermoc-Forever 1.3.156
 - Fixed: X on a bag item did nothing and the legend never showed X. The rule that decides X called the button's name without the button (`btn.GetName()`), which errors in the game, so X had no action and the legend had no X. The offline test now makes that call strict like the game.
 - Fixed: Crippling Poison (and other poisons, oils and stones) missing from the apply-to-weapon entries when the item's use line does not say "weapon": an "Other" consumable named Poison, Oil or Stone now goes to the weapons.

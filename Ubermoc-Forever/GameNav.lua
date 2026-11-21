@@ -1327,7 +1327,7 @@ local function startFocus()
         G.direct = a
         drawAt(nil)
         setTargets()
-        pcall(tooltipHide)
+        UF.try("GameNav.tooltipHide", tooltipHide)
         G.syncTriggers()
         return
     end
@@ -1494,7 +1494,7 @@ local function release()
     G.direct = nil
     drawAt(nil)
     if G.placing then G.endPlace(true) end
-    pcall(tooltipHide)
+    UF.try("GameNav.tooltipHide", tooltipHide)
     if bar then bar:Hide() end
     barSig, anchoredTo = nil, nil
 end
@@ -1709,7 +1709,7 @@ function G.update()
         rescan()
         startFocus()
         G.settle, G.userMoved = (GetTime and GetTime() or 0) + 2.5, false
-        pcall(updateBar)
+        UF.try("GameNav.updateBar", updateBar)
     elseif not want and entry then
         release()
     elseif want then
@@ -1746,7 +1746,7 @@ function G.update()
         if G.placing then
             -- placing a spell: no highlight, the next button press picks the slot
             drawAt(nil)
-            pcall(updateBar)
+            UF.try("GameNav.updateBar", updateBar)
             return
         end
         -- the flyout closed (an item was chosen, or it was closed): the highlight goes back to the gear slot it came from
@@ -1823,7 +1823,7 @@ function G.update()
         else
             if G.inView(focus) then drawAt(focus) else drawAt(nil) end
         end
-        pcall(updateBar)
+        UF.try("GameNav.updateBar", updateBar)
     end
 end
 
@@ -1833,7 +1833,7 @@ ticker:SetScript("OnUpdate", function(_, dt)
     acc = acc + dt
     if acc < 0.15 then return end
     acc = 0
-    pcall(G.update)
+    UF.try("GameNav.update", G.update)
 end)
 G._ticker = ticker   -- for the offline test
 -- 1.3.120: scan on the very next frame instead of waiting out the rest of the 0.15 s. Used when our own marker menu opens,

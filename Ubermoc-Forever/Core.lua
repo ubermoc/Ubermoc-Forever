@@ -7,6 +7,35 @@ local ADDON, UF = ...
 _G.UbermocForever = UF
 UF.title = "Ubermoc Forever"
 
+-- A pcall that does not lose the error: the failure is kept (label, message, how often, last time) and `/ubf errors` prints it.
+-- A bare `pcall(f)` throws the message away, so a feature that fails inside it just does nothing and nobody can tell why
+-- (X on a bag item, 1.3.155: the whole highlight update ran inside `pcall(G.update)` and its error was never seen).
+local failures, failureOrder = {}, {}
+function UF.fail(label, err)
+    local f = failures[label]
+    if not f then
+        f = { n = 0 }
+        failures[label] = f
+        failureOrder[#failureOrder + 1] = label
+    end
+    f.n = f.n + 1
+    f.err = tostring(err)
+    f.at = GetTime and GetTime() or 0
+end
+function UF.try(label, fn, ...)
+    local ok, a, b, c, d = pcall(fn, ...)
+    if not ok then UF.fail(label, a) end
+    return ok, a, b, c, d
+end
+function UF.failures() return failures, failureOrder end
+function UF.reportErrors()
+    if #failureOrder == 0 then UF.say("No errors recorded since login."); return end
+    for _, label in ipairs(failureOrder) do
+        local f = failures[label]
+        UF.say(label .. " (" .. f.n .. "x): " .. f.err)
+    end
+end
+
 function UF.say(msg)
     if DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage("|cff66ccff" .. UF.title .. ":|r " .. tostring(msg))
@@ -263,6 +292,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
     elseif msg == "x" then
         -- what X would do on the highlighted node, and what stands in the way: this is the state the legend uses too
         if UF.GameNav and UF.GameNav.xReport then UF.GameNav.xReport() end
+    elseif msg == "errors" then
+        UF.reportErrors()
     elseif msg == "tabs" then
         if UF.GameNav then UF.GameNav.report() end
     elseif UF.ToggleOptions then

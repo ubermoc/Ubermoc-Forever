@@ -127,11 +127,46 @@ def check(path, luac, api, risky):
             hits = [i + 1 for i, l in enumerate(text) if re.search(pat, re.sub(r"--.*$", "", l))]
             if hits:
                 print(f"  risky  {pat}  lines {', '.join(map(str, hits[:12]))}{' ...' if len(hits) > 12 else ''}  -> {why}")
+    problems += silent_pcalls(path)
     return problems
+
+
+SILENT = re.compile(r"(^|\bthen\s+|\belse\s+|\bdo\s+|;\s*)pcall\(")
+BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "silent-pcall-baseline.json")
+
+
+def silent_pcalls(path):
+    """A `pcall(...)` used as a statement throws its error away: the feature then does nothing and nothing says why. Existing ones are
+    counted per file in tools/silent-pcall-baseline.json and may not grow; new code uses UF.try(label, fn, ...) (Core.lua), which keeps
+    the error for `/ubf errors`, or keeps the pcall's result and reports it. Lower the baseline when a file's count drops."""
+    text = open(path, encoding="utf-8").read().splitlines()
+    n = sum(1 for l in text if SILENT.search(re.sub(r"--.*$", "", l)))
+    try:
+        base = json.load(open(BASELINE)).get(os.path.basename(path))
+    except (OSError, ValueError):
+        base = None
+    if base is None:
+        base = 0 if n == 0 else n   # a file not in the baseline yet is recorded by --update-baseline; until then it is not held back
+    if n > base:
+        print(f"{path}: SILENT PCALL: {n} statement-level pcall(s), the baseline is {base}. A pcall whose result is dropped hides its error: use UF.try(label, fn, ...) or read ok/err")
+        return 1
+    return 0
+
+
+def update_baseline(files):
+    out = {}
+    for p in files:
+        text = open(p, encoding="utf-8").read().splitlines()
+        out[os.path.basename(p)] = sum(1 for l in text if SILENT.search(re.sub(r"--.*$", "", l)))
+    json.dump(dict(sorted(out.items())), open(BASELINE, "w"), indent=1)
+    print("baseline written:", BASELINE)
 
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--update-baseline" in sys.argv:
+        update_baseline(args)
+        return 0
     risky = "--risky" in sys.argv
     if not args:
         print(__doc__)

@@ -28,10 +28,25 @@ if bad:
 stub = r'''
 local calls = { binds = {}, cvars = {}, saved = 0, popups = {}, hooks = {}, overrides = {} }
 _G.__calls = calls
+-- Strict like the game: every method of a stub frame must be called WITH the frame (frame:Method(), not frame.Method()). The game
+-- raises an error when the frame is missing; a stub that ignores it lets a dot-call pass every test (that hid the X bag-item bug of
+-- 1.3.155). isProxy is weak so frames can still be collected.
+local isProxy = setmetatable({}, { __mode = "k" })
+local function strict(name, fn)
+    return function(s, ...)
+        if not isProxy[s] then error("method '" .. tostring(name) .. "' called without its frame (a dot where a colon belongs): got " .. type(s), 2) end
+        return fn(s, ...)
+    end
+end
 local function proxy(name)
     local t = {}
     local mt = {}
     mt.__index = function(self, k)
+        local v = mt.__raw(self, k)
+        if type(v) == "function" then return strict(k, v) end
+        return v
+    end
+    mt.__raw = function(self, k)
         -- Lowercase names are plain data fields in the game (picker.built, row.pad): unset means nil, not a method.
         if type(k) == "string" and k:match("^%l") then return nil end
         if k == "GetName" then return function() return name end end
@@ -70,7 +85,9 @@ local function proxy(name)
         if k == "SetFontString" then return function() end end
         return function() return proxy("ret") end
     end
-    return setmetatable(t, mt)
+    setmetatable(t, mt)
+    isProxy[t] = true
+    return t
 end
 local frames = {}
 function CreateFrame(kind, name, parent, tmpl)
@@ -3156,5 +3173,23 @@ assert "X on this node: macro /use 0 9" in r and "X sees bag 0 slot 9: /use 0 9"
 assert "menu open yes" in r.split(";;")[1] and "X on this node: nothing" in r.split(";;")[1], r
 print("GameNav /ubf x, nothing open:", r.split(";;")[0])
 print("GameNav /ubf x, a menu open (this is why the legend has no X):", r.split(";;")[1])
+r = L("""function()
+    local f = CreateFrame("Frame", "StrictSelfProbe", UIParent)
+    local colon = pcall(function() return f:GetName() end)
+    local dot = pcall(function() return f.GetName() end)       -- the game raises here; the stub has to as well
+    local dotSet = pcall(function() return f.SetAlpha(0.5) end)
+    return tostring(colon) .. "," .. tostring(dot) .. "," .. tostring(dotSet)
+end""")()
+assert str(r) == "true,false,false", r
+print("Stub frames are strict: a method called without its frame (dot for colon) raises, like the game: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local ok1 = UF.try("probe", function() error("boom") end)
+    local ok2, v = UF.try("fine", function(a) return a * 2 end, 21)
+    local f = UF.failures()
+    return tostring(ok1) .. "," .. tostring(ok2) .. "," .. tostring(v) .. "," .. tostring(f.probe and f.probe.n) .. "," .. tostring(f.fine)
+end""")()
+assert str(r) == "false,true,42,1,nil", r
+print("UF.try keeps the error of a failing call for /ubf errors and passes a good call through: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

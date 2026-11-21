@@ -103,7 +103,7 @@ end
 local ticker = CreateFrame("Frame")
 ticker:SetScript("OnUpdate", function(_, dt)
     if not S.running then return end
-    pcall(step)
+    UF.try("Scan.step", step)
 end)
 
 function UF.scan(arg)
