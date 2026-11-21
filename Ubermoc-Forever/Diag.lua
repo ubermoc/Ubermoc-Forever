@@ -76,6 +76,58 @@ local EVENTS = { "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_GREETING", "QUEST_DETAIL
                  "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_FAILED_QUIET", "UNIT_SPELLCAST_INTERRUPTED", "UI_ERROR_MESSAGE",
                  "PLAYER_TARGET_CHANGED", "LOOT_READY", "LOOT_CLOSED", "PLAYER_DEAD" }
 
+-- A refused stealth cast saves itself: when a cast of Stealth, Prowl or Shadowmeld fails, the last ten seconds of the timeline are kept as an
+-- incident (DB.stealthIncidents, the last 12) with the game's own error text that follows it, and one line says what happened, so the problem
+-- does not have to be repeated on purpose: play, and when it happens the evidence is already there.
+local STEALTHY = { "stealth", "prowl", "shadowmeld" }
+local function isStealthSpell(id)
+    if id == D.STEALTH then return true end
+    local n = spellName(id)
+    if not n then return false end
+    n = n:lower()
+    for _, w in ipairs(STEALTHY) do if n:find(w, 1, true) then return true end end
+    return false
+end
+
+local pending      -- the incident waiting for the game's error text (up to a second)
+
+local function lastKind(kinds, now)
+    local L = store()
+    for i = #L, 1, -1 do
+        if kinds[L[i].k] then return now - L[i].t, L[i].k end
+    end
+end
+
+local function finishIncident()
+    local inc = pending
+    pending = nil
+    if not inc then return end
+    local d = UF.DB()
+    d.stealthIncidents = d.stealthIncidents or {}
+    d.stealthIncidents[#d.stealthIncidents + 1] = inc
+    while #d.stealthIncidents > 12 do table.remove(d.stealthIncidents, 1) end
+    local since = inc.sinceFight and string.format("%.1f s after the fight ended", inc.sinceFight)
+        or inc.sinceTalk and string.format("%.1f s after the talk ended", inc.sinceTalk) or "with no recent fight or talk"
+    UF.say(string.format("Stealth refused %s. In combat: %s. The game said: %s. (/ubf combat has the timeline.)", since, inc.inCombat and "yes" or "no", inc.text or "nothing"))
+end
+
+D.finishIncident = finishIncident      -- for the test
+
+local function newIncident(spellID)
+    local now = GetTime and GetTime() or 0
+    local L = store()
+    local events = {}
+    for i = math.max(1, #L - 14), #L do
+        local e = L[i]
+        if now - e.t <= 10 then events[#events + 1] = string.format("%+.2f %s%s%s", e.t - now, e.k, e.a and (" " .. e.a) or "", e.b and (" " .. e.b) or "") end
+    end
+    local fight = lastKind({ ["combat-ended"] = true }, now)
+    local talk = lastKind({ ["talk-ended"] = true }, now)
+    pending = { at = now, spell = spellID, inCombat = UnitAffectingCombat and UnitAffectingCombat("player") and true or false,
+                sinceFight = fight and fight <= 30 and fight or nil, sinceTalk = talk and talk <= 30 and talk or nil, events = events }
+    if C_Timer and C_Timer.After then C_Timer.After(1, finishIncident) else finishIncident() end
+end
+
 -- one event, from the game (also called by the test)
 function D.on(event, a, b, c)
     if event == "PLAYER_REGEN_ENABLED" then
@@ -91,8 +143,10 @@ function D.on(event, a, b, c)
     elseif event:find("^UNIT_SPELLCAST") then
         if a ~= "player" then return end
         D.log(event:sub(6), c, spellName(c))                 -- the spell id (UNIT_SPELLCAST_* gives it third) and its name
+        if event == "UNIT_SPELLCAST_FAILED" and not pending and isStealthSpell(c) then newIncident(c) end
     elseif event == "UI_ERROR_MESSAGE" then
         D.log("error-text", b or a)
+        if pending and not pending.text then pending.text = text(b or a) end
     elseif event == "PLAYER_TARGET_CHANGED" then
         D.log("target", UnitExists and UnitExists("target") and (UnitIsDead and UnitIsDead("target") and "dead" or "alive") or "none")
     else
@@ -119,6 +173,13 @@ if UF.OnLogin then UF.OnLogin(D.start) end
 
 -- /ubf combat: the events around the last end of combat, relative to it
 function D.report()
+    local inc = UF.DB().stealthIncidents
+    if inc and #inc > 0 then
+        UF.say(#inc .. " refused Stealth cast(s) saved; the last one:")
+        local last = inc[#inc]
+        UF.say(string.format("  in combat %s, %s, the game said: %s", last.inCombat and "yes" or "no",
+            last.sinceFight and string.format("%.1f s after a fight", last.sinceFight) or last.sinceTalk and string.format("%.1f s after a talk", last.sinceTalk) or "no recent fight or talk", tostring(last.text)))
+    end
     local L = store()
     if #L == 0 then UF.say("Nothing recorded yet: kill something, try Stealth, then /ubf combat."); return end
     local base

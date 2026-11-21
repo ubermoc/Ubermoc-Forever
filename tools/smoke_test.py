@@ -3919,5 +3919,40 @@ r = L("""function()
 end""")()
 assert str(r) == "gossip_show,ours,talk-ended,SPELLCAST_FAILED,error-text,stealth | 1784/Not yet./on | 80/x21 | base/+2.5", r
 print("Combat timeline: conversations, fights, casts and the game's error text are recorded, other players' casts are not, the log keeps 80, the report is relative to the end: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local D = UF.Diag
+    local saved = { GetTime, UnitAffectingCombat, C_Timer, C_Spell }
+    UF.DB().combatLog, UF.DB().stealthIncidents = nil, nil
+    local now = 50
+    GetTime = function() return now end
+    UnitAffectingCombat = function() return true end
+    C_Timer = { After = function(sec, fn) D._after = fn end }
+    C_Spell = { GetSpellName = function(id) if id == 1784 then return "Stealth" elseif id == 5215 then return "Prowl" elseif id == 100 then return "Charge" end end }
+    local said = {}
+    local realSay = UF.say
+    UF.say = function(m) said[#said + 1] = m end
+    D.finishIncident()                                                      -- one left waiting by the timeline test above
+    UF.DB().stealthIncidents = nil
+    said = {}
+    local out = {}
+    D.on("PLAYER_REGEN_ENABLED"); now = 52.5
+    D.on("UNIT_SPELLCAST_FAILED", "player", "g", 1784)
+    now = 52.6; D.on("UI_ERROR_MESSAGE", 50, "You can't do that while in combat.")
+    D._after()                                                              -- a second later the incident is saved and told
+    local inc = UF.DB().stealthIncidents
+    out[#out + 1] = #inc .. "/" .. tostring(inc[1].inCombat) .. "/" .. string.format("%.1f", inc[1].sinceFight) .. "/" .. inc[1].text
+    out[#out + 1] = (said[1]:find("Stealth refused 2.5 s after the fight ended. In combat: yes") and "said" or said[1] or "nothing said")
+    -- a failed Charge is not stealth; a failed Prowl is
+    D.on("UNIT_SPELLCAST_FAILED", "player", "g", 100); D.on("UNIT_SPELLCAST_FAILED", "player", "g", 5215)
+    D._after()
+    out[#out + 1] = #UF.DB().stealthIncidents
+    UF.say = realSay
+    GetTime, UnitAffectingCombat, C_Timer, C_Spell = saved[1], saved[2], saved[3], saved[4]
+    UF.DB().combatLog, UF.DB().stealthIncidents = nil, nil
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == "1/true/2.5/You can't do that while in combat. | said | 2", r
+print("Stealth incidents: a refused Stealth, Prowl or Shadowmeld cast is saved with its timeline and the game's error text, and told in one line: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
