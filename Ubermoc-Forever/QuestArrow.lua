@@ -21,6 +21,8 @@ UF.QuestArrow = Q
 local function atan2(y, x) return math.atan(y, x) end
 
 -- the three modes, in the order the options row steps through them (claim R12)
+Q.ATLAS = "Navigation-Tracked-Arrow"              -- the art of Blizzard's own tracked-quest arrow (claim C10)
+Q.FALLBACKART = "Interface\\Minimap\\MiniMap-QuestArrow"   -- older game art, when the atlas is not there
 Q.MODES = { "direct", "route", "obstacle" }
 Q.MODENAME = { direct = "Direct", route = "Route", obstacle = "Around obstacles" }
 Q.MODENOTE = {
@@ -54,6 +56,29 @@ function Q.nextMode(dir)
     return a.mode
 end
 
+-- places a button press can choose (centre-based fractions of the screen as Q.place keeps them); a dragged place is "Custom"
+Q.POSITIONS = {
+    { name = "Top right", fx = 0.88, fy = 0.90 }, { name = "Top centre", fx = 0.50, fy = 0.90 }, { name = "Top left", fx = 0.12, fy = 0.90 },
+    { name = "Middle left", fx = 0.12, fy = 0.55 }, { name = "Middle right", fx = 0.88, fy = 0.55 }, { name = "Above the action bars", fx = 0.50, fy = 0.28 },
+}
+function Q.positionName()
+    local p = Q.place()
+    for _, c in ipairs(Q.POSITIONS) do
+        if math.abs(c.fx - p.fx) < 0.005 and math.abs(c.fy - p.fy) < 0.005 then return c.name end
+    end
+    return "Custom"
+end
+function Q.nextPosition(dir)
+    local p = Q.place()
+    local at = 0
+    for i, c in ipairs(Q.POSITIONS) do
+        if math.abs(c.fx - p.fx) < 0.005 and math.abs(c.fy - p.fy) < 0.005 then at = i end
+    end
+    local n = UF.stepIndex(at == 0 and 1 or at, #Q.POSITIONS, at == 0 and 0 or (dir or 1))
+    Q.setPlace(Q.POSITIONS[n].fx, Q.POSITIONS[n].fy)
+    return Q.POSITIONS[n].name
+end
+
 function Q.sizeName() return Q.SIZES[cfg().size].name end
 function Q.nextSize(dir)
     local a = cfg()
@@ -64,7 +89,7 @@ end
 function Q.sizePx()
     local px = Q.FALLBACKPX
     if C_Texture and C_Texture.GetAtlasInfo then
-        local ok, info = pcall(C_Texture.GetAtlasInfo, "Navigation-Tracked-Arrow")  -- claim C42
+        local ok, info = pcall(C_Texture.GetAtlasInfo, Q.ATLAS)  -- claim C42
         if ok and info and info.width and info.width > 0 then px = info.width end
     end
     return math.floor(px * Q.SIZES[cfg().size].times + 0.5)
@@ -113,7 +138,7 @@ function Q.moveFromCursor()
     local scale = UIParent:GetEffectiveScale()
     if not scale or scale == 0 then return nil end
     x, y = x / scale, y / scale
-    return ((x - left) / width) - 0.5, ((y - bottom) / height) - 0.5
+    return (x - left) / width, (y - bottom) / height
 end
 
 -- the yards and the angle (counter-clockwise from north, 0 to 2 pi) from one point to another on a map
@@ -133,7 +158,9 @@ function Q.rotation(angle, facing) return -(angle - facing) end
 function Q.facing()
     if not GetPlayerFacing then return nil end
     local ok, f = pcall(GetPlayerFacing)
-    return (ok and f) or nil
+    if not ok or type(f) ~= "number" then return nil end
+    if issecretvalue and issecretvalue(f) then return nil end   -- the game may hide it from addons
+    return f
 end
 
 -- the quest the game has focused on, if it has one (claim C20)
@@ -298,11 +325,18 @@ local function build()
     arrow:RegisterForDrag("LeftButton")  -- claim C22
     arrow:SetClampedToScreen(true)       -- claim C38
     arrow.art = arrow:CreateTexture(nil, "OVERLAY")
-    -- the games own quest navigation art (claim C10); if the atlas cannot be used the arrow never shows
-    local ok, used = pcall(arrow.art.SetAtlas, arrow.art, "Navigation-Tracked-Arrow")
-    if not ok or not used then arrow.art = nil end
-    -- the games own distance font (claim C39)
+    arrow.art:SetPoint("CENTER", arrow, "CENTER", 0, 0)   -- a texture with no point is never drawn
+    -- the games own quest navigation art (claim C10), the same atlas Blizzard's tracked-quest arrow uses. SetAtlas answers nothing, so whether
+    -- the atlas exists is asked of GetAtlasInfo; without it the older minimap quest arrow stands in (the arrow always has a picture)
+    local hasAtlas = false
+    if C_Texture and C_Texture.GetAtlasInfo then
+        local okA, info = pcall(C_Texture.GetAtlasInfo, Q.ATLAS)
+        hasAtlas = okA and info ~= nil
+    end
+    if hasAtlas then arrow.art:SetAtlas(Q.ATLAS) else arrow.art:SetTexture(Q.FALLBACKART) end
+    -- the games own distance font (claim C39), under the arrow like Blizzard's
     arrow.text = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    arrow.text:SetPoint("TOP", arrow, "BOTTOM", 0, 4)
     -- the games handler names for a frame that registers for drags (claim C37): start keeps it moving,
     -- stop leaves the place saved for this character
     arrow:SetScript("OnDragStart", function(self)
@@ -393,9 +427,9 @@ local drv = CreateFrame("Frame")
 
 local function update()
     local a = cfg()
-    if not a.on then hide(); return end
+    if not a.on then Q.why = "switched off"; hide(); return end
     local f = build()
-    if not f.art then hide(); return end
+    if not f.art then Q.why = "no picture for the arrow"; hide(); return end
 
     -- follow the cursor while the drag is held, then the place is kept (claims C33, C35, C43)
     if f.moving then
@@ -404,7 +438,7 @@ local function update()
     end
     local p = Q.place()
     local ox, oy = Q.pointFor(p.fx, p.fy)
-    if not ox then hide(); return end
+    if not ox then Q.why = "the screen size is not known yet"; hide(); return end
     f:ClearAllPoints()
     f:SetPoint("CENTER", UIParent, "CENTER", ox, oy)
     local px = Q.sizePx()
@@ -416,14 +450,15 @@ local function update()
         local ok, m = pcall(C_Map.GetBestMapForUnit, "player")  -- claim C13
         if ok then here = m end
     end
-    if not here then hide(); return end
+    if not here then Q.why = "the game does not say which map you are on"; hide(); return end
 
     local pos
     if C_Map and C_Map.GetPlayerMapPosition then
         local ok, v = pcall(C_Map.GetPlayerMapPosition, here, "player")  -- claim C14
         if ok then pos = v end
     end
-    if not pos or not pos.x or not pos.y then hide(); return end
+    if not pos or not pos.x or not pos.y then Q.why = "the game does not give your position on this map"; hide(); return end
+    if issecretvalue and (issecretvalue(pos.x) or issecretvalue(pos.y)) then hide(); return end
 
     local quest = Q.tracking()
     local tmap, tx, ty
@@ -433,12 +468,12 @@ local function update()
         local m, row = Q.picking()
         if m and row then tmap, tx, ty = m, row.x, row.y end
     end
-    if not tmap then hide(); return end
+    if not tmap then Q.why = "no quest to point at: none selected in the tracker and none in progress on this map"; hide(); return end
 
     local wp = waypointFor(quest, here)
     local aimMap, ax, ay, source, fromX, fromY, bent = Q.aimFor(Q.MODES[a.mode], here, pos, tmap, tx, ty,
         wp, parentOf, rowsOf, rectOf, Q.bent)
-    if not aimMap then hide(); return end
+    if not aimMap then Q.why = "no way to aim with this mode"; hide(); return end
     Q.bent = bent or false
     f.source = source
     Q.last = { here = here, target = tmap, source = source, route = wp, bent = Q.bent, quest = quest }
@@ -449,10 +484,11 @@ local function update()
         if ok then w, h = ww, hh end
     end
     local yards, angle = Q.bearing(w, h, fromX, fromY, ax, ay)  -- claim C7
-    if not yards then hide(); return end
+    if not yards then Q.why = "the map size is not known"; hide(); return end
     local face = Q.facing()  -- claim C6
-    if not face then hide(); return end
+    if not face then Q.why = "the game does not give the direction you face"; hide(); return end
 
+    Q.why = nil
     f.art:SetRotation(Q.rotation(angle, face))  -- claims C8 and C9
     Q.showDistance(f, yards, aimMap ~= here)
     if not f:IsShown() then f:Show() end
@@ -462,7 +498,7 @@ drv:SetScript("OnUpdate", function(_, dt)
     acc = acc + dt
     if acc < 0.05 then return end
     acc = 0
-    update()
+    UF.try("QuestArrow.update", update)   -- an error here is kept for /ubf errors, not thrown away
 end)
 
 -- /ubf arrow: what the game answers for the arrow right now, so a mode that does nothing can be read instead of guessed
@@ -473,8 +509,9 @@ function Q.report()
     UF.say("The game offers: GetNextWaypointForMap (quest) " .. has("C_QuestLog", "GetNextWaypointForMap") .. ", GetNextWaypointForMap (live route) "
         .. has("C_Navigation", "GetNextWaypointForMap") .. ", GetNextWaypoint " .. has("C_QuestLog", "GetNextWaypoint")
         .. ", GetMapRectOnMap " .. has("C_Map", "GetMapRectOnMap"))
+    if Q.why then UF.say("The arrow is hidden: " .. Q.why .. ".") end
     local l = Q.last
-    if not l then UF.say("Nothing is being pointed at (no tracked quest on this map, or the arrow is hidden)."); return end
+    if not l then UF.say("Nothing has been pointed at yet."); return end
     UF.say("Standing on map " .. tostring(l.here) .. ", objective on map " .. tostring(l.target) .. ", quest " .. tostring(l.quest)
         .. ", aiming by: " .. tostring(l.source) .. ", route step: "
         .. (l.route and string.format("%.3f %.3f", l.route.x, l.route.y) or "none from the game"))

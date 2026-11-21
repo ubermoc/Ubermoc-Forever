@@ -83,6 +83,10 @@ local function proxy(name)
         if k == "RegisterEvent" then return function(s, e) rawset(s, "__events", rawget(s, "__events") or {}); s.__events[e] = true end end
         if k == "CreateFontString" or k == "CreateTexture" then return function(owner) local sub = proxy("sub"); rawset(sub, "__owner", owner); return sub end end
         if k == "SetFontString" then return function() end end
+        -- like the game: a texture or text with no point is never drawn, so the stub counts the points a region was given;
+        -- SetAtlas, SetTexture and SetPoint answer nothing (the 1.3.146 arrow took "answers nothing" for "failed" and never drew)
+        if k == "SetPoint" or k == "SetAllPoints" then return function(s) rawset(s, "__points", (rawget(s, "__points") or 0) + 1) end end
+        if k == "SetAtlas" or k == "SetTexture" then return function(s, v) rawset(s, "__art", v) end end
         return function() return proxy("ret") end
     end
     setmetatable(t, mt)
@@ -1880,7 +1884,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,8/3/1/3/2/2/1/3/1,true,1", r
+assert str(r) == "1,2,3,2,1,5,8/3/1/3/2/2/1/3/4,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -3340,7 +3344,7 @@ r = L("""function()
     GetCursorPosition = function() return 125, 120 end   -- FAKE(C31): with the test rect 100,100,50,20 and scale 1
     local fx, fy = Q.moveFromCursor()
     out[#out + 1] = string.format("cursor %.2f %.2f", fx, fy)
-    out[#out + 1] = string.format("point %.2f %.2f", Q.pointFor(0, 0.5))
+    out[#out + 1] = string.format("point %.2f %.2f", Q.pointFor(fx, fy))   -- the place put back on the screen is where the cursor was: 10 above the centre
     -- a drag with the games handler names (claims C22, C37): held, then the place is kept
     local f = Q.frame()
     f.__scripts.OnDragStart(f)
@@ -3369,8 +3373,8 @@ assert str(r) == ("walk 961-1416-1000 lca 1416 | held 1000 | on parent 0.12 0.74
                   "direct 1416 0.62 0.22 shared map | route 961 0.15 0.55 route | obstacle 1416 0.50 0.40 areas | "
                   "route fallback 1416 0.62 0.22 shared map | same area 961 0.40 0.40 straight (no route) | "
                   "tracking 8 | target 1000 0.4 0.4 | target from the row 961 0.2 0.6 | "
-                  "Medium 40, Large 54, Small 30, Medium 40 | cursor 0.00 0.50 | point -25.00 0.00 | "
-                  "moving true | after nil | saved -0.30 0.00 for Player-1-ABC | "
+                  "Medium 40, Large 54, Small 30, Medium 40 | cursor 0.50 1.00 | point 0.00 10.00 | "
+                  "moving true | after nil | saved 0.20 0.50 for Player-1-ABC | "
                   "Direct, Route, Around obstacles note straight at the objective, bending along the games route only where that route shows "
                   "something in the way (the game gives no terrain data, so this is read from its route)"), r
 print("Quest arrow: the three modes, the cross-map target, the size and the saved place: OK")
@@ -3491,5 +3495,32 @@ end""")()
 assert str(r) == ("straight:0.60,0.50:false | around:0.25,0.46:true | around:0.30,0.46:true | straight:0.60,0.50:false | "
                   "straight:0.60,0.50:false | straight (no route):0.60,0.50:false | straight:0.60,0.50:false"), r
 print("Quest arrow, around obstacles: straight while the game route agrees, follows the route step when it swings away (with a hysteresis), straight when the game has no route: OK")
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local out = {}
+    local f = Q.frame()
+    out[#out + 1] = "art " .. tostring(f.art ~= nil)
+    out[#out + 1] = "art points " .. tostring(rawget(f.art, "__points"))
+    out[#out + 1] = "text points " .. tostring(rawget(f.text, "__points"))
+    out[#out + 1] = "drawn " .. tostring(rawget(f.art, "__art"))
+    -- the aim, size and place buttons step and wrap, and the place names itself
+    local UF = _G.UbermocForever
+    local a = UF.QuestArrow.cfg()
+    a.mode = 1
+    out[#out + 1] = Q.modeName()
+    Q.nextMode(1); out[#out + 1] = Q.modeName()
+    Q.nextMode(1); out[#out + 1] = Q.modeName()
+    Q.nextMode(1); out[#out + 1] = Q.modeName()
+    Q.setPlace(0.88, 0.90); out[#out + 1] = Q.positionName()
+    out[#out + 1] = Q.nextPosition(1)
+    out[#out + 1] = Q.nextPosition(1)
+    Q.setPlace(0.31, 0.62); out[#out + 1] = Q.positionName()
+    out[#out + 1] = Q.nextPosition(1)
+    Q.setPlace(0.88, 0.90)
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("art true | art points 1 | text points 1 | drawn Navigation-Tracked-Arrow | Direct | Route | Around obstacles | Direct | "
+                  "Top right | Top centre | Top left | Custom | Top right"), r
+print("Quest arrow: the picture is the game's tracked-quest arrow and is anchored, the distance text is anchored, aim and place buttons step: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

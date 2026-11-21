@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -37,6 +37,9 @@ function QP.refresh()
     levelBtn:SetText("Friendly level: " .. (UF.PlateLevel.enabled() and "On" or "Off"))
     rangeBtn:SetText("Increased plate range: " .. (UF.PlateRange.enabled() and "On" or "Off"))
     arrowBtn:SetText("Quest arrow: " .. UF.QuestArrow.name())
+    arrowModeBtn:SetText("Aim: " .. UF.QuestArrow.modeName())
+    arrowSizeBtn:SetText("Size: " .. UF.QuestArrow.sizeName())
+    arrowPosBtn:SetText("Place: " .. UF.QuestArrow.positionName())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -122,8 +125,17 @@ function QP.build(parent, inset)
     heading("Quest arrow", -408)
     arrowBtn = button(page, 130); arrowBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -430)
     toggle(arrowBtn, UF.QuestArrow.toggle)
+    arrowModeBtn = button(page, 190); arrowModeBtn:SetPoint("LEFT", arrowBtn, "RIGHT", 6, 0)
+    arrowSizeBtn = button(page, 110); arrowSizeBtn:SetPoint("LEFT", arrowModeBtn, "RIGHT", 6, 0)
+    arrowPosBtn = button(page, 210); arrowPosBtn:SetPoint("LEFT", arrowSizeBtn, "RIGHT", 6, 0)
+    UF.cycleButton(arrowModeBtn, function(dir) UF.QuestArrow.nextMode(dir) end, QP.refresh)
+    UF.cycleButton(arrowSizeBtn, function(dir) UF.QuestArrow.nextSize(dir) end, QP.refresh)
+    UF.cycleButton(arrowPosBtn, function(dir) UF.QuestArrow.nextPosition(dir) end, QP.refresh)
+    tip(arrowModeBtn, "Quest arrow: aim", "Direct points straight at the objective. Route follows the game's own route, which uses the roads and paths it plans. Around obstacles points straight, and bends along the game's route only where that route shows something in the way. The game gives addons no terrain data, so the third reads the obstacle from the route. A steps forward, X steps back.")
+    tip(arrowSizeBtn, "Quest arrow: size", "Small, Medium or Large, as a share of the size the game gives its own tracked-quest arrow. A steps forward, X steps back.")
+    tip(arrowPosBtn, "Quest arrow: place", "Where the arrow sits on the screen. With a mouse or the trackpad you can also drag the arrow itself and it stays where you drop it (Custom). A steps forward, X steps back.")
     tip(arrowBtn, "Quest arrow", "While a quest is in progress on the map you are on, a small arrow near the top right of the screen points at its objective and turns as you turn. It only shows while the game can say both your spot and the objective spot on that map, and only for quests on that map. A switches it on or off.")
-    note("The arrow points at a quest on the map you are on, with the game's own quest arrow art.", -456)
+    note("The arrow points at the quest the game has selected (click a quest in the tracker), or else the first quest in progress on the map you are on, with the game's own tracked-quest arrow. Aim, size and place are the three buttons beside it.", -456)
 
     QP.refresh()
     return page
@@ -133,5 +145,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn } }
 end
