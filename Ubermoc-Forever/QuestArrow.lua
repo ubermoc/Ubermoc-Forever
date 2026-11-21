@@ -44,7 +44,7 @@ local function cfg()
     if a.on == nil then a.on = true end
     if not a.mode then a.mode = 1 end
     if not a.px then a.px = Q.DEFAULTPX end
-    if not a.turn then a.turn = 1 end
+    if not a.turn or a.turn > #Q.TURNS then a.turn = 1 end   -- 1.3.165 had three ways; the old view way is gone
     if not a.art then a.art = 1 end
     if not a.place then a.place = {} end
     return a
@@ -228,52 +228,19 @@ end
 -- objective north: 0 - 3 pi / 2 = a quarter turn counter-clockwise, the arrow points left, and north is on your left.
 function Q.rotation(angle, facing) return angle - facing end
 
--- How the arrow turns. The game does not give addons the camera's direction (CameraDocumentation: no yaw), but it keeps a region at the
--- screen position of its navigation target (C_Navigation.GetFrame, InGameNavigationDocumentation.lua) and Blizzard's own arrow
--- (SuperTrackedFrame.lua UpdateArrow) turns by the angle between "up" and the offset of that region from the middle of the screen:
--- so it points the way the objective is in what you see, whichever way the character faces. "With the view" does the same; where the game
--- has no navigation target it falls back to "With the map", the compass direction as on a north-up minimap (the minimap's own quest arrow,
--- which does not turn with you either); "With you" is the old relative-to-your-facing arrow.
-Q.TURNS = { "With the view", "With the map", "With you" }
+-- How the arrow turns. The game does not give addons the camera's direction (CameraDocumentation: no yaw), so "where you look" is not
+-- available; the arrow of both example addons (ForeverPlusPlus Waypoints.lua, ThePath Nav.lua Paint) turns the picture by
+-- bearing - GetPlayerFacing(), the bearing counter-clockwise from north (ThePath's HereBeDragons:GetWorldVector is atan2(-dX, dY)
+-- normalised to the same convention), and that is "With you". "With the map" is the bearing itself, a compass direction with north
+-- at the top, like the arrow at the edge of the north-up minimap.
+-- (1.3.165 tried the screen position of the game's own navigation frame, C_Navigation.GetFrame, as Blizzard's arrow does; in Forever it
+-- stayed in one place, so it was removed.)
+Q.TURNS = { "With you", "With the map" }
 function Q.turnName() return Q.TURNS[cfg().turn] or Q.TURNS[1] end
 function Q.nextTurn(dir)
     local a = cfg()
     a.turn = UF.stepIndex(a.turn, #Q.TURNS, dir)
     return a.turn
-end
-
--- the turn that points from the middle of the screen (cx, cy) at a screen position (nx, ny): zero is up, SetRotation turns counter-clockwise,
--- so a target on the right is a negative turn. It is Blizzard's -Vector2D_CalculateAngleBetween(offset, up) = -atan2(offsetX, offsetY).
-function Q.screenRotation(cx, cy, nx, ny)
-    local vx, vy = nx - cx, ny - cy
-    if vx == 0 and vy == 0 then return nil end
-    return atan2(-vx, vy)
-end
-
--- where the game puts its navigation target on the screen, as the turn to point at it, and the facts behind it for /ubf arrow; nil when
--- the game has no navigation target or no valid screen position for it
-function Q.viewRotation()
-    local N = C_Navigation
-    if not (N and N.GetFrame) then return nil, "the game has no navigation system" end
-    local okF, nf = pcall(N.GetFrame)
-    if not okF or not nf then return nil, "the game has no navigation target (no quest selected in the tracker)" end
-    if N.HasValidScreenPosition then
-        local okV, valid = pcall(N.HasValidScreenPosition)
-        if okV and not valid then return nil, "the game has no screen position for its target" end
-    end
-    local okC, nx, ny = pcall(nf.GetCenter, nf)
-    if not okC or type(nx) ~= "number" or type(ny) ~= "number" then return nil, "the target has no place on the screen" end
-    if issecretvalue and (issecretvalue(nx) or issecretvalue(ny)) then return nil, "the target's place is hidden from addons" end
-    if not (WorldFrame and WorldFrame.GetCenter and UIParent and UIParent.GetEffectiveScale) then return nil, "no screen to measure on" end
-    local okW, cx, cy = pcall(WorldFrame.GetCenter, WorldFrame)
-    local okS, scale = pcall(UIParent.GetEffectiveScale, UIParent)
-    if not (okW and okS and type(cx) == "number" and type(cy) == "number" and type(scale) == "number" and scale > 0) then
-        return nil, "the middle of the screen is not known"
-    end
-    -- the same two numbers Blizzard compares in SuperTrackedFrame (GetCenterScreenPoint, and the navigation frame's own centre)
-    local rot = Q.screenRotation(cx / scale, cy / scale, nx, ny)
-    if not rot then return nil, "the target is at the middle of the screen" end
-    return rot, nil, nx, ny, cx / scale, cy / scale
 end
 
 function Q.facing()
@@ -599,21 +566,15 @@ local function update()
     end
     local yards, angle = Q.bearing(w, h, fromX, fromY, ax, ay)  -- claim C7
     if not yards then Q.why = "the map size is not known"; hide(); return end
-    -- which way to turn the picture: with the view (the game's own screen position of its target), else with the map (compass, north up),
-    -- or with the character's facing
-    local mode = a.turn
-    local turn, used, face, vx, vy, cx, cy, whyNoView
-    if mode == 1 then
-        turn, whyNoView, vx, vy, cx, cy = Q.viewRotation()
-        if turn then used = "view" else mode = 2 end
-    end
-    if not turn and mode == 2 then turn, used = angle, "map" end            -- the bearing is counter-clockwise from north (claim C7)
-    if not turn then
+    -- which way to turn the picture: with you (bearing - facing, as ThePath and ForeverPlusPlus do) or with the map (the bearing itself)
+    local turn, face
+    if a.turn == 2 then
+        turn = angle                                           -- counter-clockwise from north (claim C7)
+    else
         face = Q.facing()  -- claim C6
         if not face then Q.why = "the game does not give the direction you face"; hide(); return end
-        turn, used = Q.rotation(angle, face), "facing"
+        turn = Q.rotation(angle, face)
     end
-    Q.turnUsed, Q.whyNoView = used, whyNoView
 
     Q.why = nil
     Q.applyArt(f)
@@ -626,7 +587,7 @@ local function update()
     d.mode, d.source, d.quest, d.here, d.aimMap = Q.MODES[a.mode], source, quest, here, aimMap
     d.px, d.py, d.ax, d.ay, d.tx, d.ty, d.tmap = pos.x, pos.y, ax, ay, tx, ty, tmap
     d.facing, d.bearing, d.turn, d.yards, d.mapW, d.mapH = face or Q.facing(), angle, turn, yards, w, h
-    d.turnMode, d.turnUsed, d.whyNoView, d.viewX, d.viewY, d.centreX, d.centreY = Q.TURNS[a.turn], used, whyNoView, vx, vy, cx, cy
+    d.turnMode = Q.TURNS[a.turn]
     local okR, applied = pcall(f.art.GetRotation, f.art)
     d.applied = (okR and type(applied) == "number") and applied or nil
     local okA, atlas = pcall(f.art.GetAtlas, f.art)
@@ -659,9 +620,7 @@ function Q.report()
         local function deg(r) return string.format("%.0f", (r or 0) * 180 / math.pi) end
         UF.say(string.format("Numbers: you at %.4f %.4f on map %s, aiming at %.4f %.4f on map %s (objective %.4f %.4f on map %s), %.0f yd",
             d.px or 0, d.py or 0, tostring(d.here), d.ax or 0, d.ay or 0, tostring(d.aimMap), d.tx or 0, d.ty or 0, tostring(d.tmap), d.yards or 0))
-        UF.say("Turns: " .. tostring(d.turnMode) .. ", drawn by " .. tostring(d.turnUsed)
-            .. (d.whyNoView and (" (the view is not used: " .. d.whyNoView .. ")") or "")
-            .. (d.viewX and string.format(", the game puts its target at %.0f %.0f on a screen centred at %.0f %.0f", d.viewX, d.viewY, d.centreX or 0, d.centreY or 0) or ""))
+        UF.say("Turns: " .. tostring(d.turnMode))
         UF.say("You face " .. deg(d.facing) .. " deg counter-clockwise from north, the bearing is " .. deg(d.bearing) .. ", the arrow is turned "
             .. deg(d.turn) .. " (the picture reports " .. (d.applied and deg(d.applied) or "nothing") .. "), art " .. tostring(d.atlas or d.texture)
             .. ", mode " .. tostring(d.mode) .. ", aim source " .. tostring(d.source))

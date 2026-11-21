@@ -88,16 +88,23 @@ step swings further away, the arrow follows the step. With no route answer from 
 "no route from the game". Limit: a winding road across open land also swings the step, so there it follows the road. The map-area
 borders of 1.3.146 are still used when the objective is on another map.
 
-## How the arrow turns (1.3.165)
+## How the arrow turns (1.3.166), from two working examples
 
-- Addons cannot read the camera's direction: `C_Camera` has only `GetCameraFOVDefaults` and `GetUICameraInfo`, the camera globals only move
-  the camera or read its zoom (ForeverPlusPlus `docs/forever-api.md`, "Addons can't read which way the camera faces", from `CameraDocumentation.lua`).
-  So "relative to where you look" cannot be worked out from a bearing and `GetPlayerFacing` (which is the character's facing, not the camera's).
-- What the game does give is `C_Navigation.GetFrame()`, a region it keeps at the screen position of its navigation target
-  (`InGameNavigationDocumentation.lua`; `C_Navigation.HasValidScreenPosition`, `WasClampedToScreen`, `GetDistance`). Blizzard's own arrow
-  turns by `-Vector2D_CalculateAngleBetween(offset, up)` = `-atan2(offsetX, offsetY)` of that region's offset from the middle of the screen
-  (`SuperTrackedFrame.lua` `UpdateArrow`, `Vector2D.lua:43`; the middle is `WorldFrame:GetCenter() / UIParent:GetEffectiveScale()`,
-  `GetCenterScreenPoint`). "With the view" does exactly that, so the arrow points the way the objective is in what you see.
-- Without a navigation target (no quest selected in the tracker, or a client without the system) it falls back to "With the map": the bearing itself,
-  counter-clockwise from north, which is what the minimap's quest arrow shows on a north-up minimap (`rotateMinimap` is not set in the user's Config.wtf).
-  "With you" is `bearing - GetPlayerFacing()`, the arrow of 1.3.161 to 1.3.164.
+Read, not guessed (both are Forever addons the user runs; ThePath is kept next to the other research in `ThePath-1.6.2/`):
+
+- **ForeverPlusPlus** `Modules/Map/Waypoints.lua` `update()`: `frame.arrow:SetRotation(angle - facing)` with `angle` from `WorldMap.Toward`
+  (`atan2(-east, -south) % 2 pi`, north 0, counter-clockwise) and `facing = GetPlayerFacing()`.
+- **ThePath** `Nav.lua` `N:Paint()`: `angle, dist = HBD:GetWorldVector(...)`, then `f.tex:SetRotation(angle - facing)` with
+  `facing = GetPlayerFacing()`, tinted green to red by `angle - facing` (green when you face it). `HereBeDragons:GetWorldVector` is
+  `atan2(-deltaX, deltaY)` normalised to counter-clockwise from north, the same convention (`Libs/HereBeDragons/HereBeDragons-2.0.lua:626-641`;
+  `local atan2 = math.atan2`, the two-argument arc tangent of the game's Lua 5.1).
+  It arrives at 12 yards, shows nothing when the step is on another continent, and does no road or obstacle routing at all (its only
+  allowance is `WINDING = 1.35`, "a walk is longer than the straight line (hills, rivers, roads)", for travel time). It also sets the game's
+  own waypoint (`C_Map.SetUserWaypoint` then `C_SuperTrack.SetSuperTrackedUserWaypoint(true)`, `Core.lua:683-687`) so the game draws its pin,
+  and uses `C_QuestLog.GetNextWaypoint` only for a step with no location of its own (`Nav.lua:145-150`).
+- So the arrow is `bearing - facing` ("With you"). The camera direction is not available to addons (ForeverPlusPlus `docs/forever-api.md`,
+  from `CameraDocumentation.lua`), so a view-relative arrow cannot be computed. 1.3.165 tried the screen position of the game's navigation
+  target (`C_Navigation.GetFrame`, as Blizzard's `SuperTrackedFrame` does); in the user's Forever client the arrow then stayed in one place
+  and only the distance changed, so it was removed. "With the map" (the bearing itself, north at the top) is kept as the second way.
+- Neither example gives a road route or obstacle avoidance: the client has no walkability data (see the top of this file), so Route and
+  Around obstacles can only use a route step the game gives for the quest (`/ubf arrow` shows whether it does).
