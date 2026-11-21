@@ -103,4 +103,4 @@ Fish shell: one command per code block.
   - The user's wording matters: "with the view", "breadcrumbs", "old arrow only", "no options". When they remove options, remove the button and the code path; when they bring them back to choose, restore the exact earlier version (it is in git history).
   - Licences: this addon is MIT. Read GPL addons for ideas, copy nothing. Ask before downloading anything; put downloads in the research folder in their own folder.
 - Before a release: the offline test, the checker for every file, `bash tools/test_install.sh`, then the user's own test in the game. Release only when the user says (this one he did).
-
+- The arrow's turn: Breadcrumbs (the only aim) turns by waypoint bearing minus facing; `Q.viewRotation` (the user's earlier choice, "with the view") applies only in the straight-line fallback. If the user asks for "with the view" again, ask whether Breadcrumbs should then point by the game's marker (it would ignore the learned waypoints).
