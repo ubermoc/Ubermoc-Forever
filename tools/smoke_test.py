@@ -91,6 +91,8 @@ local function proxy(name)
         if k == "RegisterEvent" then return function(s, e) rawset(s, "__events", rawget(s, "__events") or {}); s.__events[e] = true end end
         if k == "CreateFontString" or k == "CreateTexture" then return function(owner) local sub = proxy("sub"); rawset(sub, "__owner", owner); return sub end end
         if k == "SetFontString" then return function() end end
+        -- word wrap is off unless the font string asks for it (claim C166), so the stub records what was asked for
+        if k == "SetWordWrap" then return function(s, v) rawset(s, "__wrap", v) end end
         -- like the game: a texture or text with no point is never drawn, so the stub counts the points a region was given;
         -- SetAtlas, SetTexture and SetPoint answer nothing (the 1.3.146 arrow took "answers nothing" for "failed" and never drew)
         if k == "SetPoint" or k == "SetAllPoints" then return function(s) rawset(s, "__points", (rawget(s, "__points") or 0) + 1) end end
@@ -3118,6 +3120,76 @@ r = L("""function()
 end""")()
 assert str(r) == "true40nilleft|nilnilright", r
 print("Fresh install: the author's settings are the defaults, existing settings untouched: OK")
+
+# The quest arrow defaults a NEW install gets are the author's own live settings (claim C159), not the old code values;
+# and a setting left unset falls back to the same numbers. FAKE(C159): the numbers checked here are what his live
+# Ubermoc-Forever.lua holds (qarrow px 56, opacity 50, place fx 0.4992 fy 0.2322; gamepad bar fade idle 0, flight 0).
+r = L("""function()
+    local UF = UbermocForever
+    local Q = UF.QuestArrow
+    local saved = UbermocForeverDB
+    UbermocForeverDB = nil
+    local d = UF.DB()
+    local out = {}
+    out[#out + 1] = tostring(d.qarrow.px) .. " " .. tostring(d.qarrow.opacity)
+    -- a brand-new character (no place saved yet): the place the arrow is actually drawn at
+    local p = Q.place()      -- the place a character with nothing saved gets
+    out[#out + 1] = string.format("%.4f %.4f", p.fx, p.fy)
+    -- the gamepad bar fade: his gamepad bar dims to nothing while standing still, so a fresh install starts that way
+    out[#out + 1] = tostring(d.fade.gbar.idle) .. " " .. tostring(d.fade.gbar.flight)
+    -- nothing stored for the quest arrow at all: Q.cfg answers its own defaults (it fills in what is missing, and leaves
+    -- a value the player set alone)
+    UbermocForeverDB = { qarrow = { px = 24 } }
+    local a = Q.cfg()
+    out[#out + 1] = tostring(a.px) .. " " .. tostring(a.opacity) .. " " .. string.format("%.4f %.4f", Q.place().fx, Q.place().fy)
+    UbermocForeverDB = saved
+    return out[1] .. "|" .. out[2] .. "|" .. out[3] .. "|" .. out[4]
+end""")()
+assert str(r) == "56 50|0.4992 0.2322|0 0|24 50 0.4992 0.2322", r
+print("Quest arrow defaults: a fresh install gets size 56, opacity 50, the author's own place (0.4992, 0.2322) and his gamepad bar fade (idle 0); an unset value falls back to the same numbers: OK")
+
+# The line under the distance is the quest objective (claims C163, C164): the FIRST objective always, nothing when no quest
+# is followed, the ride itself when the aim crosses to another continent, and long text wraps (claim C166).
+# FAKE(C163): the game answers a table of objective rows, or nothing when the quest is not known.
+# FAKE(C164): an objective row is a plain table carrying text, type, finished, numFulfilled and numRequired.
+r = L("""function()
+    local Q = UbermocForever.QuestArrow
+    local saved = C_QuestLog
+    local objs = {
+        [10] = { { text = "Talk to the quartermaster", type = 0, finished = false, numFulfilled = 0, numRequired = 1 },
+                 { text = "Collect 8 Taming Yards", type = 2, finished = false, numFulfilled = 3, numRequired = 8 } },
+        [11] = { { text = "Talk to the flight master", type = 1, finished = true, numFulfilled = 1, numRequired = 1 },
+                 { text = "Take the zeppelin to Menethil", type = 0, finished = false, numFulfilled = 0, numRequired = 1 } },
+    }
+    C_QuestLog = { GetQuestObjectives = function(id) return objs[id] end }   -- FAKE(C163); the rows it answers are FAKE(C164)
+    local out = {}
+    out[#out + 1] = Q.objectiveText(10)                                      -- nothing finished: the first one
+    out[#out + 1] = Q.objectiveText(11)                                      -- always number 1, even when it is finished
+    out[#out + 1] = tostring(Q.objectiveText(nil))                          -- no quest: nothing
+    out[#out + 1] = tostring(Q.objectiveText(99))                           -- the game answers nothing: nothing
+    local ride = { kind = "ride", note = "Ride a boat to Stormwind", angle = 1, yards = 500 }
+    local straight = { kind = "straight", note = "Straight on", angle = 1, yards = 10 }
+    out[#out + 1] = Q.noteLine(11, nil, ride)                                -- crossing continents: says what to do
+    out[#out + 1] = Q.noteLine(10, nil, straight)                           -- own continent: the objective
+    out[#out + 1] = Q.noteLine(nil, 10, straight)                           -- the quest picked off the map: its objective
+    out[#out + 1] = tostring(Q.noteLine(nil, nil, ride))                    -- no quest at all: nothing to write
+    out[#out + 1] = Q.noteLine(99, nil, straight)                           -- objective not readable: the aim line stays
+    -- a refused call is kept, not thrown away: the line falls back and /ubf errors can show it
+    C_QuestLog = { GetQuestObjectives = function(id) if id == 13 then error("restricted") end return objs[id] end }   -- FAKE(C163): the game can refuse the call
+    local failed, order = UbermocForever.failures()
+    out[#out + 1] = tostring(Q.objectiveText(13)) .. " kept " .. tostring(order[#order]) .. " " .. tostring(failed["QuestArrow.GetQuestObjectives"].n)
+    local f = Q.frame()
+    out[#out + 1] = "wrap " .. tostring(rawget(f.note, "__wrap"))            -- the line wraps so a long objective fits
+    Q.setNote(f, "Take the zeppelin to Menethil Harbor and speak with the harbourmaster about the wreck")
+    out[#out + 1] = "shown " .. tostring(f.note:IsShown()) .. " " .. f.note:GetText()
+    Q.setNote(f, "")                                                         -- nothing to say: the line is put away
+    out[#out + 1] = "shown " .. tostring(f.note:IsShown())
+    C_QuestLog = saved
+    return table.concat(out, "|")
+end""")()
+assert str(r) == ("Talk to the quartermaster|Talk to the flight master|nil|nil|Ride a boat to Stormwind|Talk to the quartermaster|"
+                  "Talk to the quartermaster|nil|Straight on|nil kept QuestArrow.GetQuestObjectives 1|wrap true|shown true Take the zeppelin to Menethil Harbor and speak with the harbourmaster about the wreck|shown false"), r
+print("Quest arrow line: the first objective, the ride when crossing continents, nothing with no quest, the line wraps and is put away when empty: OK")
 # The reused buffers of GameNav (openMenus, the window list): each call clears its buffer at entry, so a window or menu
 # that closed between two calls is gone. The result must be read at once, as every caller does.
 # FAKE(C5): the stub window answers `GetName` with a plain string; FAKE(C6): the stub frame answers `IsShown` with a plain
@@ -3372,11 +3444,12 @@ r = L("""function()
     UbermocForeverDB.qarrow = saved[8]
     return table.concat(out, " | ")
 end""")()
+# 56 px is the size a fresh install starts at (claim C159)
 assert str(r) == ("walk 961-1416-1000 lca 1416 | held 1000 | on parent 0.12 0.74 | cross 0.50 0.40 | "
                   "direct 1416 0.62 0.22 shared map | route 961 0.15 0.55 route | obstacle 1416 0.50 0.40 areas | breadcrumbs 1416 0.62 0.22 shared map | "
                   "route fallback 1416 0.62 0.22 shared map | same area 961 0.40 0.40 straight (no route) | "
                   "tracking 8 | target 1000 0.4 0.4 | target from the row 961 0.2 0.6 | "
-                  "40 px 40, 44 px 44, 48 px 48, 56 px 56 | cursor 0.50 1.00 | point 0.00 10.00 | "
+                  "56 px 56, 64 px 64, 72 px 72, 80 px 80 | cursor 0.50 1.00 | point 0.00 10.00 | "
                   "moving true | after nil | saved 0.20 0.50 for Player-1-ABC"), r
 print("Quest arrow: the three modes, the cross-map target, the size and the saved place: OK")
 print("modes:", r)

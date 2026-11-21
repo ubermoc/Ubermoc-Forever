@@ -29,8 +29,11 @@ Q.MODES = { "direct", "route", "obstacle", "breadcrumbs" }
 
 -- the sizes the picture is drawn at, as a share of the size the game gives its own arrow (claims C39, C42)
 Q.SIZESTEPS = { 16, 20, 24, 28, 32, 36, 40, 44, 48, 56, 64, 72, 80, 96, 112, 128 }   -- the arrow's size in pixels, one step per press
-Q.DEFAULTPX = 40
-Q.DEFAULTPLACE = { fx = 0.88, fy = 0.90 }  -- near the top right, where the game draws nothing
+-- the size, opacity and place a brand-new install starts with are the author's own settings (claim C159: what his live
+-- saved-settings file holds); UF.SEED in Core.lua carries the same numbers
+Q.DEFAULTPX = 56
+Q.DEFAULTOPACITY = 50
+Q.DEFAULTPLACE = { fx = 0.4992, fy = 0.2322 }  -- the spot he dragged it to (claim C159)
 
 local function cfg()
     local d = UF.DB()
@@ -39,7 +42,7 @@ local function cfg()
     if a.on == nil then a.on = true end
     a.mode = #Q.MODES        -- Breadcrumbs, whatever an older version saved
     if not a.px then a.px = Q.DEFAULTPX end
-    if not a.opacity then a.opacity = 100 end
+    if not a.opacity then a.opacity = Q.DEFAULTOPACITY end
     if not a.place then a.place = {} end
     return a
 end
@@ -406,6 +409,8 @@ local function build()
     arrow.note = arrow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     arrow.note:SetPoint("TOP", arrow.text, "BOTTOM", 0, -2)
     arrow.note:SetWidth(300)
+    -- a font string only wraps when it is asked to (claim C166), and the objective can be a long sentence
+    arrow.note:SetWordWrap(true)
     -- the games handler names for a frame that registers for drags (claim C37): start keeps it moving,
     -- stop leaves the place saved for this character
     arrow:SetScript("OnDragStart", function(self)
@@ -557,11 +562,42 @@ function Q.crumbHere(tmap, tx, ty)
     return Q.crumbFor(p, { cont = cont, wx = wp.x, wy = wp.y }, (UnitFactionGroup and UnitFactionGroup("player")) or "Neutral")
 end
 
-local function setNote(f, text)
-    if f.note and f.noteText ~= text then
+-- the line under the distance: the quest objective, put away when there is nothing to say
+function Q.setNote(f, text)
+    if not f.note then return end
+    if f.noteText ~= text then
         f.note:SetText(text or "")
         f.noteText = text
     end
+    local want = (text ~= nil and text ~= "") and true or false
+    if f.note:IsShown() ~= want then
+        if want then f.note:Show() else f.note:Hide() end
+    end
+end
+
+-- the quest's first objective, always number 1 (the author's choice), as the game gives it (claims C163, C164).
+-- Nothing when there is no quest, or when the game answers nothing (GetQuestObjectives may return nothing).
+function Q.objectiveText(quest)
+    if not quest or not (C_QuestLog and C_QuestLog.GetQuestObjectives) then return nil end
+    local ok, objs = UF.try("QuestArrow.GetQuestObjectives", C_QuestLog.GetQuestObjectives, quest)   -- a quest the game does not know can raise; UF.try keeps the error so /ubf errors shows it
+    if not ok or type(objs) ~= "table" then return nil end
+    local o = objs[1]
+    if type(o) ~= "table" then return nil end
+    local t = o.text
+    return (type(t) == "string" and t ~= "") and t or nil
+end
+
+-- which line to write under the distance (pure, so it can be checked offline): the objective of the quest we are aiming at,
+-- or nothing when no quest is being followed. When the aim crosses to another continent the thing to do IS the ride, so the
+-- line says the ride (ride the boat, take the zeppelin, take the tram) instead of the objective on the far side.
+function Q.noteLine(quest, picked, crumb)
+    if not (quest or picked) then return nil end
+    if crumb and (crumb.kind == "ride" or crumb.kind == "board" or crumb.kind == "unknown") then
+        return crumb.note
+    end
+    local objective = Q.objectiveText(quest or picked)
+    if objective then return objective end
+    return crumb and crumb.note or nil        -- the objective is not readable: keep what the aim says
 end
 
 local acc = 0
@@ -603,7 +639,7 @@ local function update()
     if issecretvalue and (issecretvalue(pos.x) or issecretvalue(pos.y)) then hide(); return end
 
     local quest = Q.tracking()
-    local tmap, tx, ty
+    local picked, tmap, tx, ty
     if quest then
         tmap, tx, ty = Q.targetFor(quest, here, answerFor(quest), rowFor(quest, here))
     else
@@ -612,7 +648,7 @@ local function update()
         tmap, tx, ty = Q.userWaypoint()
         if not tmap then
             local m, row = Q.picking()
-            if m and row then tmap, tx, ty = m, row.x, row.y end
+            if m and row then tmap, tx, ty = m, row.x, row.y; picked = row.questID end
         end
     end
     if not tmap then Q.why = "no quest to point at: none selected in the tracker and none in progress on this map"; hide(); return end
@@ -685,11 +721,11 @@ local function update()
     local okT, tex = pcall(f.art.GetTexture, f.art)
     d.texture = (okT and (type(tex) == "string" or type(tex) == "number")) and tex or nil
     if crumb then
-        setNote(f, crumb.note)
+        Q.setNote(f, Q.noteLine(quest, picked, crumb))
         f.art:SetShown(crumb.angle ~= nil)
         Q.showDistance(f, crumb.angle and yards or nil, false)
     else
-        setNote(f, "")
+        Q.setNote(f, Q.noteLine(quest, picked, nil))     -- the plain straight line: the objective, or nothing
         f.art:SetShown(true)
         Q.showDistance(f, yards, aimMap ~= here)
     end
