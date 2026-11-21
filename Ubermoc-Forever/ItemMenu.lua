@@ -169,12 +169,6 @@ local function quality(itemID)
     return ok and q or nil
 end
 
-local function hasUse(itemID)
-    if not (itemID and C_Item and C_Item.GetItemSpell) then return false end
-    local ok, name = pcall(C_Item.GetItemSpell, itemID)
-    return ok and name ~= nil
-end
-
 -- Item classes (Enum.ItemClass in Blizzard_APIDocumentationGenerated ItemConstantsDocumentation.lua).
 local CLASS = { consumable = 0, weapon = 2, armor = 4, tradegoods = 7, itemEnhancement = 8, quest = 12, misc = 15 }
 -- Consumables that are plainly not used on another item: potions 1, elixirs 2, flasks 3, scrolls 4, food and drink 5,
@@ -208,6 +202,32 @@ local function useText(itemID)
     end
     if text ~= nil then useCache[itemID] = text end
     return text
+end
+
+-- The item's own use spell as the game answers it (`C_Item.GetItemSpell`, C147): spellName and spellID. It
+-- is MayReturnNothing, so it can answer nothing even for an item that has a use (C148: Blizzard code calls
+-- it with an item ID number).
+local function useSpell(itemID)
+    if not (itemID and C_Item and C_Item.GetItemSpell) then return nil end
+    local ok, name, spellID = pcall(C_Item.GetItemSpell, itemID)
+    if not ok then return nil end
+    return name, spellID
+end
+
+function M.spellID(itemID)
+    local name, spellID = useSpell(itemID)
+    return spellID
+end
+
+-- Whether the item has its own use. The spell lookup can answer nothing (C147), so the item's own tooltip
+-- `Use:` line (read through `GetItemByID`, C149) counts as well: a weapon-buff item the lookup misses - the
+-- user's Crippling Poison, item 3775 with spell 173555 (C150) - still gets its entries. This is not a rule for
+-- that item alone: it holds for every item whose tooltip shows a Use: line.
+local function hasUse(itemID)
+    if not itemID then return false end
+    local name, spellID = useSpell(itemID)
+    if name ~= nil or spellID ~= nil then return true end
+    return useText(itemID) ~= nil
 end
 
 -- Equipment slots in the game's numbering, with what the item's use text calls them. The wording comes from a scan of the
@@ -841,7 +861,14 @@ function M.report(btn)
     end
     if not itemID then say("Highlight an item first."); return end
     local classID, subClassID, equipLoc = instant(itemID)
-    say(string.format("Item %d: class %s, subclass %s, equip %s, has a use: %s, used on another item: %s.",
+    say(string.format("Item %d: class %s, subclass %s, equip %s, has a use: %s, spell %s, used on another item: %s.",
         itemID, tostring(classID), tostring(subClassID), tostring(equipLoc), tostring(hasUse(itemID)),
-        tostring(M.usedOnItems(itemID))))
+        tostring(M.spellID(itemID)), tostring(M.usedOnItems(itemID))))
+    -- what X would do on this button, so the two can be compared in the game
+    if bag then
+        local act = M.rightClickAction(btn)
+        local what = "nothing"
+        if act then what = tostring(act.type) .. ": " .. (act.item or act.macrotext or "") end
+        say("X on this slot: " .. what)
+    end
 end

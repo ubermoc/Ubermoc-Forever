@@ -1,3 +1,12 @@
+2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.153, offline tests only, untested in the game): the use
+spell lookup `C_Item.GetItemSpell` is `MayReturnNothing` (claim C147), so `hasUse` in `Ubermoc-Forever/ItemMenu.lua` now
+also accepts the item's own `Use:` tooltip line read through `GetItemByID` (claim C149). This is what the user reported:
+Crippling Poison - item `3775`, spell `173555` in the game's generated weapon-buff data (claim C150) - got no use-on-weapon
+entries while other items did. The rule is general, not for that item alone: every item with a `Use:` tooltip line counts,
+and potions (subclass 1), food (5) and an item with no spell and no use line still get nothing. `/ubf item` now prints the
+spell id the game gives and what X resolves to on that slot, so it can be read in the game. Offline test: `ALL TESTS PASSED`,
+`check_lua` `PASSED` with `UBF_RESEARCH`.
+
 2026-11-20 (local model, branch `local-model/x-item-use`, 1.3.152, offline tests only, untested in the game): X on a bag
 slot now does the game's own right click on every item in it. `Ubermoc-Forever/ItemMenu.lua` `M.rightClickAction` no
 longer answers "nothing" for the item types the Y menu handles (poisons, armour kits, oils, stones, enchants) or for bags:

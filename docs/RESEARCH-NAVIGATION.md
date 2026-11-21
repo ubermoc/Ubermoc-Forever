@@ -527,3 +527,12 @@ Sourced this session (claims C1-C4 in the harness):
   claim C142 and the poison subclass is claim C143; `GetContainerItemInfo` and its `itemID` are claims C146 and C144.
   What the game does with an armour kit or a poison once it uses it cannot be checked offline — only the user in the game
   can say whether the item is used, applied or just fails with an error.
+- **1.3.153, the use spell can answer nothing:** `C_Item.GetItemSpell` takes an `itemInfo` and is `MayReturnNothing`
+  (`ItemDocumentation.lua`:970-985, claim C147), so `hasUse` cannot rely on it alone; the item's own tooltip `Use:` line,
+  read through `GetItemByID` (`TooltipInfoDocumentation.lua`:438-452, claim C149), counts as well — for every item, not
+  only the one the user reported. Blizzard's own code calls the lookup with an item ID number
+  (`Camelot/PaperDollFrame.lua`:1815-1824, claim C148). For the reported item the game's generated weapon-buff data says
+  Crippling Poison is item `3775` with spell `173555` (`ForeverPlusPlus/ForeverPlusPlus/Lib/Generated/WeaponBuffs.lua`:1-20,
+  claim C150, generated from the client's `ItemEffect` tables for build 1.60.1.70959), so the spell exists: an answer of
+  nothing is what left the item without entries. `/ubf item` now prints the spell id and what X resolves to on the slot, so
+  the same facts can be read in the game; what X does on a live slot stays the user's to confirm.

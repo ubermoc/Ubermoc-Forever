@@ -908,7 +908,7 @@ r = L("""function()
     local M = UbermocForever.ItemMenu
     C_Item = {
         GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, 8 end,
-        GetItemSpell = function(id) return "Use it" end,
+        GetItemSpell = function(id) return "Use it", 173555 end,
     }
     local lines = { [3775] = "Use: Coats a weapon with poison that lasts for 30 minutes.", [9999] = "Use: Restores 10 health." }
     C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = lines[id] } } } end }
@@ -916,6 +916,42 @@ r = L("""function()
 end""")()
 assert str(r) == "truefalse", r
 print("Poisons are recognised from their use text: OK")
+# hasUse: the spell lookup is MayReturnNothing, so the tooltip's own Use: line counts too (C147, C149).
+# FAKE(C150): Crippling Poison 3775 with spell 173555 is what the game's generated data says; the stub below
+# answers it only when the lookup is asked, and answers nothing for the others, like MayReturnNothing can.
+# FAKE(C147): the stub stands for C_Item.GetItemSpell (itemInfo, MayReturnNothing, spellName + spellID).
+# FAKE(C149): the stub stands for C_TooltipInfo.GetItemByID (itemID as a number, lines carry leftText).
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    local savedItem, savedTip = C_Item, C_TooltipInfo
+    local classes = { [9101] = 8, [9102] = 1, [9103] = 5, [9104] = 8 }   -- FAKE(C142): the game's class numbers
+    C_Item = {
+        GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, classes[id] or 8 end,
+        -- FAKE(C147): C_Item.GetItemSpell is MayReturnNothing; here it answers for Crippling Poison only,
+        -- and the ids are the game's data (C150).
+        GetItemSpell = function(id)
+            if id == 3775 then return "Crippling Poison", 173555 end
+            return nil            -- MayReturnNothing (C147): nothing back for the others
+        end,
+    }
+    local lines = { [3775] = "Use: To coat a weapon with this poison, you must have a weapon equipped.",
+                    [9101] = "Use: Coats a melee weapon. Lasts until it is used.",
+                    [9102] = "Use: Restores 10 health.",
+                    [9103] = "Use: Restores 10 health over 10 seconds." }
+    -- FAKE(C149): stands for C_TooltipInfo.GetItemByID(itemID), lines read as lineData.leftText
+    C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = lines[id] } } } end }
+    local spellFromGame = tostring(M.spellID(3775))               -- the game's own answer for Crippling Poison
+    local missed = tostring(M.spellID(9101))                     -- the lookup answered nothing for this one
+    local res = spellFromGame .. "|" .. missed .. "|" .. tostring(M.usedOnItems(9101)) .. "|"
+        .. tostring(M.usedOnItems(3775)) .. "|" .. tostring(M.usedOnItems(9102)) .. "|" .. tostring(M.usedOnItems(9103))
+        .. "|" .. tostring(M.usedOnItems(9104))
+    local t = M.targets(9101) or {}
+    res = res .. "|" .. table.concat(t, "-")
+    C_Item, C_TooltipInfo = savedItem, savedTip
+    return res
+end""")()
+assert str(r) == "173555|nil|true|true|false|false|false|16-17", r
+print("hasUse: a weapon-buff item the spell lookup misses still counts, through its own Use: line; potions and food still do not: OK")
 # Conversations start on the Accept button, and X trains in a trainer
 r = L("""function()
     local G = UbermocForever.GameNav
@@ -974,7 +1010,7 @@ r = L("""function()
     local M = UbermocForever.ItemMenu
     C_Item = {
         GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, 8 end,
-        GetItemSpell = function(id) return "Use it" end,
+        GetItemSpell = function(id) return "Use it", 173555 end,
     }
     local text = {
         [1] = "Use: Coats a weapon with poison that lasts for 30 minutes.",
@@ -1036,7 +1072,7 @@ r = L("""function()
     for _, c in ipairs(cases) do byId[c[1]] = c end
     C_Item = {
         GetItemInfoInstant = function(id) local c = byId[id]; return id, "t", "s", "", 1, c[2], c[3] end,
-        GetItemSpell = function(id) return "Use it" end,
+        GetItemSpell = function(id) return "Use it", 173555 end,
     }
     C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = byId[id][4] } } } end }
     local count, bad = {}, {}
