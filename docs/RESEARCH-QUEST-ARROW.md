@@ -87,3 +87,17 @@ straight bearing to the objective. While the two agree within 35 degrees (20 onc
 step swings further away, the arrow follows the step. With no route answer from the game it is the straight line and `/ubf arrow` says
 "no route from the game". Limit: a winding road across open land also swings the step, so there it follows the road. The map-area
 borders of 1.3.146 are still used when the objective is on another map.
+
+## How the arrow turns (1.3.165)
+
+- Addons cannot read the camera's direction: `C_Camera` has only `GetCameraFOVDefaults` and `GetUICameraInfo`, the camera globals only move
+  the camera or read its zoom (ForeverPlusPlus `docs/forever-api.md`, "Addons can't read which way the camera faces", from `CameraDocumentation.lua`).
+  So "relative to where you look" cannot be worked out from a bearing and `GetPlayerFacing` (which is the character's facing, not the camera's).
+- What the game does give is `C_Navigation.GetFrame()`, a region it keeps at the screen position of its navigation target
+  (`InGameNavigationDocumentation.lua`; `C_Navigation.HasValidScreenPosition`, `WasClampedToScreen`, `GetDistance`). Blizzard's own arrow
+  turns by `-Vector2D_CalculateAngleBetween(offset, up)` = `-atan2(offsetX, offsetY)` of that region's offset from the middle of the screen
+  (`SuperTrackedFrame.lua` `UpdateArrow`, `Vector2D.lua:43`; the middle is `WorldFrame:GetCenter() / UIParent:GetEffectiveScale()`,
+  `GetCenterScreenPoint`). "With the view" does exactly that, so the arrow points the way the objective is in what you see.
+- Without a navigation target (no quest selected in the tracker, or a client without the system) it falls back to "With the map": the bearing itself,
+  counter-clockwise from north, which is what the minimap's quest arrow shows on a north-up minimap (`rotateMinimap` is not set in the user's Config.wtf).
+  "With you" is `bearing - GetPlayerFacing()`, the arrow of 1.3.161 to 1.3.164.

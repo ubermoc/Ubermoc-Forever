@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.165
+- Changed: the quest arrow no longer turns with your character. By default ("With the view") it points the way the objective is in what you see on the screen, as the game's own arrow does: it reads the screen position the game keeps for its navigation target and turns toward it from the middle of the screen. Where the game has no such target it points in the compass direction (north at the top), like the arrow at the edge of the minimap. A Turns button on the Quality of life page also offers "With the map" and "With you" (the old arrow, relative to where your character faces). `/ubf arrow` says which one is drawn and why.
+
 Ubermoc-Forever 1.3.164
 - Changed: the quest arrow's size is a width in pixels (16 to 128) that the Size button steps one press at a time, A bigger and X smaller, instead of Small, Medium and Large. The old sizes were a share of the size of one picture and came out far off for the others. The default is 40.
 
