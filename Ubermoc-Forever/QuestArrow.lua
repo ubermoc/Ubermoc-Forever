@@ -33,8 +33,8 @@ Q.MODENOTE = {
 }
 
 -- the sizes the picture is drawn at, as a share of the size the game gives its own arrow (claims C39, C42)
-Q.SIZES = { { name = "Small", times = 0.75 }, { name = "Medium", times = 1 }, { name = "Large", times = 1.35 } }
-Q.FALLBACKPX = 34                          -- when the game gives no size for the atlas (claim C42)
+Q.SIZESTEPS = { 16, 20, 24, 28, 32, 36, 40, 44, 48, 56, 64, 72, 80, 96, 112, 128 }   -- the arrow's size in pixels, one step per press
+Q.DEFAULTPX = 40
 Q.DEFAULTPLACE = { fx = 0.88, fy = 0.90 }  -- near the top right, where the game draws nothing
 
 local function cfg()
@@ -43,7 +43,7 @@ local function cfg()
     local a = d.qarrow
     if a.on == nil then a.on = true end
     if not a.mode then a.mode = 1 end
-    if not a.size then a.size = 2 end
+    if not a.px then a.px = Q.DEFAULTPX end
     if not a.art then a.art = 1 end
     if not a.place then a.place = {} end
     return a
@@ -148,21 +148,21 @@ function Q.applyArt(f)
     f.artKey, Q.drawnArt = a.art, art.name
 end
 
-function Q.sizeName() return Q.SIZES[cfg().size].name end
+function Q.sizeName() return tostring(cfg().px) .. " px" end
+-- one step up or down the list, from the step nearest the size now (the size is a width in pixels, whatever picture is drawn)
 function Q.nextSize(dir)
     local a = cfg()
-    a.size = UF.stepIndex(a.size, #Q.SIZES, dir)
-    return a.size
+    local at, best = 1, math.huge
+    for i, v in ipairs(Q.SIZESTEPS) do
+        if math.abs(v - a.px) < best then at, best = i, math.abs(v - a.px) end
+    end
+    local n = at + ((dir or 1) < 0 and -1 or 1)
+    if n < 1 then n = #Q.SIZESTEPS elseif n > #Q.SIZESTEPS then n = 1 end
+    a.px = Q.SIZESTEPS[n]
+    return a.px
 end
 
-function Q.sizePx()
-    local px = Q.FALLBACKPX
-    if C_Texture and C_Texture.GetAtlasInfo then
-        local ok, info = pcall(C_Texture.GetAtlasInfo, Q.ATLAS)  -- claim C42
-        if ok and info and info.width and info.width > 0 then px = info.width end
-    end
-    return math.floor(px * Q.SIZES[cfg().size].times + 0.5)
-end
+function Q.sizePx() return cfg().px end
 
 -- the place, as a fraction of the screen from its centre, kept for this character
 function Q.place()

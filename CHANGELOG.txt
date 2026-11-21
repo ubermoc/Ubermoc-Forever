@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.164
+- Changed: the quest arrow's size is a width in pixels (16 to 128) that the Size button steps one press at a time, A bigger and X smaller, instead of Small, Medium and Large. The old sizes were a share of the size of one picture and came out far off for the others. The default is 40.
+
 Ubermoc-Forever 1.3.163
 - Fixed: the quest arrow pointed the wrong way because the game's Lua has a one-argument `math.atan` (the second argument is ignored), so the bearing to the objective came out wrong: from `/ubf arrow` in the game, an objective 442 yards south and 99 yards west was given a bearing of 89 degrees instead of 167. The bearing now uses `math.atan2`. The offline test now makes `math.atan` behave like the game's, checks the real numbers from the game, and `tools/check_lua.py` refuses a two-argument `math.atan` (and other library calls that Lua 5.1 does not have).
 - Changed: an Art button on the Quality of life page replaces the Outline button. It steps through the pictures the client has: the minimap's gold arrow (the engine's guide arrow file, the first choice), the game's tracked-quest arrow, and the older arrow with or without its black edge.

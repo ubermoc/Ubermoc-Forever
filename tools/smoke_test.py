@@ -3343,8 +3343,7 @@ r = L("""function()
     tmap, tx, ty = Q.targetFor(8, 961, nil, row)
     out[#out + 1] = "target from the row " .. tostring(tmap) .. " " .. tostring(tx) .. " " .. tostring(ty)
 
-    -- the size is a share of the size the game gives its own arrow (claims C42, C36)
-    C_Texture = { GetAtlasInfo = function(atlas) return { width = 40, height = 40 } end }   -- FAKE(C42)
+    -- the size is a width in pixels, one step per press (claim C36)
     local sizes = {}
     for i = 1, 4 do
         sizes[#sizes + 1] = Q.sizeName() .. " " .. tostring(Q.sizePx())
@@ -3385,7 +3384,7 @@ assert str(r) == ("walk 961-1416-1000 lca 1416 | held 1000 | on parent 0.12 0.74
                   "direct 1416 0.62 0.22 shared map | route 961 0.15 0.55 route | obstacle 1416 0.50 0.40 areas | "
                   "route fallback 1416 0.62 0.22 shared map | same area 961 0.40 0.40 straight (no route) | "
                   "tracking 8 | target 1000 0.4 0.4 | target from the row 961 0.2 0.6 | "
-                  "Medium 40, Large 54, Small 30, Medium 40 | cursor 0.50 1.00 | point 0.00 10.00 | "
+                  "40 px 40, 44 px 44, 48 px 48, 56 px 56 | cursor 0.50 1.00 | point 0.00 10.00 | "
                   "moving true | after nil | saved 0.20 0.50 for Player-1-ABC | "
                   "Direct, Route, Around obstacles note straight at the objective, bending along the games route only where that route shows "
                   "something in the way (the game gives no terrain data, so this is read from its route)"), r
@@ -3601,5 +3600,20 @@ r = L("""function()
 end""")()
 assert str(r) == "453 167.4 -130.6 0.79", r     # 0.79 = atan(1): the second argument is ignored, as in the game (a two-argument atan would give 1.57)
 print("Quest arrow: the bearing uses the two-argument arc tangent of the game's Lua 5.1 (math.atan2), checked on the real numbers from the game: OK")
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local a = Q.cfg()
+    a.px = 40
+    local out = { Q.sizeName() }
+    for i = 1, 3 do Q.nextSize(1); out[#out + 1] = tostring(Q.sizePx()) end        -- up one step at a time
+    for i = 1, 5 do Q.nextSize(-1); out[#out + 1] = tostring(Q.sizePx()) end       -- and down
+    a.px = 16; Q.nextSize(-1); out[#out + 1] = "wrap " .. Q.sizePx()              -- the smallest steps down to the largest
+    Q.nextSize(1); out[#out + 1] = tostring(Q.sizePx())                            -- and back to the smallest
+    a.px = 50; Q.nextSize(1); out[#out + 1] = "near " .. Q.sizePx()               -- a size that is on no step goes from the nearest (48): 56
+    a.px = 40
+    return table.concat(out, " ")
+end""")()
+assert str(r) == "40 px 44 48 56 48 44 40 36 32 wrap 128 16 near 56", r
+print("Quest arrow: the size steps one press at a time in pixels, both ways, wrapping: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
