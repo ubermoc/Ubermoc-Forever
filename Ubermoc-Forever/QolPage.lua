@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn, arrowTurnBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -41,6 +41,7 @@ function QP.refresh()
     arrowSizeBtn:SetText("Size: " .. UF.QuestArrow.sizeName())
     arrowPosBtn:SetText("Place: " .. UF.QuestArrow.positionName())
     arrowOpacityBtn:SetText("Opacity: " .. UF.QuestArrow.opacityName())
+    arrowTurnBtn:SetText("Turns: " .. UF.QuestArrow.turnName())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -134,6 +135,9 @@ function QP.build(parent, inset)
     UF.cycleButton(arrowSizeBtn, function(dir) UF.QuestArrow.nextSize(dir) end, QP.refresh)
     UF.cycleButton(arrowPosBtn, function(dir) UF.QuestArrow.nextPosition(dir) end, QP.refresh)
     UF.cycleButton(arrowOpacityBtn, function(dir) UF.QuestArrow.nextOpacity(dir) end, QP.refresh)
+    arrowTurnBtn = button(page, 190); arrowTurnBtn:SetPoint("LEFT", arrowOpacityBtn, "RIGHT", 6, 0)
+    UF.cycleButton(arrowTurnBtn, function(dir) UF.QuestArrow.nextTurn(dir) end, QP.refresh)
+    tip(arrowTurnBtn, "Quest arrow: turns", "With the view: the arrow points the way the game's own marker for the objective is on your screen, like Blizzard's arrow, whichever way your character faces; where the game has no marker position it uses the map direction. With the map: the compass direction, north at the top, like the arrow at the edge of the minimap. With you: the way the objective lies from where your character faces, as ThePath and ForeverPlusPlus draw theirs (up when you face it). The game gives addons no camera direction. A steps forward, X steps back; /ubf arrow says which one is drawn.")
     tip(arrowOpacityBtn, "Quest arrow: opacity", "How solid the arrow and its distance are, from 100 percent down to 10 in steps of ten. A makes it one step fainter, X one step more solid, and it wraps round.")
     tip(arrowModeBtn, "Quest arrow: aim", "Direct points straight at the objective. Route follows the game's own route, which uses the roads and paths it plans. Around obstacles points straight, and bends along the game's route only where that route shows something in the way. The game gives addons no terrain data, so the third reads the obstacle from the route. A steps forward, X steps back.")
     tip(arrowSizeBtn, "Quest arrow: size", "How wide the arrow is on the screen, in pixels. A makes it one step bigger, X one step smaller (16 to 128), and it wraps round.")
@@ -149,5 +153,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn, arrowTurnBtn } }
 end

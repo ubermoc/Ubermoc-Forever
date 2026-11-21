@@ -3601,5 +3601,42 @@ r = L("""function()
 end""")()
 assert str(r) == "100% | 90% | 80% | 70% | 80% | 90% | wrap 100% | 10% | alpha 0.7", r
 print("Quest arrow: opacity steps from 100 to 10 percent by tens, wraps, and sets the frame's alpha: OK")
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local out = {}
+    local function deg(r) return r and string.format("%.1f", r * 180 / math.pi) or "nil" end
+    -- the game's own formula, -Vector2D_CalculateAngleBetween(offset, up) = -atan2(offsetX, offsetY) (SuperTrackedFrame.lua UpdateArrow):
+    -- up is 0, the right is a clockwise quarter turn (-90 in a counter-clockwise SetRotation), the left +90, straight down 180
+    out[#out + 1] = deg(Q.screenRotation(0, 0, 0, 1)) .. " " .. deg(Q.screenRotation(0, 0, 1, 0)) .. " " .. deg(Q.screenRotation(0, 0, -1, 0))
+        .. " " .. deg(Q.screenRotation(0, 0, 0, -1)) .. " " .. deg(Q.screenRotation(5, 5, 5, 5))
+    -- the game's navigation target on the screen: 500 right and 100 above the middle of a 2000 x 1000 screen
+    local savedN, savedW = C_Navigation, WorldFrame
+    local nf = { GetCenter = function(self) return 1500, 600 end }
+    WorldFrame = { GetCenter = function(self) return 1000, 500 end }
+    C_Navigation = { GetFrame = function() return nf end, HasValidScreenPosition = function() return true end }
+    local rot = Q.viewRotation()
+    out[#out + 1] = deg(rot)
+    C_Navigation.HasValidScreenPosition = function() return false end          -- no valid screen position: not used, and it says why
+    local r2, why2 = Q.viewRotation()
+    out[#out + 1] = tostring(r2) .. " " .. tostring(why2)
+    C_Navigation.GetFrame = function() return nil end                          -- no target (nothing selected)
+    local r3, why3 = Q.viewRotation()
+    out[#out + 1] = tostring(r3) .. " " .. tostring(why3)
+    C_Navigation = nil                                                          -- a client without the navigation system
+    local r4, why4 = Q.viewRotation()
+    out[#out + 1] = tostring(r4) .. " " .. tostring(why4)
+    C_Navigation, WorldFrame = savedN, savedW
+    -- the turn button steps through the three ways and wraps
+    local a = Q.cfg(); a.turn = 1
+    out[#out + 1] = Q.turnName()
+    Q.nextTurn(1); out[#out + 1] = Q.turnName()
+    Q.nextTurn(1); out[#out + 1] = Q.turnName()
+    Q.nextTurn(1); out[#out + 1] = Q.turnName()
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("0.0 -90.0 90.0 180.0 nil | -78.7 | nil the game has no screen position for its target | "
+                  "nil the game has no navigation target (no quest selected in the tracker) | nil the game has no navigation system | "
+                  "With the view | With the map | With you | With the view"), r
+print("Quest arrow: the view turn is Blizzard's own formula on the game's navigation target, falls back with a reason, and the turn button steps: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
