@@ -3191,5 +3191,23 @@ r = L("""function()
 end""")()
 assert str(r) == "false,true,42,1,nil", r
 print("UF.try keeps the error of a failing call for /ubf errors and passes a good call through: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    UF.DB().loadLog = nil
+    local handlers = {}
+    for _, f in ipairs(__frames) do
+        local e = rawget(f, "__events")
+        local sc = rawget(f, "__scripts")
+        if e and e.PLAYER_ENTERING_WORLD and sc and sc.OnEvent then handlers[#handlers + 1] = { f, sc.OnEvent } end
+    end
+    -- the world is entered by a /reload, then by a zone change (only the first is a load)
+    for _, h in ipairs(handlers) do pcall(h[2], h[1], "PLAYER_ENTERING_WORLD", false, true) end
+    for _, h in ipairs(handlers) do pcall(h[2], h[1], "PLAYER_ENTERING_WORLD", false, false) end
+    for _, t in ipairs(__calls.timers) do pcall(t) end     -- the 10 s timer among the others
+    local log = UF.DB().loadLog
+    return (log and #log or 0) .. "," .. (log and log[1].kind or "-")
+end""")()
+assert str(r) == "1,reload", r
+print("Load record: a /reload is noted in the saved settings, a zone change is not: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

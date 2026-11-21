@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.158
+- Added: every cold login and every /reload is noted in the saved settings ten seconds after the world is entered: which kind of load it was, the version the game read, whether the controller was seen, how many start-up checks failed, and every error the addon caught. `/ubf loads` prints it. This is to find out why a change only shows after /reload; nothing in play changes.
+
 Ubermoc-Forever 1.3.157
 - Added: `/ubf errors` prints the errors the addon caught since login. Our own code that runs from the highlight ticker and a few other places now goes through `UF.try`, which keeps the error instead of throwing it away (the 1.3.155 bag-item bug failed silently inside a bare `pcall`).
 - Changed: nothing you can see in play. The offline test's stub frames now raise when a method is called without its frame, like the game, and the Lua checker stops the number of silent `pcall`s from growing.
