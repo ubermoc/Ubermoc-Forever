@@ -25,6 +25,7 @@
  "NameHealth.lua": 1,
  "Nameplates.lua": 1,
  "Nav.lua": 7,
+ "NavScans.lua": 0,
  "Options.lua": 2,
  "PlateLevel.lua": 1,
  "PlateQuest.lua": 2,

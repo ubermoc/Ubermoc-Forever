@@ -3631,5 +3631,59 @@ end""")()
 assert str(r) == ("0.0 -90.0 90.0 180.0 nil | -78.7 | nil the game has no screen position for its target | "
                   "nil the game has no navigation target (no quest selected in the tracker) | nil the game has no navigation system"), r
 print("Quest arrow: the view turn is Blizzard's own formula on the game's navigation target, falls back with a reason: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local N = UF.NavScan
+    local saved = { C_Map, C_AreaPoiInfo, C_TaxiMap, C_EncounterJournal, N.maxMap }
+    N.maxMap = 130
+    C_Map = {
+        GetMapInfo = function(id)
+            if id == 100 then return { mapID = 100, name = "Zone A", mapType = 3, parentMapID = 101, flags = 0 } end
+            if id == 101 then return { mapID = 101, name = "Continent", mapType = 2, parentMapID = 0, flags = 0 } end
+        end,
+        GetMapWorldSize = function(id) return 4000, 3000 end,
+        GetMapRectOnMap = function(id, top) return 0.1, 0.3, 0.2, 0.5 end,
+        GetWorldPosFromMapPos = function(id, pos) return 1, { x = pos.x * 1000, y = pos.y * 2000 } end,
+    }
+    C_AreaPoiInfo = {
+        GetAreaPOIForMap = function(id) if id == 100 then return { 11, 12 } end return {} end,
+        GetAreaPOIInfo = function(id, poi)
+            if poi == 11 then return { position = { x = 0.25, y = 0.5 }, name = "Booty Bay Dock", description = "Boat to Ratchet", atlasName = "poi-boat", factionID = 0 } end
+            return { position = { x = 0.5, y = 0.5 }, name = "Inn", atlasName = "poi-inn" }
+        end,
+    }
+    C_TaxiMap = { GetTaxiNodesForMap = function(id)
+        if id == 100 then return { { nodeID = 7, position = { x = 0.4, y = 0.6 }, name = "Flight A", atlasName = "taxi", faction = 1, isUndiscovered = true } } end
+        return {}
+    end }
+    C_EncounterJournal = { GetDungeonEntrancesForMap = function(id)
+        if id == 101 then return { { areaPoiID = 5, position = { x = 0.6, y = 0.4 }, name = "The Hole", description = "d", atlasName = "dungeon", journalInstanceID = 9 } } end
+        return {}
+    end }
+    local function runScan(name)
+        UF.DB().navData = nil
+        assert(N.start(name))
+        local second = N.start("maps")               -- one at a time: the second is refused while the first runs
+        local frames = 0
+        while N.step() do frames = frames + 1 end
+        return UF.DB().navData[name], second, frames
+    end
+    local out = {}
+    local d, second = runScan("docks")
+    out[#out + 1] = #d.data.all .. "/" .. #d.data.rows .. "/" .. tostring(d.data.rows[1].name) .. "/" .. d.data.rows[1].cont .. "," .. d.data.rows[1].wx .. "/" .. tostring(d.data.atlases["poi-inn"].n) .. "/" .. tostring(second)
+    local t = runScan("taxi")
+    out[#out + 1] = #t.data.rows .. "/" .. t.data.rows[1].node .. "/" .. tostring(t.data.rows[1].undiscovered) .. "/" .. t.maps
+    local m = runScan("maps")
+    out[#out + 1] = #m.data.rows .. "/" .. m.data.rows[1].w .. "/" .. tostring(m.data.rows[1].minX) .. "/" .. m.data.rows[1].cx
+    local e = runScan("entrances")
+    out[#out + 1] = #e.data.rows .. "/" .. e.data.rows[1].instance .. "/" .. e.data.rows[1].wx
+    out[#out + 1] = tostring(N.transportLike("poi-boat", nil, nil)) .. tostring(N.transportLike(nil, "Zeppelin Tower", nil)) .. tostring(N.transportLike("poi-inn", "Inn", "Rest here"))
+    assert(N.start("docks")); N.status(true); out[#out + 1] = tostring(N.running)     -- stop ends it
+    C_Map, C_AreaPoiInfo, C_TaxiMap, C_EncounterJournal, N.maxMap = saved[1], saved[2], saved[3], saved[4], saved[5]
+    UF.DB().navData = nil
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("2/1/Booty Bay Dock/1,250.0/1/false | 1/7/true/2 | 2/4000.0/0.1/500.0 | 1/9/600.0 | truetruefalse | nil"), r
+print("Navigation scans: docks, taxi, maps and entrances read the game's own calls, one at a time, and stop on request: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

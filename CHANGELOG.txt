@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.171
+- Added: navigation scans, author tools for building the quest arrow's routing from the game's own data, one at a time: `/ubf docks` (every area point of interest on every map, with the transport-like ones picked out and every icon name counted), `/ubf taxi` (every flight point the game shows, discovered or not), `/ubf maps` (the map tree with sizes, places on the parent and continent positions) and `/ubf entrances` (dungeon and raid entrances). `/ubf scans` lists what is saved, `/ubf scans stop` ends a running one. Each takes a few seconds and saves into the saved settings (written at /reload or logout). Nothing in play changes.
+
 Ubermoc-Forever 1.3.170
 - Changed: the quest arrow turns "with the view" only, as chosen: it points toward the game's own on-screen marker for the objective. The Turns button is gone again. Where the game gives no marker position (for example when the objective is behind you), the arrow now falls back to the direction relative to where your character faces, which keeps turning as you turn, instead of the compass direction, which stood still and looked like an arrow that did nothing.
 - Added: while you play, the arrow keeps twenty samples (your facing, where the game puts its marker, the turn applied) in the saved settings, so what it does while you turn can be read after a /reload.

@@ -333,6 +333,10 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.GameNav and UF.GameNav.xReport then UF.GameNav.xReport() end
     elseif msg == "errors" then
         UF.reportErrors()
+    elseif msg == "docks" or msg == "taxi" or msg == "maps" or msg == "entrances" then
+        if UF.NavScan then UF.NavScan.start(msg) end
+    elseif msg == "scans" or msg == "scans stop" then
+        if UF.NavScan then UF.NavScan.status(msg == "scans stop") end
     elseif msg == "arrow" then
         if UF.QuestArrow and UF.QuestArrow.report then UF.QuestArrow.report() end
     elseif msg == "loads" then
