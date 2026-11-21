@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.154
+- Fixed: X on an item in a bag slot now runs the game's use command as a macro (`/use <bag> <slot>`) instead of the secure item action attribute - the macro route is the one the user confirmed working in the game, and the item action route was the one where X did nothing. The Y menu's `Use / equip` entry uses the same route, so X and the menu do the identical thing. The legend still says `Use` for the use command; at a vendor X still sells through the button name and the legend still says `Right-click`.
+- User confirmed in the game: the use entries work for poisons, armour kits, oils, stones, enchants and bags (1.3.153); only X was left.
 Ubermoc-Forever 1.3.153
 - Fixed: an item whose use spell the game cannot answer was not seen as usable, so its entries were missing (the user's Crippling Poison, item 3775, got no use-on-weapon entries while other items did). `C_Item.GetItemSpell` may return nothing, so the item's own `Use:` tooltip line counts too - for every item, not for that one alone. Potions, food and an item with no use line still get nothing.
 - Added: `/ubf item` also prints the spell id the game gives for the item, and what X resolves to on that bag slot.

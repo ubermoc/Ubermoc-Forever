@@ -129,6 +129,12 @@ end
 -- oils, stones, enchants) and bags are no longer left out; the Y menu keeps its entries, it is just not the only way.
 -- The secure "item" action is the same call the game's right click ends with (C140, C141), so a poison, a kit or a
 -- bag goes through it like anything else.
+-- 1.3.154: X runs the use as the game's own /use command, through the macro action, because that is the route the user
+-- confirmed working in the game (the Y menu's "Use on <weapon>" entries). The secure "item" action route is not
+-- confirmed working in the game - the user reports X still does nothing there - so X does not rely on it.
+-- C157: `macrotext` is run by `C_Macro.RunMacroText(text, button)`; C158: Blizzard reads `SecureCmdItemParse` as
+-- `name, bag, slot` and calls `SecureCmdUseItem(name, bag, slot, target)`, which ends with
+-- `C_Container.UseContainerItem(bag, slot, target)` (C153) - the same call as the game's right click (C138).
 function M.rightClickAction(btn)
     if type(btn) ~= "table" then return nil end
     local bag, slot = bagSlot(btn)
@@ -151,7 +157,10 @@ function M.rightClickAction(btn)
     -- applying a poison or a kit, equipping a bag - the same secure action as the Y menu's "Use / equip" entry
     -- (C140: it equips when the item is equippable and not equipped, else uses it; C141: the game's right click
     -- ends with the same call). 1.3.152: no item type is left out any more.
-    return { type = "item", item = bag .. " " .. slot }
+    -- 1.3.154: the game's /use command, as a macro attribute (C157, C158, C153): a string, not a stored frame, and
+    -- the route confirmed working in the game. For a bag slot reference the macro name is nothing, so the use - and
+    -- the equip of an equippable item - goes through the same call the game's own right click ends with (C138).
+    return { type = "macro", macrotext = "/use " .. bag .. " " .. slot }
 end
 
 ----------------------------------------------------------------------
@@ -679,7 +688,8 @@ local function openBag(btn)
         if auction and bname and bname ~= "" then
             add("Sell at auction", { type = "macro", macrotext = "/click " .. bname .. " RightButton" })
         end
-        add("Use / equip", { type = "item", item = bag .. " " .. slot })
+        -- 1.3.154: the same route as X, so both do the identical thing (C157, C158)
+        add("Use / equip", { type = "macro", macrotext = "/use " .. bag .. " " .. slot })
     end
 
     -- a bag: put it in one of your bag slots, with the best gain on the entry itself

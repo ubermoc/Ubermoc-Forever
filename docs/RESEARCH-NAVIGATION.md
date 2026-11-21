@@ -536,3 +536,15 @@ Sourced this session (claims C1-C4 in the harness):
   claim C150, generated from the client's `ItemEffect` tables for build 1.60.1.70959), so the spell exists: an answer of
   nothing is what left the item without entries. `/ubf item` now prints the spell id and what X resolves to on the slot, so
   the same facts can be read in the game; what X does on a live slot stays the user's to confirm.
+
+- **1.3.154, X uses the macro route, the one confirmed working in the game:** `SECURE_ACTIONS.macro` reads `macrotext`
+  and runs `C_Macro.RunMacroText(text, button)` (SecureTemplates.lua:450-463, claim C157). Blizzard's own macro runner
+  reads `SecureCmdItemParse` as `name, bag, slot` and, when the name is not an equippable item, calls
+  `SecureCmdUseItem(name, bag, slot, target)` (CastSequenceManager.lua:182-198, claim C158), which ends with
+  `C_Container.UseContainerItem(bag, slot, target)` (ChatFrameUtil.lua:1228-1234, claim C153) - the same call the
+  game's right click on a bag button ends with (claim C138). For a bag slot reference the macro name is nothing, so the
+  use goes through that call. Both routes read their attributes through `SecureButton_GetModifiedAttribute`
+  (SecureTemplates.lua:119-126, claim C151), which builds the name from `prefix`, `name` and `suffix`
+  (`RightButton` = `2`, claim C152); the order inside the C-side `LOCAL_CHECK_Frame.GetAttribute` is not in the Lua
+  source, so whether the plain name is reached for a right click stays open (assumption A1). The user's in-game report
+  that the menu's macro entries work for every item type shows the plain name is reached for a left click.

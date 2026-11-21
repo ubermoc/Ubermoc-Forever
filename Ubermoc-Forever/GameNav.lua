@@ -631,6 +631,7 @@ function G.xLabel(f)
     local act = G.xAction(f)
     if not act then return nil end
     if act.type == "item" then return "Use" end       -- the secure use of the item (a recipe, a hearthstone)
+    if act.type == "macro" and act.macrotext and act.macrotext:find("^/use ") then return "Use" end   -- the game's use command (1.3.154)
     return "Right-click"
 end
 

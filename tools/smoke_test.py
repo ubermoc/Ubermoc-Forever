@@ -664,7 +664,8 @@ print("The triggers are only claimed when they have something to do, and given b
 # our code is refused by the secure click (C141), so X goes through the string actions instead. 1.3.152: X is the
 # game's right click on EVERY item in a slot - the item's own use for a recipe, a hearthstone, a poison or an armor
 # kit (C138, C140), and the equip of an equippable item such as a bag - and it still sells at a vendor through the
-# button name (C145). The legend says what X does.
+# button name (C145). The legend says what X does. 1.3.154: the use runs as the game's /use macro (C157, C158, C153),
+# the route the user confirmed working in the game.
 # FAKE(C146): the stub stands for C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its
 # itemID (ContainerDocumentation.lua:192-206 and 766-782). FAKE(C142): the class numbers are the game's
 # (ItemConstantsDocumentation.lua:276-291). FAKE(C143): a poison is consumable subclass Other = 8 (same file:307-315).
@@ -718,6 +719,8 @@ r = L("""function()
     g2[#g2 + 1] = act(M.rightClickAction(gamepad))        -- no name to click: nothing
     MerchantFrame.selectedTab = 2                         -- the buyback tab: the game sells nothing
     g2[#g2 + 1] = act(M.rightClickAction(recipe))
+    MerchantFrame.selectedTab = 1                         -- back to the sell tab for the legend
+    g2[#g2 + 1] = tostring(G.xLabel(recipe))               -- at a vendor the legend still says Right-click
     MerchantFrame = nil
     -- the rest of the highlight keeps the plain click and the mail as before
     local plain = CreateFrame("Button", "FakePlain", UIParent)
@@ -735,12 +738,12 @@ r = L("""function()
     return table.concat(g1, ";"), table.concat(g2, ";"), table.concat(g3, ";")
 end""")()
 g1, g2, g3 = r
-assert str(g1) == "item|0 5;item|0 6;item|0 7;item|0 8;item|0 9", g1
-print("X on a bag item: the secure item action for every type now, recipe, gamepad slot, armor kit, bag and poison: OK")
-assert str(g2) == "macro|/click FakeRecipe RightButton;none;none", g2
-print("X at a vendor: sells through the button name, nothing for an unnamed gamepad slot, nothing on the buyback tab: OK")
-assert str(g3) == "true;item|0 5;item|0 7;item|0 9;none;none;Use,Use,Use,Right-click", g3
-print("X on the rest of the highlight: plain button still clicked, an empty slot gives nothing, mail still taken in the hook, legend says Use for a kit and a poison: OK")
+assert str(g1) == "macro|/use 0 5;macro|/use 0 6;macro|/use 0 7;macro|/use 0 8;macro|/use 0 9", g1
+print("X on a bag item: the game's use command as a macro (/use <bag> <slot>) for every type now, recipe, gamepad slot, armor kit, bag and poison: OK")
+assert str(g2) == "macro|/click FakeRecipe RightButton;none;none;Right-click", g2
+print("X at a vendor: sells through the button name, nothing for an unnamed gamepad slot, nothing on the buyback tab, legend still Right-click: OK")
+assert str(g3) == "true;macro|/use 0 5;macro|/use 0 7;macro|/use 0 9;none;none;Use,Use,Use,Right-click", g3
+print("X on the rest of the highlight: plain button still clicked, an empty slot gives nothing, mail still taken in the hook, legend says Use for the use command (kit, poison, recipe): OK")
 # Items used on other items, profession actions, and what the bag menu offers
 r = L("""function()
     local UF = UbermocForever

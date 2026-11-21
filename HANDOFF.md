@@ -1,3 +1,14 @@
+2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.154, offline tests only, untested in the game): X on a bag
+slot now runs the game's own use command as a macro - `type = "macro"`, `macrotext = "/use <bag> <slot>"` - the route the
+user confirmed working in the game (the menu's use entries), because the secure `item` attribute route is where he says X
+still does nothing. `M.rightClickAction` and the `Use / equip` entry both use it, so X and the menu do the identical
+thing, and `G.xLabel` says `Use` for a `/use` macro and still `Right-click` for the vendor click. Vendor sell, the
+buyback tab and an unnamed gamepad slot are unchanged. The user confirmed in the game that the use entries work for
+poisons, armour kits, oils, stones, enchants and bags now; this is the last piece. Claims: `SECURE_ACTIONS.macro` runs
+`C_Macro.RunMacroText(text, button)` (C157); Blizzard's macro runner reads `SecureCmdItemParse` as `name, bag, slot` and
+calls `SecureCmdUseItem(name, bag, slot, target)` (C158), which ends with `C_Container.UseContainerItem(bag, slot,
+target)` (C153) - the same call as the game's own right click (C138).
+
 2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.153, offline tests only, untested in the game): the use
 spell lookup `C_Item.GetItemSpell` is `MayReturnNothing` (claim C147), so `hasUse` in `Ubermoc-Forever/ItemMenu.lua` now
 also accepts the item's own `Use:` tooltip line read through `GetItemByID` (claim C149). This is what the user reported:
