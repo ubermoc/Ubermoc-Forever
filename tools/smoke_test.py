@@ -3263,14 +3263,14 @@ r = L("""function()
     out[#out + 1] = string.format("%.0f %.6f", yards, angle)
     local _, east = Q.bearing(100, 100, 0.2, 0.2, 0.6, 0.2)                      -- straight east: 3 pi / 2
     out[#out + 1] = string.format("%.6f", east)
-    out[#out + 1] = string.format("%.6f", Q.rotation(angle, math.pi / 2))         -- facing east, objective south: -(pi - pi/2)
+    out[#out + 1] = string.format("%.6f", Q.rotation(angle, math.pi / 2))         -- facing west (pi/2 counter-clockwise from north), objective south: a quarter turn counter-clockwise, left
     out[#out + 1] = tostring(Q.facing())                                          -- facing given, not read here: kept as passed
     C_QuestLog.GetQuestsOnMap = nil
     out[#out + 1] = tostring(Q.picking())                                         -- cannot ask the game: nothing
     C_Map, C_QuestLog, GetPlayerFacing = saved[1], saved[2], saved[3]
     return table.concat(out, ",")
 end""")()
-assert str(r) == "961/9,50 3.141593,4.712389,-1.570796,0,nil", r
+assert str(r) == "961/9,50 3.141593,4.712389,1.570796,0,nil", r
 print("Quest arrow: the bearing maths, the turn, and the quest choice: OK")
 
 # QuestArrow (QuestArrow.lua): the three modes, the cross-map target, the place and the size.
@@ -3388,7 +3388,7 @@ r = L("""function()
     local out = {}
     local yards, angle = Q.bearing(1000, 500, 0.12, 0.74, 0.50, 0.40)   -- claim C7 on a map of claim C15
     out[#out + 1] = string.format("%.6f %.6f", yards, angle)
-    out[#out + 1] = string.format("%.6f", Q.rotation(angle, math.pi / 2))   -- claim C8, and the negative of claim C9
+    out[#out + 1] = string.format("%.6f", Q.rotation(angle, math.pi / 2))   -- claims C6 and C7: counter-clockwise from north both, so the difference
     Q.showDistance(f, yards, true)
     out[#out + 1] = tostring(f.text:GetText())          -- approximate across maps (claim C41)
     Q.showDistance(f, yards, false)
@@ -3397,7 +3397,7 @@ r = L("""function()
     out[#out + 1] = tostring(f.text:GetText())          -- nothing to write (claim C40)
     return table.concat(out, " | ")
 end""")()
-assert str(r) == "416.293166 5.133052 | -3.562256 | ~416 yd | 416 yd | ", r
+assert str(r) == "416.293166 5.133052 | 3.562256 | ~416 yd | 416 yd | ", r
 print("Quest arrow: the distance line and the turn for a cross-map aim: OK")
 print("distance:", r)
 # GameNav (GameNav.lua): the bar legend under a window shows the Y row only while the highlighted button is an item
@@ -3522,5 +3522,31 @@ end""")()
 assert str(r) == ("art true | art points 1 | text points 1 | drawn Navigation-Tracked-Arrow | Direct | Route | Around obstacles | Direct | "
                   "Top right | Top centre | Top left | Custom | Top right"), r
 print("Quest arrow: the picture is the game's tracked-quest arrow and is anchored, the distance text is anchored, aim and place buttons step: OK")
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local pi = math.pi
+    -- the on-screen turn as a compass word: SetRotation turns a picture counter-clockwise, so + is left and - is right
+    local function where(facing, angle)
+        local t = Q.rotation(angle, facing) % (2 * pi)
+        if t > pi then t = t - 2 * pi end
+        if math.abs(t) < 0.01 then return "ahead" end
+        if math.abs(math.abs(t) - pi) < 0.01 then return "behind" end
+        return t > 0 and "left" or "right"
+    end
+    local N, W, S, E = 0, pi / 2, pi, 3 * pi / 2           -- bearings and facings are counter-clockwise from north (claims C6, C7)
+    local _, east = Q.bearing(100, 100, 0.2, 0.2, 0.6, 0.2)  -- an objective due east must come out as E
+    local _, north = Q.bearing(100, 100, 0.2, 0.6, 0.2, 0.2) -- and due north as N
+    return table.concat({
+        string.format("%.4f %.4f", east, math.abs(north)),
+        "face N, objective E: " .. where(N, E), "face N, objective W: " .. where(N, W),
+        "face E, objective N: " .. where(E, N), "face E, objective S: " .. where(E, S),
+        "face W, objective N: " .. where(W, N), "face S, objective N: " .. where(S, N),
+        "face N, objective N: " .. where(N, N), "face E, objective E: " .. where(E, E),
+    }, " | ")
+end""")()
+assert str(r) == ("4.7124 0.0000 | face N, objective E: right | face N, objective W: left | face E, objective N: left | "
+                  "face E, objective S: right | face W, objective N: right | face S, objective N: behind | "
+                  "face N, objective N: ahead | face E, objective E: ahead"), r
+print("Quest arrow: the arrow turns the way the objective lies (right of you is right on screen), all four facings: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

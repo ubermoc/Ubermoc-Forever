@@ -22,11 +22,13 @@ blocks in `tools/smoke_test.py` are marked `FAKE(C<n>)` against them.
   on `GameFontNormal` (`R/AddOns/Blizzard_QuestNavigation/SuperTrackedFrame.xml:5-24`, C39).
 - `AtlasInfo` answers `width` and `height`, so the size we draw is a share of the size the game gives the
   atlas (`D/TextureUtilsDocumentation.lua:207-224`, C42). Three sizes: 0.75, 1, 1.35.
-- A picture turned by `SetRotation` turns by the negative of the angle (C9), and the angle between two
-  directions is `atan2(cross, dot)` (C8). The bearing to a point on a map is `atan2(-east, -south)` taken
-  modulo 2 pi, north at 0, increasing counter-clockwise (C7). Facing is `GetPlayerFacing` (C6).
-  Our arrow turns by `-(angle - facing)`, which is the negative of that, so the picture points at the
-  objective.
+- `SetRotation` turns a picture COUNTER-clockwise by what it is given (Blizzard's own arrow gives it the negative of a clockwise
+  screen angle, `SuperTrackedFrame.lua:152`; ForeverPlusPlus's compass arrow gives `+pi/2` for an arrow that points left,
+  `CompassBar.lua:690`). The bearing to a point on a map is `atan2(-east, -south)` modulo 2 pi, north at 0, counter-clockwise (C7), and
+  the facing `GetPlayerFacing` is counter-clockwise from north too (C6), so `angle - facing` is how far counter-clockwise from
+  straight ahead the objective lies and the arrow turns by exactly that, `SetRotation(angle - facing)`, as ForeverPlusPlus's
+  waypoint arrow does. Up to 1.3.160 the code gave `-(angle - facing)` (a misreading of claim C9, which is Blizzard's clockwise
+  screen angle): the arrow pointed to the mirror image of the objective. Facing west is `pi / 2`, facing east `3 pi / 2`.
 - The frame is clamped to the screen with `SetClampedToScreen` (`D/SimpleFrameAPIDocumentation.lua:1207-1216`, C38),
   and it keeps one anchor because `ClearAllPoints` clears all its points
   (`D/SimpleScriptRegionResizingAPIDocumentation.lua:22-30`, C43).

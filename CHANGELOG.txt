@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.161
+- Fixed: the quest arrow pointed the wrong way (to the mirror image of the objective). It turned by the negative of the angle between where you face and where the objective lies, but the game turns a picture counter-clockwise by what it is given, as both the bearing and your facing are measured. Now an objective on your right is on the right of the arrow. The offline test checks all four facings against the real geometry.
+
 Ubermoc-Forever 1.3.160
 - Fixed: the quest arrow never showed. The arrow's picture was never given a place on its frame (a picture with no place is not drawn), the game's `SetAtlas` answers nothing and that was read as "the art cannot be used", the distance text was never placed, and dragging saved the place in the wrong units. The picture is now the game's own tracked-quest arrow (the older minimap quest arrow if that is missing) with the distance under it, as Blizzard draws it. The offline test now counts the places a picture was given and makes `SetAtlas` answer nothing, like the game.
 - Added: on the Quality of life page, buttons for the arrow's aim (Direct, Route, Around obstacles), size (Small, Medium, Large) and place (six places, or Custom after a drag). `/ubf arrow` also says why the arrow is hidden. An error in the arrow is kept for `/ubf errors`.

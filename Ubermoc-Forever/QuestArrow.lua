@@ -151,9 +151,12 @@ function Q.bearing(width, height, fromX, fromY, toX, toY)
     return math.sqrt(east * east + south * south), atan2(-east, -south) % (2 * math.pi)
 end
 
--- an arrow that points up by default turns by angle - facing, and the game's SetRotation takes the
--- negative (claims C7 and C9)
-function Q.rotation(angle, facing) return -(angle - facing) end
+-- An arrow that points up by default. The bearing (claim C7) and GetPlayerFacing (claim C6) are both counter-clockwise from north,
+-- so angle - facing is how far counter-clockwise from straight ahead the objective lies, and SetRotation turns a picture
+-- counter-clockwise by what it is given (Blizzard's own arrow gives it the negative of a clockwise angle,
+-- SuperTrackedFrame.lua:152; ForeverPlusPlus's waypoint arrow gives it angle - facing and works in the game). Facing east with the
+-- objective north: 0 - 3 pi / 2 = a quarter turn counter-clockwise, the arrow points left, and north is on your left.
+function Q.rotation(angle, facing) return angle - facing end
 
 function Q.facing()
     if not GetPlayerFacing then return nil end
