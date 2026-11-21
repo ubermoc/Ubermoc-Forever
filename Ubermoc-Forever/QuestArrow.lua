@@ -236,6 +236,19 @@ function Q.facing()
     return f
 end
 
+-- the map pin the player put down (C_Map.GetUserWaypoint: uiMapID and a plain position table in Forever, as ForeverPlusPlus found): map, x, y
+function Q.userWaypoint()
+    if not (C_Map and C_Map.HasUserWaypoint and C_Map.GetUserWaypoint) then return nil end
+    local okH, has = pcall(C_Map.HasUserWaypoint)
+    if not (okH and has) then return nil end
+    local ok, w = pcall(C_Map.GetUserWaypoint)
+    if not (ok and type(w) == "table" and type(w.position) == "table") then return nil end
+    local x, y = w.position.x, w.position.y
+    if type(w.uiMapID) ~= "number" or type(x) ~= "number" or type(y) ~= "number" then return nil end
+    if issecretvalue and (issecretvalue(x) or issecretvalue(y)) then return nil end
+    return w.uiMapID, x, y
+end
+
 -- the quest the game has focused on, if it has one (claim C20)
 function Q.tracking()
     if not (C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID) then return nil end
@@ -608,8 +621,13 @@ local function update()
     if quest then
         tmap, tx, ty = Q.targetFor(quest, here, answerFor(quest), rowFor(quest, here))
     else
-        local m, row = Q.picking()
-        if m and row then tmap, tx, ty = m, row.x, row.y end
+        -- no quest selected: the map pin the player put down (a flight path picked on the map, /way, a click on the map) comes before the
+        -- first quest in progress on the map
+        tmap, tx, ty = Q.userWaypoint()
+        if not tmap then
+            local m, row = Q.picking()
+            if m and row then tmap, tx, ty = m, row.x, row.y end
+        end
     end
     if not tmap then Q.why = "no quest to point at: none selected in the tracker and none in progress on this map"; hide(); return end
 

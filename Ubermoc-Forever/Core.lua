@@ -337,6 +337,10 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.NavScan then UF.NavScan.start(msg) end
     elseif msg == "scans" or msg == "scans stop" then
         if UF.NavScan then UF.NavScan.status(msg == "scans stop") end
+    elseif msg == "flightpaths" then
+        if UF.FlightPaths then UF.FlightPaths.report() end
+    elseif msg == "flightpaths show" then
+        if UF.FlightPaths then UF.FlightPaths.unhideAll(); UF.say("All the flight path pins you had hidden are back.") end
     elseif msg == "learned" then
         if UF.Trail then UF.Trail.report() end
     elseif msg == "arrow" then

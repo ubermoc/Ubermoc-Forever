@@ -14,6 +14,7 @@
  "DialogButtons.lua": 1,
  "Fade.lua": 1,
  "FadePage.lua": 0,
+ "FlightPaths.lua": 0,
  "GameNav.lua": 20,
  "GamepadBar.lua": 5,
  "ItemMenu.lua": 2,

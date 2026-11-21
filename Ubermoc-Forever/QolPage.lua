@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn, arrowFlightBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -41,6 +41,7 @@ function QP.refresh()
     arrowSizeBtn:SetText("Size: " .. UF.QuestArrow.sizeName())
     arrowPosBtn:SetText("Place: " .. UF.QuestArrow.positionName())
     arrowOpacityBtn:SetText("Opacity: " .. UF.QuestArrow.opacityName())
+    arrowFlightBtn:SetText("Flight paths on map: " .. UF.FlightPaths.pinsName())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
 
@@ -134,6 +135,9 @@ function QP.build(parent, inset)
     UF.cycleButton(arrowSizeBtn, function(dir) UF.QuestArrow.nextSize(dir) end, QP.refresh)
     UF.cycleButton(arrowPosBtn, function(dir) UF.QuestArrow.nextPosition(dir) end, QP.refresh)
     UF.cycleButton(arrowOpacityBtn, function(dir) UF.QuestArrow.nextOpacity(dir) end, QP.refresh)
+    arrowFlightBtn = button(page, 230); arrowFlightBtn:SetPoint("LEFT", arrowOpacityBtn, "RIGHT", 6, 0)
+    toggle(arrowFlightBtn, UF.FlightPaths.togglePins)
+    tip(arrowFlightBtn, "Flight paths on the map", "On: the world map shows the flight masters of your faction that you have not found yet, as pins. Open a flight map or talk to a flight master and its pin goes away. Click a pin to put the game's map waypoint on it if you want to go there; the quest arrow then points at that waypoint when no quest is selected. It learns which ones you have from the flight map and from finding them, so at first it may show some you already have. /ubf flightpaths says what the game reports. A switches it.")
     tip(arrowOpacityBtn, "Quest arrow: opacity", "How solid the arrow and its distance are, from 100 percent down to 10 in steps of ten. A makes it one step fainter, X one step more solid, and it wraps round.")
     tip(arrowModeBtn, "Quest arrow: aim", "Direct points straight at the objective. Route follows the game's own route, which uses the roads and paths it plans. Around obstacles points straight, and bends along the game's route only where that route shows something in the way. The game gives addons no terrain data, so the third reads the obstacle from the route. A steps forward, X steps back.")
     tip(arrowSizeBtn, "Quest arrow: size", "How wide the arrow is on the screen, in pixels. A makes it one step bigger, X one step smaller (16 to 128), and it wraps round.")
@@ -149,5 +153,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowModeBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn, arrowFlightBtn } }
 end

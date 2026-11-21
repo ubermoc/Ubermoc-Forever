@@ -3812,5 +3812,87 @@ r = L("""function()
 end""")()
 assert str(r) == ("0 90 180 270 100 | straight 45 424 | trail 90 waypoint 84 | trail 20 | unknown nil zeppelin | menethil | ride 0 400 | board nil | unknown"), r
 print("Breadcrumbs: the world bearing, straight on where nothing is walked, the trail waypoint ahead, the learned ride and its dock, the faction hint: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local FP = UF.FlightPaths
+    local saved = { C_Map, C_TaxiMap, UnitFactionGroup, GetTaxiMapID }
+    local out = {}
+    UF.DB().learned = nil
+    local flags = {}
+    local function nodes(map)
+        if map ~= 1414 then return {} end
+        return {
+            { nodeID = 1, name = "Near Post", position = { x = 0.50, y = 0.50 }, faction = 2, isUndiscovered = flags[1] },
+            { nodeID = 2, name = "Horde Camp", position = { x = 0.52, y = 0.50 }, faction = 1, isUndiscovered = flags[2] },
+            { nodeID = 3, name = "Free Port", position = { x = 0.60, y = 0.50 }, faction = 0, isUndiscovered = flags[3] },
+            { nodeID = 4, name = "Far Tower", position = { x = 0.90, y = 0.90 }, faction = 2, isUndiscovered = flags[4] },
+            { nodeID = 5, name = "zzOLDGone", position = { x = 0.10, y = 0.10 }, faction = 0 },
+            { nodeID = 1, name = "Near Post", position = { x = 0.50, y = 0.50 }, faction = 2 },
+        }
+    end
+    C_TaxiMap = { GetTaxiNodesForMap = nodes }
+    C_Map = {
+        GetWorldPosFromMapPos = function(map, pos) return 1, { x = pos.x * 10000, y = pos.y * 10000 } end,
+        GetBestMapForUnit = function() return 1414 end,
+        GetPlayerMapPosition = function() return { x = 0.5001, y = 0.5 } end,
+    }
+    UnitFactionGroup = function() return "Alliance" end
+    local list = FP.nodes()
+    out[#out + 1] = #list .. " nodes"                                          -- the old one and the repeat are left out
+    -- no flag says anything: nothing is marked known, and every node of the faction is still to find
+    out[#out + 1] = tostring(FP.flagsTrusted(list)) .. "/" .. FP.learnFromWorldMap(list) .. "/" .. #FP.undiscovered(list, "Alliance")   -- Near, Free, Far
+    -- the game really says (a true among them): the false ones are known
+    flags[4] = true; flags[1] = false
+    list = FP.nodes()
+    out[#out + 1] = tostring(FP.flagsTrusted(list)) .. "/" .. FP.learnFromWorldMap(list) .. "/" .. #FP.undiscovered(list, "Alliance")
+    -- the flight map: every node it lists is known
+    UF.DB().learned.taxi = {}
+    out[#out + 1] = FP.learnFromFlightMap({ { nodeID = 3 }, { nodeID = 4 } }) .. "/" .. #FP.undiscovered(FP.nodes(), "Alliance")
+    -- the nearest one to find, for the faction only (Horde Camp is next to Near Post but is not ours)
+    UF.DB().learned.taxi = {}
+    local n, d = FP.nearestUndiscovered(FP.nodes(), "Alliance", 1, 5000, 5000)
+    out[#out + 1] = n.name .. "/" .. math.floor(d)
+    local nh = FP.nearestUndiscovered(FP.nodes(), "Horde", 1, 5000, 5000)
+    out[#out + 1] = nh.name
+    -- the moment of finding it: standing at Near Post marks it
+    FP.onStatusChanged()
+    out[#out + 1] = tostring(FP.known()[1]) .. "/" .. FP.nearestUndiscovered(FP.nodes(), "Alliance", 1, 5000, 5000).name
+    -- where a node shows on the map being shown: the continent itself, a zone inside it (its rectangle on the continent), a map above it
+    C_Map.GetMapRectOnMap = function(map, top)
+        if map == 1500 and top == 1414 then return 0.4, 0.6, 0.4, 0.6 end         -- a zone: the middle fifth of the continent
+        if map == 1414 and top == 947 then return 0.1, 0.5, 0.2, 0.6 end           -- the continent on the map above it
+        return nil
+    end
+    local node = { map = 1414, x = 0.5, y = 0.5 }
+    local ax, ay = FP.placeOn(1414, node)
+    local bx, by = FP.placeOn(1500, node)
+    local cx, cy = FP.placeOn(947, node)
+    local dx = FP.placeOn(1500, { map = 1414, x = 0.9, y = 0.9 })                    -- outside that zone: not drawn there
+    out[#out + 1] = ax .. "," .. ay .. " " .. string.format("%.2f,%.2f", bx, by) .. " " .. string.format("%.2f,%.2f", cx, cy) .. " " .. tostring(dx)
+    -- the pins for a map: not found, not hidden, the faction's, on the map; the button and a right click take them away, show brings them back
+    UF.DB().learned.taxi = {}
+    UF.DB().flightPins = nil
+    local function names(map) local t = {} for _, p in ipairs(FP.pinsFor(map, "Alliance")) do t[#t + 1] = p.node.name end table.sort(t) return table.concat(t, "+") end
+    out[#out + 1] = names(1414)
+    FP.hide(3); out[#out + 1] = names(1414)
+    FP.togglePins(); out[#out + 1] = FP.pinsName() .. ":" .. names(1414)
+    FP.togglePins(); FP.unhideAll(); out[#out + 1] = FP.pinsName() .. ":" .. names(1414)
+    FP.known()[4] = true; out[#out + 1] = names(1414)                              -- found: it goes
+    -- the waypoint the arrow follows when no quest is selected
+    local Q = UF.QuestArrow
+    C_Map.HasUserWaypoint = function() return true end
+    C_Map.GetUserWaypoint = function() return { uiMapID = 1414, position = { x = 0.3, y = 0.7 } } end
+    local wm, wx, wy = Q.userWaypoint()
+    C_Map.HasUserWaypoint = function() return false end
+    out[#out + 1] = wm .. "/" .. wx .. "/" .. wy .. "/" .. tostring(Q.userWaypoint())
+    C_Map.HasUserWaypoint, C_Map.GetUserWaypoint, C_Map.GetMapRectOnMap = nil, nil, nil
+    UF.DB().learned = nil
+    UF.DB().flightPins = nil
+    C_Map, C_TaxiMap, UnitFactionGroup, GetTaxiMapID = saved[1], saved[2], saved[3], saved[4]
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("4 nodes | false/0/3 | true/1/2 | 2/1 | Near Post/0 | Horde Camp | true/Free Port | 0.5,0.5 0.50,0.50 0.30,0.40 nil | "
+                  "Far Tower+Free Port | Far Tower | Off: | On:Far Tower+Free Port | Free Port | 1414/0.3/0.7/nil"), r
+print("Flight paths: the game's flags are used only when they say something, the flight map marks what it lists, the map pins show only what you have not found, of your faction, and go when hidden, switched off or found: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
