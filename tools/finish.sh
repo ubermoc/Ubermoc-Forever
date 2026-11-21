@@ -24,6 +24,8 @@ echo "== 3/4 Lua 5.1 checker"
 bad=0; for f in Ubermoc-Forever/*.lua; do python3 tools/check_lua.py "$f" 2>&1 | tail -1 | grep -q PASSED || { echo "check_lua FAILED on $f"; bad=1; }; done
 [ "$bad" = 0 ] || exit 1
 echo "all files PASSED"
+bash tools/test_install.sh >/dev/null 2>&1 || { echo "FAILED: the install script test did not pass (bash tools/test_install.sh)."; exit 1; }
+echo "install script test PASSED"
 echo "== 4/4 install into the game from this folder"
 bash tools/install.sh || { echo "FAILED: install did not work. Run: bash tools/doctor.sh"; exit 1; }
 ver=$(grep '^## Version' Ubermoc-Forever/Ubermoc-Forever.toc | sed 's/.*: *//')

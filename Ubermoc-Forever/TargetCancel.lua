@@ -80,5 +80,5 @@ f:SetScript("OnUpdate", function(_, dt)
     acc = acc + dt
     if acc < 0.1 then return end
     acc = 0
-    pcall(T.update)
+    UF.try("TargetCancel.update", T.update)
 end)

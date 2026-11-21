@@ -684,7 +684,7 @@ local function build()
     for k, fn in pairs(navMap) do navMap[k] = function(...) fn(...); win.updateLegend() end end
     local navToken
     win:SetScript("OnShow", function()
-        pcall(UF.detect)
+        UF.try("Options.detect", UF.detect)
         if legend then legend:Refresh() end   -- measured again now that the text exists, so it fits
         if CanAutoSetGamePadCursorControl and CanAutoSetGamePadCursorControl(true) then SetGamePadCursorControl(true) end
         UF.RefreshOptions()

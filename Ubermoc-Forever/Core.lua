@@ -7,6 +7,35 @@ local ADDON, UF = ...
 _G.UbermocForever = UF
 UF.title = "Ubermoc Forever"
 
+-- A pcall that does not lose the error: the failure is kept (label, message, how often, last time) and `/ubf errors` prints it.
+-- A bare `pcall(f)` throws the message away, so a feature that fails inside it just does nothing and nobody can tell why
+-- (X on a bag item, 1.3.155: the whole highlight update ran inside `pcall(G.update)` and its error was never seen).
+local failures, failureOrder = {}, {}
+function UF.fail(label, err)
+    local f = failures[label]
+    if not f then
+        f = { n = 0 }
+        failures[label] = f
+        failureOrder[#failureOrder + 1] = label
+    end
+    f.n = f.n + 1
+    f.err = tostring(err)
+    f.at = GetTime and GetTime() or 0
+end
+function UF.try(label, fn, ...)
+    local ok, a, b, c, d = pcall(fn, ...)
+    if not ok then UF.fail(label, a) end
+    return ok, a, b, c, d
+end
+function UF.failures() return failures, failureOrder end
+function UF.reportErrors()
+    if #failureOrder == 0 then UF.say("No errors recorded since login."); return end
+    for _, label in ipairs(failureOrder) do
+        local f = failures[label]
+        UF.say(label .. " (" .. f.n .. "x): " .. f.err)
+    end
+end
+
 function UF.say(msg)
     if DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage("|cff66ccff" .. UF.title .. ":|r " .. tostring(msg))
@@ -225,6 +254,41 @@ ev:SetScript("OnEvent", function()
     end)
 end)
 
+
+-- What each load did, kept in the saved settings (DB.loadLog, the last 8): a cold login and a /reload can behave differently (the
+-- game's own windows, the controller list and other addons are not all ready at a cold login), and "I have to /reload to get it"
+-- needs evidence from both. Ten seconds after the world is entered it notes: which kind of load, the version the game read from
+-- the TOC, whether the controller was seen, how many start-up checks failed, and every error UF.try caught. `/ubf loads` prints it.
+local loadEv = CreateFrame("Frame")
+loadEv:RegisterEvent("PLAYER_ENTERING_WORLD")
+loadEv:SetScript("OnEvent", function(_, _, isInitialLogin, isReloadingUi)
+    if not (isInitialLogin or isReloadingUi) then return end
+    local kind = isInitialLogin and "cold login" or "reload"
+    C_Timer.After(10, function()
+        UF.try("Core.loadLog", function()
+            local db = UF.DB()
+            db.loadLog = db.loadLog or {}
+            local f, order = UF.failures()
+            local errs = {}
+            for _, label in ipairs(order) do errs[#errs + 1] = label .. " (" .. f[label].n .. "x): " .. f[label].err end
+            db.loadLog[#db.loadLog + 1] = {
+                kind = kind, version = UF.getVersion(), at = time and time() or 0,
+                controller = tostring(UF.deviceName or "none"), read_as = tostring(UF.detected or "none"),
+                checksFailed = UF.checksFailed or 0, errors = errs,
+            }
+            while #db.loadLog > 8 do table.remove(db.loadLog, 1) end
+        end)
+    end)
+end)
+function UF.reportLoads()
+    local log = UF.DB().loadLog
+    if not log or #log == 0 then UF.say("No loads recorded yet."); return end
+    for _, e in ipairs(log) do
+        UF.say(e.kind .. ", version " .. tostring(e.version) .. ", controller " .. tostring(e.controller) .. " (" .. tostring(e.read_as) .. "), "
+            .. tostring(e.checksFailed) .. " check(s) failed, " .. #(e.errors or {}) .. " error(s)")
+    end
+end
+
 SLASH_UBERMOCFOREVER1 = "/ubf"
 SlashCmdList["UBERMOCFOREVER"] = function(msg)
     msg = (msg or ""):lower()
@@ -260,6 +324,13 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.GameNav and UF.GameNav.dialogReport then UF.GameNav.dialogReport() end
     elseif msg == "item" then
         if UF.ItemMenu and UF.GameNav then UF.ItemMenu.report(UF.GameNav.focusFrame()) end
+    elseif msg == "x" then
+        -- what X would do on the highlighted node, and what stands in the way: this is the state the legend uses too
+        if UF.GameNav and UF.GameNav.xReport then UF.GameNav.xReport() end
+    elseif msg == "errors" then
+        UF.reportErrors()
+    elseif msg == "loads" then
+        UF.reportLoads()
     elseif msg == "tabs" then
         if UF.GameNav then UF.GameNav.report() end
     elseif UF.ToggleOptions then

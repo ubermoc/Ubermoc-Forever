@@ -1,3 +1,26 @@
+Ubermoc-Forever 1.3.158
+- Added: every cold login and every /reload is noted in the saved settings ten seconds after the world is entered: which kind of load it was, the version the game read, whether the controller was seen, how many start-up checks failed, and every error the addon caught. `/ubf loads` prints it. This is to find out why a change only shows after /reload; nothing in play changes.
+
+Ubermoc-Forever 1.3.157
+- Added: `/ubf errors` prints the errors the addon caught since login. Our own code that runs from the highlight ticker and a few other places now goes through `UF.try`, which keeps the error instead of throwing it away (the 1.3.155 bag-item bug failed silently inside a bare `pcall`).
+- Changed: nothing you can see in play. The offline test's stub frames now raise when a method is called without its frame, like the game, and the Lua checker stops the number of silent `pcall`s from growing.
+
+Ubermoc-Forever 1.3.156
+- Fixed: X on a bag item did nothing and the legend never showed X. The rule that decides X called the button's name without the button (`btn.GetName()`), which errors in the game, so X had no action and the legend had no X. The offline test now makes that call strict like the game.
+- Fixed: Crippling Poison (and other poisons, oils and stones) missing from the apply-to-weapon entries when the item's use line does not say "weapon": an "Other" consumable named Poison, Oil or Stone now goes to the weapons.
+- Added: `/ubf item` also prints the item's use text.
+
+Ubermoc-Forever 1.3.155
+- Added: `/ubf x` prints the state X is in (which window, place mode, popup, open menu) and what X resolves to on the highlighted node, plus the bag and slot the item rule sees. The legend has no X exactly when this says nothing, so it can now be read in the game instead of guessed.
+- Changed: X's secure button is written with both spellings of every attribute it uses (`type`/`type2`, `macrotext`/`macrotext2`, `item`/`item2`, `clickbutton`/`clickbutton2`), so the action no longer depends on the order the game tries them in (that order is not in Blizzard's Lua, assumption A1).
+Ubermoc-Forever 1.3.154
+- Fixed: X on an item in a bag slot now runs the game's use command as a macro (`/use <bag> <slot>`) instead of the secure item action attribute - the macro route is the one the user confirmed working in the game, and the item action route was the one where X did nothing. The Y menu's `Use / equip` entry uses the same route, so X and the menu do the identical thing. The legend still says `Use` for the use command; at a vendor X still sells through the button name and the legend still says `Right-click`.
+- User confirmed in the game: the use entries work for poisons, armour kits, oils, stones, enchants and bags (1.3.153); only X was left.
+Ubermoc-Forever 1.3.153
+- Fixed: an item whose use spell the game cannot answer was not seen as usable, so its entries were missing (the user's Crippling Poison, item 3775, got no use-on-weapon entries while other items did). `C_Item.GetItemSpell` may return nothing, so the item's own `Use:` tooltip line counts too - for every item, not for that one alone. Potions, food and an item with no use line still get nothing.
+- Added: `/ubf item` also prints the spell id the game gives for the item, and what X resolves to on that bag slot.
+Ubermoc-Forever 1.3.152
+- Fixed: X (the right click) on an item in a bag slot now does what a right click does in the game - it uses the item. Poisons, armour kits, oils, stones and enchants, and bags, which X left alone before, now go through the same secure use as a recipe or a hearthstone (a bag is equipped, as the game's right click equips it). Selling at a vendor and the buyback tab are unchanged, and the Y menu keeps its own entries for these items.
 Ubermoc-Forever 1.3.145
 - Added: a yellow glow effect on the active layer button (Base, Hold Shift, etc.) in the options window.
 - Updated: the settings for nameplates (enemy and friendly name-only, increased range) now default to On for new installs, matching the author's current settings.

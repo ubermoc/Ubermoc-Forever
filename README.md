@@ -1,5 +1,7 @@
 # Ubermoc-Forever
 
+Current version: 1.3.158.
+
 A default UI for World of Warcraft: Forever that works 100% with a controller. It is designed specifically for the **Steam Deck** and the **Steam Controller**, and also works with PlayStation 5, Xbox and Nintendo Switch controllers. It uses only Blizzard's own art, frames and button pictures, so it looks like it has always been part of the game.
 
 ![The Ubermoc Forever entry in the game menu, directly above Options](docs/images/game-menu.jpg)
@@ -120,7 +122,7 @@ A default UI for World of Warcraft: Forever that works 100% with a controller. I
 - Start steps like Esc: it closes what is open, clears your target, then opens the game menu.
 - An "Ubermoc Forever" entry in the game menu, above Options. Change or clear any bind, or reset to default. A legend of the buttons changes to fit the page, and the bumpers switch between the four layers.
 - Move around the game's own windows (bags, character, spellbook, professions, map, mail, the game menu and question windows) with a highlight, without Blizzard's built-in controller interface:
-  - D-pad moves a glowing highlight, A clicks, X right-clicks, and B closes the window you are in, then jumps to the next open one. On a bag item X does the item's own right click: learn a recipe, use a hearthstone, and at a vendor sell the item. The item types the Y menu already handles (poisons, oils, sharpening stones, armor kits, enchants) and bags are left to the Y menu, so X does nothing on them.
+  - D-pad moves a glowing highlight, A clicks, X right-clicks, and B closes the window you are in, then jumps to the next open one. On a bag item X does the item's own right click, which uses it: a recipe is learned, a hearthstone, a poison, an armor kit, an oil or a stone is used, a bag is equipped, and at a vendor the item is sold. The legend shows X ("Use" over an item, "Right-click" at a vendor) whenever X has something to do. The Y menu keeps its own entries for poisons, oils, sharpening stones, armor kits and enchants, and lists the pieces you wear that they fit. If something does nothing, `/ubf x` shows what X resolves to on the highlighted item and `/ubf errors` lists any error the addon caught.
   - The bumpers change tabs and pages, and the triggers step the side tabs down the right of a window (or scroll a list) — but only when the window has a stack of side tabs or a list under the highlight. With nothing to page or scroll the triggers stay your own bind, so a spell put on the right trigger still fires. Lists scroll by themselves to follow the highlight, and the right stick scrolls a quest's text or a long list.
   - Drop-down menus open and the highlight jumps into them; new windows, like an opened letter in the mail, take the highlight.
   - A legend under each window lists what every button does there, and the item's tooltip shows beside the highlight on whichever side has room.

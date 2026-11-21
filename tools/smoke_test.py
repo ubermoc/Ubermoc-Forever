@@ -28,10 +28,25 @@ if bad:
 stub = r'''
 local calls = { binds = {}, cvars = {}, saved = 0, popups = {}, hooks = {}, overrides = {} }
 _G.__calls = calls
+-- Strict like the game: every method of a stub frame must be called WITH the frame (frame:Method(), not frame.Method()). The game
+-- raises an error when the frame is missing; a stub that ignores it lets a dot-call pass every test (that hid the X bag-item bug of
+-- 1.3.155). isProxy is weak so frames can still be collected.
+local isProxy = setmetatable({}, { __mode = "k" })
+local function strict(name, fn)
+    return function(s, ...)
+        if not isProxy[s] then error("method '" .. tostring(name) .. "' called without its frame (a dot where a colon belongs): got " .. type(s), 2) end
+        return fn(s, ...)
+    end
+end
 local function proxy(name)
     local t = {}
     local mt = {}
     mt.__index = function(self, k)
+        local v = mt.__raw(self, k)
+        if type(v) == "function" then return strict(k, v) end
+        return v
+    end
+    mt.__raw = function(self, k)
         -- Lowercase names are plain data fields in the game (picker.built, row.pad): unset means nil, not a method.
         if type(k) == "string" and k:match("^%l") then return nil end
         if k == "GetName" then return function() return name end end
@@ -70,7 +85,9 @@ local function proxy(name)
         if k == "SetFontString" then return function() end end
         return function() return proxy("ret") end
     end
-    return setmetatable(t, mt)
+    setmetatable(t, mt)
+    isProxy[t] = true
+    return t
 end
 local frames = {}
 function CreateFrame(kind, name, parent, tmpl)
@@ -661,24 +678,31 @@ end""")()
 assert str(r) == "true,true,false:free|true:taken|true:taken|false:free,2", r
 print("The triggers are only claimed when they have something to do, and given back when they have nothing: OK")
 # X on a bag item: the game's own right click is a protected action on the game's button, and a button stored by
-# our code is refused by the secure click, so X goes through the string actions instead. It uses the item
-# (a recipe, a hearthstone), sells at a vendor when the slot has a name, and does nothing for the item types the
-# Y menu already handles (armor kits, poisons, oils, stones, enchants) and for bags. The legend says what X does.
-# FAKE(C11): the stub stands for C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its
-# itemID (ContainerDocumentation.lua:192-206 and 766-780). FAKE(C12): the class numbers are the game's
-# (ItemConstantsDocumentation.lua:276-291). FAKE(C13): the consumable subclass Potion is 1 (same file:307-308).
-# FAKE(C9): the vendor stands for MerchantFrame with selectedTab (ContainerFrame.lua:1543-1549).
+# our code is refused by the secure click (C141), so X goes through the string actions instead. 1.3.152: X is the
+# game's right click on EVERY item in a slot - the item's own use for a recipe, a hearthstone, a poison or an armor
+# kit (C138, C140), and the equip of an equippable item such as a bag - and it still sells at a vendor through the
+# button name (C145). The legend says what X does. 1.3.154: the use runs as the game's /use macro (C157, C158, C153),
+# the route the user confirmed working in the game.
+# FAKE(C146): the stub stands for C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its
+# itemID (ContainerDocumentation.lua:192-206 and 766-782). FAKE(C142): the class numbers are the game's
+# (ItemConstantsDocumentation.lua:276-291). FAKE(C143): a poison is consumable subclass Other = 8 (same file:307-315).
+# FAKE(C139): the stub tooltip line stands for a line read as lineData.leftText (TooltipDataHandler.lua:339-348).
+# FAKE(C145): the vendor stands for MerchantFrame with selectedTab (ContainerFrame.lua:1543-1550).
 r = L("""function()
     local G, M = UbermocForever.GameNav, UbermocForever.ItemMenu
-    local classes = { [501] = { 9, 0 }, [502] = { 0, 1 }, [503] = { 8, 0 }, [504] = { 1, 11 } }
+    local classes = { [501] = { 9, 0 }, [502] = { 0, 1 }, [503] = { 8, 0 }, [504] = { 1, 11 }, [505] = { 0, 8 } }
     C_Item = {
         GetItemInfoInstant = function(id)
             local c = classes[id] or { 15, 0 }
             return id, "n", "l", (id == 504) and "INVTYPE_BAG" or "", 1, c[1], c[2]
         end,
-        GetItemSpell = function(id) if id == 503 then return "Use: applies the kit" end return nil end,
+        GetItemSpell = function(id) if id == 504 then return nil end return "Use: it" end,
     }
-    local at = { ["0 5"] = 501, ["0 6"] = 502, ["0 7"] = 503, ["0 8"] = 504 }
+    local savedTip = C_TooltipInfo
+    C_TooltipInfo = { GetItemByID = function(id)
+        return { lines = { { leftText = "Name" }, { leftText = "Use: " .. ((id == 505) and "poisons the weapon" or "applies onto an item") } } }
+    end }
+    local at = { ["0 5"] = 501, ["0 6"] = 502, ["0 7"] = 503, ["0 8"] = 504, ["0 9"] = 505 }
     C_Container = { GetContainerItemInfo = function(bag, slot)
         local id = at[bag .. " " .. slot]
         return id and { itemID = id, hyperlink = "|cff|Hitem|h[x]|h|r", stackCount = 1 } or nil
@@ -690,7 +714,8 @@ r = L("""function()
     end
     local function slot(name, bag, id, slotName)
         local b = CreateFrame("Button", name, UIParent)
-        if not name then b.GetName = function() return nil end end   -- a gamepad slot has no global name
+        -- strict like the game: GetName needs the button itself (called without it, it errors; that hid the 1.3.155 failure)
+        b.GetName = function(self) assert(self == b, "GetName called without the button"); return name end
         b.GetBagID = function() return bag end
         b.GetID = function() return id end
         if slotName then b.slotName = slotName end
@@ -698,37 +723,45 @@ r = L("""function()
     end
     local recipe = slot("FakeRecipe", 0, 5)              -- a recipe (class 9): X uses it
     local gamepad = slot(nil, 0, 6, "BAG0SLOT")          -- a gamepad bag slot, no global name
-    local kit = slot("FakeKit", 0, 7)                    -- an armor kit: the Y menu's way, so X does nothing
-    local bagItem = slot("FakeBag", 0, 8)                -- a bag: its own Y flow, so X does nothing
+    local kit = slot("FakeKit", 0, 7)                    -- an armor kit (class 8): X uses it like the game would
+    local bagItem = slot("FakeBag", 0, 8)                -- a bag (class 1): the same action equips it
+    local poison = slot("FakePoison", 0, 9)              -- a poison: consumable class 0, subclass Other 8
+    local empty = slot("FakeEmpty", 0, 99)               -- an empty slot: no item to use
     g1[#g1 + 1] = act(M.rightClickAction(recipe))
     g1[#g1 + 1] = act(M.rightClickAction(gamepad))
     g1[#g1 + 1] = act(M.rightClickAction(kit))
     g1[#g1 + 1] = act(M.rightClickAction(bagItem))
+    g1[#g1 + 1] = act(M.rightClickAction(poison))
     MerchantFrame = { IsShown = function() return true end, selectedTab = 1 }
     g2[#g2 + 1] = act(M.rightClickAction(recipe))         -- sells, through the button's name
     g2[#g2 + 1] = act(M.rightClickAction(gamepad))        -- no name to click: nothing
     MerchantFrame.selectedTab = 2                         -- the buyback tab: the game sells nothing
     g2[#g2 + 1] = act(M.rightClickAction(recipe))
+    MerchantFrame.selectedTab = 1                         -- back to the sell tab for the legend
+    g2[#g2 + 1] = tostring(G.xLabel(recipe))               -- at a vendor the legend still says Right-click
     MerchantFrame = nil
     -- the rest of the highlight keeps the plain click and the mail as before
     local plain = CreateFrame("Button", "FakePlain", UIParent)
     local a = G.xAction(plain)
     g3[#g3 + 1] = tostring(a.type == "click" and a.clickbutton == plain)
     g3[#g3 + 1] = act(G.xAction(recipe))
-    g3[#g3 + 1] = act(G.xAction(kit))                     -- a bag slot left to the Y menu: no click
+    g3[#g3 + 1] = act(G.xAction(kit))                     -- an armor kit in a slot: the item action
+    g3[#g3 + 1] = act(G.xAction(poison))                  -- a poison in a slot: the item action
+    g3[#g3 + 1] = act(G.xAction(empty))                   -- an empty slot: nothing, and no click to fall back on
     local mail = CreateFrame("Button", "MailItem1", UIParent)
     g3[#g3 + 1] = act(G.xAction(mail))                    -- mail: no target, X takes it in the hook
-    g3[#g3 + 1] = tostring(G.xLabel(recipe)) .. "," .. tostring(G.xLabel(kit) or "no label") .. ","
-        .. tostring(G.xLabel(plain))
+    g3[#g3 + 1] = tostring(G.xLabel(recipe)) .. "," .. tostring(G.xLabel(kit)) .. "," .. tostring(G.xLabel(poison))
+        .. "," .. tostring(G.xLabel(plain))
+    C_TooltipInfo = savedTip
     return table.concat(g1, ";"), table.concat(g2, ";"), table.concat(g3, ";")
 end""")()
 g1, g2, g3 = r
-assert str(g1) == "item|0 5;item|0 6;none;none", g1
-print("X on a bag item: the secure item action for a recipe or a potion, nothing for Y-menu types (armor kits, bags): OK")
-assert str(g2) == "macro|/click FakeRecipe RightButton;none;none", g2
-print("X at a vendor: sells through the button name, nothing for an unnamed gamepad slot, nothing on the buyback tab: OK")
-assert str(g3) == "true;item|0 5;none;none;Use,no label,Right-click", g3
-print("X on the rest of the highlight: plain button still clicked, mail still taken in the hook, legend says Use / nothing / Right-click: OK")
+assert str(g1) == "macro|/use 0 5;macro|/use 0 6;macro|/use 0 7;macro|/use 0 8;macro|/use 0 9", g1
+print("X on a bag item: the game's use command as a macro (/use <bag> <slot>) for every type now, recipe, gamepad slot, armor kit, bag and poison: OK")
+assert str(g2) == "macro|/click FakeRecipe RightButton;none;none;Right-click", g2
+print("X at a vendor: sells through the button name, nothing for an unnamed gamepad slot, nothing on the buyback tab, legend still Right-click: OK")
+assert str(g3) == "true;macro|/use 0 5;macro|/use 0 7;macro|/use 0 9;none;none;Use,Use,Use,Right-click", g3
+print("X on the rest of the highlight: plain button still clicked, an empty slot gives nothing, mail still taken in the hook, legend says Use for the use command (kit, poison, recipe):", g3)
 # Items used on other items, profession actions, and what the bag menu offers
 r = L("""function()
     local UF = UbermocForever
@@ -896,7 +929,7 @@ r = L("""function()
     local M = UbermocForever.ItemMenu
     C_Item = {
         GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, 8 end,
-        GetItemSpell = function(id) return "Use it" end,
+        GetItemSpell = function(id) return "Use it", 173555 end,
     }
     local lines = { [3775] = "Use: Coats a weapon with poison that lasts for 30 minutes.", [9999] = "Use: Restores 10 health." }
     C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = lines[id] } } } end }
@@ -904,6 +937,42 @@ r = L("""function()
 end""")()
 assert str(r) == "truefalse", r
 print("Poisons are recognised from their use text: OK")
+# hasUse: the spell lookup is MayReturnNothing, so the tooltip's own Use: line counts too (C147, C149).
+# FAKE(C150): Crippling Poison 3775 with spell 173555 is what the game's generated data says; the stub below
+# answers it only when the lookup is asked, and answers nothing for the others, like MayReturnNothing can.
+# FAKE(C147): the stub stands for C_Item.GetItemSpell (itemInfo, MayReturnNothing, spellName + spellID).
+# FAKE(C149): the stub stands for C_TooltipInfo.GetItemByID (itemID as a number, lines carry leftText).
+r = L("""function()
+    local M = UbermocForever.ItemMenu
+    local savedItem, savedTip = C_Item, C_TooltipInfo
+    local classes = { [9101] = 8, [9102] = 1, [9103] = 5, [9104] = 8 }   -- FAKE(C142): the game's class numbers
+    C_Item = {
+        GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, classes[id] or 8 end,
+        -- FAKE(C147): C_Item.GetItemSpell is MayReturnNothing; here it answers for Crippling Poison only,
+        -- and the ids are the game's data (C150).
+        GetItemSpell = function(id)
+            if id == 3775 then return "Crippling Poison", 173555 end
+            return nil            -- MayReturnNothing (C147): nothing back for the others
+        end,
+    }
+    local lines = { [3775] = "Use: To coat a weapon with this poison, you must have a weapon equipped.",
+                    [9101] = "Use: Coats a melee weapon. Lasts until it is used.",
+                    [9102] = "Use: Restores 10 health.",
+                    [9103] = "Use: Restores 10 health over 10 seconds." }
+    -- FAKE(C149): stands for C_TooltipInfo.GetItemByID(itemID), lines read as lineData.leftText
+    C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = lines[id] } } } end }
+    local spellFromGame = tostring(M.spellID(3775))               -- the game's own answer for Crippling Poison
+    local missed = tostring(M.spellID(9101))                     -- the lookup answered nothing for this one
+    local res = spellFromGame .. "|" .. missed .. "|" .. tostring(M.usedOnItems(9101)) .. "|"
+        .. tostring(M.usedOnItems(3775)) .. "|" .. tostring(M.usedOnItems(9102)) .. "|" .. tostring(M.usedOnItems(9103))
+        .. "|" .. tostring(M.usedOnItems(9104))
+    local t = M.targets(9101) or {}
+    res = res .. "|" .. table.concat(t, "-")
+    C_Item, C_TooltipInfo = savedItem, savedTip
+    return res
+end""")()
+assert str(r) == "173555|nil|true|true|false|false|false|16-17", r
+print("hasUse: a weapon-buff item the spell lookup misses still counts, through its own Use: line; potions and food still do not: OK")
 # Conversations start on the Accept button, and X trains in a trainer
 r = L("""function()
     local G = UbermocForever.GameNav
@@ -962,7 +1031,7 @@ r = L("""function()
     local M = UbermocForever.ItemMenu
     C_Item = {
         GetItemInfoInstant = function(id) return id, "t", "s", "", 1, 0, 8 end,
-        GetItemSpell = function(id) return "Use it" end,
+        GetItemSpell = function(id) return "Use it", 173555 end,
     }
     local text = {
         [1] = "Use: Coats a weapon with poison that lasts for 30 minutes.",
@@ -1024,7 +1093,7 @@ r = L("""function()
     for _, c in ipairs(cases) do byId[c[1]] = c end
     C_Item = {
         GetItemInfoInstant = function(id) local c = byId[id]; return id, "t", "s", "", 1, c[2], c[3] end,
-        GetItemSpell = function(id) return "Use it" end,
+        GetItemSpell = function(id) return "Use it", 173555 end,
     }
     C_TooltipInfo = { GetItemByID = function(id) return { lines = { { leftText = "Name" }, { leftText = byId[id][4] } } } end }
     local count, bad = {}, {}
@@ -3058,5 +3127,87 @@ r = L("""function()
 end""")()
 assert str(r) == "0.8,0.2,0.8", r
 print("Fading: the mouse-over answer is asked with the key, plain booleans still work: OK")
+# X's secure right-click button: every attribute is written in both spellings, so nothing in the code depends on the
+# order the game tries them in (C151 builds the name from prefix, name and suffix; that order is not in Blizzard's Lua).
+# FAKE(C151): the fake restricted handle records what SetAttribute was given - SecureTemplates.lua:119-126.
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local got = {}
+    local handle = { SetAttribute = function(self, name, value) got[name] = value end }
+    G.setAttrBoth(handle, "type", "macro")
+    G.setAttrBoth(handle, "macrotext", "/use 0 5")
+    local keys = {}
+    for k, v in pairs(got) do keys[#keys + 1] = k .. "=" .. tostring(v) end
+    table.sort(keys)
+    return table.concat(keys, ",")
+end""")()
+assert str(r) == "macrotext2=/use 0 5,macrotext=/use 0 5,type2=macro,type=macro", r
+print("GameNav: X writes both spellings of each attribute, so the action does not depend on the lookup order:", r)
+# /ubf x: the report prints the state X is in and what X resolves to, so the missing legend can be read in the game.
+# The same gate the legend uses: place mode, a popup, an open menu. FAKE(C146): the stub stands for
+# C_Container.GetContainerItemInfo returning the ContainerItemInfo table with its itemID (ContainerDocumentation.lua
+# 192-206, 766-782); FAKE(C143): the item stands for a poison, consumable subclass Other = 8 (ItemConstantsDocumentation.lua:307-315).
+r = L("""function()
+    local G = UbermocForever.GameNav
+    C_Item = { GetItemInfoInstant = function(id) return id, "n", "l", "", 1, 0, 8 end,
+               GetItemSpell = function(id) return "Use: it", 173555 end }
+    C_Container = { GetContainerItemInfo = function(bag, slot)
+        if bag == 0 and slot == 9 then return { itemID = 3775, hyperlink = "|cff|Hitem|h[x]|h|r", stackCount = 1 } end
+        return nil
+    end }
+    local btn = CreateFrame("Button", "FakeXSlot", UIParent)
+    btn.GetBagID = function() return 0 end
+    btn.GetID = function() return 9 end
+    local out = {}
+    local function say(m) out[#out + 1] = m end
+    G.xReport(btn, say)
+    local open = table.concat(out, " | ")
+    out = {}
+    _G.DropDownList1 = { GetName = function() return "DropDownList1" end, IsShown = function() return true end }
+    G.xReport(btn, say)
+    local gated = table.concat(out, " | ")
+    _G.DropDownList1 = nil
+    return open .. ";;" .. gated
+end""")()
+assert "X on this node: macro /use 0 9" in r and "X sees bag 0 slot 9: /use 0 9" in r, r
+assert "menu open yes" in r.split(";;")[1] and "X on this node: nothing" in r.split(";;")[1], r
+print("GameNav /ubf x, nothing open:", r.split(";;")[0])
+print("GameNav /ubf x, a menu open (this is why the legend has no X):", r.split(";;")[1])
+r = L("""function()
+    local f = CreateFrame("Frame", "StrictSelfProbe", UIParent)
+    local colon = pcall(function() return f:GetName() end)
+    local dot = pcall(function() return f.GetName() end)       -- the game raises here; the stub has to as well
+    local dotSet = pcall(function() return f.SetAlpha(0.5) end)
+    return tostring(colon) .. "," .. tostring(dot) .. "," .. tostring(dotSet)
+end""")()
+assert str(r) == "true,false,false", r
+print("Stub frames are strict: a method called without its frame (dot for colon) raises, like the game: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    local ok1 = UF.try("probe", function() error("boom") end)
+    local ok2, v = UF.try("fine", function(a) return a * 2 end, 21)
+    local f = UF.failures()
+    return tostring(ok1) .. "," .. tostring(ok2) .. "," .. tostring(v) .. "," .. tostring(f.probe and f.probe.n) .. "," .. tostring(f.fine)
+end""")()
+assert str(r) == "false,true,42,1,nil", r
+print("UF.try keeps the error of a failing call for /ubf errors and passes a good call through: OK")
+r = L("""function()
+    local UF = _G.UbermocForever
+    UF.DB().loadLog = nil
+    local handlers = {}
+    for _, f in ipairs(__frames) do
+        local e = rawget(f, "__events")
+        local sc = rawget(f, "__scripts")
+        if e and e.PLAYER_ENTERING_WORLD and sc and sc.OnEvent then handlers[#handlers + 1] = { f, sc.OnEvent } end
+    end
+    -- the world is entered by a /reload, then by a zone change (only the first is a load)
+    for _, h in ipairs(handlers) do pcall(h[2], h[1], "PLAYER_ENTERING_WORLD", false, true) end
+    for _, h in ipairs(handlers) do pcall(h[2], h[1], "PLAYER_ENTERING_WORLD", false, false) end
+    for _, t in ipairs(__calls.timers) do pcall(t) end     -- the 10 s timer among the others
+    local log = UF.DB().loadLog
+    return (log and #log or 0) .. "," .. (log and log[1].kind or "-")
+end""")()
+assert str(r) == "1,reload", r
+print("Load record: a /reload is noted in the saved settings, a zone change is not: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

@@ -84,3 +84,9 @@ Everything not seen in the game is "untested in the game", in the changelog, the
 Short answers. Believe a bug report and reproduce it. Do not change stated behaviour without asking. Only Blizzard's own art and
 templates, no invented textures. One feature at a time. Ask before anything outward-facing (release, push, install on his machine).
 Fish shell: one command per code block.
+
+## 5. When something "does nothing" in the game (added 1.3.157)
+- No error in the error addon does NOT mean no error: a bare `pcall(f)` throws the message away (the X-on-bags bug hid inside `pcall(G.update)` for a day). Use `UF.try("label", fn, ...)` for our own code that runs from a ticker, an event or a click; `/ubf errors` in the game prints what it caught. `tools/check_lua.py` refuses a file whose count of statement-level `pcall(` grows past `tools/silent-pcall-baseline.json`.
+- Find which step fails before changing the approach: does the legend show it (`/ubf x`), does the action resolve, does the click fire. Ask the user for one answer per step.
+- The stub frames in `tools/smoke_test.py` raise when a method is called without its frame (`f.GetName()` instead of `f:GetName()`), like the game. Do not loosen them; if a test fails on that, the addon has the bug.
+- A fix is proven by a test that fails on the old code: `proof run ... --fails-on main --keep tools/smoke_test.py -- ...` (see the harness README). Three failed attempts at one thing: stop and write a blocked hand-off.

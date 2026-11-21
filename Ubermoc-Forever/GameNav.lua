@@ -618,7 +618,7 @@ function G.xAction(f)
     if not right then return { type = "click", clickbutton = f } end
     local act, isBagSlot = right(f)
     if act then return act end
-    if isBagSlot then return nil end   -- a bag slot we leave to the Y menu: no click, nothing to show
+    if isBagSlot then return nil end   -- a bag slot with nothing X can do (no item, or a vendor slot with no name): no click, nothing to show
     return { type = "click", clickbutton = f }
 end
 
@@ -631,7 +631,35 @@ function G.xLabel(f)
     local act = G.xAction(f)
     if not act then return nil end
     if act.type == "item" then return "Use" end       -- the secure use of the item (a recipe, a hearthstone)
+    if act.type == "macro" and act.macrotext and act.macrotext:find("^/use ") then return "Use" end   -- the game's use command (1.3.154)
     return "Right-click"
+end
+
+-- A restricted button reads an attribute through the suffixed spelling first, then the plain name (C151): with button 2
+-- that is macrotext2, then macrotext. Which of the two the game tries first is not in Blizzard's Lua (A1), so X does not
+-- depend on it: both spellings are written. R9.
+function G.setAttrBoth(f, name, value)
+    f:SetAttribute(name, value)
+    f:SetAttribute(name .. "2", value)
+end
+
+-- /ubf x: what X would do on the highlighted node right now, and why. The legend has no X exactly when this says nothing.
+-- `out` defaults to the chat (the offline test passes its own collector).
+function G.xReport(f, out)
+    f = f or focus
+    out = out or UF.say
+    if not f then out("X: nothing is highlighted."); return end
+    local w, p = G.windows()
+    out("X: window " .. tostring(w[1] and w[1]:GetName() or "none") .. ", place mode " .. (G.placing and "yes" or "no") ..
+        ", popup " .. (p and "yes" or "no") .. ", menu open " .. (#openMenus() > 0 and "yes" or "no"))
+    local act = G.xAction(f)
+    if not act then
+        out("X on this node: nothing (this is why the legend has no X).")
+        return
+    end
+    local what = act.macrotext or act.item or (act.clickbutton and act.clickbutton:GetName()) or "?"
+    out("X on this node: " .. act.type .. " " .. tostring(what))
+    if UF.ItemMenu and UF.ItemMenu.xInfo then UF.ItemMenu.xInfo(f, out) end
 end
 
 local function setTargets()
@@ -653,8 +681,8 @@ local function setTargets()
     end
     -- X: the attributes are cleared and rewritten on every move, so a bag slot gets the secure action
     -- (type "item" or a macro) and a plain button gets the plain click, never both
-    for _, k in ipairs({ "type", "item", "clickbutton", "macrotext" }) do rc:SetAttribute(k, nil) end
-    for k, v in pairs(G.xAction(focus) or {}) do rc:SetAttribute(k, v) end
+    for _, k in ipairs({ "type", "item", "clickbutton", "macrotext" }) do G.setAttrBoth(rc, k, nil) end
+    for k, v in pairs(G.xAction(focus) or {}) do G.setAttrBoth(rc, k, v) end
     local closer
     if G.placing then
         closer = nil   -- B cancels the placing (fallbackClose)
@@ -1299,7 +1327,7 @@ local function startFocus()
         G.direct = a
         drawAt(nil)
         setTargets()
-        pcall(tooltipHide)
+        UF.try("GameNav.tooltipHide", tooltipHide)
         G.syncTriggers()
         return
     end
@@ -1466,7 +1494,7 @@ local function release()
     G.direct = nil
     drawAt(nil)
     if G.placing then G.endPlace(true) end
-    pcall(tooltipHide)
+    UF.try("GameNav.tooltipHide", tooltipHide)
     if bar then bar:Hide() end
     barSig, anchoredTo = nil, nil
 end
@@ -1681,7 +1709,7 @@ function G.update()
         rescan()
         startFocus()
         G.settle, G.userMoved = (GetTime and GetTime() or 0) + 2.5, false
-        pcall(updateBar)
+        UF.try("GameNav.updateBar", updateBar)
     elseif not want and entry then
         release()
     elseif want then
@@ -1718,7 +1746,7 @@ function G.update()
         if G.placing then
             -- placing a spell: no highlight, the next button press picks the slot
             drawAt(nil)
-            pcall(updateBar)
+            UF.try("GameNav.updateBar", updateBar)
             return
         end
         -- the flyout closed (an item was chosen, or it was closed): the highlight goes back to the gear slot it came from
@@ -1795,7 +1823,7 @@ function G.update()
         else
             if G.inView(focus) then drawAt(focus) else drawAt(nil) end
         end
-        pcall(updateBar)
+        UF.try("GameNav.updateBar", updateBar)
     end
 end
 
@@ -1805,7 +1833,7 @@ ticker:SetScript("OnUpdate", function(_, dt)
     acc = acc + dt
     if acc < 0.15 then return end
     acc = 0
-    pcall(G.update)
+    UF.try("GameNav.update", G.update)
 end)
 G._ticker = ticker   -- for the offline test
 -- 1.3.120: scan on the very next frame instead of waiting out the rest of the 0.15 s. Used when our own marker menu opens,

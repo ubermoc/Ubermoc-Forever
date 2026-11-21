@@ -1,3 +1,51 @@
+2026-11-21 (Ubermoc, branch `ubermoc/x-use`, 1.3.158; released): the user confirmed in the game that X on a bag item uses it, the legend shows X, the missing tooltips are back, and a cold login loaded the new version with nothing to /reload. Cause of the X failure: `M.rightClickAction` called the button's name without the button (`btn.GetName()`), which fails in the game; the whole highlight update ran inside a bare `pcall(G.update)`, so nothing was ever reported. The test stubs accepted the call, so every offline run passed. Changes: (1.3.156) the call is `btn:GetName()`, poisons/oils/stones (an "Other" consumable named Poison, Oil or Stone) always offer the weapons even when the use line does not say "weapon", `/ubf item` prints the use text; (1.3.157) the stub frames in `tools/smoke_test.py` raise when a method is called without its frame, `UF.try` (Core.lua) keeps the error a pcall would drop and `/ubf errors` prints it, `tools/check_lua.py` holds each file's count of statement-level `pcall(` to `tools/silent-pcall-baseline.json`; (1.3.158) every cold login and /reload is noted in the saved settings (`DB.loadLog`, `/ubf loads`): version the game read, controller seen, start-up checks failed, errors caught. The first cold login after install showed 1.3.158, controller seen as steam, 0 checks failed, no errors. `tools/install.sh` now copies the folder it lives in to a temporary folder next to AddOns, checks it, removes the old `Ubermoc-Forever` and the pre-rename `UbermocForever`, moves the copy into place and checks it file for file; `tools/test_install.sh` tests that on a throw-away folder and runs inside `finish.sh`. An install made while the game runs needs /reload; one made with the game closed loads on the next start. Harness changes (outside this repo, `Local AI/Harness/Ubermoc-Harness`): `proof run --fails-on`, `proof require --user`, `proof confirm/reopen`, three failed attempts close a normal hand-off, rules for strict fakes and the user's folder layout, no time kept by `proof`; the Pi extension `process-timing` prints the time of each reply. Not merged here: the other open branches (quest-arrow, glow-and-defaults, apply-menu, bag-apply-all) were not part of the tested build.
+
+2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.155, offline tests only, untested in the game): the user
+says X still does nothing on a bag slot in the game and the legend has no X, while Y then `Use` works. Two changes, both
+readable in the game now. `/ubf x` prints the state X is in (which window, place mode, popup, open menu), what X
+resolves to on the highlighted node, and the bag and slot the item rule sees: the legend has no X exactly when this says
+nothing, because `G.xAction` answers nothing for place mode, a popup or an open menu before the bag rule is reached.
+And `setTargets` writes both spellings of every attribute on X's secure button (`type`/`type2`, `macrotext`/`macrotext2`,
+`item`/`item2`, `clickbutton`/`clickbutton2`), so the action no longer depends on the order the game tries them in
+(C151; that order is not in Blizzard's Lua, so it stays assumption A1 - it is no longer something the code rests on).
+Offline tests pass; whether X uses the item in the game is the user's to confirm.
+
+2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.154, offline tests only, untested in the game): X on a bag
+slot now runs the game's own use command as a macro - `type = "macro"`, `macrotext = "/use <bag> <slot>"` - the route the
+user confirmed working in the game (the menu's use entries), because the secure `item` attribute route is where he says X
+still does nothing. `M.rightClickAction` and the `Use / equip` entry both use it, so X and the menu do the identical
+thing, and `G.xLabel` says `Use` for a `/use` macro and still `Right-click` for the vendor click. Vendor sell, the
+buyback tab and an unnamed gamepad slot are unchanged. The user confirmed in the game that the use entries work for
+poisons, armour kits, oils, stones, enchants and bags now; this is the last piece. Claims: `SECURE_ACTIONS.macro` runs
+`C_Macro.RunMacroText(text, button)` (C157); Blizzard's macro runner reads `SecureCmdItemParse` as `name, bag, slot` and
+calls `SecureCmdUseItem(name, bag, slot, target)` (C158), which ends with `C_Container.UseContainerItem(bag, slot,
+target)` (C153) - the same call as the game's own right click (C138).
+
+2026-11-21 (local model, branch `local-model/x-item-use`, 1.3.153, offline tests only, untested in the game): the use
+spell lookup `C_Item.GetItemSpell` is `MayReturnNothing` (claim C147), so `hasUse` in `Ubermoc-Forever/ItemMenu.lua` now
+also accepts the item's own `Use:` tooltip line read through `GetItemByID` (claim C149). This is what the user reported:
+Crippling Poison - item `3775`, spell `173555` in the game's generated weapon-buff data (claim C150) - got no use-on-weapon
+entries while other items did. The rule is general, not for that item alone: every item with a `Use:` tooltip line counts,
+and potions (subclass 1), food (5) and an item with no spell and no use line still get nothing. `/ubf item` now prints the
+spell id the game gives and what X resolves to on that slot, so it can be read in the game. Offline test: `ALL TESTS PASSED`,
+`check_lua` `PASSED` with `UBF_RESEARCH`.
+
+2026-11-20 (local model, branch `local-model/x-item-use`, 1.3.152, offline tests only, untested in the game): X on a bag
+slot now does the game's own right click on every item in it. `Ubermoc-Forever/ItemMenu.lua` `M.rightClickAction` no
+longer answers "nothing" for the item types the Y menu handles (poisons, armour kits, oils, stones, enchants) or for bags:
+any slot item goes through the secure `item` action, which equips when `C_Item.IsEquippableItem` is true and
+`C_Item.IsEquippedItem` is false and otherwise uses it - the same call the game's right click ends with. Sources: the game
+right click ends with `C_Container.UseContainerItem` (`Mainline/ContainerFrame.lua`:1604-1612, claim C138), the secure
+`item` action (`SecureTemplates.lua`:418-440, claim C140), the refused stored delegate (`SecureTemplates.lua`:557-565,
+claim C141), the vendor sale and the buyback tab (`ContainerFrame.lua`:1543-1550, claim C145), the class numbers
+(claim C142), a poison as consumable subclass `Other` 8 (claim C143), `GetContainerItemInfo` (claim C146) and its `itemID`
+(claim C144). The `tools/smoke_test.py` case now expects the `item` action for a recipe, a gamepad slot, an armour kit
+(class 8), a bag (class 1) and a poison (class 0 subclass 8), and the legend line says `Use` for a kit and a poison; the
+vendor, the buyback tab, the plain click and the mail are unchanged. What the user reported from the game: pressing X did
+nothing at all, including on a hearthstone, and his `/ubf item` on item 10918 (Wound Poison) reads class 0, subclass 8,
+equip INVTYPE_NON_EQUIP_IGNORE, has a use, used on another item false. Not verified in the game: what the game does when it
+uses an armour kit or a poison - only the user can say. Offline tests and the Lua checker pass.
+
 2026-11-19 (Ubermoc, branch `ubermoc/glow-and-defaults`, 1.3.145, offline tests only, untested in the game): a yellow glow
 (`ButtonHilight-Square`, ADD blend, `UF.HIGHLIGHT.glow` colour) over each layer button in the options window
 (`Options.lua` `b.ufGlow`), shown only on the active layer (the `RefreshOptions` loop sets it with `SetShown`), so the layer

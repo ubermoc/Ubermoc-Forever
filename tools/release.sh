@@ -18,8 +18,13 @@ import shutil, sys, os
 base = sys.argv[1][:-4]
 shutil.make_archive(base, "zip", root_dir=".", base_dir="Ubermoc-Forever")
 PY
-# headers before the rename still say `UbermocForever <version>`, so the entry must stop at either spelling
-notes=$(awk -v v="Ubermoc-Forever $ver" 'index($0,v)==1{f=1;next} f&&/^(Ubermoc-Forever|UbermocForever) [0-9]/{exit} f' CHANGELOG.txt)
+# Notes: every CHANGELOG entry from this version down to (not including) the previous release, so people who skipped versions see all of it.
+# Headers before the rename still say `UbermocForever <version>`, so an entry starts at either spelling.
+prev=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || true); prev="${prev#v}"
+notes=$(awk -v v="Ubermoc-Forever $ver" -v p="$prev" '
+  index($0,v)==1 {f=1}
+  f && /^(Ubermoc-Forever|UbermocForever) [0-9]/ { split($0,a," "); if (p != "" && a[2]==p) exit }
+  f' CHANGELOG.txt)
 [ -n "$notes" ] || { echo "No CHANGELOG entry for $ver."; exit 1; }
 gh release create "$tag" "$zip" --title "Version $ver" --target main --latest --notes "$notes"
 echo "Released $tag on GitHub. CurseForge: upload $zip by hand (AGENTS.md, Releasing)."

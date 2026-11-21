@@ -38,6 +38,7 @@ local function locationOf(btn)
 end
 
 -- Returns bag, slot for a bag or bank item button.
+
 local function bagSlot(btn)
     if btn and btn.GetBagID and btn.GetID then
         local ok, bag = pcall(btn.GetBagID, btn)
@@ -49,6 +50,17 @@ local function bagSlot(btn)
         local ok, bag, slot = pcall(loc.GetBagAndSlot, loc)
         if ok and bag and slot then return bag, slot end
     end
+end
+
+-- what X's rule sees on this button (for /ubf x): which bag and slot it is, and what X resolves to there
+function M.xInfo(btn, out)
+    out = out or UF.say
+    local bag, slot = bagSlot(btn)
+    if not bag then return end
+    local act = M.rightClickAction(btn)
+    local what = "nothing"
+    if act then what = tostring(act.macrotext or act.item or act.type) end
+    out("X sees bag " .. bag .. " slot " .. slot .. ": " .. what)
 end
 
 local EQUIP_NAME = "^Character%u%a+Slot$"
@@ -124,12 +136,23 @@ end
 -- own use, ContainerFrame.lua:1604-1612) - which is why X did nothing in the bags (the user's report). What
 -- does work is the pattern the Y menu already uses: attributes that are strings, the secure "item" action
 -- (SecureTemplates.lua:418-438) or a macro.
+-- 1.3.152: X now does that use for EVERY item in a bag slot. The user's rule: X is a right click, and the game's
+-- right click on a bag slot is the item's own use. So the item types the Y menu also handles (poisons, armour kits,
+-- oils, stones, enchants) and bags are no longer left out; the Y menu keeps its entries, it is just not the only way.
+-- The secure "item" action is the same call the game's right click ends with (C140, C141), so a poison, a kit or a
+-- bag goes through it like anything else.
+-- 1.3.154: X runs the use as the game's own /use command, through the macro action, because that is the route the user
+-- confirmed working in the game (the Y menu's "Use on <weapon>" entries). The secure "item" action route is not
+-- confirmed working in the game - the user reports X still does nothing there - so X does not rely on it.
+-- C157: `macrotext` is run by `C_Macro.RunMacroText(text, button)`; C158: Blizzard reads `SecureCmdItemParse` as
+-- `name, bag, slot` and calls `SecureCmdUseItem(name, bag, slot, target)`, which ends with
+-- `C_Container.UseContainerItem(bag, slot, target)` (C153) - the same call as the game's right click (C138).
 function M.rightClickAction(btn)
     if type(btn) ~= "table" then return nil end
     local bag, slot = bagSlot(btn)
     if not bag then return nil end
     local no = function() return nil, true end
-    local name = btn.GetName and btn.GetName()
+    local name = btn.GetName and btn:GetName()
     -- At a vendor the game's own right click sells (ContainerFrame.lua:1543-1549, and nothing on the buyback
     -- tab). That click is the game's action on the button itself, so we can only reach it through a macro,
     -- which needs the button's name; a slot inside the gamepad bag window has no name (see bagBarSlot above),
@@ -142,12 +165,14 @@ function M.rightClickAction(btn)
     if not (C_Container and C_Container.GetContainerItemInfo) then return no() end
     local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
     if not (ok and info) then return no() end
-    -- armor kits, poisons, oils, stones and enchants keep the Y menu as their way (the user wants that), and
-    -- bags have their own Y flow (Equip in a bag slot), so X is left out for both
-    if M.usedOnItems(info.itemID) or M.isBag(info.itemID) then return no() end
-    -- with no vendor open the game's right click is the item's own use: learning a recipe, using a hearthstone
-    -- - the same secure action as the Y menu's "Use / equip" entry
-    return { type = "item", item = bag .. " " .. slot }
+    -- with no vendor open the game's right click is the item's own use: learning a recipe, using a hearthstone,
+    -- applying a poison or a kit, equipping a bag - the same secure action as the Y menu's "Use / equip" entry
+    -- (C140: it equips when the item is equippable and not equipped, else uses it; C141: the game's right click
+    -- ends with the same call). 1.3.152: no item type is left out any more.
+    -- 1.3.154: the game's /use command, as a macro attribute (C157, C158, C153): a string, not a stored frame, and
+    -- the route confirmed working in the game. For a bag slot reference the macro name is nothing, so the use - and
+    -- the equip of an equippable item - goes through the same call the game's own right click ends with (C138).
+    return { type = "macro", macrotext = "/use " .. bag .. " " .. slot }
 end
 
 ----------------------------------------------------------------------
@@ -163,12 +188,6 @@ local function quality(itemID)
     if not (itemID and C_Item and C_Item.GetItemInfo) then return nil end
     local ok, _, _, q = pcall(C_Item.GetItemInfo, itemID)
     return ok and q or nil
-end
-
-local function hasUse(itemID)
-    if not (itemID and C_Item and C_Item.GetItemSpell) then return false end
-    local ok, name = pcall(C_Item.GetItemSpell, itemID)
-    return ok and name ~= nil
 end
 
 -- Item classes (Enum.ItemClass in Blizzard_APIDocumentationGenerated ItemConstantsDocumentation.lua).
@@ -206,6 +225,32 @@ local function useText(itemID)
     return text
 end
 
+-- The item's own use spell as the game answers it (`C_Item.GetItemSpell`, C147): spellName and spellID. It
+-- is MayReturnNothing, so it can answer nothing even for an item that has a use (C148: Blizzard code calls
+-- it with an item ID number).
+local function useSpell(itemID)
+    if not (itemID and C_Item and C_Item.GetItemSpell) then return nil end
+    local ok, name, spellID = pcall(C_Item.GetItemSpell, itemID)
+    if not ok then return nil end
+    return name, spellID
+end
+
+function M.spellID(itemID)
+    local name, spellID = useSpell(itemID)
+    return spellID
+end
+
+-- Whether the item has its own use. The spell lookup can answer nothing (C147), so the item's own tooltip
+-- `Use:` line (read through `GetItemByID`, C149) counts as well: a weapon-buff item the lookup misses - the
+-- user's Crippling Poison, item 3775 with spell 173555 (C150) - still gets its entries. This is not a rule for
+-- that item alone: it holds for every item whose tooltip shows a Use: line.
+local function hasUse(itemID)
+    if not itemID then return false end
+    local name, spellID = useSpell(itemID)
+    if name ~= nil or spellID ~= nil then return true end
+    return useText(itemID) ~= nil
+end
+
 -- Equipment slots in the game's numbering, with what the item's use text calls them. The wording comes from a scan of the
 -- game's own items (/ubf scan): poisons "Coats a weapon ...", oils "While applied to target weapon ...", sharpening stones
 -- "... on a melee weapon", armor kits "... of an item worn on the chest, legs, hands or feet", scopes "Attaches a permanent
@@ -235,6 +280,8 @@ function M.targets(itemID)
         return out
     end
     if t:find("weapon", 1, true) then return { 16, 17 } end
+    local n = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)
+    if type(n) == "string" and (n:find("Poison", 1, true) or n:find("Oil", 1, true) or n:find("Stone", 1, true)) then return { 16, 17 } end
     return nil
 end
 
@@ -248,7 +295,12 @@ function M.usedOnItems(itemID)
     if classID == CLASS.consumable and not NOT_ON_ITEMS[subClassID or -1] then
         local v = useText(itemID)
         if v == nil then return true end
-        return M.targets(itemID) ~= nil
+        if M.targets(itemID) ~= nil then return true end
+        -- the use line may not name a weapon in this client's wording (Crippling Poison, 3775): an "Other" consumable
+        -- named like a weapon coating still goes to the weapons
+        local n = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)
+        if type(n) == "string" and (n:find("Poison", 1, true) or n:find("Oil", 1, true) or n:find("Stone", 1, true)) then return true end
+        return false
     end
     -- head, leg and shoulder enchants are quest items (class 12: the arcanums, the Zandalar signets, the Scourge enchants) or
     -- miscellaneous items (class 15: the Zul'Gurub enchants and guards) in the game's data; their use text names the slot
@@ -655,7 +707,8 @@ local function openBag(btn)
         if auction and bname and bname ~= "" then
             add("Sell at auction", { type = "macro", macrotext = "/click " .. bname .. " RightButton" })
         end
-        add("Use / equip", { type = "item", item = bag .. " " .. slot })
+        -- 1.3.154: the same route as X, so both do the identical thing (C157, C158)
+        add("Use / equip", { type = "macro", macrotext = "/use " .. bag .. " " .. slot })
     end
 
     -- a bag: put it in one of your bag slots, with the best gain on the entry itself
@@ -837,7 +890,15 @@ function M.report(btn)
     end
     if not itemID then say("Highlight an item first."); return end
     local classID, subClassID, equipLoc = instant(itemID)
-    say(string.format("Item %d: class %s, subclass %s, equip %s, has a use: %s, used on another item: %s.",
+    say(string.format("Item %d: class %s, subclass %s, equip %s, has a use: %s, spell %s, used on another item: %s.",
         itemID, tostring(classID), tostring(subClassID), tostring(equipLoc), tostring(hasUse(itemID)),
-        tostring(M.usedOnItems(itemID))))
+        tostring(M.spellID(itemID)), tostring(M.usedOnItems(itemID))))
+    say("Use text: " .. tostring(useText(itemID)))
+    -- what X would do on this button, so the two can be compared in the game
+    if bag then
+        local act = M.rightClickAction(btn)
+        local what = "nothing"
+        if act then what = tostring(act.type) .. ": " .. (act.item or act.macrotext or "") end
+        say("X on this slot: " .. what)
+    end
 end

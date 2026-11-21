@@ -121,7 +121,7 @@ local function build()
             T.apply()   -- a target may have changed during the fight
             return
         end
-        pcall(T.apply)
+        UF.try("TargetMenu.apply", T.apply)
     end)
     -- a soft interact target comes and goes as you move, and a target dies or becomes lootable, with no event: look again four times a second
     local acc = 0
