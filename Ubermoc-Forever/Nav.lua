@@ -182,9 +182,10 @@ after:RegisterEvent("PLAYER_REGEN_DISABLED")
 after:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_REGEN_DISABLED" then held = nil
     elseif event == "PLAYER_LOGIN" then if #stack == 0 then Nav.manageClicks(false); Nav.healClicks() end
-    else rebind() end
+    else if UF.diag then UF.diag("ours", "window buttons rebound") end; rebind() end
 end)
 after:RegisterEvent("PLAYER_LOGIN")   -- cursor clicks taken before a /reload or a crash are given back
+Nav._after = after   -- for the offline test
 
 -- Hold the D-pad to keep moving.
 local repeater = CreateFrame("Frame")
@@ -238,37 +239,16 @@ end
 -- Buttons are given in rows: { { button, button }, { button }, ... }. Up and down move between rows (landing on the
 -- button in that row closest across), left and right move within a row. A button may carry .navRow (a row frame to
 -- highlight with it) and .navScroll (a scroll frame to keep it in view).
+-- No tint of ours: each button keeps the game's own gold highlight (LockHighlight), which is what the user asked for -
+-- the only yellow is the active keybind layer button (UF.KEYBIND_GLOW, Core.lua).
 ----------------------------------------------------------------------
--- A yellow tint over the highlighted button, the same as on the game's windows (UF.HIGHLIGHT, Core.lua), on top of the
--- button's own highlight. One overlay frame, moved to whichever button has the highlight; it never takes the mouse.
-local tint
-local function tintOn(b)
-    if not tint then
-        tint = CreateFrame("Frame", "UbermocForeverNavTint", UIParent)
-        tint:SetFrameStrata("TOOLTIP")
-        if tint.EnableMouse then tint:EnableMouse(false) end
-        UF.tintHighlight(tint)
-        -- it belongs to UIParent, so it hides itself when its button goes (a window closed without clearing the highlight)
-        tint:SetScript("OnUpdate", function(self)
-            local t = self.target
-            if not (t and t.IsVisible and t:IsVisible()) then self:Hide() end
-        end)
-    end
-    tint.target = b
-    tint:ClearAllPoints()
-    tint:SetPoint("TOPLEFT", b, "TOPLEFT", -1, 1)
-    tint:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 1, -1)
-    tint:Show()
-end
 
 local function lock(b, on)
     if not b then return end
     if on then
         if b.LockHighlight then b:LockHighlight() end
-        pcall(tintOn, b)
     else
         if b.UnlockHighlight then b:UnlockHighlight() end
-        if tint then tint:Hide() end
     end
     local row = b.navRow
     if row then

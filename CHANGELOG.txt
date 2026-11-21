@@ -1,3 +1,74 @@
+Ubermoc-Forever 1.3.177
+- Fixed: the ride learning started "rides" on tiny drift. The first real play data (your game, 2026-11-21) showed 27 false ride starts on 1 to 3 yards of drift while you walked about and talked to NPCs; none was long enough to be learned, but it fired far too easily. A ride now needs about 8 yards of movement in 2 seconds while you stand still (a boat or a zeppelin moves 4 yards a second or more). The offline test checks the drift and fails with the old rule. The trail learning itself worked: 83 points and 83 steps from one short walk.
+- Added: `tools/read_saved.py`, which reads the game's saved settings and prints any part (the learned data, the scans, the timeline, the stealth incidents, the arrow's numbers), so the next person can read what the game has recorded.
+- Docs: the hand-off (`HANDOFF.md`, "WHERE THINGS STAND"), the notes for the local model, the agent notes and the research notes now record everything learned about navigation: what the game gives and does not give, the coordinate system, the example addons and their licences, the routes Forever has, and the open work.
+
+Ubermoc-Forever 1.3.176
+- Added: a refused Stealth (also Prowl and Shadowmeld) saves itself. When one of those casts fails, the last ten seconds of the timeline are kept as an incident in the saved settings (the last 12), together with the game's own error text that follows, and one line in chat says what happened ("Stealth refused 2.5 s after the fight ended. In combat: yes. The game said: ..."). So the delay does not have to be repeated on purpose: play, and when it happens the evidence is already there. `/ubf combat` shows the last one.
+
+Ubermoc-Forever 1.3.175
+- Added: a timeline recorder for the stealth delay (stealth not working straight after a fight or after talking to an NPC). It keeps the last 80 events in the saved settings: combat starting and ending, conversations opening and closing, stealth on and off, the player's casts starting, succeeding or failing, the red error text the game shows, when Stealth becomes usable in the six seconds after a fight or a talk, and what this addon does at those moments (the window buttons taken and given back, the cinematic camera, the gamepad layout, the interact key, the nameplate setting). `/ubf combat` prints it relative to the end of the fight or the talk. Nothing in play changes; the cause is read from it, not guessed.
+- Changed: the flight path pins on the world map are on for a new install too (they were already on unless you switched them off).
+
+Ubermoc-Forever 1.3.174
+- Changed: the quest arrow has one way of aiming, Breadcrumbs, and no setting for it. The Aim button and the Direct, Route and Around obstacles aims are gone. Where the player cannot be read, the arrow falls back to the plain straight line.
+
+Ubermoc-Forever 1.3.173
+- Added: flight paths you have not found, on the world map. The flight masters come from the game itself; the ones of your faction (and neutral ones) that you have not found are drawn as pins with the game's own flight master icon, and a pin goes away when you find the flight path. What you have found is learned from the flight map (every point it lists is one you have), from the world map's own flag when the game really says (when it never says, it is ignored) and from the moment of finding one. A left click on a pin puts the game's own map waypoint on it if you want to go there; a right click hides that one pin; the button on the Quality of life page hides all of them; `/ubf flightpaths show` brings the hidden ones back; `/ubf flightpaths` says what the game reports.
+- Added: the quest arrow follows the map waypoint when no quest is selected (before the first quest in progress on your map).
+
+Ubermoc-Forever 1.3.172
+- Added: learned navigation, kept in the saved settings and only ever added to (`/ubf learned` says how much there is). It learns the trail you walk on foot (a graph of points joined by your steps, up to 8000 per continent), the boats, zeppelins and trams you ride (where you boarded and where you got off, per faction, seen when the ground moves under you while you stand still or when the world loads during a ride) and the spot outside each dungeon or raid (noted when you walk in and when you come out). Taxis, swimming, flying and a dead character add nothing.
+- Added: a fourth aim for the quest arrow, Breadcrumbs: it points at waypoints along your learned trail (about 80 yards ahead), at the learned dock when the objective is on another continent, or straight on where nothing is learned yet, with a narration line under the distance ("Following your trail, waypoint 2 of 9, 410 yd to go"). With nothing learned for another continent the line names what the guides say can be ridden for your faction. Breadcrumbs turns the arrow relative to where your character faces.
+- Why learned: the game has no road, terrain, dock or entrance data for addons (the scans of 1.3.171 found 16 map points of interest and no docks; the Encounter Journal is off in Forever).
+
+Ubermoc-Forever 1.3.171
+- Added: navigation scans, author tools for building the quest arrow's routing from the game's own data, one at a time: `/ubf docks` (every area point of interest on every map, with the transport-like ones picked out and every icon name counted), `/ubf taxi` (every flight point the game shows, discovered or not), `/ubf maps` (the map tree with sizes, places on the parent and continent positions) and `/ubf entrances` (dungeon and raid entrances). `/ubf scans` lists what is saved, `/ubf scans stop` ends a running one. Each takes a few seconds and saves into the saved settings (written at /reload or logout). Nothing in play changes.
+
+Ubermoc-Forever 1.3.170
+- Changed: the quest arrow turns "with the view" only, as chosen: it points toward the game's own on-screen marker for the objective. The Turns button is gone again. Where the game gives no marker position (for example when the objective is behind you), the arrow now falls back to the direction relative to where your character faces, which keeps turning as you turn, instead of the compass direction, which stood still and looked like an arrow that did nothing.
+- Added: while you play, the arrow keeps twenty samples (your facing, where the game puts its marker, the turn applied) in the saved settings, so what it does while you turn can be read after a /reload.
+
+Ubermoc-Forever 1.3.169
+- Added back: the Turns button for the quest arrow, with three ways to try: With you (the arrow turns by the bearing to the objective minus the direction your character faces; the default), With the map (the compass direction, north at the top) and With the view (toward the game's own on-screen marker for the objective). `/ubf arrow` says which one is drawn and why. The choice is for finding out which one you prefer.
+
+Ubermoc-Forever 1.3.168
+- Changed: the quest arrow uses the old minimap quest arrow only, with no other pictures. The Art button is replaced by an Opacity button on the Quality of life page: 100 percent down to 10 in steps of ten (A one step fainter, X one step more solid), applied to the arrow and its distance.
+
+Ubermoc-Forever 1.3.167
+- Changed: the quest arrow has one way of turning and no setting for it: the Turns button is gone. It turns by the bearing to the objective minus the direction your character faces (the way ThePath and ForeverPlusPlus draw theirs), so it points up when you face the objective. The way that followed the game's own navigation target did not move in Forever and is removed with the compass-fixed way.
+
+Ubermoc-Forever 1.3.166
+- Fixed: the quest arrow stayed pointing one way and only the distance changed. 1.3.165 made it follow the screen position of the game's own navigation target, which in Forever does not move. The arrow is back to the way the two working guide addons (ThePath and ForeverPlusPlus) draw theirs, which I read in their code: it turns by the bearing to the objective minus the direction your character faces, so it points up when you face the objective. The Turns button now has two ways: With you (the default) and With the map (the compass direction, north at the top, like the minimap's arrow).
+- Note: the game gives addons no camera direction, so an arrow that follows where you look cannot be made; and neither example addon routes along roads or around obstacles.
+
+Ubermoc-Forever 1.3.165
+- Changed: the quest arrow no longer turns with your character. By default ("With the view") it points the way the objective is in what you see on the screen, as the game's own arrow does: it reads the screen position the game keeps for its navigation target and turns toward it from the middle of the screen. Where the game has no such target it points in the compass direction (north at the top), like the arrow at the edge of the minimap. A Turns button on the Quality of life page also offers "With the map" and "With you" (the old arrow, relative to where your character faces). `/ubf arrow` says which one is drawn and why.
+
+Ubermoc-Forever 1.3.164
+- Changed: the quest arrow's size is a width in pixels (16 to 128) that the Size button steps one press at a time, A bigger and X smaller, instead of Small, Medium and Large. The old sizes were a share of the size of one picture and came out far off for the others. The default is 40.
+
+Ubermoc-Forever 1.3.163
+- Fixed: the quest arrow pointed the wrong way because the game's Lua has a one-argument `math.atan` (the second argument is ignored), so the bearing to the objective came out wrong: from `/ubf arrow` in the game, an objective 442 yards south and 99 yards west was given a bearing of 89 degrees instead of 167. The bearing now uses `math.atan2`. The offline test now makes `math.atan` behave like the game's, checks the real numbers from the game, and `tools/check_lua.py` refuses a two-argument `math.atan` (and other library calls that Lua 5.1 does not have).
+- Changed: an Art button on the Quality of life page replaces the Outline button. It steps through the pictures the client has: the minimap's gold arrow (the engine's guide arrow file, the first choice), the game's tracked-quest arrow, and the older arrow with or without its black edge.
+- Known: for the quest tested the game gave no route step (`/ubf arrow` says "route step: none from the game"), so Route and Around obstacles draw the straight line there.
+
+Ubermoc-Forever 1.3.162
+- Changed: the quest arrow's picture is now taken from the game's own arrow frame (the one Blizzard draws for a selected quest) when this client has it, then the Navigation-Tracked-Arrow atlas, set and read back, and only then the older minimap arrow. The earlier check asked `GetAtlasInfo`, which can answer nothing for an atlas that does set, so the older art could be drawn instead of Blizzard's. `/ubf arrow` says which one is drawn.
+- Added: an Outline button on the Quality of life page. Off (the default) hides the arrow picture's hard black edge by drawing it with additive blending; On draws the game's art as it is.
+- Added: the numbers behind the arrow (where you stand, where it aims, which way you face, the bearing, the turn, the art) are kept in the saved settings and printed by `/ubf arrow`, so a wrong direction can be read instead of guessed.
+
+Ubermoc-Forever 1.3.161
+- Fixed: the quest arrow pointed the wrong way (to the mirror image of the objective). It turned by the negative of the angle between where you face and where the objective lies, but the game turns a picture counter-clockwise by what it is given, as both the bearing and your facing are measured. Now an objective on your right is on the right of the arrow. The offline test checks all four facings against the real geometry.
+
+Ubermoc-Forever 1.3.160
+- Fixed: the quest arrow never showed. The arrow's picture was never given a place on its frame (a picture with no place is not drawn), the game's `SetAtlas` answers nothing and that was read as "the art cannot be used", the distance text was never placed, and dragging saved the place in the wrong units. The picture is now the game's own tracked-quest arrow (the older minimap quest arrow if that is missing) with the distance under it, as Blizzard draws it. The offline test now counts the places a picture was given and makes `SetAtlas` answer nothing, like the game.
+- Added: on the Quality of life page, buttons for the arrow's aim (Direct, Route, Around obstacles), size (Small, Medium, Large) and place (six places, or Custom after a drag). `/ubf arrow` also says why the arrow is hidden. An error in the arrow is kept for `/ubf errors`.
+
+Ubermoc-Forever 1.3.159
+- Added: the quest direction arrow (from the 1.3.146 work, brought up to date) with three ways to aim it: Direct (the straight line), Route (the game's own route, which follows the roads) and Around obstacles (straight at the objective, bending along the game's route only where it shows something in the way). The game gives no terrain data, so the third reads the obstacle from the route. Drag to move, three sizes, a row on the Quality of life page, `/ubf arrow` to see what the game answers.
+- Fixed: the arrow's mode setting was passed to the aiming code as a number where it expected the mode's name, so Route and Around never took effect in the game; offline tests passed the name, so they hid it.
+
 Ubermoc-Forever 1.3.158
 - Added: every cold login and every /reload is noted in the saved settings ten seconds after the world is entered: which kind of load it was, the version the game read, whether the controller was seen, how many start-up checks failed, and every error the addon caught. `/ubf loads` prints it. This is to find out why a change only shows after /reload; nothing in play changes.
 
@@ -22,6 +93,10 @@ Ubermoc-Forever 1.3.153
 Ubermoc-Forever 1.3.152
 - Fixed: X (the right click) on an item in a bag slot now does what a right click does in the game - it uses the item. Poisons, armour kits, oils, stones and enchants, and bags, which X left alone before, now go through the same secure use as a recipe or a hearthstone (a bag is equipped, as the game's right click equips it). Selling at a vendor and the buyback tab are unchanged, and the Y menu keeps its own entries for these items.
 Ubermoc-Forever 1.3.145
+UbermocForever 1.3.146
+- Added: quest direction arrow (QuestArrow.lua): while a quest is in progress on the map you are on, a small arrow near the top right of the screen points at its objective and turns as you turn. It uses the game's own quest navigation art and the documented map maths (docs/RESEARCH-QUEST-ARROW.md); it shows only while the game can say your spot, the map size and your facing, and quests on other maps are not pointed at. On by default, with a row on the Quality of life page.
+
+UbermocForever 1.3.145
 - Added: a yellow glow effect on the active layer button (Base, Hold Shift, etc.) in the options window.
 - Updated: the settings for nameplates (enemy and friendly name-only, increased range) now default to On for new installs, matching the author's current settings.
 - Fixed: the experience bar no longer hides by default (xpall fade setting), and the action bar's idle fading defaults to 20% opacity (gbar 0.2) for better visibility.

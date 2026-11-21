@@ -128,7 +128,30 @@ def check(path, luac, api, risky):
             if hits:
                 print(f"  risky  {pat}  lines {', '.join(map(str, hits[:12]))}{' ...' if len(hits) > 12 else ''}  -> {why}")
     problems += silent_pcalls(path)
+    problems += lua53_library(path)
     return problems
+
+
+# Library calls that exist only in Lua 5.2/5.3 or work differently there. luac5.1 checks syntax, not library calls, and the offline test
+# runs 5.5, so only this sees them. math.atan(y, x) is the one that bit: in the game the second argument is ignored (use math.atan2).
+LUA53 = [
+    (re.compile(r"\bmath\.atan\([^()]*(\([^()]*\)[^()]*)*,"), "math.atan takes ONE argument in the game's Lua 5.1 (the second is ignored): use math.atan2(y, x)"),
+    (re.compile(r"\btable\.move\("), "table.move does not exist in Lua 5.1"),
+    (re.compile(r"\bmath\.(tointeger|type|ult)\("), "this math function does not exist in Lua 5.1"),
+    (re.compile(r"\bstring\.(pack|unpack|packsize)\("), "string.pack and string.unpack do not exist in Lua 5.1"),
+    (re.compile(r"\butf8\."), "utf8 does not exist in Lua 5.1"),
+]
+
+
+def lua53_library(path):
+    n = 0
+    for i, line in enumerate(open(path, encoding="utf-8").read().splitlines(), 1):
+        code = re.sub(r"--.*$", "", line)
+        for rx, why in LUA53:
+            if rx.search(code):
+                print(f"{path}:{i}: LUA 5.3 LIBRARY: {why}")
+                n += 1
+    return n
 
 
 SILENT = re.compile(r"(^|\bthen\s+|\belse\s+|\bdo\s+|;\s*)pcall\(")

@@ -817,7 +817,7 @@ UF.OnLogin(function()
     ev:SetScript("OnEvent", function(_, e, slot, inRange, checksRange)
         if e == "ACTION_RANGE_CHECK_UPDATE" then B.setRange(slot, inRange, checksRange); return end
         if e == "MODIFIER_STATE_CHANGED" then B.refresh(); return end
-        if e == "PLAYER_REGEN_ENABLED" and not pending then B.refresh(); return end
+        if e == "PLAYER_REGEN_ENABLED" and not pending then if UF.diag then UF.diag("ours", "gamepad layout refreshed") end; B.refresh(); return end
         if cfg().on or e == "PLAYER_ENTERING_WORLD" then B.layoutSoon() end
     end)
     -- the modifier events do not always arrive for the controller's emulated keys: look a few times a second

@@ -87,6 +87,7 @@ function UF.RefreshOptions()
     -- the chosen layer shows as a pressed button; the highlight is kept for the button the D-pad is on
     for i, b in ipairs(layerButtons) do
         if i == layer then b:SetButtonState("PUSHED", true) else b:SetButtonState("NORMAL", false) end
+        if b.ufGlow then b.ufGlow:SetShown(i == layer) end
     end
 
     local y = 0
@@ -472,6 +473,17 @@ local function build()
         if i == 1 then b:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -36)
         else b:SetPoint("LEFT", layerButtons[i - 1], "RIGHT", 6, 0) end
         b:SetScript("OnClick", function() layer = i; UF.RefreshOptions() end)
+        -- glow over the game's own button highlight art (ButtonHilight-Square, Blizzard button template art); this is the
+        -- only yellow in the mod (UF.KEYBIND_GLOW, Core.lua): keybind layer row only, the active layer button, covering
+        -- the button exactly, so the layer you are binding is obvious when the bumpers change it
+        local h = UF.KEYBIND_GLOW
+        local glow = b:CreateTexture(nil, "OVERLAY")
+        glow:SetAllPoints(b)
+        glow:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+        glow:SetBlendMode("ADD")
+        glow:SetVertexColor(h[1], h[2], h[3], h[4])
+        glow:Hide()
+        b.ufGlow = glow
         layerButtons[i] = b
     end
 

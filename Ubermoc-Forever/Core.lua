@@ -42,16 +42,21 @@ function UF.say(msg)
     end
 end
 
--- The settings a new install starts with: the author's own (2026-11-17), copied once into a brand-new saved-variables table (an install that
+-- The settings a new install starts with: the author's own (2026-11-19), copied once into a brand-new saved-variables table (an install that
 -- already has settings is not touched).
 UF.SEED = {
     menuSide = "left",
     fadeMouse = 1,
     gbar = { extras = false, faceColor = false, gap = 0, hideEmpty = true, on = true, raise = 0, size = 40 },
     aim = { dist = 3, on = true, size = 1, v2 = true },
+    qarrow = { on = true },
+    flightPins = { on = true, hidden = {} },
     cinemaEdges = 3,
     cinemaBars = 3,
-    chat = { auto = { chat = true, chatbtns = true, chatedit = true, chattabs = true, quickjoin = true }, fade = 3, on = true, reveal = true, visible = 5 },
+    chat = { auto = { chat = true, chatbtns = true, chatedit = true, chattabs = true, quickjoin = true }, fade = 3, on = true, reveal = true, visible = 5, editTop = false },
+    plates = { enemy = true, friendly = true, health = true, percent = true, quest = true, questText = true, friendlyLevel = true },
+    vendor = { repair = true, sell = true, guild = true },
+    platerange = { on = true, backup = {} },
     fade = {
     arena = { flight = 0, idle = 0.4 },
     bags = { combat = 0, flight = 0, idle = 0 },
@@ -80,7 +85,7 @@ UF.SEED = {
     focus_portrait = { flight = 0, idle = 0.4 },
     focus_power = { flight = 0, idle = 0.4 },
     fot = { flight = 0, idle = 0.4 },
-    gbar = { flight = 0, idle = 0 },
+    gbar = { flight = 0, idle = 0.2 },
     mainbar = { flight = 0, idle = 0.4 },
     mb_border = { flight = 0, idle = 0.4 },
     mb_leftcap = { flight = 0, idle = 0.4 },
@@ -137,7 +142,7 @@ UF.SEED = {
     tr_world = { hide = true, idle = 0.4 },
     tracker = { hide = true, idle = 0.4 },
     vehicleexit = { flight = 0, idle = 0.4 },
-    xpall = { combat = 0, flight = 0, hide = true, idle = 0 },
+    xpall = { combat = 0, flight = 0, idle = 0 },
     zoneabil = { flight = 0, idle = 0.4 },
     },
 }
@@ -329,6 +334,20 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.GameNav and UF.GameNav.xReport then UF.GameNav.xReport() end
     elseif msg == "errors" then
         UF.reportErrors()
+    elseif msg == "docks" or msg == "taxi" or msg == "maps" or msg == "entrances" then
+        if UF.NavScan then UF.NavScan.start(msg) end
+    elseif msg == "scans" or msg == "scans stop" then
+        if UF.NavScan then UF.NavScan.status(msg == "scans stop") end
+    elseif msg == "combat" then
+        if UF.Diag then UF.Diag.report() end
+    elseif msg == "flightpaths" then
+        if UF.FlightPaths then UF.FlightPaths.report() end
+    elseif msg == "flightpaths show" then
+        if UF.FlightPaths then UF.FlightPaths.unhideAll(); UF.say("All the flight path pins you had hidden are back.") end
+    elseif msg == "learned" then
+        if UF.Trail then UF.Trail.report() end
+    elseif msg == "arrow" then
+        if UF.QuestArrow and UF.QuestArrow.report then UF.QuestArrow.report() end
     elseif msg == "loads" then
         UF.reportLoads()
     elseif msg == "tabs" then
@@ -352,9 +371,12 @@ function UF.cycleButton(b, step, after)
     b:SetScript("OnClick", function(_, button) step(button == "RightButton" and -1 or 1); if after then after() end end)
 end
 
--- The highlight colour shared by the game-window highlight (GameNav.lua) and our own windows (Nav.lua): a yellow tint over
--- the game's own button highlight art (ButtonHilight-Square, added to what is underneath) and a light yellow wash.
-UF.HIGHLIGHT = { glow = { 1, 0.82, 0.12, 1 }, wash = { 1, 0.8, 0.05, 0.3 } }
+-- Yellow belongs to one place only: the active keybind layer button in the options window (Options.lua), so the layer you
+-- are binding is obvious when the bumpers (L1/R1) switch it - the size change alone was too subtle.
+UF.KEYBIND_GLOW = { 1, 0.82, 0.12, 1 }
+-- Everywhere else the highlight is the game's own button art (ButtonHilight-Square, added to what is underneath) with the
+-- warm tint it had before 1.3.116. Nav.lua uses no tint at all: its buttons keep the game's own gold LockHighlight.
+UF.HIGHLIGHT = { glow = { 1, 0.9, 0.55, 1 }, wash = { 1, 0.85, 0.4, 0.22 } }
 function UF.tintHighlight(frame)
     local h = UF.HIGHLIGHT
     local glow = frame:CreateTexture(nil, "OVERLAY")
