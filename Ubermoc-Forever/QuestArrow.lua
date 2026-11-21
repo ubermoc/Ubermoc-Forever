@@ -17,12 +17,13 @@ local ADDON, UF = ...
 local Q = {}
 UF.QuestArrow = Q
 
--- math.atan takes (y, x) in the games Lua and in the offline test, so this is atan2.
-local function atan2(y, x) return math.atan(y, x) end
+-- The game runs Lua 5.1, where math.atan takes ONE number (a second one is ignored: atan(-east, -south) came out as atan(-east), a bearing of
+-- 89 degrees for an objective at 167) and the two-argument arc tangent is math.atan2. The offline test runs Lua 5.5, which has no
+-- math.atan2 and a two-argument math.atan; the test stub now behaves like the game, and tools/check_lua.py refuses a two-argument math.atan.
+local rawAtan = math.atan
+local atan2 = math.atan2 or function(y, x) return rawAtan(y, x) end   -- the second form only where there is no math.atan2 (the offline test)
 
 -- the three modes, in the order the options row steps through them (claim R12)
-Q.ATLAS = "Navigation-Tracked-Arrow"              -- the art of Blizzard's own tracked-quest arrow (claim C10)
-Q.FALLBACKART = "Interface\\Minimap\\MiniMap-QuestArrow"   -- older game art, when the atlas is not there
 Q.MODES = { "direct", "route", "obstacle" }
 Q.MODENAME = { direct = "Direct", route = "Route", obstacle = "Around obstacles" }
 Q.MODENOTE = {
@@ -43,6 +44,7 @@ local function cfg()
     if a.on == nil then a.on = true end
     if not a.mode then a.mode = 1 end
     if not a.size then a.size = 2 end
+    if not a.art then a.art = 1 end
     if not a.place then a.place = {} end
     return a
 end
@@ -79,17 +81,71 @@ function Q.nextPosition(dir)
     return Q.POSITIONS[n].name
 end
 
--- The arrow's picture has a hard black edge. Drawn with additive blending black adds nothing, so the edge disappears and only the gold
--- arrow is seen (a little brighter over light ground); drawn normally the edge is kept as the game's art has it. Off is the default.
-function Q.outlineName() return cfg().outline and "On" or "Off" end
-function Q.toggleOutline() local a = cfg(); a.outline = not a.outline; return a.outline end
-function Q.applyLook(f, a)
-    if not (f and f.art) then return end
-    local want = a.outline and "BLEND" or "ADD"
-    if f.look ~= want then
-        f.art:SetBlendMode(want)
-        f.look = want
+-- The pictures the arrow can be drawn with. The minimap's own quest arrow (the gold dart at the minimap's edge) is drawn by the game
+-- engine, not by Lua, so its file cannot be asked of any frame: ROTATING-MINIMAPGUIDEARROW is the engine's guide arrow file and the
+-- likeliest match, and the Art button steps through the rest so the one that looks right can be picked. A file counts only when the
+-- client knows it (GetFileIDFromPath), an atlas only when it sets and reads back (SetAtlas answers nothing, GetAtlasInfo can answer
+-- nothing for an atlas that sets). "Old, no edge" draws the old arrow additively, which hides its hard black edge.
+Q.ARTS = {
+    { name = "Minimap arrow", file = "Interface\\Minimap\\ROTATING-MINIMAPGUIDEARROW", blend = "BLEND" },
+    { name = "Quest arrow", atlas = "Navigation-Tracked-Arrow", blend = "BLEND" },
+    { name = "Old arrow, no edge", file = "Interface\\Minimap\\MiniMap-QuestArrow", blend = "ADD" },
+    { name = "Old arrow", file = "Interface\\Minimap\\MiniMap-QuestArrow", blend = "BLEND" },
+}
+Q.ATLAS = "Navigation-Tracked-Arrow"
+
+local function atlasSets(tex, atlas)
+    local okS = pcall(tex.SetAtlas, tex, atlas)
+    if not okS then return false end
+    local okG, got = pcall(tex.GetAtlas, tex)
+    return okG and got == atlas
+end
+
+local probe
+-- whether art number i can be drawn in this client
+function Q.artAvailable(i)
+    local a = Q.ARTS[i]
+    if not a then return false end
+    if a.file then
+        if not GetFileIDFromPath then return true end   -- cannot ask: try it
+        local ok, id = pcall(GetFileIDFromPath, a.file)
+        return ok and id ~= nil
     end
+    if not probe then probe = UIParent:CreateTexture(nil, "BACKGROUND") end
+    return atlasSets(probe, a.atlas)
+end
+
+function Q.artName() return (Q.ARTS[cfg().art] or Q.ARTS[1]).name end
+function Q.nextArt(dir)
+    local a = cfg()
+    local n = #Q.ARTS
+    local i = a.art
+    for _ = 1, n do
+        i = UF.stepIndex(i, n, dir or 1)
+        if Q.artAvailable(i) then a.art = i; return i end
+    end
+    return a.art
+end
+
+-- draws the chosen art on the frame's picture (again only when the choice changed); a choice this client cannot draw falls to the
+-- next one it can, and the art that is really drawn is kept for /ubf arrow
+function Q.applyArt(f)
+    local a = cfg()
+    if f.artKey == a.art then return end
+    local n = #Q.ARTS
+    local i = a.art
+    for _ = 1, n do
+        if Q.artAvailable(i) then break end
+        i = UF.stepIndex(i, n, 1)
+    end
+    local art = Q.ARTS[i]
+    if art.atlas then
+        atlasSets(f.art, art.atlas)
+    else
+        f.art:SetTexture(art.file)
+    end
+    f.art:SetBlendMode(art.blend)
+    f.artKey, Q.drawnArt = a.art, art.name
 end
 
 function Q.sizeName() return Q.SIZES[cfg().size].name end
@@ -331,35 +387,6 @@ function Q.aimFor(mode, hereMap, pos, targetMap, tx, ty, waypoint, parentOf, row
     return lca, tr.minX + tx * (tr.maxX - tr.minX), tr.minY + ty * (tr.maxY - tr.minY), "shared map", px, py
 end
 
--- The picture is Blizzard's own tracked-quest arrow, found three ways, best first; the way is kept in Q.artSource for /ubf arrow:
---  1. what the game's own arrow frame (SuperTrackedFrame.Arrow, Blizzard_QuestNavigation) is drawing: asked of the frame itself, so it is
---     exactly the art this client uses, whatever its name;
---  2. the atlas Navigation-Tracked-Arrow (claim C10), set and then read back (SetAtlas answers nothing, and GetAtlasInfo can answer
---     nothing for an atlas that does set);
---  3. the older minimap quest arrow, so there is always a picture.
--- The game's frame may not exist yet when the arrow is first built, so update() asks again every few seconds until way 1 has answered.
-function Q.pickArt(f)
-    local art = f.art
-    local function readBack(wanted)
-        local okG, got = pcall(art.GetAtlas, art)
-        return okG and got == wanted
-    end
-    local src = _G.SuperTrackedFrame and _G.SuperTrackedFrame.Arrow
-    if src and src.GetAtlas then
-        local okA, atlas = pcall(src.GetAtlas, src)
-        if okA and type(atlas) == "string" and atlas ~= "" then
-            local okS = pcall(art.SetAtlas, art, atlas)
-            if okS and readBack(atlas) then Q.artSource, Q.artName = "the game's own arrow frame", atlas; return end
-        end
-    end
-    if Q.artSource == "the atlas" then return end
-    local okS = pcall(art.SetAtlas, art, Q.ATLAS)
-    if okS and readBack(Q.ATLAS) then Q.artSource, Q.artName = "the atlas", Q.ATLAS; return end
-    if Q.artSource then return end
-    art:SetTexture(Q.FALLBACKART)
-    Q.artSource, Q.artName = "the older minimap arrow (the atlas could not be set)", Q.FALLBACKART
-end
-
 local arrow
 
 local function build()
@@ -371,7 +398,7 @@ local function build()
     arrow:SetClampedToScreen(true)       -- claim C38
     arrow.art = arrow:CreateTexture(nil, "OVERLAY")
     arrow.art:SetPoint("CENTER", arrow, "CENTER", 0, 0)   -- a texture with no point is never drawn
-    Q.pickArt(arrow)
+    Q.applyArt(arrow)
     -- the games own distance font (claim C39), under the arrow like Blizzard's
     arrow.text = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     arrow.text:SetPoint("TOP", arrow, "BOTTOM", 0, 4)
@@ -527,11 +554,7 @@ local function update()
     if not face then Q.why = "the game does not give the direction you face"; hide(); return end
 
     Q.why = nil
-    if Q.artSource ~= "the game's own arrow frame" and GetTime and (GetTime() - (Q.artAsked or -9) >= 3) then
-        Q.artAsked = GetTime()
-        Q.pickArt(f)
-    end
-    Q.applyLook(f, a)
+    Q.applyArt(f)
     local turn = Q.rotation(angle, face)
     f.art:SetRotation(turn)  -- claims C8 and C9
     -- The numbers behind the arrow, kept in the saved settings (DB.qarrow.debug, written at /reload or logout) and printed by /ubf arrow, so
@@ -546,7 +569,7 @@ local function update()
     d.applied = (okR and type(applied) == "number") and applied or nil
     local okA, atlas = pcall(f.art.GetAtlas, f.art)
     d.atlas = (okA and type(atlas) == "string") and atlas or nil
-    d.artSource, d.artName = Q.artSource, Q.artName
+    d.art = Q.drawnArt
     local okT, tex = pcall(f.art.GetTexture, f.art)
     d.texture = (okT and (type(tex) == "string" or type(tex) == "number")) and tex or nil
     Q.showDistance(f, yards, aimMap ~= here)

@@ -26,6 +26,14 @@ if bad:
 
 # 2. smoke: run the addon against a stub game
 stub = r'''
+-- The game runs Lua 5.1: math.atan takes ONE number (a second is ignored) and math.atan2 is the two-argument arc tangent. This test runs
+-- Lua 5.5, where it is the other way round, so the stub makes the maths library behave like the game's (the quest arrow's bearing was wrong
+-- in the game for exactly this reason while every offline test passed).
+do
+    local realAtan = math.atan
+    math.atan2 = function(y, x) return realAtan(y, x) end
+    math.atan = function(y) return realAtan(y) end
+end
 local calls = { binds = {}, cvars = {}, saved = 0, popups = {}, hooks = {}, overrides = {} }
 _G.__calls = calls
 -- Strict like the game: every method of a stub frame must be called WITH the frame (frame:Method(), not frame.Method()). The game
@@ -1888,7 +1896,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,8/3/1/3/2/2/1/3/5,true,1", r
+assert str(r) == "1,2,3,2,1,5,9/3/1/3/2/2/1/3/4,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -3523,7 +3531,7 @@ r = L("""function()
     Q.setPlace(0.88, 0.90)
     return table.concat(out, " | ")
 end""")()
-assert str(r) == ("art true | art points 1 | text points 1 | drawn Navigation-Tracked-Arrow | Direct | Route | Around obstacles | Direct | "
+assert str(r) == ("art true | art points 1 | text points 1 | drawn Interface\\Minimap\\ROTATING-MINIMAPGUIDEARROW | Direct | Route | Around obstacles | Direct | "
                   "Top right | Top centre | Top left | Custom | Top right"), r
 print("Quest arrow: the picture is the game's tracked-quest arrow and is anchored, the distance text is anchored, aim and place buttons step: OK")
 r = L("""function()
@@ -3554,39 +3562,44 @@ assert str(r) == ("4.7124 0.0000 | face N, objective E: right | face N, objectiv
 print("Quest arrow: the arrow turns the way the objective lies (right of you is right on screen), all four facings: OK")
 r = L("""function()
     local Q = _G.UbermocForever.QuestArrow
-    local f = Q.frame()
-    local a = Q.cfg()
-    a.outline = nil
-    Q.applyLook(f, a)
-    local out = { Q.outlineName() .. " " .. tostring(rawget(f.art, "__blend")) }      -- no outline: additive blending hides the black edge
-    Q.toggleOutline(); Q.applyLook(f, a)
-    out[#out + 1] = Q.outlineName() .. " " .. tostring(rawget(f.art, "__blend"))      -- the game's art as drawn
-    Q.toggleOutline(); Q.applyLook(f, a)
-    out[#out + 1] = Q.outlineName() .. " " .. tostring(rawget(f.art, "__blend"))
+    local out = {}
+    local function fresh(setup)
+        local f = { art = CreateFrame("Frame", nil, UIParent):CreateTexture(nil, "OVERLAY") }
+        Q.cfg().art = 1
+        setup()
+        Q.applyArt(f)
+        return tostring(Q.drawnArt) .. ":" .. tostring(rawget(f.art, "__art")) .. ":" .. tostring(rawget(f.art, "__blend"))
+    end
+    -- the client knows every file: the minimap arrow is the first choice
+    _G.GetFileIDFromPath = function() return 1 end
+    out[#out + 1] = fresh(function() end)
+    -- a client without that file: the next art it can draw (the atlas) stands in, and the button skips what is missing
+    _G.GetFileIDFromPath = function(p) if p:find("GUIDEARROW") then return nil end return 1 end
+    out[#out + 1] = fresh(function() end)
+    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- from 1, not available: 2 (the atlas)
+    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- 3: old, no edge
+    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- 4: old
+    out[#out + 1] = tostring(Q.nextArt(1)) .. " " .. Q.artName()      -- wraps, skips 1: 2
+    -- the old arrow without its edge is drawn additively, with the edge as it is
+    Q.cfg().art = 3
+    local f3 = { art = CreateFrame("Frame", nil, UIParent):CreateTexture(nil, "OVERLAY") }
+    Q.applyArt(f3)
+    out[#out + 1] = tostring(rawget(f3.art, "__blend"))
+    _G.GetFileIDFromPath = nil
+    Q.cfg().art = 1
     return table.concat(out, " | ")
 end""")()
-assert str(r) == "Off ADD | On BLEND | Off ADD", r
-print("Quest arrow: the outline button switches between additive (no black edge) and the game's art as drawn: OK")
+assert str(r) == ("Minimap arrow:Interface\\Minimap\\ROTATING-MINIMAPGUIDEARROW:BLEND | Quest arrow:Navigation-Tracked-Arrow:BLEND | 2 Quest arrow | 3 Old arrow, no edge | "
+                  "4 Old arrow | 2 Quest arrow | ADD"), r
+print("Quest arrow: the art button steps through the pictures this client has, the minimap arrow first, the old arrow without its edge is additive: OK")
 r = L("""function()
     local Q = _G.UbermocForever.QuestArrow
-    local out = {}
-    local function pick(setup)
-        local f = { art = CreateFrame("Frame", nil, UIParent):CreateTexture(nil, "OVERLAY") }
-        Q.artSource, Q.artName = nil, nil
-        setup()
-        Q.pickArt(f)
-        return tostring(Q.artSource):sub(1, 22) .. ":" .. tostring(Q.artName) .. ":" .. tostring(rawget(f.art, "__art"))
-    end
-    _G.__noAtlas = nil
-    out[#out + 1] = pick(function() _G.SuperTrackedFrame = { Arrow = { GetAtlas = function() return "Navigation-Tracked-Arrow" end } } end)
-    out[#out + 1] = pick(function() _G.SuperTrackedFrame = nil end)
-    _G.__noAtlas = true                                                 -- a client without the atlas: the older art stands in
-    out[#out + 1] = pick(function() end)
-    _G.__noAtlas = nil
-    return table.concat(out, " | ")
+    -- the real case from the game (1.3.162, quest 1459 on map 1443, a 4500 x 3000 yard map): the objective is 442 yd south and 99 yd west,
+    -- so the bearing is 167 degrees, not 89, and the picture is turned 167 - 298 = -131 degrees, which the first screenshot of it showed as wrong
+    local yards, angle = Q.bearing(4500, 3000, 0.6546, 0.0734, 0.6327, 0.2208)
+    return string.format("%.0f %.1f %.1f %.2f", yards, angle * 180 / math.pi, Q.rotation(angle, 298 * math.pi / 180) * 180 / math.pi, math.atan(1, 0))
 end""")()
-assert str(r) == ("the game's own arrow f:Navigation-Tracked-Arrow:Navigation-Tracked-Arrow | the atlas:Navigation-Tracked-Arrow:Navigation-Tracked-Arrow | "
-                  "the older minimap arro:Interface\\Minimap\\MiniMap-QuestArrow:Interface\\Minimap\\MiniMap-QuestArrow"), r
-print("Quest arrow: the picture comes from the game's own arrow frame, else the atlas, else the older art; SetAtlas is read back: OK")
+assert str(r) == "453 167.4 -130.6 0.79", r     # 0.79 = atan(1): the second argument is ignored, as in the game (a two-argument atan would give 1.57)
+print("Quest arrow: the bearing uses the two-argument arc tangent of the game's Lua 5.1 (math.atan2), checked on the real numbers from the game: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")
