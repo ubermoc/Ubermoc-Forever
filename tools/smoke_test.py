@@ -1897,7 +1897,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,9/3/1/3/2/2/1/3/4,true,1", r
+assert str(r) == "1,2,3,2,1,5,9/3/1/3/2/2/1/3/3,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -3286,7 +3286,7 @@ end""")()
 assert str(r) == "961/9,50 3.141593,4.712389,1.570796,0,nil", r
 print("Quest arrow: the bearing maths, the turn, and the quest choice: OK")
 
-# QuestArrow (QuestArrow.lua): the three modes, the cross-map target, the place and the size.
+# QuestArrow (QuestArrow.lua): the aim helper, the cross-map target, the place and the size.
 # FAKE(C23): the game answer for a quest carries mapID, x, y, as claim C23 states.
 # FAKE(C24): the areas listed on a map are rows, and those rows carry the fields claim C25 states.
 # FAKE(C25): a map record is a plain table carrying parentMapID, as claim C25 states.
@@ -3367,15 +3367,6 @@ r = L("""function()
     local p = Q.place()
     out[#out + 1] = string.format("saved %.2f %.2f for %s", p.fx, p.fy, tostring(UnitGUID("player")))
 
-    -- the modes step, and the obstacle mode says what it is (claim R12)
-    local names = {}
-    for i = 1, 3 do
-        names[#names + 1] = Q.modeName()
-        Q.nextMode(1)
-    end
-    Q.nextMode(-1)                 -- back to obstacle, the mode that has to be honest
-    out[#out + 1] = table.concat(names, ", ") .. " note " .. Q.modeNote()
-
     C_Map, C_QuestLog, C_SuperTrack, C_Navigation, C_Texture, GetPlayerFacing, GetCursorPosition =
         saved[1], saved[2], saved[3], saved[4], saved[5], saved[6], saved[7]
     UbermocForeverDB.qarrow = saved[8]
@@ -3386,9 +3377,7 @@ assert str(r) == ("walk 961-1416-1000 lca 1416 | held 1000 | on parent 0.12 0.74
                   "route fallback 1416 0.62 0.22 shared map | same area 961 0.40 0.40 straight (no route) | "
                   "tracking 8 | target 1000 0.4 0.4 | target from the row 961 0.2 0.6 | "
                   "40 px 40, 44 px 44, 48 px 48, 56 px 56 | cursor 0.50 1.00 | point 0.00 10.00 | "
-                  "moving true | after nil | saved 0.20 0.50 for Player-1-ABC | "
-                  "Direct, Route, Around obstacles note straight at the objective, bending along the games route only where that route shows "
-                  "something in the way (the game gives no terrain data, so this is read from its route)"), r
+                  "moving true | after nil | saved 0.20 0.50 for Player-1-ABC"), r
 print("Quest arrow: the three modes, the cross-map target, the size and the saved place: OK")
 print("modes:", r)
 
@@ -3518,12 +3507,7 @@ r = L("""function()
     -- the aim, size and place buttons step and wrap, and the place names itself
     local UF = _G.UbermocForever
     local a = UF.QuestArrow.cfg()
-    a.mode = 1
-    out[#out + 1] = Q.modeName()
-    Q.nextMode(1); out[#out + 1] = Q.modeName()
-    Q.nextMode(1); out[#out + 1] = Q.modeName()
-    Q.nextMode(1); out[#out + 1] = Q.modeName()
-    Q.nextMode(1)                                           -- round to Direct again
+    out[#out + 1] = "aim " .. Q.MODES[a.mode]                  -- Breadcrumbs is the only aim, whatever was saved before
     Q.setPlace(0.88, 0.90); out[#out + 1] = Q.positionName()
     out[#out + 1] = Q.nextPosition(1)
     out[#out + 1] = Q.nextPosition(1)
@@ -3532,7 +3516,7 @@ r = L("""function()
     Q.setPlace(0.88, 0.90)
     return table.concat(out, " | ")
 end""")()
-assert str(r) == ("art true | art points 1 | text points 1 | drawn Interface\\Minimap\\MiniMap-QuestArrow | Direct | Route | Around obstacles | Breadcrumbs | "
+assert str(r) == ("art true | art points 1 | text points 1 | drawn Interface\\Minimap\\MiniMap-QuestArrow | aim breadcrumbs | "
                   "Top right | Top centre | Top left | Custom | Top right"), r
 print("Quest arrow: the picture is the game's tracked-quest arrow and is anchored, the distance text is anchored, aim and place buttons step: OK")
 r = L("""function()

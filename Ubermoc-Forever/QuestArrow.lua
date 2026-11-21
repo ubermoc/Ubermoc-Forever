@@ -23,15 +23,9 @@ UF.QuestArrow = Q
 local rawAtan = math.atan
 local atan2 = math.atan2 or function(y, x) return rawAtan(y, x) end   -- the second form only where there is no math.atan2 (the offline test)
 
--- the three modes, in the order the options row steps through them (claim R12)
+-- the aims. Breadcrumbs is the only one that can be chosen (there is no setting); the other three stay as what the arrow falls back to
+-- when the player cannot be read, and for the tests of Q.aimFor (claim R12)
 Q.MODES = { "direct", "route", "obstacle", "breadcrumbs" }
-Q.MODENAME = { direct = "Direct", route = "Route", obstacle = "Around obstacles", breadcrumbs = "Breadcrumbs" }
-Q.MODENOTE = {
-    direct = "the straight line from you to the objective",
-    route = "the games own route data, read again as you move",
-    obstacle = "straight at the objective, bending along the games route only where that route shows something in the way (the game gives no terrain data, so this is read from its route)",
-    breadcrumbs = "waypoints along the trail you have walked, and the boat, zeppelin or tram you have ridden for another continent; it learns as you play",
-}
 
 -- the sizes the picture is drawn at, as a share of the size the game gives its own arrow (claims C39, C42)
 Q.SIZESTEPS = { 16, 20, 24, 28, 32, 36, 40, 44, 48, 56, 64, 72, 80, 96, 112, 128 }   -- the arrow's size in pixels, one step per press
@@ -43,21 +37,13 @@ local function cfg()
     d.qarrow = d.qarrow or {}
     local a = d.qarrow
     if a.on == nil then a.on = true end
-    if not a.mode then a.mode = 1 end
+    a.mode = #Q.MODES        -- Breadcrumbs, whatever an older version saved
     if not a.px then a.px = Q.DEFAULTPX end
     if not a.opacity then a.opacity = 100 end
     if not a.place then a.place = {} end
     return a
 end
 Q.cfg = cfg
-
-function Q.modeName() return Q.MODENAME[Q.MODES[cfg().mode]] end
-function Q.modeNote() return Q.MODENOTE[Q.MODES[cfg().mode]] end
-function Q.nextMode(dir)
-    local a = cfg()
-    a.mode = UF.stepIndex(a.mode, #Q.MODES, dir)
-    return a.mode
-end
 
 -- places a button press can choose (centre-based fractions of the screen as Q.place keeps them); a dragged place is "Custom"
 Q.POSITIONS = {
@@ -631,7 +617,7 @@ local function update()
     end
     if not tmap then Q.why = "no quest to point at: none selected in the tracker and none in progress on this map"; hide(); return end
 
-    local crumb = (Q.MODES[a.mode] == "breadcrumbs") and Q.crumbHere(tmap, tx, ty) or nil
+    local crumb = Q.crumbHere(tmap, tx, ty)        -- Breadcrumbs, the only aim; where the player cannot be read the plain line below stands in
     local aimMap, ax, ay, source, fromX, fromY, bent, wp, w, h, yards, angle
     if crumb then
         aimMap, ax, ay, source = here, tx, ty, crumb.kind
@@ -640,7 +626,7 @@ local function update()
         yards, angle = crumb.yards, crumb.angle
     else
         wp = waypointFor(quest, here)
-        aimMap, ax, ay, source, fromX, fromY, bent = Q.aimFor(Q.MODES[a.mode], here, pos, tmap, tx, ty,
+        aimMap, ax, ay, source, fromX, fromY, bent = Q.aimFor("direct", here, pos, tmap, tx, ty,
             wp, parentOf, rowsOf, rectOf, Q.bent)
         if not aimMap then Q.why = "no way to aim with this mode"; hide(); return end
         Q.bent = bent or false
@@ -678,7 +664,7 @@ local function update()
     -- bearing is, how far the picture was turned, what the picture reports back, and which art it is.
     local d = a.debug or {}
     a.debug = d
-    d.mode, d.source, d.quest, d.here, d.aimMap = Q.MODES[a.mode], source, quest, here, aimMap
+    d.mode, d.source, d.quest, d.here, d.aimMap = crumb and "breadcrumbs" or "direct", source, quest, here, aimMap
     d.px, d.py, d.ax, d.ay, d.tx, d.ty, d.tmap = pos.x, pos.y, ax, ay, tx, ty, tmap
     d.facing, d.bearing, d.turn, d.yards, d.mapW, d.mapH = face or Q.facing(), angle, turn, yards, w, h
     d.turnUsed, d.whyNoView, d.viewX, d.viewY, d.centreX, d.centreY = used, whyNoView, vx, vy, cx, cy
@@ -720,7 +706,7 @@ end)
 -- /ubf arrow: what the game answers for the arrow right now, so a mode that does nothing can be read instead of guessed
 function Q.report()
     local a = cfg()
-    UF.say("Quest arrow: " .. (a.on and "on" or "off") .. ", mode " .. Q.modeName())
+    UF.say("Quest arrow: " .. (a.on and "on" or "off") .. ", aims by breadcrumbs")
     local function has(t, k) return (_G[t] and _G[t][k]) and "yes" or "NO" end
     UF.say("The game offers: GetNextWaypointForMap (quest) " .. has("C_QuestLog", "GetNextWaypointForMap") .. ", GetNextWaypointForMap (live route) "
         .. has("C_Navigation", "GetNextWaypointForMap") .. ", GetNextWaypoint " .. has("C_QuestLog", "GetNextWaypoint")

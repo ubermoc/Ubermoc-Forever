@@ -1,3 +1,6 @@
+Ubermoc-Forever 1.3.174
+- Changed: the quest arrow has one way of aiming, Breadcrumbs, and no setting for it. The Aim button and the Direct, Route and Around obstacles aims are gone. Where the player cannot be read, the arrow falls back to the plain straight line.
+
 Ubermoc-Forever 1.3.173
 - Added: flight paths you have not found, on the world map. The flight masters come from the game itself; the ones of your faction (and neutral ones) that you have not found are drawn as pins with the game's own flight master icon, and a pin goes away when you find the flight path. What you have found is learned from the flight map (every point it lists is one you have), from the world map's own flag when the game really says (when it never says, it is ignored) and from the moment of finding one. A left click on a pin puts the game's own map waypoint on it if you want to go there; a right click hides that one pin; the button on the Quality of life page hides all of them; `/ubf flightpaths show` brings the hidden ones back; `/ubf flightpaths` says what the game reports.
 - Added: the quest arrow follows the map waypoint when no quest is selected (before the first quest in progress on your map).
