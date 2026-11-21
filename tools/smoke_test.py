@@ -697,7 +697,8 @@ r = L("""function()
     end
     local function slot(name, bag, id, slotName)
         local b = CreateFrame("Button", name, UIParent)
-        if not name then b.GetName = function() return nil end end   -- a gamepad slot has no global name
+        -- strict like the game: GetName needs the button itself (called without it, it errors; that hid the 1.3.155 failure)
+        b.GetName = function(self) assert(self == b, "GetName called without the button"); return name end
         b.GetBagID = function() return bag end
         b.GetID = function() return id end
         if slotName then b.slotName = slotName end

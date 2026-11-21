@@ -152,7 +152,7 @@ function M.rightClickAction(btn)
     local bag, slot = bagSlot(btn)
     if not bag then return nil end
     local no = function() return nil, true end
-    local name = btn.GetName and btn.GetName()
+    local name = btn.GetName and btn:GetName()
     -- At a vendor the game's own right click sells (ContainerFrame.lua:1543-1549, and nothing on the buyback
     -- tab). That click is the game's action on the button itself, so we can only reach it through a macro,
     -- which needs the button's name; a slot inside the gamepad bag window has no name (see bagBarSlot above),
@@ -280,6 +280,8 @@ function M.targets(itemID)
         return out
     end
     if t:find("weapon", 1, true) then return { 16, 17 } end
+    local n = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)
+    if type(n) == "string" and (n:find("Poison", 1, true) or n:find("Oil", 1, true) or n:find("Stone", 1, true)) then return { 16, 17 } end
     return nil
 end
 
@@ -293,7 +295,12 @@ function M.usedOnItems(itemID)
     if classID == CLASS.consumable and not NOT_ON_ITEMS[subClassID or -1] then
         local v = useText(itemID)
         if v == nil then return true end
-        return M.targets(itemID) ~= nil
+        if M.targets(itemID) ~= nil then return true end
+        -- the use line may not name a weapon in this client's wording (Crippling Poison, 3775): an "Other" consumable
+        -- named like a weapon coating still goes to the weapons
+        local n = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)
+        if type(n) == "string" and (n:find("Poison", 1, true) or n:find("Oil", 1, true) or n:find("Stone", 1, true)) then return true end
+        return false
     end
     -- head, leg and shoulder enchants are quest items (class 12: the arcanums, the Zandalar signets, the Scourge enchants) or
     -- miscellaneous items (class 15: the Zul'Gurub enchants and guards) in the game's data; their use text names the slot
@@ -886,6 +893,7 @@ function M.report(btn)
     say(string.format("Item %d: class %s, subclass %s, equip %s, has a use: %s, spell %s, used on another item: %s.",
         itemID, tostring(classID), tostring(subClassID), tostring(equipLoc), tostring(hasUse(itemID)),
         tostring(M.spellID(itemID)), tostring(M.usedOnItems(itemID))))
+    say("Use text: " .. tostring(useText(itemID)))
     -- what X would do on this button, so the two can be compared in the game
     if bag then
         local act = M.rightClickAction(btn)
