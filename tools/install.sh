@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the Ubermoc Forever addon into your World of Warcraft: Forever addon folder.
 #
-#   bash tools/install.sh              find the Forever folder and copy the addon in (run again to update)
+#   bash tools/install.sh              delete the addon folder in the game's AddOns and copy the WHOLE addon folder in (run again to update)
 #   bash tools/install.sh --link       link it instead of copying, so every change shows up after /reload
 #   bash tools/install.sh --uninstall  remove it again (your saved settings are not touched)
 #   bash tools/install.sh "/path/to/_forever_/Interface/AddOns"   use this folder, skip the search
@@ -129,11 +129,20 @@ for dest in "${FOUND[@]}"; do
       echo "linked    $target -> $(cd "$SRC" && pwd -P)"
       ;;
     copy)
-      rm -rf "$target"
-      mkdir -p "$target"
-      cp -R "$SRC/." "$target/"
+      # the whole folder, not single files: remove the game's folder, then copy the whole source folder as one unit
+      if [ -e "$target" ] || [ -L "$target" ]; then
+        rm -rf "$target" || { echo "Could not remove $target"; exit 1; }
+        echo "removed   $target"
+      fi
+      cp -a "$SRC" "$dest" || { echo "Copy failed into $dest"; exit 1; }
       [ -f "$target/$ADDON.toc" ] || { echo "Copy failed: $target/$ADDON.toc is missing."; exit 1; }
-      echo "installed $target ($(ls "$target" | wc -l | tr -d ' ') files, version $(sed -n 's/^## Version: *//p' "$target/$ADDON.toc" | tr -d '\r'))"
+      if diff -rq "$SRC" "$target" >/dev/null 2>&1; then
+        echo "installed $target ($(find "$target" -type f | wc -l | tr -d ' ') files, identical to $(cd "$SRC" && pwd -P), version $(sed -n 's/^## Version: *//p' "$target/$ADDON.toc" | tr -d '\r'))"
+      else
+        echo "Copy is NOT identical to $(cd "$SRC" && pwd -P):"
+        diff -rq "$SRC" "$target"
+        exit 1
+      fi
       ;;
   esac
 done
