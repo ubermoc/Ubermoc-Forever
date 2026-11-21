@@ -801,10 +801,12 @@ end""")()
 assert str(r) == "true,false,true,false,truefalse,falsetrue,true,Use / equip|Use on Main hand: Big Sword|Pick up / move|Delete|Sort bags", r
 print("Item menu: use-on-weapon entries and profession rules: OK")
 # Applied (Applied.lua): what a worn piece already carries, for the item menu's use-on entries and the wait for a target.
-# FAKE(C1): the stub GetTemporaryEnchantmentInfo returns the TemporaryItemEnchantInfo fields of the game's documentation
+# FAKE(C47): the stub GetTemporaryEnchantmentInfo returns the TemporaryItemEnchantInfo fields of the game's documentation
 # (enchantID, remainingTimeMs, chargesRemaining, hasExpirationTime; PaperDollInfoDocumentation.lua:491-500) or nothing.
-# FAKE(C2): the stub tooltip lines carry type and leftText, the type being Enum.TooltipDataLineType.ItemEnchantmentPermanent
-# (TooltipInfoSharedDocumentation.lua:49). FAKE(C3): a worn item link carries the enchant id after the item id.
+# FAKE(C49) FAKE(C53): the stub tooltip lines carry type and leftText, the type being
+# Enum.TooltipDataLineType.ItemEnchantmentPermanent (TooltipInfoSharedDocumentation.lua:27-55), the text read as
+# lineData.leftText (TooltipDataHandler.lua:339-348). FAKE(C52): a worn item link carries the enchant id after the item
+# id (Blizzard_Reports.lua:391).
 r = L("""function()
     local UF = UbermocForever
     local A, M = UF.Applied, UF.ItemMenu
@@ -1870,7 +1872,7 @@ r = L("""function()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()
     press("PADLTRIGGER"); out[#out + 1] = UF.optionsPage()            -- left of the first page is the last (Quality of life)
     local q = UF.QolPage.navRows()
-    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5] .. "/" .. #q[6] .. "/" .. #q[7]   -- aim dot; fast loot; vendor; nameplates; name health; plate range
+    out[#out + 1] = #q .. "/" .. #q[1] .. "/" .. #q[2] .. "/" .. #q[3] .. "/" .. #q[4] .. "/" .. #q[5] .. "/" .. #q[6] .. "/" .. #q[7] .. "/" .. #q[8]   -- aim dot; fast loot; vendor; nameplates; name health; plate range; quest marks; quest arrow
     local before = UF.Vendor.cfg().guild
     UF.Nav.SetFocus(q[3][3]); press("PAD1")                            -- A on Guild bank first flips it
     out[#out + 1] = tostring(UF.Vendor.cfg().guild ~= before)
@@ -1878,7 +1880,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,7/3/1/3/2/2/1/3,true,1", r
+assert str(r) == "1,2,3,2,1,5,8/3/1/3/2/2/1/3/1,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -2052,7 +2054,7 @@ end""")()
 assert str(r) == "0.8/0.8,0.5/0.8,60%,0.2/nil,0.8,nil,0.0", r
 print("Fading: a part's own mouse-over opacity, Off and Same, cleared by reset, hidden stays hidden: OK")
 # PlateLevel (PlateLevel.lua): the level of a friendly player under the game's name-only setting, which the game itself hides.
-# FAKE(C1): the stub UnitLevel returns a plain number (UnitDocumentation.lua:2474-2490 gives no secret return) or a secret/odd value.
+# FAKE(C50): the stub UnitLevel returns a plain number (claim C50: no secret return) or a secret/odd value.
 r = L("""function()
     local UF = UbermocForever
     local PL = UF.PlateLevel
@@ -2110,8 +2112,8 @@ src = open(ADDON + "/PlateLevel.lua", encoding="utf-8").read()
 for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "UnitHealth", "UnitName", "GetText", "GetStringWidth"]:
     assert bad not in src, "PlateLevel.lua contains " + bad
 print("PlateLevel: the level of a friendly player under name-only is drawn, secrets and errors are survived, NPCs and enemies are left to the game: OK")
-# PlateQuest (PlateQuest.lua): a quest mark and the progress on nameplates. FAKE(C1): the stub UnitIsRelatedToActiveQuest returns a
-# plain bool (QuestLogDocumentation.lua:1287-1299 gives no secret return). FAKE(C2): the stub tooltip lines have the type and leftText
+# PlateQuest (PlateQuest.lua): a quest mark and the progress on nameplates. FAKE(C51): the stub UnitIsRelatedToActiveQuest returns a
+# plain bool (claim C51: no secret return). FAKE(C53) FAKE(C55): the stub tooltip lines have the type and leftText
 # of TooltipInfoSharedDocumentation.lua (QuestObjective 8, QuestTitle 17), and the objective text is the unit tooltip's "name: a/b".
 r = L("""function()
     local UF = UbermocForever
@@ -2206,7 +2208,7 @@ for bad in ["hooksecurefunc", "OnUpdate", "SetAlpha", "UnitHealth", "UnitName", 
 print("PlateQuest: no hook, no update loop, nothing read back, nothing written on a game frame: OK")
 # TargetCancel (TargetCancel.lua): while the game waits for a target (SpellIsTargeting), B goes to a secure button that runs
 # /stopspelltarget; it is given back as soon as the wait ends, never taken in combat, retaken when a window took it, and the
-# game's cursor clicks (R1, R2) are left alone. FAKE(C1): the stub SpellIsTargeting stands for the game's call of that name
+# game's cursor clicks (R1, R2) are left alone. FAKE(C48): the stub SpellIsTargeting stands for the game's call of that name
 # (SecureTemplates.lua:183 and Blizzard_UIPanels_Game PaperDollFrame.lua use it as a plain boolean test).
 r = L("""function()
     local UF = UbermocForever
@@ -2663,7 +2665,7 @@ print("Nameplates: no hook, no OnUpdate, no anchoring, no unit data, no Show/Hid
 
 # Plate range: On writes 45 to the game's two distance CVars, keeps what the player had and gives it back on Off, nothing
 # is written during combat and what waits is applied when the fight ends, a nil or raising GetCVar writes nothing, and a
-# setting that is On is applied again at login. FAKE(C1): the stub SetCVar stands for C_CVar.SetCVar, which takes the cvar
+# setting that is On is applied again at login. FAKE(C44): the stub SetCVar stands for C_CVar.SetCVar, which takes the cvar
 # name and value as cstrings and only works on cvars that are not read only and not secure. FAKE(C2): the stub values are
 # the strings the game keeps, as Ketho's Forever rows show ("45.000000" and "40.000000").
 r = L("""function()
@@ -2676,7 +2678,7 @@ r = L("""function()
     local lock = false
     InCombatLockdown = function() return lock end
     local out = {}
-    UbermocForeverDB = {}
+    UbermocForeverDB = { platerange = { on = false } }   -- default is On (the author's setting); pin Off for this run
     PR.pending = false
     PR.sync()                                  -- Off and never written: nothing is written
     out[#out + 1] = table.concat(wrote, ",")
@@ -2693,7 +2695,7 @@ r = L("""function()
     rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_REGEN_ENABLED", nil)
     out[#out + 1] = tostring(PR.pending) .. "=" .. table.concat(wrote, ",")
     wrote = {}
-    UbermocForeverDB = {}                      -- a fresh Off at login applies nothing
+    UbermocForeverDB = { platerange = { on = false } }   -- a fresh Off at login applies nothing
     rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
     out[#out + 1] = table.concat(wrote, ",")
     UbermocForeverDB = {}                      -- an On setting is applied again at login
@@ -2701,12 +2703,12 @@ r = L("""function()
     rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
     out[#out + 1] = table.concat(wrote, ",")
     wrote = {}
-    UbermocForeverDB = {}
+    UbermocForeverDB = { platerange = { on = false } }   -- pin Off so the toggle goes On and reads the player's values
     cv.nameplateMaxDistance = nil
     PR.toggle()                                -- nil GetCVar answer: nothing remembered, nothing written for it
     out[#out + 1] = table.concat(wrote, ",") .. "=" .. tostring(PR.db().backup.nameplateMaxDistance)
     wrote = {}
-    UbermocForeverDB = {}
+    UbermocForeverDB = { platerange = { on = false } }   -- pin Off for the On toggle
     GetCVar = function() error("restricted") end
     PR.toggle()                                -- a raising GetCVar is survived, nothing written
     out[#out + 1] = table.concat(wrote, ",")
@@ -2731,6 +2733,25 @@ want = ("|nameplateMaxDistance=45,nameplatePlayerMaxDistance=45"
 assert str(r) == want, (r, want)
 print("Plate range: On writes 45 to both distance CVars, keeps and gives back the player's values, defers in combat, "
       "survives a nil or raising GetCVar, applies an On setting at login, drops an old saved distance: OK")
+
+# 1.3.144: a brand-new install defaults to On (the author's setting, UF.SEED), so login applies it.
+r = L("""function()
+    local PR = UbermocForever.PlateRange
+    local savedDB, oldGet, oldSet, oldLock = UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown
+    local cv = { nameplateMaxDistance = "45.000000", nameplatePlayerMaxDistance = "40.000000" }
+    local wrote = {}
+    GetCVar = function(k) return cv[k] end
+    SetCVar = function(k, v) wrote[#wrote + 1] = k .. "=" .. tostring(v); cv[k] = v end
+    InCombatLockdown = function() return false end
+    UbermocForeverDB = {}
+    PR.pending = false
+    local on = tostring(PR.db().on)
+    rawget(PR._frame, "__scripts").OnEvent(PR._frame, "PLAYER_ENTERING_WORLD", nil)
+    UbermocForeverDB, GetCVar, SetCVar, InCombatLockdown = savedDB, oldGet, oldSet, oldLock
+    return on .. "|" .. table.concat(wrote, ",")
+end""")()
+assert str(r) == ("true|nameplateMaxDistance=45,nameplatePlayerMaxDistance=45"), (r)
+print("Plate range: a brand-new install defaults to On and applies it at login: OK")
 
 # NameHealth: nothing is read back from our strings or the bar, no health numbers, no hook, no game method
 src = open(ADDON + "/NameHealth.lua", encoding="utf-8").read()
@@ -3078,7 +3099,7 @@ r = L("""function()
     UbermocForeverDB = saved
     return a .. "|" .. b
 end""")()
-assert str(r) == "true40trueleft|nilnilright", r
+assert str(r) == "true40nilleft|nilnilright", r
 print("Fresh install: the author's settings are the defaults, existing settings untouched: OK")
 # The reused buffers of GameNav (openMenus, the window list): each call clears its buffer at entry, so a window or menu
 # that closed between two calls is gone. The result must be read at once, as every caller does.
@@ -3209,5 +3230,266 @@ r = L("""function()
 end""")()
 assert str(r) == "1,reload", r
 print("Load record: a /reload is noted in the saved settings, a zone change is not: OK")
+# QuestArrow (QuestArrow.lua): the bearing maths, the turn, and which quest is pointed at.
+# FAKE(C11): the stub GetQuestsOnMap returns rows in the shape claim C11 states, carrying the fields of claim C12.
+# FAKE(C13): the stub GetBestMapForUnit returns a number or nil as claim C13 states.
+# FAKE(C14): the stub GetPlayerMapPosition returns a plain table with x and y, the vector2 Vector2DMixin shape of claim C14.
+# FAKE(C15): the stub GetMapWorldSize returns width and height in yards as claim C15 states.
+# FAKE(C6): the stub GetPlayerFacing returns a number in radians or nil as claim C6 states.
+r = L("""function()
+    local Q = UbermocForever.QuestArrow
+    local saved = { C_Map, C_QuestLog, GetPlayerFacing }
+    C_Map = {
+        GetBestMapForUnit = function(unit) return unit == "player" and 961 or nil end,
+        GetPlayerMapPosition = function(m, unit) return (m == 961) and { x = 0.2, y = 0.2 } or nil end,
+        GetMapWorldSize = function(m) return (m == 961) and 100 or nil end,
+    }
+    C_QuestLog = {
+        GetQuestsOnMap = function(m)
+            return { { questID = 7, mapID = 961, x = 0.3, y = 0.3, inProgress = false },
+                     { questID = 8, mapID = 1000, x = 0.4, y = 0.4, inProgress = true },
+                     { questID = 9, mapID = 961, x = 0.2, y = 0.7, inProgress = true } }
+        end,
+    }
+    GetPlayerFacing = function() return 0 end
+    local out = {}
+    local mapID, q = Q.picking()
+    out[#out + 1] = tostring(mapID) .. "/" .. tostring(q and q.questID)          -- first in-progress quest on our map
+    local yards, angle = Q.bearing(100, 100, 0.2, 0.2, 0.2, 0.7)                 -- straight south: 50 yards, angle pi
+    out[#out + 1] = string.format("%.0f %.6f", yards, angle)
+    local _, east = Q.bearing(100, 100, 0.2, 0.2, 0.6, 0.2)                      -- straight east: 3 pi / 2
+    out[#out + 1] = string.format("%.6f", east)
+    out[#out + 1] = string.format("%.6f", Q.rotation(angle, math.pi / 2))         -- facing east, objective south: -(pi - pi/2)
+    out[#out + 1] = tostring(Q.facing())                                          -- facing given, not read here: kept as passed
+    C_QuestLog.GetQuestsOnMap = nil
+    out[#out + 1] = tostring(Q.picking())                                         -- cannot ask the game: nothing
+    C_Map, C_QuestLog, GetPlayerFacing = saved[1], saved[2], saved[3]
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "961/9,50 3.141593,4.712389,-1.570796,0,nil", r
+print("Quest arrow: the bearing maths, the turn, and the quest choice: OK")
+
+# QuestArrow (QuestArrow.lua): the three modes, the cross-map target, the place and the size.
+# FAKE(C23): the game answer for a quest carries mapID, x, y, as claim C23 states.
+# FAKE(C24): the areas listed on a map are rows, and those rows carry the fields claim C25 states.
+# FAKE(C25): a map record is a plain table carrying parentMapID, as claim C25 states.
+# FAKE(C26): the rectangle of an area on the map above carries minX, maxX, minY, maxY, as claim C26 states.
+# FAKE(C5): the route point for the map we are on is a plain table with x and y, as claims C5 and C29 state.
+# FAKE(C12): the quest rows are plain tables with the fields claim C12 states.
+# FAKE(C14): the position on a map is a plain table with x and y, as claim C14 states.
+# FAKE(C31): the cursor position is two numbers, as claim C31 states, divided by the scale as claim C32 states.
+# FAKE(C42): the atlas record answers width and height, as claim C42 states.
+r = L("""function()
+    local Q = UbermocForever.QuestArrow
+    local saved = { C_Map, C_QuestLog, C_SuperTrack, C_Navigation, C_Texture, GetPlayerFacing, GetCursorPosition,
+                    UbermocForever.DB().qarrow }
+    local parents = { [961] = 1416, [1000] = 1416, [1416] = 947 }   -- FAKE(C25): we stand on 961, the quest is on 1000
+    local kids = { [1416] = { { mapID = 961, parentMapID = 1416 }, { mapID = 1000, parentMapID = 1416 } } }  -- FAKE(C24)
+    local rects = { [961] = { minX = 0.05, maxX = 0.40, minY = 0.50, maxY = 0.90 },
+                    [1000] = { minX = 0.50, maxX = 0.80, minY = 0.10, maxY = 0.40 } }   -- FAKE(C26)
+    local parentOf = function(m) return parents[m] end
+    local rowsOf = function(m) return kids[m] or {} end
+    local rectOf = function(m, topMap) return rects[m] end
+    local pos = { x = 0.2, y = 0.6 }   -- FAKE(C14)
+    local out = {}
+
+    -- the areas walked from where we stand to the quest, and the map the two chains share (claims C24, C25)
+    local route, lca = Q.path(961, 1000, parentOf)
+    out[#out + 1] = "walk 961-1416-1000 lca 1416"
+    out[#out + 1] = "held " .. tostring(Q.holding(1416, 1000, rowsOf(1416), parentOf))
+    -- a point on an area as the game puts it on the map above, and the border of the next area nearest to us
+    local px, py = Q.onParent(0.2, 0.6, 0.05, 0.40, 0.50, 0.90)     -- claims C26, C28
+    out[#out + 1] = string.format("on parent %.2f %.2f", px, py)
+    local cx, cy = Q.crossPoint(px, py, 0.50, 0.80, 0.10, 0.40)     -- claim C26
+    out[#out + 1] = string.format("cross %.2f %.2f", cx, cy)
+
+    -- the same situation through each mode
+    for _, mode in ipairs(Q.MODES) do
+        local waypoint = nil
+        if mode == "route" then waypoint = { x = 0.15, y = 0.55 } end   -- FAKE(C5): the answer for our own map
+        local amap, ax, ay, source = Q.aimFor(mode, 961, pos, 1000, 0.4, 0.4, waypoint, parentOf, rowsOf, rectOf)
+        out[#out + 1] = mode .. " " .. tostring(amap) .. " " .. string.format("%.2f %.2f", ax, ay) .. " " .. source
+    end
+    -- route with nothing from the game falls back to the line on the map that holds both areas
+    local amap, ax, ay, source = Q.aimFor("route", 961, pos, 1000, 0.4, 0.4, nil, parentOf, rowsOf, rectOf)
+    out[#out + 1] = "route fallback " .. tostring(amap) .. " " .. string.format("%.2f %.2f", ax, ay) .. " " .. source
+    -- inside one area the client gives nothing to route around, so it is the straight line
+    amap, ax, ay, source = Q.aimFor("obstacle", 961, pos, 961, 0.4, 0.4, nil, parentOf, rowsOf, rectOf)
+    out[#out + 1] = "same area " .. tostring(amap) .. " " .. string.format("%.2f %.2f", ax, ay) .. " " .. source
+
+    -- the target is the quest the game has focused on, and it can be on another map (claims C20, C23, C12)
+    C_SuperTrack = { GetSuperTrackedQuestID = function() return 8 end }   -- FAKE(C20)
+    out[#out + 1] = "tracking " .. tostring(Q.tracking())
+    local answer = { mapID = 1000, x = 0.4, y = 0.4 }   -- FAKE(C23)
+    local row = { questID = 8, mapID = 961, x = 0.2, y = 0.6, inProgress = true }   -- FAKE(C12)
+    local tmap, tx, ty = Q.targetFor(8, 961, answer, row)
+    out[#out + 1] = "target " .. tostring(tmap) .. " " .. tostring(tx) .. " " .. tostring(ty)
+    tmap, tx, ty = Q.targetFor(8, 961, nil, row)
+    out[#out + 1] = "target from the row " .. tostring(tmap) .. " " .. tostring(tx) .. " " .. tostring(ty)
+
+    -- the size is a share of the size the game gives its own arrow (claims C42, C36)
+    C_Texture = { GetAtlasInfo = function(atlas) return { width = 40, height = 40 } end }   -- FAKE(C42)
+    local sizes = {}
+    for i = 1, 4 do
+        sizes[#sizes + 1] = Q.sizeName() .. " " .. tostring(Q.sizePx())
+        Q.nextSize(1)
+    end
+    out[#out + 1] = table.concat(sizes, ", ")
+
+    -- the place is saved for this character as a fraction of the screen (claims C31, C32, C33, C35)
+    GetCursorPosition = function() return 125, 120 end   -- FAKE(C31): with the test rect 100,100,50,20 and scale 1
+    local fx, fy = Q.moveFromCursor()
+    out[#out + 1] = string.format("cursor %.2f %.2f", fx, fy)
+    out[#out + 1] = string.format("point %.2f %.2f", Q.pointFor(0, 0.5))
+    -- a drag with the games handler names (claims C22, C37): held, then the place is kept
+    local f = Q.frame()
+    f.__scripts.OnDragStart(f)
+    out[#out + 1] = "moving " .. tostring(f.moving)
+    GetCursorPosition = function() return 110, 110 end   -- FAKE(C31): moved
+    f.__scripts.OnDragStop(f)
+    out[#out + 1] = "after " .. tostring(f.moving)
+    local p = Q.place()
+    out[#out + 1] = string.format("saved %.2f %.2f for %s", p.fx, p.fy, tostring(UnitGUID("player")))
+
+    -- the modes step, and the obstacle mode says what it is (claim R12)
+    local names = {}
+    for i = 1, 3 do
+        names[#names + 1] = Q.modeName()
+        Q.nextMode(1)
+    end
+    Q.nextMode(-1)                 -- back to obstacle, the mode that has to be honest
+    out[#out + 1] = table.concat(names, ", ") .. " note " .. Q.modeNote()
+
+    C_Map, C_QuestLog, C_SuperTrack, C_Navigation, C_Texture, GetPlayerFacing, GetCursorPosition =
+        saved[1], saved[2], saved[3], saved[4], saved[5], saved[6], saved[7]
+    UbermocForeverDB.qarrow = saved[8]
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("walk 961-1416-1000 lca 1416 | held 1000 | on parent 0.12 0.74 | cross 0.50 0.40 | "
+                  "direct 1416 0.62 0.22 shared map | route 961 0.15 0.55 route | obstacle 1416 0.50 0.40 areas | "
+                  "route fallback 1416 0.62 0.22 shared map | same area 961 0.40 0.40 straight (no route) | "
+                  "tracking 8 | target 1000 0.4 0.4 | target from the row 961 0.2 0.6 | "
+                  "Medium 40, Large 54, Small 30, Medium 40 | cursor 0.00 0.50 | point -25.00 0.00 | "
+                  "moving true | after nil | saved -0.30 0.00 for Player-1-ABC | "
+                  "Direct, Route, Around obstacles note straight at the objective, bending along the games route only where that route shows "
+                  "something in the way (the game gives no terrain data, so this is read from its route)"), r
+print("Quest arrow: the three modes, the cross-map target, the size and the saved place: OK")
+print("modes:", r)
+
+# QuestArrow (QuestArrow.lua): the distance line, as the game writes it (claims C39, C40, C41).
+# FAKE(C7): the bearing is the maths of claim C7, taken here with the size claim C15 states for a map.
+r = L("""function()
+    local Q = UbermocForever.QuestArrow
+    local f = Q.frame()
+    local out = {}
+    local yards, angle = Q.bearing(1000, 500, 0.12, 0.74, 0.50, 0.40)   -- claim C7 on a map of claim C15
+    out[#out + 1] = string.format("%.6f %.6f", yards, angle)
+    out[#out + 1] = string.format("%.6f", Q.rotation(angle, math.pi / 2))   -- claim C8, and the negative of claim C9
+    Q.showDistance(f, yards, true)
+    out[#out + 1] = tostring(f.text:GetText())          -- approximate across maps (claim C41)
+    Q.showDistance(f, yards, false)
+    out[#out + 1] = tostring(f.text:GetText())
+    Q.showDistance(f, nil, false)
+    out[#out + 1] = tostring(f.text:GetText())          -- nothing to write (claim C40)
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == "416.293166 5.133052 | -3.562256 | ~416 yd | 416 yd | ", r
+print("Quest arrow: the distance line and the turn for a cross-map aim: OK")
+print("distance:", r)
+# GameNav (GameNav.lua): the bar legend under a window shows the Y row only while the highlighted button is an item
+# in the bag (claim R9). FAKE(C11): the stub stands for C_Container.GetContainerItemInfo (claim C11).
+r = L("""function()
+    local G = UbermocForever.GameNav
+    local Nav = UbermocForever.Nav
+    local savedC, savedTime = C_Container, GetTime
+    for i = #Nav._stack, 1, -1 do Nav.Pop(Nav._stack[i]) end   -- clean the stack left by earlier cases
+    local slot = { ["0 5"] = { itemID = 501, hyperlink = "|cff|Hitem|h[x]|h|r", stackCount = 1 } }
+    C_Container = { GetContainerItemInfo = function(bag, which) return slot[bag .. " " .. which] end }
+    local function node(name, kind)
+        return { GetName = function() return name end, IsShown = function() return true end,
+                 IsVisible = function() return true end, IsMouseEnabled = function() return true end,
+                 IsForbidden = function() return false end,
+                 IsObjectType = function(_, k) return k == kind end,
+                 GetCenter = function() return 125, 110 end, GetWidth = function() return 40 end,
+                 GetHeight = function() return 20 end, GetEffectiveScale = function() return 1 end }
+    end
+    local button = node("UBFTestBagButton", "Button")
+    button.GetBagID = function() return 0 end; button.GetID = function() return 5 end
+    local w = node("UBFTestWin", "Frame"); w.GetWidth = function() return 300 end
+    w.GetHeight = function() return 200 end; w.GetChildren = function() return { button } end
+    local savedWins, savedAccept, savedStart = G.windows, G.dialogAccept, G.dialogStart
+    G.windows = function() return { w } end       -- only this window is open (plain tables, no stub proxies)
+    G.dialogAccept, G.dialogStart = function() return nil end, function() return nil end
+    -- earlier cases left state in the module: clear it so this case sees only the test window
+    for _, k in ipairs({"direct", "restore", "menuFrom", "menuWait", "scrolled", "stickScrolled", "placing",
+                        "lastFocus", "lastRect", "lastShown", "barSig", "settle", "userMoved"}) do G[k] = nil end
+    G.known = {}
+    local db = UbermocForever.DB(); db.gameNav = true    -- the game's own bars: GameNav answers the highlight
+    G.update()                                    -- window found, GameNav engages, the bar is built
+    local engaged = tostring(G.active())
+    G.testFocus(button); G.settle, G.userMoved = nil, true
+    GetTime = function() return 5 end             -- past the legend's re-read throttle
+    G.update()
+    local with = tostring(G.legendTexts().PAD4) .. "/" .. tostring(G.barLegend.texts.PAD4) .. "/" .. tostring(G.barLegend.items[4]:IsShown())
+    slot["0 5"] = nil                             -- the same button, the slot is empty now
+    GetTime = function() return 10 end
+    G.update()
+    local without = tostring(G.legendTexts().PAD4) .. "/" .. tostring(G.barLegend.texts.PAD4) .. "/" .. tostring(G.barLegend.items[4]:IsShown())
+    G.windows = savedWins
+    GetTime = savedTime
+    return engaged .. "|" .. with .. "|" .. without
+end""")()
+assert str(r) == "true|Options/Options/true|nil/nil/false", r
+print("bar legend: the Y row shows for a bag item and goes when the slot is empty: OK")
+
+# Nav (Nav.lua): nothing is taken in combat, and when combat ends an entry still on the stack gets its buttons
+# back on its own, with no key press (claim R13). FAKE(C54): the stub stands for InCombatLockdown (claim C54).
+r = L("""function()
+    local Nav = UbermocForever.Nav
+    local savedCombat = InCombatLockdown
+    _G.__calls.overrides = {}
+    local entry = Nav.Push({ PAD1 = function() end, PADDUP = function() end }, nil, nil, true)
+    local taken = tostring(_G.__calls.overrides.PAD1)
+    _G.__calls.overrides = {}                     -- the game's secure driver took them back at combat start
+    InCombatLockdown = function() return true end
+    Nav._after.__scripts.OnEvent(Nav._after, "PLAYER_REGEN_DISABLED")
+    Nav._after.__scripts.OnEvent(Nav._after, "PLAYER_REGEN_ENABLED")   -- in combat: nothing is taken
+    local during = tostring(_G.__calls.overrides.PAD1)
+    InCombatLockdown = function() return false end
+    Nav._after.__scripts.OnEvent(Nav._after, "PLAYER_REGEN_ENABLED")   -- combat ends: taken again
+    local retaken = tostring(_G.__calls.overrides.PAD1)
+    InCombatLockdown = savedCombat
+    Nav.Pop(entry)
+    return taken .. "|" .. during .. "|" .. retaken .. "|" .. tostring(Nav._after.__events.PLAYER_REGEN_ENABLED)
+end""")()
+assert str(r) == "true|nil|true|true", r
+print("post-combat: nothing taken in combat, the buttons come back when it ends: OK")
+
+r = L("""function()
+    local Q = _G.UbermocForever.QuestArrow
+    local pos = { x = 0.20, y = 0.50 }
+    local out = {}
+    local function aim(wp, was)
+        local amap, ax, ay, source, fx, fy, bent = Q.aimFor("obstacle", 961, pos, 961, 0.60, 0.50, wp, function() return nil end, function() return {} end, function() return nil end, was)
+        return source .. ":" .. string.format("%.2f,%.2f", ax, ay) .. ":" .. tostring(bent)
+    end
+    -- the objective is due east; the route step also points east: nothing in the way, straight
+    out[#out + 1] = aim({ x = 0.30, y = 0.51 })
+    -- the route step swings about 41 degrees north of the line: something blocks it, so follow the step
+    out[#out + 1] = aim({ x = 0.25, y = 0.4567 })
+    -- between 20 and 35 degrees: a bend already under way stays, a straight line is not bent
+    out[#out + 1] = aim({ x = 0.30, y = 0.4573 }, true)
+    out[#out + 1] = aim({ x = 0.30, y = 0.4573 }, false)
+    -- under 20 degrees the bend ends
+    out[#out + 1] = aim({ x = 0.30, y = 0.4800 }, true)
+    -- no route from the game: straight, and it says so
+    out[#out + 1] = aim(nil)
+    -- a step under our feet says nothing about direction
+    out[#out + 1] = aim({ x = 0.2005, y = 0.4995 })
+    return table.concat(out, " | ")
+end""")()
+assert str(r) == ("straight:0.60,0.50:false | around:0.25,0.46:true | around:0.30,0.46:true | straight:0.60,0.50:false | "
+                  "straight:0.60,0.50:false | straight (no route):0.60,0.50:false | straight:0.60,0.50:false"), r
+print("Quest arrow, around obstacles: straight while the game route agrees, follows the route step when it swings away (with a hysteresis), straight when the game has no route: OK")
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

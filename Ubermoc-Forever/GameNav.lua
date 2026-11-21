@@ -344,7 +344,7 @@ local function getCursor()
     cursor:SetFrameStrata("TOOLTIP")
     cursor:EnableMouse(false)
     -- A glow over the button, like the game's own button highlight (its ButtonHilight-Square art, added to what is
-    -- underneath) with a yellow tint and a light yellow wash so it shows on any button (UF.HIGHLIGHT, Core.lua). No outline.
+    -- underneath) with the warm gold tint it had before 1.3.116 (UF.HIGHLIGHT, Core.lua). No outline, no yellow.
     UF.tintHighlight(cursor)
     cursor:Hide()
     return cursor
@@ -1201,6 +1201,7 @@ local function setFocus(f, noReveal)
     pcall(tooltipShow, f)
     G.syncTriggers()      -- the new place may have nothing to scroll: give the triggers back
 end
+G.testFocus = setFocus   -- for the offline test
 
 local function rescan()
     nodes = G.scan(wins)
@@ -1401,6 +1402,7 @@ local function getBar()
     edge:SetPoint("TOPLEFT", bg, "TOPLEFT", 0, 0)
     edge:SetPoint("TOPRIGHT", bg, "TOPRIGHT", 0, 0)
     barLegend = UF.CreateLegend(bar)
+    G.barLegend = barLegend   -- for the offline test
     barLegend:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
     bar:Hide()
     return bar
@@ -1435,6 +1437,7 @@ local function legendTexts()
     if pickGroup() then t.PADLSHOULDER, t.PADRSHOULDER = "Prev tab", "Next tab" end
     return t
 end
+G.legendTexts = legendTexts   -- for the offline test
 
 -- The legend sits just under the window the highlight is in (inside its bottom edge when the window reaches the bottom of
 -- the screen, and above the action bars while a spell is being placed).

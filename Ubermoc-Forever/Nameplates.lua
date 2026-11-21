@@ -1,8 +1,8 @@
 ----------------------------------------------------------------------
 -- Ubermoc Forever: name-only nameplates (UF.Nameplates)
 --
--- Two settings on the Quality of life page, both Off by default: an enemy plate and a friendly plate show the unit's
--- name with no health bar. Off gives every piece we hid back the alpha it had BEFORE we hid it.
+-- Two settings on the Quality of life page, both On by default (the author's settings, in UF.SEED): an enemy plate and a
+-- friendly plate show the unit's name with no health bar. Off gives every piece we hid back the alpha it had BEFORE we hid it.
 --
 -- Friendly players already have the game's own name-only mode: CVar nameplateShowOnlyNameForFriendlyPlayerUnits
 -- (Blizzard_NamePlateConstants.lua:20) and NamePlateUnitFrameMixin:UpdateShowOnlyName
@@ -44,8 +44,8 @@ end
 local function db()
     local d = UF.DB()
     d.plates = d.plates or {}
-    if d.plates.enemy == nil then d.plates.enemy = false end
-    if d.plates.friendly == nil then d.plates.friendly = false end
+    if d.plates.enemy == nil then d.plates.enemy = true end
+    if d.plates.friendly == nil then d.plates.friendly = true end
     if d.plates.health == nil then d.plates.health = true end
     if d.plates.percent == nil then d.plates.percent = true end
     return d.plates
