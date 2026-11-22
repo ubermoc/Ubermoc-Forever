@@ -114,6 +114,7 @@ In words: **commit** = save your work in git on your own branch; **merge + push*
   (no `zip` binary here: use `python3 -c "import shutil; shutil.make_archive(...)"`), then
   `gh release create vX.Y.Z <zip> --title "Version X.Y.Z" --target main --latest --notes "..."`. The Ubermoc Warcraft Mod
   Updater installs from the latest non-prerelease release.
+- **The release browser (use it for every CurseForge step).** Chrome 136+ ignores the debugging port on the everyday profile, so the browser tools use their own Chrome: `Project Support/Ubermoc-Forever - Release Browser/release-browser` (`start [url]`, `status`, `stop`), its own profile folder beside it, port 9222 on 127.0.0.1. The Pi browser tools start it and attach to it by themselves (local patch in `~/.pi/agent/extensions/pi-browser/index.ts`, switched on by `~/.pi/agent/pi-browser-release.json`; `/browser connect` is not needed). The CurseForge login lives only in that profile: if a page shows the login screen, tell the user to log in there once; never try to log in yourself or copy cookies from the everyday Chrome. Details: `docs/LOCAL-MODEL-NOTES.md`, "The release browser".
 - **CurseForge** (project id 1781086, Forever flavour, game version 1.60.1): upload page
   `https://authors.curseforge.com/#/projects/1781086/files/create`. The file picker is native and cannot be driven, and
   `file_upload` only sees the session's folders. What worked: serve the zip from a throwaway local server with

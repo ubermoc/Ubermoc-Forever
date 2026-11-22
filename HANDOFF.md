@@ -2,6 +2,8 @@
 
 1.3.178 is on `main`, pushed and released on GitHub. It is installed in the game from here (branch `local-model/current-defaults` was merged with `tools/ship.sh`). The line under the quest arrow distance is now the quest's own objective line (`Q.objectiveText` / `Q.noteLine`) — the first objective whatever is finished, the ride when the aim crosses to another continent, nothing when no quest is followed, and it wraps; the distance itself is unchanged. The new-install defaults are the author's own values (`UF.SEED` and `Q.DEFAULTPX` `56` / `Q.DEFAULTOPACITY` `50` / `Q.DEFAULTPLACE` `fx 0.4992 fy 0.2322`, `fade.gbar.idle` `0`). Start keybinds were left exactly as they are. Offline tests cover both (the new-install one fails on `main`). Nothing here is tested in the game yet.
 
+**The release browser is set up (2026-11-21):** the CurseForge upload and the description for 1.3.178 can now be done with the browser tools, no `/browser connect` needed; the user has to log in to CurseForge once in the window that opens. See `docs/LOCAL-MODEL-NOTES.md` section 11.
+
 Everything below this section is the older history, newest first. This section is the map for whoever picks the work up (the local model or Ubermoc).
 
 ## What exists now (all of it released in 1.3.177, GitHub and CurseForge)
