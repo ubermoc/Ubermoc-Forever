@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn, arrowFlightBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowFlightBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -36,10 +36,6 @@ function QP.refresh()
     questTextBtn:SetText("Quest progress: " .. (UF.PlateQuest.textEnabled() and "On" or "Off"))
     levelBtn:SetText("Friendly level: " .. (UF.PlateLevel.enabled() and "On" or "Off"))
     rangeBtn:SetText("Increased plate range: " .. (UF.PlateRange.enabled() and "On" or "Off"))
-    arrowBtn:SetText("Quest arrow: " .. UF.QuestArrow.name())
-    arrowSizeBtn:SetText("Size: " .. UF.QuestArrow.sizeName())
-    arrowPosBtn:SetText("Place: " .. UF.QuestArrow.positionName())
-    arrowOpacityBtn:SetText("Opacity: " .. UF.QuestArrow.opacityName())
     arrowFlightBtn:SetText("Flight paths on map: " .. UF.FlightPaths.pinsName())
     if guildBtn.SetEnabled then guildBtn:SetEnabled(v.repair and true or false) end
 end
@@ -123,23 +119,10 @@ function QP.build(parent, inset)
     tip(levelBtn, "Friendly level", "The game hides the level of a friendly player when its name-only nameplate setting is on, which the Friendly: name only button above switches on. On draws the level number to the left of the name, in grey. Only for friendly players with name-only on; everyone else keeps the game's own level. A switches it on or off.")
     note("A nameplate can show only the name. Off brings the bar back on the plates already shown. The plate range row writes the game's distance settings, and Off gives back the values you had before. The quest mark and progress work on every nameplate.", -376)
 
-    heading("Quest arrow", -408)
-    arrowBtn = button(page, 120); arrowBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -430)
-    toggle(arrowBtn, UF.QuestArrow.toggle)
-    arrowSizeBtn = button(page, 105); arrowSizeBtn:SetPoint("LEFT", arrowBtn, "RIGHT", 6, 0)
-    arrowPosBtn = button(page, 160); arrowPosBtn:SetPoint("LEFT", arrowSizeBtn, "RIGHT", 6, 0)
-    arrowOpacityBtn = button(page, 140); arrowOpacityBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -456)
-    UF.cycleButton(arrowSizeBtn, function(dir) UF.QuestArrow.nextSize(dir) end, QP.refresh)
-    UF.cycleButton(arrowPosBtn, function(dir) UF.QuestArrow.nextPosition(dir) end, QP.refresh)
-    UF.cycleButton(arrowOpacityBtn, function(dir) UF.QuestArrow.nextOpacity(dir) end, QP.refresh)
-    arrowFlightBtn = button(page, 230); arrowFlightBtn:SetPoint("LEFT", arrowOpacityBtn, "RIGHT", 6, 0)
+    heading("Flight paths", -408)
+    arrowFlightBtn = button(page, 230); arrowFlightBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -430)
     toggle(arrowFlightBtn, UF.FlightPaths.togglePins)
-    tip(arrowFlightBtn, "Flight paths on the map", "On: the world map shows the flight masters of your faction that you have not found yet, as pins. Open a flight map or talk to a flight master and its pin goes away. Click a pin to put the game's map waypoint on it if you want to go there; the quest arrow then points at that waypoint when no quest is selected. It learns which ones you have from the flight map and from finding them, so at first it may show some you already have. /ubf flightpaths says what the game reports. A switches it.")
-    tip(arrowOpacityBtn, "Quest arrow: opacity", "How solid the arrow and its distance are, from 100 percent down to 10 in steps of ten. A makes it one step fainter, X one step more solid, and it wraps round.")
-    tip(arrowSizeBtn, "Quest arrow: size", "How wide the arrow is on the screen, in pixels. A makes it one step bigger, X one step smaller (16 to 128), and it wraps round.")
-    tip(arrowPosBtn, "Quest arrow: place", "Where the arrow sits on the screen. With a mouse or the trackpad you can also drag the arrow itself and it stays where you drop it (Custom). A steps forward, X steps back.")
-    tip(arrowBtn, "Quest arrow", "While a quest is in progress on the map you are on, a small arrow near the top right of the screen points at its objective and turns as you turn. It only shows while the game can say both your spot and the objective spot on that map, and only for quests on that map. A switches it on or off.")
-    note("The arrow points at the quest the game has selected (click a quest in the tracker), or else the first quest in progress on the map you are on, with the game's own tracked-quest arrow. Aim, size and place are the three buttons beside it.", -488)
+    tip(arrowFlightBtn, "Flight paths on the map", "On: the world map shows the flight masters of your faction that you have not found yet, as pins. Open a flight map or talk to a flight master and its pin goes away. Click a pin to put the game's map waypoint on it if you want to go there. It learns which ones you have from the flight map and from finding them, so at first it may show some you already have. /ubf flightpaths says what the game reports. A switches it.")
 
     QP.refresh()
     return page
@@ -149,5 +132,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn, arrowFlightBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowFlightBtn } }
 end

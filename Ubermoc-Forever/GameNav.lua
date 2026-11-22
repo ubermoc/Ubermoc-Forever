@@ -343,8 +343,7 @@ local function getCursor()
     cursor = CreateFrame("Frame", "UbermocForeverGameCursor", UIParent)
     cursor:SetFrameStrata("TOOLTIP")
     cursor:EnableMouse(false)
-    -- A glow over the button, like the game's own button highlight (its ButtonHilight-Square art, added to what is
-    -- underneath) with the warm gold tint it had before 1.3.116 (UF.HIGHLIGHT, Core.lua). No outline, no yellow.
+    -- a thin cream border round the button (UF.HIGHLIGHT, Core.lua): nothing is laid over the button itself
     UF.tintHighlight(cursor)
     cursor:Hide()
     return cursor
@@ -527,7 +526,12 @@ local function buttons()
         rclicker:HookScript("PostClick", function()
             if InCombatLockdown() or not focus then return end
             local idx = mailIndex(focus)
-            if idx then pcall(takeMail, idx) end
+            if idx then pcall(takeMail, idx); return end
+            -- X at a vendor on a bag item with no global name: the sale runs here, after the secure click (which does nothing)
+            if UF.ItemMenu and UF.ItemMenu.sellBagSlot then
+                local okS, errS = pcall(UF.ItemMenu.sellBagSlot, focus)
+                if not okS and UF.fail then UF.fail("X sells at a vendor", errS) end
+            end
         end)
     end
     return clicker, backer, rclicker
@@ -628,6 +632,8 @@ function G.xLabel(f)
     if trainButton(f) then return "Train" end
     local mi = mailIndex(f)
     if mi and mailTakeable(mi) then return "Take all" end
+    if UF.ItemMenu and UF.ItemMenu.vendorSellsSlot and UF.ItemMenu.vendorSellsSlot(f) then return "Sell" end
+    if UF.ItemMenu and UF.ItemMenu.auctionSellsSlot and UF.ItemMenu.auctionSellsSlot(f) then return "Sell" end
     local act = G.xAction(f)
     if not act then return nil end
     if act.type == "item" then return "Use" end       -- the secure use of the item (a recipe, a hearthstone)
@@ -1395,9 +1401,10 @@ local function getBar()
     bg:SetColorTexture(0, 0, 0, 0.7)
     bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -14, 6)
     bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 14, -6)
-    -- a thin gold line along the top edge, like the game's own window trim
+    -- a thin cream line along the top edge (the highlight colour, Core.lua)
     local edge = bar:CreateTexture(nil, "BORDER")
-    edge:SetColorTexture(0.85, 0.7, 0.3, 0.55)
+    local hc = UF.HIGHLIGHT.color
+    edge:SetColorTexture(hc[1], hc[2], hc[3], 0.6)
     edge:SetHeight(1)
     edge:SetPoint("TOPLEFT", bg, "TOPLEFT", 0, 0)
     edge:SetPoint("TOPRIGHT", bg, "TOPRIGHT", 0, 0)

@@ -49,7 +49,6 @@ UF.SEED = {
     fadeMouse = 1,
     gbar = { extras = false, faceColor = false, gap = 0, hideEmpty = true, on = true, raise = 0, size = 40 },
     aim = { dist = 3, on = true, size = 1, v2 = true },
-    qarrow = { on = true, px = 56, opacity = 50, place = {} },
     flightPins = { on = true, hidden = {} },
     cinemaEdges = 3,
     cinemaBars = 3,
@@ -346,8 +345,6 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.FlightPaths then UF.FlightPaths.unhideAll(); UF.say("All the flight path pins you had hidden are back.") end
     elseif msg == "learned" then
         if UF.Trail then UF.Trail.report() end
-    elseif msg == "arrow" then
-        if UF.QuestArrow and UF.QuestArrow.report then UF.QuestArrow.report() end
     elseif msg == "loads" then
         UF.reportLoads()
     elseif msg == "tabs" then
@@ -371,22 +368,32 @@ function UF.cycleButton(b, step, after)
     b:SetScript("OnClick", function(_, button) step(button == "RightButton" and -1 or 1); if after then after() end end)
 end
 
--- Yellow belongs to one place only: the active keybind layer button in the options window (Options.lua), so the layer you
--- are binding is obvious when the bumpers (L1/R1) switch it - the size change alone was too subtle.
-UF.KEYBIND_GLOW = { 1, 0.82, 0.12, 1 }
--- Everywhere else the highlight is the game's own button art (ButtonHilight-Square, added to what is underneath) with the
--- warm tint it had before 1.3.116. Nav.lua uses no tint at all: its buttons keep the game's own gold LockHighlight.
-UF.HIGHLIGHT = { glow = { 1, 0.9, 0.55, 1 }, wash = { 1, 0.85, 0.4, 0.22 } }
+-- The highlight is a soft cream glow around the button (1.5.6): a bright thin edge hugging the button, with fainter
+-- rings spreading outward. Nothing is laid over the button itself, so its icon keeps its own colours.
+-- One colour for every highlight in the mod (the game window, the keybind layer, the legend trim).
+-- nine rings, one pixel apart, fading out smoothly: a halo rather than a line (1.5.7)
+UF.HIGHLIGHT = { color = { 1, 0.95, 0.82 }, rings = { { 0, 0.9 }, { 1, 0.62 }, { 2, 0.45 }, { 3, 0.32 }, { 4, 0.22 }, { 5, 0.14 }, { 6, 0.09 }, { 7, 0.05 }, { 8, 0.02 } } }
+-- A glow of rings round a frame. Returns a group with SetShown(on) and Hide(), so callers show or hide it at once.
 function UF.tintHighlight(frame)
     local h = UF.HIGHLIGHT
-    local glow = frame:CreateTexture(nil, "OVERLAY")
-    glow:SetAllPoints(frame)
-    glow:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
-    glow:SetBlendMode("ADD")
-    glow:SetVertexColor(h.glow[1], h.glow[2], h.glow[3], h.glow[4])
-    local wash = frame:CreateTexture(nil, "ARTWORK")
-    wash:SetAllPoints(frame)
-    wash:SetColorTexture(h.wash[1], h.wash[2], h.wash[3], h.wash[4])
-    wash:SetBlendMode("ADD")
-    return glow, wash
+    local c = h.color
+    local group = {}
+    for _, ring in ipairs(h.rings) do
+        local o, a = ring[1], ring[2]
+        local function edge()
+            local tx = frame:CreateTexture(nil, "OVERLAY")
+            tx:SetColorTexture(c[1], c[2], c[3], a)
+            group[#group + 1] = tx
+            return tx
+        end
+        -- each ring is one pixel thick, sitting o pixels outside the frame
+        local top, bottom, left, right = edge(), edge(), edge(), edge()
+        top:SetPoint("TOPLEFT", frame, "TOPLEFT", -o, o); top:SetPoint("TOPRIGHT", frame, "TOPRIGHT", o, o); top:SetHeight(1)
+        bottom:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -o, -o); bottom:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", o, -o); bottom:SetHeight(1)
+        left:SetPoint("TOPLEFT", frame, "TOPLEFT", -o, o); left:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -o, -o); left:SetWidth(1)
+        right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", o, o); right:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", o, -o); right:SetWidth(1)
+    end
+    function group.SetShown(_, on) for _, tx in ipairs(group) do tx:SetShown(on and true or false) end end
+    function group.Hide() group:SetShown(false) end
+    return group
 end

@@ -143,12 +143,9 @@ function FP.onStatusChanged()
     end
 end
 
+-- 1.5.4: opening a flight map no longer marks its masters as found. GetAllTaxiNodes lists masters you have not found too
+-- (the 1.5.3 report counted 37 as known), so a master counts as found only when the game reports it or you talk to it.
 function FP.onFlightMap()
-    local mapID = GetTaxiMapID and GetTaxiMapID()
-    if C_TaxiMap and C_TaxiMap.GetAllTaxiNodes and mapID then
-        local ok, nodes = pcall(C_TaxiMap.GetAllTaxiNodes, mapID)
-        if ok then FP.learnFromFlightMap(nodes) end
-    end
     FP.onStatusChanged()
     FP.refreshPins()      -- the master you are standing at is one you know now
 end
@@ -236,7 +233,7 @@ function FP.goTo(n, mapID, x, y)
     if not mapID then mapID, x, y = n.map, n.x, n.y end
     C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
     if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
-    UF.say("Waypoint set on " .. n.name .. ". The quest arrow points at it while no quest is selected.")
+    UF.say("Waypoint set on " .. n.name .. ".")
     return true
 end
 
@@ -358,4 +355,14 @@ function FP.start()
     end)
     UF.try("FlightPaths.attach", FP.attach)
 end
-if UF.OnLogin then UF.OnLogin(FP.start) end
+-- 1.5.4: the list built by 1.5.0-1.5.3 counted masters found when they were not; cleared once so they come back as pins
+local function resetWrongLearned()
+    local d = UF.DB()
+    if d.flightLearnFix ~= true then
+        d.learned = d.learned or {}
+        d.learned.taxi = {}
+        d.flightLearnFix = true
+    end
+end
+
+if UF.OnLogin then UF.OnLogin(function() resetWrongLearned(); FP.start() end) end

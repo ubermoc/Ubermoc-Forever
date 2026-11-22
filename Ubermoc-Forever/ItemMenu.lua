@@ -113,6 +113,58 @@ function M.bagBarSlot(btn)
     return bagID, inv, reagent
 end
 
+-- At a vendor, X sells a bag item. A named slot is sold by the secure macro (rightClickAction); a slot with no global
+-- name (the combined bags) cannot be reached by a secure click, so X sells it after the press, with the same calls
+-- the Y menu's Sell entry uses (GameNav's right-click button runs M.sellBagSlot in its PostClick hook).
+-- True when X's job here is that sale: a vendor that buys is open, the slot is a bag slot with an item, and it has no name.
+function M.vendorSellsSlot(btn)
+    if type(btn) ~= "table" then return false end
+    if not (MerchantFrame and MerchantFrame:IsShown()) or MerchantFrame.selectedTab == 2 then return false end
+    local name = btn.GetName and btn:GetName()
+    if name and name ~= "" then return false end
+    local bag, slot = bagSlot(btn)
+    if not bag then return false end
+    if not (C_Container and C_Container.GetContainerItemInfo) then return false end
+    local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+    return ok and info ~= nil
+end
+
+-- At the auction house, X on a bag item with no global name (the combined bags) does what the right-click does there:
+-- the item goes into the sell slot (ContainerFrame.lua: AuctionHouseFrame:SetPostItem). Same timing as the vendor sale.
+function M.auctionSellsSlot(btn)
+    if type(btn) ~= "table" then return false end
+    if not (AuctionHouseFrame and AuctionHouseFrame:IsShown()) then return false end
+    local name = btn.GetName and btn:GetName()
+    if name and name ~= "" then return false end
+    local bag, slot = bagSlot(btn)
+    if not bag then return false end
+    if not (C_Container and C_Container.GetContainerItemInfo) then return false end
+    local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+    return ok and info ~= nil
+end
+
+-- The auction sale of an unnamed bag slot: the button's own right-click handler runs, as the game's right click does;
+-- if the button has none, the plain use of the item (which the auction house also reads as a post).
+function M.auctionPostSlot(btn)
+    local bag, slot = bagSlot(btn)
+    local handler = btn.GetScript and btn:GetScript("OnClick")
+    if handler and pcall(handler, btn, "RightButton", false) then return true end
+    if bag then pcall(C_Container.UseContainerItem, bag, slot) end
+    return true
+end
+
+function M.sellBagSlot(btn)
+    if M.auctionSellsSlot(btn) then return M.auctionPostSlot(btn) end
+    if not M.vendorSellsSlot(btn) then return false end
+    local bag, slot = bagSlot(btn)
+    pcall(C_Container.PickupContainerItem, bag, slot)
+    if CursorHasItem and CursorHasItem() then
+        pcall(PickupMerchantItem, 0)
+        if CursorHasItem() then ClearCursor() end
+    end
+    return true
+end
+
 -- What the highlighted button is: "bag", "equip", "spell", "bagslot" or nil.
 function M.kind(btn)
     if not btn then return nil end
@@ -165,6 +217,12 @@ function M.rightClickAction(btn)
     if not (C_Container and C_Container.GetContainerItemInfo) then return no() end
     local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
     if not (ok and info) then return no() end
+    -- at the auction house the right click puts the item in the sell slot (ContainerFrame.lua: SetPostItem), not its use
+    if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
+        if name and name ~= "" then return { type = "macro", macrotext = "/click " .. name .. " RightButton" } end
+        -- no name (the combined bags): nothing secure to click; the sale runs after the press (M.sellBagSlot)
+        return { type = "macro", macrotext = "" }
+    end
     -- with no vendor open the game's right click is the item's own use: learning a recipe, using a hearthstone,
     -- applying a poison or a kit, equipping a bag - the same secure action as the Y menu's "Use / equip" entry
     -- (C140: it equips when the item is equippable and not equipped, else uses it; C141: the game's right click
@@ -420,7 +478,7 @@ local function build()
                 C_Timer.After(0, function() M.open(back) end)
                 return
             end
-            if self.keepOpen then return end
+            if self.stayOpen then return end
             C_Timer.After(0.1, function() if menu:IsShown() then menu:Hide() end end)
         end)
         entries[i] = b
@@ -447,7 +505,11 @@ local function add(label, attrs, pre, keepOpen)
     for k, v in pairs(attrs or {}) do b:SetAttribute(k, v) end
     b:SetText(label)
     b.keepOpen = keepOpen
-    b:SetScript("PreClick", pre)
+    b:SetScript("PreClick", function(self, ...)
+        -- read before pre runs: pre can rebuild this menu, and that reuses this button for another entry
+        self.stayOpen = self.keepOpen
+        if pre then pre(self, ...) end
+    end)
     b:Show()
     return b
 end
@@ -607,6 +669,34 @@ function M.bagGain(mine, s)
     return "|cffaaaaaasame|r", 0
 end
 
+-- Puts the bag on the cursor into the equipped bag slot `inv`. The game swaps: the bag that was in the slot comes onto the
+-- cursor, so it goes into an empty slot of your bags (the bag that was picked up is in its place now). If the game refuses
+-- (the bag in the slot still holds items), the bag goes back where it came from and the reason is said.
+local function putBagIn(inv)
+    local _, carried = GetCursorInfo()
+    if not carried then return false end
+    PutItemInBag(inv)
+    local kind, now = GetCursorInfo()
+    if not kind then return true end                     -- placed, nothing left on the cursor
+    if now ~= carried then                               -- the bag that was in the slot: stow it in an empty bag slot
+        for bag = 0, (NUM_BAG_SLOTS or 4) do
+            local n = C_Container.GetContainerNumSlots(bag) or 0
+            for s = 1, n do
+                if not C_Container.GetContainerItemInfo(bag, s) then
+                    C_Container.PickupContainerItem(bag, s)
+                    if not (CursorHasItem and CursorHasItem()) then return true end
+                end
+            end
+        end
+        ClearCursor()
+        say("There is no empty bag slot for the bag that was in that slot.")
+        return false
+    end
+    ClearCursor()                                        -- refused: the bag returns to where it was picked up
+    say("The game would not put that bag there (a bag that holds items has to be emptied first).")
+    return false
+end
+
 local function openBagSlots(btn, bag, slot, info, reagent)
     local name = itemName(info.hyperlink, "Bag")
     local mine = bagItemSlots(bag, slot)
@@ -621,8 +711,7 @@ local function openBagSlots(btn, bag, slot, info, reagent)
             if InCombatLockdown() then say("Bags can't be changed in combat."); return end
             pcall(ClearCursor)
             pcall(C_Container.PickupContainerItem, bag, slot)
-            if CursorHasItem and CursorHasItem() then pcall(PutItemInBag, s.inv) end
-            if CursorHasItem and CursorHasItem() then ClearCursor(); say("The game would not put that bag there (a bag that holds items has to be emptied first).") end
+            if CursorHasItem and CursorHasItem() then putBagIn(s.inv) end
         end)
     end
     add("Back", nil, function() M.reopen = btn end)
@@ -666,8 +755,7 @@ local function openBagBarSlot(btn)
             if InCombatLockdown() then say("Bags can't be changed in combat."); return end
             pcall(ClearCursor)
             pcall(C_Container.PickupContainerItem, b.bag, b.slot)
-            if CursorHasItem and CursorHasItem() then pcall(PutItemInBag, inv) end
-            if CursorHasItem and CursorHasItem() then ClearCursor(); say("The game would not put that bag there (a bag that holds items has to be emptied first).") end
+            if CursorHasItem and CursorHasItem() then putBagIn(inv) end
         end)
     end
     if #list == 0 then say(reagent and "You carry no other reagent bag." or "You carry no other bag.") end
@@ -699,14 +787,8 @@ local function openBag(btn)
             end)
         end
     else
-        -- At the auction house the right-click on the bag item button puts the item in the sell slot (ContainerFrame.lua: AuctionHouseFrame:SetPostItem)
-        local auction = AuctionHouseFrame and AuctionHouseFrame:IsShown()
-        local bname = btn.GetName and btn:GetName()
         local post = M.auctionPost()
         if post then add("Create auction", { type = "click", clickbutton = post }, M.auctionHint) end
-        if auction and bname and bname ~= "" then
-            add("Sell at auction", { type = "macro", macrotext = "/click " .. bname .. " RightButton" })
-        end
         -- 1.3.154: the same route as X, so both do the identical thing (C157, C158)
         add("Use / equip", { type = "macro", macrotext = "/use " .. bag .. " " .. slot })
     end

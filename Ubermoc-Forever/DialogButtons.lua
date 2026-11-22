@@ -18,14 +18,23 @@ local function shown(f) return f and f.IsShown and f:IsShown() end
 local function overlayFor(b)
     local o = overlays[b]
     if o then return o end
+    -- a labelled chip above the button: the controller button, then the word (1.5.8), so it is clear which press does it
     o = CreateFrame("Frame", nil, UIParent)
     o:EnableMouse(false)
     o:SetFrameStrata(b:GetFrameStrata())
     o:SetFrameLevel((b:GetFrameLevel() or 1) + 5)
-    o:SetSize(28, 28)
-    o:SetPoint("LEFT", b, "LEFT", 6, 0)
+    o:SetPoint("BOTTOM", b, "TOP", 0, 6)
+    o.bg = o:CreateTexture(nil, "BACKGROUND")
+    o.bg:SetColorTexture(0, 0, 0, 0.75)
+    o.bg:SetAllPoints(o)
+    -- the controller picture: the game's own button atlas (as the bar draws it, GamepadBar.lua), text only when there is none
+    o.tex = o:CreateTexture(nil, "OVERLAY")
+    o.tex:SetSize(24, 24)
+    o.tex:SetPoint("LEFT", o, "LEFT", 6, 0)
     o.text = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    o.text:SetPoint("CENTER")
+    o.text:SetPoint("LEFT", o, "LEFT", 6, 0)
+    o.label = o:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    o.label:SetPoint("LEFT", o.text, "RIGHT", 6, 0)
     o:Hide()
     overlays[b] = o
     return o
@@ -63,7 +72,20 @@ local function update()
     for b, o in pairs(overlays) do if not p[b] then o:Hide() end end
     for b, pad in pairs(p) do
         local o = overlayFor(b)
-        o.text:SetText(UF.glyph(pad))
+        local word = (b.GetText and b:GetText()) or ""
+        if word == "" then word = (pad == "PAD1") and "Accept" or "Decline" end
+        local markup = UF.glyph(pad)
+        local atlas = type(markup) == "string" and markup:match("|A:([^:|]+)")
+        local picW
+        if atlas and o.tex.SetAtlas then
+            o.tex:SetAtlas(atlas); o.tex:Show(); o.text:Hide(); picW = 24
+        else
+            o.text:SetText(markup); o.text:Show(); o.tex:Hide(); picW = o.text:GetStringWidth()
+        end
+        o.label:ClearAllPoints()
+        o.label:SetPoint("LEFT", o, "LEFT", 6 + picW + 6, 0)
+        o.label:SetText(word)
+        o:SetSize(math.max(60, 6 + picW + 6 + o.label:GetStringWidth() + 10), 26)
         local on = (not b.IsEnabled) or b:IsEnabled()
         o:SetAlpha(on and 1 or 0.5)
         o:Show()

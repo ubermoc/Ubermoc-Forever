@@ -1,3 +1,11 @@
+Ubermoc-Forever 1.3.179
+- Changed: the highlight is a soft cream halo - nine one-pixel rings fading outward in one colour - rather than a line, and nothing is drawn over the button so its icon keeps its own colours. The same cream is used by the highlight in the game windows, the active keybind layer button and the legend trim. The yellow keybind glow is gone from the code.
+- Changed: X on a bag slot inside the combined bags window (its button has no name to click) sells at a vendor with the same calls the Y menu Sell entry uses, and posts the item at the auction house the way the game's own right click does; the legend says Sell for it. That menu no longer has its own Sell at auction row.
+- Changed: putting a bag into an equipped bag slot puts the bag that was in that slot into an empty bag slot; when the game refuses (the bag in the slot still holds items), the carried bag goes back where it came from and the reason is said.
+- Changed: a quest or gossip button shows a small dark chip above it with the game's own controller picture and the word for that press, and falls back to text when the game has no picture for that button.
+- Fixed: opening a flight map no longer marks its masters as found; a master counts as found only when the game reports it or you talk to it. The set that earlier versions marked wrongly is cleared once (`flightLearnFix`), so those masters show as pins again.
+- Removed: the quest direction arrow. `QuestArrow.lua` is out of the toc, its Quality of life rows and its saved settings are gone, and `/ubf arrow` no longer exists.
+
 Ubermoc-Forever 1.3.178
 - Changed: the line under the quest arrow distance is the quest's objective, the first one whatever is finished, and it wraps over lines when it is long. When the way crosses to another continent the line names the ride you have to take (boat, zeppelin or tram). With no quest followed the line is not shown at all. The distance itself is unchanged.
 - Changed: a fresh install starts with the author's own values, so a new character looks like his: quest arrow `px` `56`, `opacity` `50`, its place `fx 0.4992 fy 0.2322`, and the gamepad bar fade `idle` `0` (`flight` `0`). Settings already saved are left alone.
