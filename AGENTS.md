@@ -107,7 +107,7 @@ In words: **commit** = save your work in git on your own branch; **merge + push*
    both get renumbered by `tools/sync-main.sh` when the second one finishes, so a clash never reaches `main`.
 7. Never leave a finished branch unmerged: if the user does not say what to do with it, say in your final message that it
    waits for `bash tools/ship.sh <branch>`.
-- Claude Code and the local model read this same file (`Ubermoc.md` points here); the local model also reads `docs/LOCAL-MODEL-NOTES.md`.
+- Every agent that works here, the local model included, reads this same file (`Ubermoc.md` points here); the local model also reads `docs/LOCAL-MODEL-NOTES.md`.
 
 ## Releasing (only when the user says to; it publishes)
 - **GitHub:** `bash tools/release.sh vX.Y.Z` does it (zip, notes from CHANGELOG, `gh release create`). By hand: zip whose top folder is `Ubermoc-Forever/`, named `Ubermoc-Forever-vX.Y.Z-forever.zip`
