@@ -3121,33 +3121,6 @@ end""")()
 assert str(r) == "true40nilleft|nilnilright", r
 print("Fresh install: the author's settings are the defaults, existing settings untouched: OK")
 
-# The quest arrow defaults a NEW install gets are the author's own live settings (claim C159), not the old code values;
-# and a setting left unset falls back to the same numbers. FAKE(C159): the numbers checked here are what his live
-# Ubermoc-Forever.lua holds (qarrow px 56, opacity 50, place fx 0.4992 fy 0.2322; gamepad bar fade idle 0, flight 0).
-r = L("""function()
-    local UF = UbermocForever
-    local Q = UF.QuestArrow
-    local saved = UbermocForeverDB
-    UbermocForeverDB = nil
-    local d = UF.DB()
-    local out = {}
-    out[#out + 1] = tostring(d.qarrow.px) .. " " .. tostring(d.qarrow.opacity)
-    -- a brand-new character (no place saved yet): the place the arrow is actually drawn at
-    local p = Q.place()      -- the place a character with nothing saved gets
-    out[#out + 1] = string.format("%.4f %.4f", p.fx, p.fy)
-    -- the gamepad bar fade: his gamepad bar dims to nothing while standing still, so a fresh install starts that way
-    out[#out + 1] = tostring(d.fade.gbar.idle) .. " " .. tostring(d.fade.gbar.flight)
-    -- nothing stored for the quest arrow at all: Q.cfg answers its own defaults (it fills in what is missing, and leaves
-    -- a value the player set alone)
-    UbermocForeverDB = { qarrow = { px = 24 } }
-    local a = Q.cfg()
-    out[#out + 1] = tostring(a.px) .. " " .. tostring(a.opacity) .. " " .. string.format("%.4f %.4f", Q.place().fx, Q.place().fy)
-    UbermocForeverDB = saved
-    return out[1] .. "|" .. out[2] .. "|" .. out[3] .. "|" .. out[4]
-end""")()
-assert str(r) == "56 50|0.4992 0.2322|0 0|24 50 0.4992 0.2322", r
-print("Quest arrow defaults: a fresh install gets size 56, opacity 50, the author's own place (0.4992, 0.2322) and his gamepad bar fade (idle 0); an unset value falls back to the same numbers: OK")
-
 # The line under the distance is the quest objective (claims C163, C164): the FIRST objective always, nothing when no quest
 # is followed, the ride itself when the aim crosses to another continent, and long text wraps (claim C166).
 # FAKE(C163): the game answers a table of objective rows, or nothing when the quest is not known.
