@@ -1899,7 +1899,7 @@ r = L("""function()
     press("PADRTRIGGER"); out[#out + 1] = UF.optionsPage()            -- right of the last page is the first
     return table.concat(out, ",")
 end""")()
-assert str(r) == "1,2,3,2,1,5,9/3/1/3/2/2/1/3/3,true,1", r
+assert str(r) == "1,2,3,2,1,5,9/3/2/3/2/2/1/3/3,true,1", r
 print("Options: the triggers go through the pages: OK")
 # Fading page: the D-pad moves by position, across the left list and the right pane
 r = L("""function()
@@ -2450,6 +2450,7 @@ r = L("""function()
     local method, pid = 3, nil
     C_PartyInfo = { GetLootMethod = function() return method, pid end }
     local out = {}
+    UbermocForeverDB = { fastLootLoop = "one" }   -- the instant-take way for this test
     Lt.onReady(true); out[#out + 1] = table.concat(taken, ""); taken = {}
     method, pid = 2, 0
     Lt.onReady(true); out[#out + 1] = "[" .. table.concat(taken, "") .. "]"; taken = {}     -- we are the master looter
@@ -2461,11 +2462,65 @@ r = L("""function()
     Lt.toggle(); out[#out + 1] = tostring(Lt.enabled())
     Lt.onReady(true); out[#out + 1] = "[" .. table.concat(taken, "") .. "]"
     Lt.toggle()
+    UbermocForeverDB = {}
     GetCVar, GetNumLootItems, LootSlot, C_PartyInfo, IsModifiedClick = oldG, oldN, oldS, oldP, oldM
     return table.concat(out, ",")
 end""")()
 assert str(r) == "321,[],321,[],false,[]", r
 print("Fast loot: all slots at once, not as master looter, follows Auto Loot and the option: OK")
+
+# Fast loot loops: Staggered (the default) one slot at a time, newest first; Instant every slot at once
+r = L("""function()
+    local Lt = UbermocForever.Loot
+    local oldDB, oldG, oldN, oldS, oldM = UbermocForeverDB, GetCVar, GetNumLootItems, LootSlot, IsModifiedClick
+    local out = {}
+    local cv = { autoLootDefault = "1" }
+    local taken = {}
+    local remaining = 3
+    GetCVar = function(k) return cv[k] end
+    IsModifiedClick = function() return false end
+    C_PartyInfo = { GetLootMethod = function() return 3, nil end }
+    GetNumLootItems = function() return remaining end
+    LootSlot = function(i) taken[#taken + 1] = i; remaining = remaining - 1 end
+    local function flush()
+        local t = __calls.timers or {}
+        __calls.timers = {}
+        for _, f in ipairs(t) do f() end
+    end
+    -- Staggered (the default): one slot per tick, still newest first
+    UbermocForeverDB = {}
+    remaining = 3; taken = {}; __calls.timers = {}
+    Lt.onReady(true)
+    out[#out + 1] = "staggered:" .. table.concat(taken, "") .. ":timers:" .. tostring(#(__calls.timers or {}))
+    -- Instant: every slot at once, nothing staged
+    UbermocForeverDB = { fastLootLoop = "one" }
+    taken = {}; remaining = 3; __calls.timers = {}
+    Lt.onReady(true)
+    out[#out + 1] = "one:" .. table.concat(taken, "") .. ":timers:" .. tostring(#(__calls.timers or {}))
+    -- Staggered: the timers take the rest one slot at a time
+    UbermocForeverDB = { fastLootLoop = "two" }
+    taken = {}; remaining = 3; __calls.timers = {}
+    Lt.onReady(true)
+    out[#out + 1] = "two:" .. table.concat(taken, "") .. ":timers:" .. tostring(#(__calls.timers or {}))
+    flush()
+    out[#out + 1] = "+" .. table.concat(taken, "")
+    flush()
+    out[#out + 1] = "+" .. table.concat(taken, "")
+    flush()
+    out[#out + 1] = "+" .. table.concat(taken, "") .. ":timers:" .. tostring(#(__calls.timers or {}))
+    -- the loop button toggles and reports its name
+    UbermocForeverDB = {}
+    Lt.nextLoop(); out[#out + 1] = "next:" .. Lt.loop() .. ":" .. Lt.loopName()
+    Lt.nextLoop()
+    out[#out + 1] = Lt.loop() .. ":" .. Lt.loopName()
+    -- restore the settings and the game
+    UbermocForeverDB = oldDB
+    GetCVar, GetNumLootItems, LootSlot, IsModifiedClick = oldG, oldN, oldS, oldM
+    __calls.timers = {}
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "staggered:3:timers:1,one:321:timers:1,two:3:timers:1,+32,+321,+321:timers:0,next:one:Instant loop,two:Staggered loop", r
+print("Fast loot loops: Staggered one per tick, Instant all at once, newest first, loop button switches and is labelled: OK")
 
 # Vendor: the guild bank pays a repair only when allowed and both the allowance and the bank cover it, else your own money
 r = L("""function()

@@ -8,7 +8,7 @@ local ADDON, UF = ...
 local QP = {}
 UF.QolPage = QP
 
-local page, aimBtn, distBtn, sizeBtn, lootBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn, arrowFlightBtn
+local page, aimBtn, distBtn, sizeBtn, lootBtn, loopBtn, sellBtn, repairBtn, guildBtn, enemyBtn, friendlyBtn, healthBtn, percentBtn, rangeBtn, questBtn, questTextBtn, levelBtn, arrowBtn, arrowSizeBtn, arrowPosBtn, arrowOpacityBtn, arrowFlightBtn
 
 local function button(parent, w, text)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -24,6 +24,7 @@ function QP.refresh()
     distBtn:SetText("Aim distance: " .. UF.Aim.distanceName())
     sizeBtn:SetText("Dot: " .. UF.Aim.sizeName())
     lootBtn:SetText("Fast loot: " .. (UF.Loot.enabled() and "On" or "Off"))
+    loopBtn:SetText(UF.Loot.loopName())
     sellBtn:SetText("Sell junk: " .. (v.sell and "On" or "Off"))
     repairBtn:SetText("Repair: " .. (v.repair and "On" or "Off"))
     guildBtn:SetText("Guild bank first: " .. (v.guild and "On" or "Off"))
@@ -80,9 +81,12 @@ function QP.build(parent, inset)
 
     heading("Looting", -82)
     lootBtn = button(page, 150); lootBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -104)
+    loopBtn = button(page, 130); loopBtn:SetPoint("LEFT", lootBtn, "RIGHT", 6, 0)
     toggle(lootBtn, UF.Loot.toggle)
+    UF.cycleButton(loopBtn, function() UF.Loot.nextLoop() end, QP.refresh)
     tip(lootBtn, "Fast loot", "Takes everything from a corpse or chest the moment the loot window opens. The window only stays if something is left (full bags, or an item that asks you first). Not used while you are the master looter. It switches the game's Auto Loot on, once for each character.")
-    note("Everything is taken at once when you loot, instead of one item at a time.", -132)
+    tip(loopBtn, "Loot loop", "How fast loot takes the slots. Instant loop takes everything at once, right away; Staggered loop (the default) takes one slot every 0.033 s, newest first. A or X switches between them.")
+    note("Instant loop: every slot at once, right away. Staggered loop (the default): one slot every 0.033 s, newest first, the way the SpeedyAutoLoot addon does it. The window only stays if something is left.", -132)
 
     heading("At a vendor", -164)
     sellBtn = button(page, 150); sellBtn:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -186)
@@ -149,5 +153,5 @@ function QP.frame() return page end
 
 function QP.navRows()
     if not page then return {} end
-    return { { aimBtn, distBtn, sizeBtn }, { lootBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn, arrowFlightBtn } }
+    return { { aimBtn, distBtn, sizeBtn }, { lootBtn, loopBtn }, { sellBtn, repairBtn, guildBtn }, { enemyBtn, friendlyBtn }, { healthBtn, percentBtn }, { rangeBtn }, { questBtn, questTextBtn, levelBtn }, { arrowBtn, arrowSizeBtn, arrowPosBtn }, { arrowOpacityBtn, arrowFlightBtn } }
 end
