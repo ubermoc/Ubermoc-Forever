@@ -173,3 +173,6 @@ Ubermoc Forever is free. If you'd like to say thanks, donations are optional and
 - [Buy Me a Coffee](https://buymeacoffee.com/Ubermoc)
 
 Made by Marcos ([Ubermoc](https://github.com/ubermoc)).
+
+## Licence
+GNU General Public License version 3 (see `LICENSE`). The quest guide's data comes from QuestieDB (GPL-3.0); see `THIRD-PARTY.md`. Versions before the quest guide were MIT.

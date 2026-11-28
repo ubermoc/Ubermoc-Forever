@@ -35,6 +35,8 @@ NameHealth.lua
 PlateQuest.lua
 PlateLevel.lua
 PlateRange.lua
+QuestData.lua
+QuestGuide.lua
 QuestArrow.lua
 Chat.lua
 ChatEdit.lua

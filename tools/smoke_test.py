@@ -4063,5 +4063,112 @@ r = L("""function()
 end""")()
 assert str(r) == "1/true/2.5/You can't do that while in combat. | said | 2", r
 print("Stealth incidents: a refused Stealth, Prowl or Shadowmeld cast is saved with its timeline and the game's error text, and told in one line: OK")
+# Quest guide: the addon's own data (QuestData.lua, built from QuestieDB's Forever data) is loaded and readable
+r = L("""function()
+    local D = UbermocForever.QuestData
+    local q = D.Q[783]
+    return tostring(q and q.n) .. "|" .. tostring(q and q.s[1][1]) .. "|" .. tostring(D.Z[12]) .. "|" .. tostring(D.N[823] and D.N[823].n)
+end""")()
+assert str(r) == "A Threat Within|823|1429|Deputy Willem", r
+print("Quest guide: the generated quest data loads (quest 783, its giver, Elwynn Forest's map): OK")
+
+# Quest guide: race masks (QuestieDB encoding, Skyborne bits 32/33), what suits your level, what a quest needs, nearest, bearing, the trail, the aim
+r = L("""function()
+    local G = UbermocForever.QuestGuide
+    local out = {}
+    -- race bits
+    out[#out + 1] = tostring(G.hasBit(1, G.raceBit(1))) .. tostring(G.hasBit(2^32, G.raceBit(95))) .. tostring(G.hasBit(2^32, G.raceBit(1))) .. tostring(G.hasBit(nil, 5))
+    -- a small world: one continent, world x north = (1 - y) * 1000, world y west = (1 - x) * 1000 on map 100 (zone 10)
+    local saved = { UbermocForever.QuestData, C_Map, CreateVector2D, C_QuestLog, C_SuperTrack, UnitLevel, UnitRace, UnitClass, UnitFactionGroup, UnitQuestTrivialLevelRange }
+    CreateVector2D = function(x, y) return { x = x, y = y } end
+    local px, py = 0.5, 0.5
+    C_Map = {
+        GetWorldPosFromMapPos = function(map, v) if map ~= 100 then return nil end return 1, { x = (1 - v.y) * 1000, y = (1 - v.x) * 1000 } end,
+        GetBestMapForUnit = function() return 100 end,
+        GetPlayerMapPosition = function() return { x = px, y = py } end,
+        GetMapInfo = function(m) return { name = "Testland" } end,
+    }
+    UnitLevel = function() return 10 end
+    UnitRace = function() return "Human", "Human", 1 end
+    UnitClass = function() return "Warrior", "WARRIOR", 1 end
+    UnitFactionGroup = function() return "Alliance" end
+    UnitQuestTrivialLevelRange = nil
+    UbermocForever.QuestData = {
+        Z = { [10] = 100 }, E = {},
+        Q = {
+            [1] = { n = "Wolves", l = 10, r = 8, s = { { 50 } }, f = { { 50 } }, c = { 60 }, o = {}, i = { 70 }, k = {}, z = 10 },
+            [2] = { n = "Far errand", l = 10, r = 8, s = { { 50 } }, f = { { 51 } }, c = {}, o = {}, i = {}, k = {}, z = 10 },
+            [3] = { n = "Too high", l = 20, r = 18, s = { { 50 } }, f = { { 50 } }, c = {}, o = {}, i = {}, k = {}, z = 10 },
+            [4] = { n = "Needs 1 done", l = 10, r = 8, s = { { 50 } }, f = { { 50 } }, c = {}, o = {}, i = {}, k = {}, ps = { 1 }, z = 10 },
+            [5] = { n = "Horde only", l = 10, r = 8, ra = 2, s = { { 52 } }, f = { { 52 } }, c = {}, o = {}, i = {}, k = {}, z = 10 },
+            [6] = { n = "From an item", l = 10, r = 8, s = { nil, nil, { 9 } }, f = { { 50 } }, c = {}, o = {}, i = {}, k = {}, z = 10 },
+        },
+        N = {
+            [50] = { n = "Giver", s = { [10] = { { 50, 40 } } }, fr = "A" },        -- 100 yd north of the player
+            [51] = { n = "Far giver", s = { [10] = { { 50, 10 } } }, fr = "A" },    -- 400 yd north
+            [52] = { n = "Horde giver", s = { [10] = { { 60, 50 } } }, fr = "H" },
+            [60] = { n = "Wolf", s = { [10] = { { 40, 50 }, { 90, 90 } } } },       -- the near one is 100 yd west
+            [61] = { n = "Rat", s = { [10] = { { 50, 52 } } } },
+        },
+        O = {}, I = { [70] = { n = "Pelt", d = { 61 } } },
+    }
+    local me = G.player()
+    local isDone = function(id) return false end
+    local isOn = function(id) return false end
+    local names = {}
+    for id = 1, 6 do if G.suits(UbermocForever.QuestData.Q[id], id, me, isDone, isOn) then names[#names + 1] = id end end
+    out[#out + 1] = table.concat(names, " ")
+    -- what quest 1 needs: wolves only once the pelts are done; the turn-in once complete
+    local t = G.targetsFor(1, false, { monster = 1 }, me)
+    out[#out + 1] = #t .. ":" .. t[1].label
+    t = G.targetsFor(1, false, { item = 1 }, me)
+    out[#out + 1] = #t .. ":" .. t[1].label
+    t = G.targetsFor(1, true, nil, me)
+    out[#out + 1] = #t .. ":" .. t[1].label
+    -- nearest and bearing: the near wolf is 100 yd west of the player, so the bearing is a quarter turn counter-clockwise
+    local here = G.here()
+    local pt, yards, bearing = G.nearest(here, G.targetsFor(1, false, { monster = 1 }, me))
+    out[#out + 1] = string.format("%.0f,%.2f", yards, bearing)
+    -- the aim: with quests 1 and 2 in the log, the nearest stop first; the focused quest wins over nearer ones
+    C_QuestLog = {
+        GetNumQuestLogEntries = function() return 2 end,
+        GetInfo = function(i) return { questID = i } end,
+        GetQuestObjectives = function(id) if id == 1 then return { { type = "monster", finished = false } } end return {} end,
+        ReadyForTurnIn = function(id) return id == 2 end,
+        IsQuestFlaggedCompleted = function() return false end, IsOnQuest = function(id) return id == 1 or id == 2 end,
+    }
+    G.invalidate(); G.invalidateAvailable()
+    local a = G.aim()
+    out[#out + 1] = a.mode .. ":" .. a.point.label .. ":" .. #a.trail
+    C_SuperTrack = { GetSuperTrackedQuestID = function() return 2 end }
+    G.invalidate()
+    a = G.aim()
+    out[#out + 1] = a.mode .. ":" .. a.point.label
+    -- an empty log: the nearest quest you can pick up
+    C_SuperTrack = nil
+    C_QuestLog.GetNumQuestLogEntries = function() return 0 end
+    C_QuestLog.IsOnQuest = function() return false end
+    G.invalidate(); G.invalidateAvailable()
+    a = G.aim()
+    out[#out + 1] = a.mode .. ":" .. a.point.label
+    out[#out + 1] = tostring(G.zones(me)[1].count)
+    UbermocForever.QuestData, C_Map, CreateVector2D, C_QuestLog, C_SuperTrack, UnitLevel, UnitRace, UnitClass, UnitFactionGroup, UnitQuestTrivialLevelRange =
+        saved[1], saved[2], saved[3], saved[4], saved[5], saved[6], saved[7], saved[8], saved[9], saved[10]
+    G.invalidate(); G.invalidateAvailable()
+    return table.concat(out, "|")
+end""")()
+parts = str(r).split("|")
+assert parts[0] == "truetruefalsetrue", parts
+assert parts[1] == "1 2", parts                                  # too high, needs a prerequisite, Horde only, item-started: left out
+assert parts[2] == "2:Wolves: Wolf", parts                      # both wolf spawns
+assert parts[3] == "1:Wolves: Pelt from Rat", parts             # the pelt comes from rats
+assert parts[4] == "1:Turn in: Wolves (Giver)", parts
+assert parts[5] == "100,1.57", parts                            # 100 yd, pi/2 (west)
+assert parts[6].startswith("nearest:") and parts[6].endswith(":2"), parts  # nearest first, two stops on the trail
+assert parts[7] == "focused:Turn in: Far errand (Far giver)", parts
+assert parts[8].startswith("pickup:Pick up: "), parts
+assert parts[9] == "2", parts                                   # two suitable quests start in Testland
+print("Quest guide: race masks, what suits your level, what each quest needs, nearest and bearing, the trail, focused first, pick-ups for an empty log: OK")
+
 print("VERSION", L("UbermocForever").getVersion())
 print("ALL TESTS PASSED")

@@ -638,97 +638,40 @@ local function update()
     if not pos or not pos.x or not pos.y then Q.why = "the game does not give your position on this map"; hide(); return end
     if issecretvalue and (issecretvalue(pos.x) or issecretvalue(pos.y)) then hide(); return end
 
-    local quest = Q.tracking()
-    local picked, tmap, tx, ty
-    if quest then
-        tmap, tx, ty = Q.targetFor(quest, here, answerFor(quest), rowFor(quest, here))
-    else
-        -- no quest selected: the map pin the player put down (a flight path picked on the map, /way, a click on the map) comes before the
-        -- first quest in progress on the map
-        tmap, tx, ty = Q.userWaypoint()
-        if not tmap then
-            local m, row = Q.picking()
-            if m and row then tmap, tx, ty = m, row.x, row.y; picked = row.questID end
-        end
-    end
-    if not tmap then Q.why = "no quest to point at: none selected in the tracker and none in progress on this map"; hide(); return end
-
-    local crumb = Q.crumbHere(tmap, tx, ty)        -- Breadcrumbs, the only aim; where the player cannot be read the plain line below stands in
-    local aimMap, ax, ay, source, fromX, fromY, bent, wp, w, h, yards, angle
-    if crumb then
-        aimMap, ax, ay, source = here, tx, ty, crumb.kind
-        f.source = source
-        Q.last = { here = here, target = tmap, source = source, quest = quest, crumb = crumb.kind }
-        yards, angle = crumb.yards, crumb.angle
-    else
-        wp = waypointFor(quest, here)
-        aimMap, ax, ay, source, fromX, fromY, bent = Q.aimFor("direct", here, pos, tmap, tx, ty,
-            wp, parentOf, rowsOf, rectOf, Q.bent)
-        if not aimMap then Q.why = "no way to aim with this mode"; hide(); return end
-        Q.bent = bent or false
-        f.source = source
-        Q.last = { here = here, target = tmap, source = source, route = wp, bent = Q.bent, quest = quest }
-        if C_Map and C_Map.GetMapWorldSize then
-            local ok, ww, hh = pcall(C_Map.GetMapWorldSize, aimMap)  -- claim C15
-            if ok then w, h = ww, hh end
-        end
-        yards, angle = Q.bearing(w, h, fromX, fromY, ax, ay)  -- claim C7
-        if not yards then Q.why = "the map size is not known"; hide(); return end
-    end
-    -- which way to turn the picture: toward the game's marker on the screen, else relative to where the character faces
-    local turn, used, face, vx, vy, cx, cy, whyNoView
-    if crumb then
-        if not crumb.angle then turn = 0 end                  -- nothing to point at yet: only the note shows
-        whyNoView = "breadcrumbs point at the waypoint, not at the game's marker"
-    else
-        turn, whyNoView, vx, vy, cx, cy = Q.viewRotation()
-    end
-    if turn then
-        used = crumb and "none" or "view"
-    else
-        face = Q.facing()  -- claim C6
-        if not face then Q.why = "the game does not give the direction you face"; hide(); return end
-        turn, used = Q.rotation(angle, face), "facing"
-    end
-    Q.turnUsed, Q.whyNoView = used, whyNoView
+    -- where to go comes from the quest guide (QuestGuide.lua, the addon's own quest data): the focused quest's nearest unfinished objective
+    -- or turn-in, else the nearest over the whole log, else the nearest quest to pick up for your level. One way of turning: the bearing
+    -- to that stop minus the way you face (as ThePath and ForeverPlusPlus draw theirs; docs/RESEARCH-QUEST-ARROW.md).
+    local g, gwhy
+    if UF.QuestGuide then g, gwhy = UF.QuestGuide.aim() end
+    if not g then Q.why = gwhy or "the quest guide is not loaded"; hide(); return end
+    local face = Q.facing()  -- claim C6
+    if not face then Q.why = "the game does not give the direction you face"; hide(); return end
+    local yards, angle = g.yards, g.bearing
+    local turn = Q.rotation(angle, face)
+    -- a stop reached: the next one in the trail is shown (the guide picks it again as objectives finish)
+    local stop = g.point
+    if yards and yards < (UF.QuestGuide.ARRIVE or 15) and g.trail and g.trail[2] then stop = g.trail[2] end
+    Q.last = { here = here, target = stop.map, source = g.mode, quest = stop.quest }
+    f.source = g.mode
 
     Q.why = nil
     Q.applyOpacity(f)
     f.art:SetRotation(turn)  -- claims C8 and C9
-    -- The numbers behind the arrow, kept in the saved settings (DB.qarrow.debug, written at /reload or logout) and printed by /ubf arrow, so
-    -- a wrong direction can be read from the real values instead of guessed: where you stand, where it aims, which way you face, what the
-    -- bearing is, how far the picture was turned, what the picture reports back, and which art it is.
+    -- the numbers behind the arrow (DB.qarrow.debug, written at /reload or logout, printed by /ubf arrow)
     local d = a.debug or {}
     a.debug = d
-    d.mode, d.source, d.quest, d.here, d.aimMap = crumb and "breadcrumbs" or "direct", source, quest, here, aimMap
-    d.px, d.py, d.ax, d.ay, d.tx, d.ty, d.tmap = pos.x, pos.y, ax, ay, tx, ty, tmap
-    d.facing, d.bearing, d.turn, d.yards, d.mapW, d.mapH = face or Q.facing(), angle, turn, yards, w, h
-    d.turnUsed, d.whyNoView, d.viewX, d.viewY, d.centreX, d.centreY = used, whyNoView, vx, vy, cx, cy
-    -- twenty samples, one every half second (DB.qarrow.debug.samples, newest after n): how the game's marker, your facing and the
-    -- turn move while you turn, so what the arrow does can be read from the saved settings after a /reload
-    local now = GetTime and GetTime() or 0
-    if now - (Q.sampleAt or -1) >= 0.5 then
-        Q.sampleAt = now
-        local sm = d.samples or {}
-        d.samples = sm
-        sm.n = ((sm.n or 0) % 20) + 1
-        sm[sm.n] = { facing = d.facing, vx = vx, vy = vy, turn = turn, used = used, yards = yards }
-    end
+    d.mode, d.source, d.quest, d.here, d.aimMap = g.mode, g.mode, stop.quest, here, stop.map
+    d.px, d.py, d.ax, d.ay, d.tx, d.ty, d.tmap = pos.x, pos.y, stop.x, stop.y, stop.x, stop.y, stop.map
+    d.facing, d.bearing, d.turn, d.yards = face, angle, turn, yards
+    d.turnUsed, d.whyNoView, d.label = "facing", nil, stop.label
     local okR, applied = pcall(f.art.GetRotation, f.art)
     d.applied = (okR and type(applied) == "number") and applied or nil
-    local okA, atlas = pcall(f.art.GetAtlas, f.art)
-    d.atlas = (okA and type(atlas) == "string") and atlas or nil
-    local okT, tex = pcall(f.art.GetTexture, f.art)
-    d.texture = (okT and (type(tex) == "string" or type(tex) == "number")) and tex or nil
-    if crumb then
-        Q.setNote(f, Q.noteLine(quest, picked, crumb))
-        f.art:SetShown(crumb.angle ~= nil)
-        Q.showDistance(f, crumb.angle and yards or nil, false)
-    else
-        Q.setNote(f, Q.noteLine(quest, picked, nil))     -- the plain straight line: the objective, or nothing
-        f.art:SetShown(true)
-        Q.showDistance(f, yards, aimMap ~= here)
-    end
+    local nextStop = g.trail and g.trail[2]
+    local note = stop.label or ""
+    if nextStop and nextStop ~= stop then note = note .. "\nThen: " .. (nextStop.label or "?") end
+    Q.setNote(f, note)
+    f.art:SetShown(true)
+    Q.showDistance(f, yards, false)
     if not f:IsShown() then f:Show() end
 end
 
@@ -742,7 +685,7 @@ end)
 -- /ubf arrow: what the game answers for the arrow right now, so a mode that does nothing can be read instead of guessed
 function Q.report()
     local a = cfg()
-    UF.say("Quest arrow: " .. (a.on and "on" or "off") .. ", aims by breadcrumbs")
+    UF.say("Quest arrow: " .. (a.on and "on" or "off") .. ", aims at the quest guide's next stop (/ubf guide lists the trail)")
     local function has(t, k) return (_G[t] and _G[t][k]) and "yes" or "NO" end
     UF.say("The game offers: GetNextWaypointForMap (quest) " .. has("C_QuestLog", "GetNextWaypointForMap") .. ", GetNextWaypointForMap (live route) "
         .. has("C_Navigation", "GetNextWaypointForMap") .. ", GetNextWaypoint " .. has("C_QuestLog", "GetNextWaypoint")

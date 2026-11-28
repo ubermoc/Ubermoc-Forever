@@ -157,3 +157,24 @@ defaults (`UF.SEED` in Core.lua and `Q.DEFAULTPX` / `Q.DEFAULTOPACITY` / `Q.DEFA
 the code fell back to `px` `40` and `opacity` `100` (**C162**) and the seed gave `qarrow` only `on` = `true` (**C161**).
 The place is the spot he dragged it to (`fx 0.4992`, `fy 0.2322`), not one of the six named places; a character with
 nothing saved gets that place through `Q.place()`. Settings already saved for a character are left alone.
+
+
+## The quest guide (1.3.180): data first
+
+Why every earlier arrow aimed badly: Forever gives addons no objective positions (`C_QuestLog.GetNextWaypoint` answered nothing for the
+user's quest), so the arrow aimed at map markers, a pin or learned crumbs. Every working Forever quest addon ships a quest database
+(research notes and the read-only sources: `Project Support/.../quest-addons/README-quest-research-2026-11-28.md`): Questie and Forever
+Quest Pins use QuestieDB's Forever data; ForeverQuest and Matty7500's guide ship their own (all rights reserved, not read for code).
+- The nearest target follows Questie's `DistanceUtils.GetNearestSpawnForQuest`: a complete quest goes to its nearest friendly turn-in;
+  otherwise the nearest spawn of anything an unfinished objective needs (creatures and kill credit, item droppers, objects), measured in
+  world yards on the same continent; spawns inside instances (-1, -1) use the dungeon entrance.
+- Which objectives are unfinished comes from the game (`C_QuestLog.GetQuestObjectives`, claim C163/C164) by type: monster, item, object,
+  event/log. Complete: `C_QuestLog.ReadyForTurnIn` / `IsComplete`.
+- Race masks: QuestieDB's encoding (legacy bit race id - 1; Alliance Skyborne 95 -> bit 32, Horde Skyborne 96 -> bit 33), tested
+  arithmetically because the masks exceed 32 bits (QuestieDB docs/api.md).
+- Suitable to pick up: required level reached, quest level between the trivial line (`UnitQuestTrivialLevelRange`, else level - 5 - level/10)
+  and level + 3, race and class allowed, not repeatable, not done or in the log, prerequisites (all of the group, one of the singles) done,
+  no exclusive quest done or taken, not started by an item.
+- Positions: data percentages of a zone (AreaTable id) -> UiMapID by QuestieDB's Forever zone table -> world yards by
+  `C_Map.GetWorldPosFromMapPos`; bearing `atan2(dy, dx)` with x north and y west, turn = bearing - `GetPlayerFacing()` (unchanged rule).
+- Not verified in the game yet: everything above. Dynamic (faction) corrections that Questie applies at run time are not folded in.
