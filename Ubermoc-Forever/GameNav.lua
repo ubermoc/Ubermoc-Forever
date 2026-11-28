@@ -527,7 +527,9 @@ local function buttons()
         rclicker:HookScript("PostClick", function()
             if InCombatLockdown() or not focus then return end
             local idx = mailIndex(focus)
-            if idx then pcall(takeMail, idx) end
+            if idx then pcall(takeMail, idx); return end
+            -- X on a bag item at the auction house: into the sell slot, the way the game's right click does it
+            if UF.ItemMenu and UF.ItemMenu.postToAuction then UF.try("X puts an item up for auction", UF.ItemMenu.postToAuction, focus) end
         end)
     end
     return clicker, backer, rclicker
@@ -628,6 +630,7 @@ function G.xLabel(f)
     if trainButton(f) then return "Train" end
     local mi = mailIndex(f)
     if mi and mailTakeable(mi) then return "Take all" end
+    if UF.ItemMenu and UF.ItemMenu.auctionSlot and UF.ItemMenu.auctionSlot(f) then return "Auction" end
     local act = G.xAction(f)
     if not act then return nil end
     if act.type == "item" then return "Use" end       -- the secure use of the item (a recipe, a hearthstone)

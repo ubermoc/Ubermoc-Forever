@@ -43,7 +43,7 @@ It uses only Blizzard's own art, frames and button pictures, so it looks like it
   - Trainers: A selects a skill, X trains it.
   - Mailbox: X on a mail with an item or money takes everything in it.
 - Y opens a small menu on what the highlight is over:
-  - A bag item: use or sell (at the auction house: Sell at auction, and Create auction once an item waits in the sell slot), use on the piece it fits (poisons, sharpening stones and oils on your weapons, armor kits on the armor they name, scopes on your ranged weapon), disenchant, prospect, mill, pick up, delete, sort bags.
+  - A bag item: use or sell (at the auction house: Sell at auction, and Post auction once an item waits in the sell slot; X puts a bag item into the sell slot), use on the piece it fits (poisons, sharpening stones and oils on your weapons, armor kits on the armor they name, scopes on your ranged weapon), disenchant, prospect, mill, pick up, delete, sort bags.
   - A worn item: use it, or use anything from your bags that fits it, or pick it up.
   - A spell in the spellbook: bind it by pressing buttons. Hold your paddles and press the button you want (a back button that Steam Input turns into a key works too). If that combination already triggers an action slot, the spell goes there. If it is free, the spell goes in the first empty slot on a visible bar and the combination is bound to it. If it is already used for something else, the game asks if you want to replace it.
 - In combat your buttons go straight back to your own binds. Windows stay open but do not take your buttons, and they will not open in combat.
