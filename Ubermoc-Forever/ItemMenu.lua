@@ -52,6 +52,28 @@ local function bagSlot(btn)
     end
 end
 
+-- At the auction house X puts the highlighted bag item into the sell slot, exactly as the game's own right click does
+-- (ContainerFrame.lua:1554-1562: an ItemLocation for the bag and slot, then AuctionHouseFrame:SetPostItem). SetPostItem is a
+-- plain method of the auction frame, not a protected action, so it runs from GameNav's X button after the press
+-- (PostClick). This works for named and unnamed slots alike; before, X fell through to "/use bag slot", which the auction house
+-- does not read as a post in Forever.
+function M.auctionSlot(btn)
+    if type(btn) ~= "table" then return nil end
+    if not (AuctionHouseFrame and AuctionHouseFrame:IsShown() and AuctionHouseFrame.SetPostItem) then return nil end
+    local bag, slot = bagSlot(btn)
+    if not bag or not (C_Container and C_Container.GetContainerItemInfo) then return nil end
+    local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+    if ok and info then return bag, slot end
+end
+
+function M.postToAuction(btn)
+    local bag, slot = M.auctionSlot(btn)
+    if not bag then return false end
+    if not (ItemLocation and ItemLocation.CreateFromBagAndSlot) then return false end
+    AuctionHouseFrame:SetPostItem(ItemLocation:CreateFromBagAndSlot(bag, slot))
+    return true
+end
+
 -- what X's rule sees on this button (for /ubf x): which bag and slot it is, and what X resolves to there
 function M.xInfo(btn, out)
     out = out or UF.say
@@ -165,6 +187,9 @@ function M.rightClickAction(btn)
     if not (C_Container and C_Container.GetContainerItemInfo) then return no() end
     local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
     if not (ok and info) then return no() end
+    -- at the auction house the secure click does nothing on purpose: the item goes into the sell slot after the press
+    -- (M.postToAuction, run by GameNav's X button), because "/use" is not read as a post there
+    if M.auctionSlot(btn) then return { type = "macro", macrotext = "" } end
     -- with no vendor open the game's right click is the item's own use: learning a recipe, using a hearthstone,
     -- applying a poison or a kit, equipping a bag - the same secure action as the Y menu's "Use / equip" entry
     -- (C140: it equips when the item is equippable and not equipped, else uses it; C141: the game's right click
@@ -539,7 +564,7 @@ local function openAuction()
     if not post then return false end
     title:SetText("Auction")
     reset()
-    add("Create auction", { type = "click", clickbutton = post }, M.auctionHint)
+    add("Post auction", { type = "click", clickbutton = post }, M.auctionHint)
     return true
 end
 
@@ -703,7 +728,7 @@ local function openBag(btn)
         local auction = AuctionHouseFrame and AuctionHouseFrame:IsShown()
         local bname = btn.GetName and btn:GetName()
         local post = M.auctionPost()
-        if post then add("Create auction", { type = "click", clickbutton = post }, M.auctionHint) end
+        if post then add("Post auction", { type = "click", clickbutton = post }, M.auctionHint) end
         if auction and bname and bname ~= "" then
             add("Sell at auction", { type = "macro", macrotext = "/click " .. bname .. " RightButton" })
         end
@@ -840,7 +865,7 @@ function M.open(btn)
     if InCombatLockdown() then return false end
     local kind = M.kind(btn)
     if not kind and M.auctionPost() then
-        -- not on an item, but an item waits in the auction sell slot: the menu offers Create auction
+        -- not on an item, but an item waits in the auction sell slot: the menu offers Post auction
         build()
         M.from = btn
         local okA, openedA = pcall(openAuction)

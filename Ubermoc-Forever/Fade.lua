@@ -389,6 +389,7 @@ local ignoring = {}    -- frame -> whether it ignored its parent's opacity befor
 local driver = CreateFrame("Frame")
 driver:Hide()
 local acc = 0
+local easing = true                 -- set by tick: something is still moving toward its opacity (declared before tick, which sets it)
 
 -- Nameplates are not under one frame: each one's unit frame is set. enemy = can be attacked.
 local function applyPlates(kind, a)
@@ -527,12 +528,13 @@ local function tick(self, dt)
             if c ~= target then moving = true end
         end
     end
+    easing = moving
     -- nothing set and nothing easing back: the driver rests (the poll below wakes it)
     if not any and not moving then self:Hide() end
 end
 driver:SetScript("OnUpdate", function(self, dt)
     acc = acc + dt
-    if acc < 0.05 then return end
+    if acc < (easing and 0.05 or 0.1) then return end         -- smooth while fading; half the work while everything holds still
     local d = acc
     acc = 0
     tick(self, d)

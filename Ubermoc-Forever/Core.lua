@@ -336,6 +336,11 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         UF.reportErrors()
     elseif msg == "docks" or msg == "taxi" or msg == "maps" or msg == "entrances" then
         if UF.NavScan then UF.NavScan.start(msg) end
+    elseif msg == "scans clear" then
+        local d = UF.DB()
+        local had = d.navData ~= nil
+        d.navData = nil
+        UF.say(had and "The navigation scans are removed from the saved settings (they are written down in the research notes). Type /reload to save that." or "There are no navigation scans saved.")
     elseif msg == "scans" or msg == "scans stop" then
         if UF.NavScan then UF.NavScan.status(msg == "scans stop") end
     elseif msg == "combat" then
@@ -346,6 +351,8 @@ SlashCmdList["UBERMOCFOREVER"] = function(msg)
         if UF.FlightPaths then UF.FlightPaths.unhideAll(); UF.say("All the flight path pins you had hidden are back.") end
     elseif msg == "learned" then
         if UF.Trail then UF.Trail.report() end
+    elseif msg == "guide" then
+        if UF.QuestGuide then UF.QuestGuide.report() else UF.say("The quest guide is not loaded.") end
     elseif msg == "arrow" then
         if UF.QuestArrow and UF.QuestArrow.report then UF.QuestArrow.report() end
     elseif msg == "loads" then
