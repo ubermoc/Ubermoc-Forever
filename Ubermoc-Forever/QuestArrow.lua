@@ -617,11 +617,14 @@ local function update()
     local p = Q.place()
     local ox, oy = Q.pointFor(p.fx, p.fy)
     if not ox then Q.why = "the screen size is not known yet"; hide(); return end
-    f:ClearAllPoints()
-    f:SetPoint("CENTER", UIParent, "CENTER", ox, oy)
     local px = Q.sizePx()
-    f:SetSize(px, px)
-    f.art:SetSize(px, px)
+    if f.atX ~= ox or f.atY ~= oy or f.atPx ~= px then          -- only when the place or size changed, not twenty times a second
+        f:ClearAllPoints()
+        f:SetPoint("CENTER", UIParent, "CENTER", ox, oy)
+        f:SetSize(px, px)
+        f.art:SetSize(px, px)
+        f.atX, f.atY, f.atPx = ox, oy, px
+    end
 
     local here
     if C_Map and C_Map.GetBestMapForUnit then

@@ -694,7 +694,7 @@ local function setTargets()
         if not (closer and closer:IsShown()) then closer = nil end
     else
         local w = G.windowOfFocus() or wins[#wins]
-        closer = dialogCloser(w) or closeButtonOf(w or menu)
+        closer = dialogCloser(w) or closeButtonOf(w)   -- (was "w or menu": menu is not defined here, it was always nil)
     end
     G.closer = closer
     b:SetAttribute("clickbutton", closer)
@@ -1674,11 +1674,15 @@ local function stickScroll(sc, kind, dt)
     G.stickUntil = (GetTime and GetTime() or 0) + 1.0
 end
 
+local stickFocus, stickSc, stickKind              -- the scroller of the last highlighted button
 local stickTicker = CreateFrame("Frame")
 stickTicker:SetScript("OnUpdate", function(_, dt)
     -- the scroller is looked for once here and handed to the scroll, not walked twice per frame
     local sc, kind
-    if entry ~= nil and focus ~= nil and not InCombatLockdown() then sc, kind = scrollerOf(focus) end
+    if entry ~= nil and focus ~= nil and not InCombatLockdown() then
+        if focus ~= stickFocus then stickFocus, stickSc, stickKind = focus, scrollerOf(focus) end   -- walked once per highlighted button
+        sc, kind = stickSc, stickKind
+    end
     local want = sc ~= nil
     if want and not stickFrame then
         stickFrame = CreateFrame("Frame", "UbermocForeverStickBlocker", UIParent)

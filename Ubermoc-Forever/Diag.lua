@@ -158,7 +158,10 @@ local ev
 function D.start()
     if ev then return end
     ev = CreateFrame("Frame")
-    for _, e in ipairs(EVENTS) do pcall(ev.RegisterEvent, ev, e) end
+    -- spell casts only for you: the game then sends none for party, raid and nameplate units (busy in crowds and groups)
+    for _, e in ipairs(EVENTS) do
+        if e:find("^UNIT_SPELLCAST") and ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, e, "player") else pcall(ev.RegisterEvent, ev, e) end
+    end
     ev:SetScript("OnEvent", function(_, e, a, b, c) UF.try("Diag.on", D.on, e, a, b, c) end)
     local acc = 0
     ev:SetScript("OnUpdate", function(_, dt)

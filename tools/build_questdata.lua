@@ -73,6 +73,7 @@ for id, q in pairs(Q.entities) do
         for _, x in ipairs(e.f[2] or {}) do needO[x] = true end
         local te = q[K(qk, "triggerEnd")]
         if type(te) == "table" and type(te[2]) == "table" then e.t = { te[1], te[2] } end   -- "go to this place" objectives
+        for _, k in ipairs({ "c", "o", "i", "k" }) do if #e[k] == 0 then e[k] = nil end end      -- empty lists are left out (less memory)
         quests[id] = e
         count = count + 1
     end
@@ -90,17 +91,22 @@ for id in pairs(needI) do
     end
 end
 
+-- spawns packed into one string, unpacked by the guide only for the creatures and objects it actually looks at (QuestGuide.spawns):
+-- "zone:x,y x,y|zone:x,y" with x and y in tenths of a percent (so 43.2 is 432; -1,-1 inside an instance stays -10,-10)
 local function spawns(raw)
     if type(raw) ~= "table" then return nil end
-    local s, any = {}, false
-    for zone, list in pairs(raw) do
+    local zones = {}
+    for zone in pairs(raw) do zones[#zones + 1] = zone end
+    table.sort(zones)
+    local parts = {}
+    for _, zone in ipairs(zones) do
         local pts = {}
-        for _, p in ipairs(list) do
-            if type(p) == "table" and p[1] and p[2] then pts[#pts + 1] = { round1(p[1]), round1(p[2]) } end
+        for _, p in ipairs(raw[zone]) do
+            if type(p) == "table" and p[1] and p[2] then pts[#pts + 1] = math.floor(p[1] * 10 + 0.5) .. "," .. math.floor(p[2] * 10 + 0.5) end
         end
-        if #pts > 0 then s[zone] = pts; any = true end
+        if #pts > 0 then parts[#parts + 1] = zone .. ":" .. table.concat(pts, " ") end
     end
-    return any and s or nil
+    return #parts > 0 and table.concat(parts, "|") or nil
 end
 
 local npcs, objs = {}, {}

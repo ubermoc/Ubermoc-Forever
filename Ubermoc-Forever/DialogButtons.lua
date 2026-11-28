@@ -121,7 +121,10 @@ local function auto()
         return D.autoTarget(C_GossipInfo.GetAvailableQuests(), C_GossipInfo.GetActiveQuests(), C_GossipInfo.GetOptions())
     end)
     if not ok or not kind then return end
-    local key = tostring(UnitGUID and UnitGUID("npc")) .. ":" .. tostring(id)
+    -- the NPC's GUID can be a secret value (instances, combat); a secret used as a table key errors, so it is left out then
+    local guid = UnitGUID and UnitGUID("npc")
+    if issecretvalue and issecretvalue(guid) then guid = "hidden" end
+    local key = tostring(guid) .. ":" .. tostring(id)
     if seenRecently(key) then return end
     recent[key] = GetTime()
     if kind == "available" then C_GossipInfo.SelectAvailableQuest(id) else C_GossipInfo.SelectActiveQuest(id) end

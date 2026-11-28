@@ -18,6 +18,7 @@ G.ARRIVE = 15            -- yards: closer than this to a stop and the next one i
 G.PICKUP_ABOVE = 3       -- a quest up to this many levels above you still counts as suitable
 
 local function D() return UF.QuestData end
+local NONE = {}           -- the data leaves empty lists out
 
 -- ---------------------------------------------------------------------------------------------- facts about the player
 -- QuestieDB's race masks: the legacy bit (race id - 1) for the classic races, bits 32 and 33 for Alliance and Horde Skyborne (95, 96)
@@ -88,9 +89,28 @@ function G.point(zone, x, y, label, quest, kind)
     return { map = map, x = x / 100, y = y / 100, label = label, quest = quest, kind = kind }
 end
 
+-- the data keeps spawns packed in a string ("zone:x,y x,y|zone:...", tenths of a percent) so the quest data takes a fraction of the memory;
+-- an entity's spawns are unpacked the first time the guide needs them and kept in a weak table (the game may take them back)
+local unpacked = setmetatable({}, { __mode = "k" })
+function G.spawns(entity)
+    local s = entity and entity.s
+    if type(s) ~= "string" then return s end
+    local done = unpacked[entity]
+    if done then return done end
+    done = {}
+    for zone, list in s:gmatch("(%-?%d+):([^|]+)") do
+        local pts = {}
+        for x, y in list:gmatch("(%-?%d+),(%-?%d+)") do pts[#pts + 1] = { tonumber(x) / 10, tonumber(y) / 10 } end
+        done[tonumber(zone)] = pts
+    end
+    unpacked[entity] = done
+    return done
+end
+
 local function spawnsOf(entity, label, quest, kind, out)
-    if not (entity and entity.s) then return end
-    for zone, pts in pairs(entity.s) do
+    local all = G.spawns(entity)
+    if not all then return end
+    for zone, pts in pairs(all) do
         for _, p in ipairs(pts) do
             local pt = G.point(zone, p[1], p[2], label, quest, kind)
             if pt then out[#out + 1] = pt end
@@ -136,11 +156,11 @@ function G.targetsFor(questID, complete, left, me)
     end
     local want = function(t) return (left == nil) or (left[t] or 0) > 0 end
     if want("monster") then
-        for _, id in ipairs(q.c) do local n = d.N[id]; if n then spawnsOf(n, q.n .. ": " .. n.n, questID, "kill", out) end end
-        for _, id in ipairs(q.k) do local n = d.N[id]; if n then spawnsOf(n, q.n .. ": " .. n.n, questID, "kill", out) end end
+        for _, id in ipairs(q.c or NONE) do local n = d.N[id]; if n then spawnsOf(n, q.n .. ": " .. n.n, questID, "kill", out) end end
+        for _, id in ipairs(q.k or NONE) do local n = d.N[id]; if n then spawnsOf(n, q.n .. ": " .. n.n, questID, "kill", out) end end
     end
     if want("item") then
-        for _, id in ipairs(q.i) do
+        for _, id in ipairs(q.i or NONE) do
             local it = d.I[id]
             if it then
                 for _, nid in ipairs(it.d or {}) do local n = d.N[nid]; if n then spawnsOf(n, q.n .. ": " .. (it.n or "item") .. " from " .. n.n, questID, "loot", out) end end
@@ -149,7 +169,7 @@ function G.targetsFor(questID, complete, left, me)
         end
     end
     if want("object") then
-        for _, id in ipairs(q.o) do local o = d.O[id]; if o then spawnsOf(o, q.n .. ": " .. o.n, questID, "use", out) end end
+        for _, id in ipairs(q.o or NONE) do local o = d.O[id]; if o then spawnsOf(o, q.n .. ": " .. o.n, questID, "use", out) end end
     end
     if (want("event") or want("log")) and q.t then
         for zone, pts in pairs(q.t[2]) do
@@ -256,6 +276,7 @@ function G.suits(q, id, me, isDone, isOn)
 end
 
 local availCache, availFor
+local pickupPts, pickupFor      -- the pick-up points of the current list of suitable quests
 function G.available(me)
     me = me or player()
     local key = me.level .. ":" .. tostring(me.race) .. ":" .. tostring(me.class)
@@ -371,8 +392,9 @@ function G.search()
         return { point = pt, yards = y, bearing = b, mode = "nearest", trail = trail }
     end
     local me = player()
-    local pts = G.pickupPoints(G.available(me), me)
-    local pt, y, b = G.nearest(here, pts)
+    local ids = G.available(me)
+    if pickupFor ~= ids then pickupPts, pickupFor = G.pickupPoints(ids, me), ids end   -- built once per list of suitable quests, not twice a second
+    local pt, y, b = G.nearest(here, pickupPts)
     if pt then return { point = pt, yards = y, bearing = b, mode = "pickup", trail = { pt } } end
     return nil, "nothing to do on this continent: no quest in your log has a place here and no suitable quest starts here"
 end
