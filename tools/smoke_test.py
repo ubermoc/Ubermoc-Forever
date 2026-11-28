@@ -2322,7 +2322,33 @@ r = L("""function()
     return table.concat(out, ",")
 end""")()
 assert str(r) == "nil,nil,true", r
-print("Y menu: Create auction button found only with an item in the sell slot: OK")
+print("Y menu: Post auction button found only with an item in the sell slot: OK")
+
+# X at the auction house: the item goes into the sell slot through AuctionHouseFrame:SetPostItem (ContainerFrame.lua:1554-1562),
+# for a named slot and for an unnamed one (the combined bags); the secure click itself does nothing there; the label says Auction
+r = L("""function()
+    local M, G = UbermocForever.ItemMenu, UbermocForever.GameNav
+    local out, posted = {}, {}
+    local saved = { C_Container, ItemLocation, AuctionHouseFrame }
+    C_Container = { GetContainerItemInfo = function(bag, slot) if bag == 1 and slot == 4 then return { itemID = 7 } end end }
+    ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return { bag = bag, slot = slot } end }
+    AuctionHouseFrame = { IsShown = function() return true end, SetPostItem = function(_, loc) posted[#posted + 1] = loc.bag .. ":" .. loc.slot end }
+    local unnamed = { GetBagID = function() return 1 end, GetID = function() return 4 end, GetName = function() return nil end }
+    local named = { GetBagID = function() return 1 end, GetID = function() return 4 end, GetName = function() return "ContainerFrame2Item4" end }
+    local empty = { GetBagID = function() return 1 end, GetID = function() return 5 end, GetName = function() return nil end }
+    out[#out + 1] = M.rightClickAction(unnamed).macrotext == "" and "nosecure" or "secure"
+    out[#out + 1] = tostring(M.postToAuction(unnamed))
+    out[#out + 1] = tostring(M.postToAuction(named))
+    out[#out + 1] = tostring(M.postToAuction(empty))
+    out[#out + 1] = table.concat(posted, "|")
+    out[#out + 1] = tostring(G.xLabel(unnamed))
+    AuctionHouseFrame.IsShown = function() return false end
+    out[#out + 1] = tostring(M.postToAuction(unnamed))
+    C_Container, ItemLocation, AuctionHouseFrame = saved[1], saved[2], saved[3]
+    return table.concat(out, ",")
+end""")()
+assert str(r) == "nosecure,true,true,false,1:4|1:4,Auction,false", r
+print("X at the auction house: bag item goes into the sell slot (named and unnamed), label Auction: OK")
 
 # Gamepad layout: other binds of the held combination get a slot
 r = L("""function()
